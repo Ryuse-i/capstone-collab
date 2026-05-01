@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: pyusers
+      POSTGRES_DB: capstone-collab
 
     ports:
       - "5432:5432"
