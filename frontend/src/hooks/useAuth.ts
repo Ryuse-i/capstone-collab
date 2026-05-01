@@ -12,6 +12,7 @@ import {
   type RegisterCredentials,
   type UpdateUserPayload,
 } from "@/services/api";
+import { useNavigate } from "react-router-dom";
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 
@@ -31,11 +32,13 @@ export function useLogin() {
 
 export function useLogout() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   return useMutation({
     mutationFn: logoutUser,
     onSettled: () => {
       clearToken();
       queryClient.clear();
+      navigate("/login");
     },
   });
 }

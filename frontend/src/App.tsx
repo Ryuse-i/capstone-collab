@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import SignupPage from "./pages/SignupPage";
 import PrivateRoute from "./components/PrivateRoute";
+import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
   return (
@@ -15,10 +16,11 @@ export default function App() {
       {/* Protected routes */}
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        {/* Add more protected routes here later */}
+        {/* Goto notfound when no page or route*/}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
 
-      {/* Fallback */}
+      {/* Goto login when not authenticated*/}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
