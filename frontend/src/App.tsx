@@ -3,8 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import SignupPage from "./pages/SignupPage";
-import PrivateRoute from "./components/PrivateRoute";
 import NotFoundPage from "./pages/NotFoundPage";
+
 
 export default function App() {
   return (
@@ -14,11 +14,12 @@ export default function App() {
       <Route path="/signup" element={<SignupPage />} />
 
       {/* Protected routes */}
-      <Route element={<PrivateRoute />}>
-        <Route path="/dashboard" element={<Dashboard />} />
+     
+        <Route path="/dashboard" element={<Dashboard />} />  
+        
         {/* Goto notfound when no page or route*/}
         <Route path="*" element={<NotFoundPage />} />
-      </Route>
+      
 
       {/* Goto login when not authenticated*/}
       <Route path="*" element={<Navigate to="/login" replace />} />

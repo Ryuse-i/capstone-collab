@@ -1,5 +1,6 @@
 "use client";
 
+import { NavSecondary } from "@/components/nav-secondary";
 import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
@@ -19,6 +20,7 @@ import {
   BotIcon,
   BookOpenIcon,
   LayoutGridIcon,
+  Settings,
 } from "lucide-react";
 
 // This is sample data.
@@ -46,6 +48,16 @@ const data = {
       icon: <BookOpenIcon />,
     },
   ],
+  navSecondary: [
+   
+     {
+      title: "Settings",
+      url: "#",
+      icon: <Settings/>
+      ,
+    },
+   
+  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -72,6 +84,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+          <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

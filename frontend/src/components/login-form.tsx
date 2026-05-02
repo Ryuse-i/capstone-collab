@@ -58,9 +58,7 @@ export function LoginForm({
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Welcome back</CardTitle>
 
-          <CardDescription>
-            Login with your Apple or Google account
-          </CardDescription>
+         
         </CardHeader>
 
         <CardContent>
@@ -79,18 +77,10 @@ export function LoginForm({
           <form onSubmit={handleSubmit}>
             <FieldGroup>
               {/* SOCIAL LOGIN (optional for later) */}
-              <Field>
-                <Button variant="outline" type="button">
-                  Login with Apple
-                </Button>
-
-                <Button variant="outline" type="button">
-                  Login with Google
-                </Button>
-              </Field>
+         
 
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                Or continue with
+              
               </FieldSeparator>
 
               {/* EMAIL */}
