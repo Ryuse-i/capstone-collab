@@ -1,22 +1,32 @@
 from datetime import datetime, timezone
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, UUID
+import uuid
 
 
 class Project(Base):
     __tablename__ = "projects"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    # Changed id to UUID to stay consistent, or keep as int if you prefer
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     name: Mapped[str] = mapped_column(String(150))
     description: Mapped[str]
-    created_by: Mapped[int] = mapped_column(
+
+    # Changed these from int to UUID
+    created_by: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id"),
-        primary_key=True,
+        nullable=True,
     )
-    advisor: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    instructor: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
+    advisor: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=True)
+    instructor: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )

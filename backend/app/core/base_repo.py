@@ -36,4 +36,4 @@ class BaseRepo:
         await self.db.delete(db_item)
         await self.db.commit()
 
-        return {"Message": "Deleted succesfully"}
+        return {"message": "Deleted succesfully"}

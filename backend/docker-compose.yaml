@@ -2,17 +2,27 @@ services:
   db:
     image: postgres:16
     container_name: postgres_db
-
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: password
       POSTGRES_DB: capstone-collab
-
     ports:
       - "5432:5432"
-
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  db_test:
+    image: postgres:16
+    container_name: postgres_db_test
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: capstone_collab_test # This will now be created correctly
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data # Use a separate volume name
+
 volumes:
   pgdata:
+  pgdata_test:
