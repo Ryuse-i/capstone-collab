@@ -6,7 +6,7 @@ from app.modules.projects.schema import ProjectCreate, ProjectUpdate
 
 class ProjectService:
     @staticmethod
-    async def get_one_project(db: AsyncSession, project_id: int):
+    async def get_one_project(db: AsyncSession, project_id):
         repo = ProjectRepo(db)
         return await repo.get_by_id(project_id)
 
@@ -31,3 +31,7 @@ class ProjectService:
     async def delete_project(db: AsyncSession, db_item: Project):
         repo = ProjectRepo(db)
         return await repo.delete(db_item)
+
+    @staticmethod
+    async def add_project_member(db, project_member):
+        return
