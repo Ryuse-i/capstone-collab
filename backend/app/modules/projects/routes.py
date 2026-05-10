@@ -4,6 +4,7 @@ from app.core.db import get_async_session
 from app.modules.projects.schema import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.modules.projects.services import ProjectService
 from uuid import UUID
+from typing import List
 
 router = APIRouter()
 
