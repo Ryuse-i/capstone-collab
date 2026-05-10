@@ -2,10 +2,8 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey, Numeric, String, DateTime
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-import enum
-from decimal import Decimal
+from sqlalchemy import ForeignKey, String, UUID
+import uuid
 
 
 class Project(Base):
@@ -55,28 +53,25 @@ class ProjectRole(enum.Enum):
 class ProjectMember(Base):
     __tablename__ = "project_members"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
+    # Changed id to UUID to stay consistent, or keep as int if you prefer
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    user_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
-    project_role: Mapped[ProjectRole] = mapped_column(
-        default=ProjectRole.NONE, nullable=True
-    )
-    workload_points: Mapped[Decimal] = mapped_column(
-        Numeric(precision=10, scale=2), nullable=True
-    )
-    contribution_points: Mapped[Decimal] = mapped_column(Numeric(precision=10, scale=2))
-    created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+    name: Mapped[str] = mapped_column(String(150))
+    description: Mapped[str]
+
+    # Changed these from int to UUID
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id"),
         nullable=True,
     )
-    updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
+    advisor: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=True)
+    instructor: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
-        nullable=True,
     )

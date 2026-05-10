@@ -1,16 +1,19 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from uuid import UUID
 
 
-class ProjectCreate(BaseModel):
+class ProjectBase(BaseModel):
     name: str
     description: str
     created_by: UUID
     advisor: UUID
     instructor: UUID
-    created_at: datetime
-    updated_at: datetime
+
+
+class ProjectCreate(ProjectBase):
+    # Timestamps removed from Create; let the DB/Model handle them
+    pass
 
 
 class ProjectUpdate(BaseModel):
@@ -18,21 +21,12 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
     created_by: UUID | None = None
     advisor: UUID | None = None
-    instructor: UUID | None = None
+    instructor: UUID | None = None  # Made optional
+
+
+class ProjectResponse(ProjectBase):
+    id: UUID
     created_at: datetime
     updated_at: datetime
 
-
-class ProjectResponse(BaseModel):
-    name: str
-    description: str
-    created_by: UUID
-    advisor: UUID
-    instructor: UUID
-    created_at: datetime
-    updated_at: datetime
-
-
-class ProjectMemberCreate(BaseModel):
-    user_id: UUID
-    project_id: UUID
+    model_config = ConfigDict(from_attributes=True)

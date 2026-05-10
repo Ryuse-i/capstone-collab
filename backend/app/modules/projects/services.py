@@ -31,3 +31,7 @@ class ProjectService:
     async def delete_project(db: AsyncSession, db_item: Project):
         repo = ProjectRepo(db)
         return await repo.delete(db_item)
+
+    @staticmethod
+    async def add_project_member(db, project_member):
+        return
