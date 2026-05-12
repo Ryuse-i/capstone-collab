@@ -25,6 +25,7 @@ class ProjectUpdate(BaseModel):
 
 
 class ProjectResponse(ProjectBase):
+    id: UUID | None = None
     name: str | None = None
     description: str | None = None
     created_by: UUID | None = None
@@ -32,6 +33,9 @@ class ProjectResponse(ProjectBase):
     instructor: UUID | None = None  # Made optional
     created_at: datetime
     updated_at: datetime
+
+    class ConfigDict:
+        from_attributes = True
 
 
 class ProjectMemberCreate(BaseModel):
@@ -60,3 +64,6 @@ class ProjectMemberResponse(BaseModel):
     contribution_points: float = 0.0
     created_at: datetime
     updated_at: datetime
+
+    class ConfigDict:
+        from_attributes = True

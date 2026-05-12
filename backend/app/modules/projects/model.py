@@ -5,6 +5,7 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, UUID as PG_UUID
 import enum
+from sqlalchemy import Enum as SAEnum
 
 
 class Project(Base):
@@ -63,8 +64,10 @@ class ProjectMember(Base):
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
     )
-    project_role: Mapped[enum.Enum] = mapped_column(
-        default=ProjectRole.NONE, nullable=True
+    project_role: Mapped[ProjectRole] = mapped_column(
+        SAEnum(ProjectRole, name="projectrole"),  # named enum + correct type
+        default=ProjectRole.NONE,
+        nullable=True,
     )
     workload_points: Mapped[Decimal] = mapped_column(
         Numeric(precision=10, scale=2), nullable=True
