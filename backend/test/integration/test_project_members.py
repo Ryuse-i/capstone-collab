@@ -1,12 +1,11 @@
 import pytest
 from httpx import AsyncClient
-from datetime import datetime, timezone
 from uuid import uuid4
 
 
 @pytest.mark.asyncio
 class TestProjectMemberEndpoints:
-    base_url = "/project-members"  # adjust to match your router prefix
+    base_url = "/project_members"  # adjust to match your router prefix
 
     async def _create_project(self, ac: AsyncClient, user_id: str) -> str:
         """Helper to create a project and return its ID."""
@@ -41,7 +40,7 @@ class TestProjectMemberEndpoints:
         data = response.json()
         assert data["user_id"] == user_id
         assert data["project_id"] == project_id
-        assert data["project_role"] == "MEMBER"
+        assert data["project_role"] == "member"
         assert "id" in data
 
     async def test_get_one_project_member(self, ac: AsyncClient, test_user: dict):
@@ -109,7 +108,7 @@ class TestProjectMemberEndpoints:
         member_id = create_res.json()["id"]
 
         update_payload = {
-            "project_role": "LEAD",
+            "project_role": "LEADER",
             "workload_points": 20.0,
             "contribution_points": 15.0,
         }
@@ -117,7 +116,7 @@ class TestProjectMemberEndpoints:
         assert response.status_code == 200
 
         data = response.json()
-        assert data["project_role"] == "LEAD"
+        assert data["project_role"] == "leader"
         assert data["workload_points"] == 20.0
         assert data["contribution_points"] == 15.0
 
