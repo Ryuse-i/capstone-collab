@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID, uuid4
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, UUID as PG_UUID
+from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
 import enum
 from sqlalchemy import Enum as SAENUM
 
@@ -29,6 +29,13 @@ class Category(enum.Enum):
     NONE = "none"
 
 
+"""
+    This is the task model
+    This contains the normal tasks that would be mostly used in the system
+    This is the heart of the task modules
+"""
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -37,25 +44,37 @@ class Task(Base):
     )
     name: Mapped[str] = mapped_column(String(150))
     created_by: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        PG_UUID(as_uuid=True), ForeignKey("users.id")
     )
     project_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
+        PG_UUID(as_uuid=True), ForeignKey("projects.id")
     )
     supertask_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), nullable=True
     )
     status: Mapped[Status] = mapped_column(
-        SAENUM(Status, name="status"), default=Status.NONE, nullable=True
+        SAENUM(Status, name="status"), default=Status.NOT_STARTED, nullable=True
     )
     complexity: Mapped[Complexity] = mapped_column(
         SAENUM(Complexity, name="complexity"), default=Complexity.NONE, nullable=True
     )
-    complexity_points: Mapped[int] = mapped_column(nullable=True)
+    complexity_points: Mapped[int] = mapped_column(default=0, nullable=True)
     category: Mapped[Category] = mapped_column(
         SAENUM(Category, name="category"), default=Category.NONE, nullable=True
     )
     deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
+        nullable=True,
+    )
+    total_time_spent: Mapped[int] = mapped_column(default=0, nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=True,
     )
