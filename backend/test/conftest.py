@@ -71,3 +71,28 @@ async def test_user(ac: AsyncClient):
     assert response.status_code == 201, f"User registration failed: {response.text}"
 
     return response.json()
+
+
+@pytest.fixture
+async def test_project(ac: AsyncClient, test_user: dict) -> dict:
+    """Creates a real project in the DB for use as a foreign key in supertask tests."""
+    payload = {
+        "name": "Test Project",
+        "description": "Fixture project for supertask tests",
+        "created_by": test_user["id"],
+    }
+    response = await ac.post("/projects/", json=payload)
+    assert response.status_code == 201, f"Project fixture failed: {response.text}"
+    return response.json()
+
+@pytest.fixture
+async def test_task(ac: AsyncClient, test_user: dict) -> dict:
+    """Creates a real task in the DB for use as a foreign key in task content tests."""
+    payload = {
+        "name": "Fixture Task",
+        "description": "Task fixture for task content tests",
+        "created_by": test_user["id"],
+    }
+    response = await ac.post("/tasks/", json=payload)
+    assert response.status_code == 201, f"Task fixture failed: {response.text}"
+    return response.json()

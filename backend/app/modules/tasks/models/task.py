@@ -3,30 +3,8 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
-import enum
 from sqlalchemy import Enum as SAENUM
-
-
-class Status(enum.Enum):
-    NOT_STARTED = "not_started"
-    IN_PROGRESS = "in_progress"
-    SUBMITTED = "submitted"
-    COMPLETED = "completed"
-    NONE = "none"
-
-
-class Complexity(enum.Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    NONE = "none"
-
-
-class Category(enum.Enum):
-    DOCUMENT = "document"
-    RESEARCH = "research"
-    DEVELOPMENT = "development"
-    NONE = "none"
+from app.modules.tasks.models.enums import Priority, Status, Complexity, Category
 
 
 """
@@ -43,24 +21,28 @@ class Task(Base):
         PG_UUID(as_uuid=True), primary_key=True, default=uuid4
     )
     name: Mapped[str] = mapped_column(String(150))
+    description: Mapped[str] = mapped_column(nullable=True)
     created_by: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id")
     )
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("projects.id")
     )
-    supertask_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), nullable=True
-    )
+    # supertask_id: Mapped[UUID | None] = mapped_column(
+    #    PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), default=None, nullable=True
+    # )
     status: Mapped[Status] = mapped_column(
-        SAENUM(Status, name="status"), default=Status.NOT_STARTED, nullable=True
+        SAENUM(Status, name="status"), default=None, nullable=True
     )
     complexity: Mapped[Complexity] = mapped_column(
-        SAENUM(Complexity, name="complexity"), default=Complexity.NONE, nullable=True
+        SAENUM(Complexity, name="complexity"), default=None, nullable=True
+    )
+    priority: Mapped[Priority] = mapped_column(
+        SAENUM(Priority, name="priority"), default=None, nullable=True
     )
     complexity_points: Mapped[int] = mapped_column(default=0, nullable=True)
     category: Mapped[Category] = mapped_column(
-        SAENUM(Category, name="category"), default=Category.NONE, nullable=True
+        SAENUM(Category, name="category"), default=None, nullable=True
     )
     deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

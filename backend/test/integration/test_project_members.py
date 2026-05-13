@@ -138,7 +138,7 @@ class TestProjectMemberEndpoints:
         member_id = create_res.json()["id"]
 
         delete_res = await ac.delete(f"{self.base_url}/{member_id}")
-        assert delete_res.status_code == 200
+        assert delete_res.status_code == 204
 
         # Verify it's actually gone
         verify_res = await ac.get(f"{self.base_url}/{member_id}")

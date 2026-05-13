@@ -9,7 +9,7 @@ from sqlalchemy import DateTime, String, ForeignKey, UUID as PG_UUID
 """
 
 
-class TaskContents(Base):
+class TaskContent(Base):
     __tablename__ = "task_contents"
 
     id: Mapped[UUID] = mapped_column(

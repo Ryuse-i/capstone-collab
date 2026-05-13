@@ -28,14 +28,15 @@ async def get_one_project(
 ):
     db_item = await ProjectService.get_one_project(db, project_id)
     if not db_item:
-        # This is what makes your test pass 'assert verify_res.status_code == 404'
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
     return db_item
 
 
-@project_router.post("/", response_model=ProjectResponse)
+@project_router.post(
+    "/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_project(
     project: ProjectCreate, db: AsyncSession = Depends(get_async_session)
 ):
@@ -52,22 +53,18 @@ async def update_project(
     return await ProjectService.update_project(db, db_item, project)
 
 
-@project_router.delete("/{project_id}")
+@project_router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
-    project_id: UUID,  # Ensure this matches your ID type (UUID)
+    project_id: UUID,
     db: AsyncSession = Depends(get_async_session),
 ):
-    # 1. Fetch the item
     db_item = await ProjectService.get_one_project(db, project_id)
-
-    # 2. Check if it exists before trying to delete
     if not db_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
-
-    # 3. Perform the delete and AWAIT it
-    return await ProjectService.delete_project(db, db_item)
+    await ProjectService.delete_project(db, db_item)
+    return None
 
 
 # project member routes
@@ -82,14 +79,15 @@ async def get_one_project_member(
 ):
     db_item = await ProjectMemberService.get_one_member(db, member_id)
     if not db_item:
-        # This is what makes your test pass 'assert verify_res.status_code == 404'
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
     return db_item
 
 
-@project_member_router.post("/", response_model=ProjectMemberResponse)
+@project_member_router.post(
+    "/", response_model=ProjectMemberResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_project_member(
     project_member: ProjectMemberCreate, db: AsyncSession = Depends(get_async_session)
 ):
@@ -106,19 +104,15 @@ async def update_project_member(
     return await ProjectMemberService.update_member(db, db_item, project_member)
 
 
-@project_member_router.delete("/{member_id}")
+@project_member_router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project_member(
-    member_id: UUID,  # Ensure this matches your ID type (UUID)
+    member_id: UUID,
     db: AsyncSession = Depends(get_async_session),
 ):
-    # 1. Fetch the item
     db_item = await ProjectMemberService.get_one_member(db, member_id)
-
-    # 2. Check if it exists before trying to delete
     if not db_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
-
-    # 3. Perform the delete and AWAIT it
-    return await ProjectMemberService.delete_member(db, db_item)
+    await ProjectMemberService.delete_member(db, db_item)
+    return None

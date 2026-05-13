@@ -86,7 +86,7 @@ class TestProjectEndpoints:
         project_id = create_res.json()["id"]
 
         delete_res = await ac.delete(f"{self.base_url}/{project_id}")
-        assert delete_res.status_code == 200
+        assert delete_res.status_code == 204
 
         verify_res = await ac.get(f"{self.base_url}/{project_id}")
         assert verify_res.status_code == 404

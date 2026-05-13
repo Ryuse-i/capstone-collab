@@ -3,17 +3,12 @@ from datetime import datetime
 from uuid import UUID
 
 
-class ProjectBase(BaseModel):
+class ProjectCreate(BaseModel):
     name: str
     description: str
     created_by: UUID | None = None
     advisor: UUID | None = None
     instructor: UUID | None = None
-
-
-class ProjectCreate(ProjectBase):
-    # Timestamps removed from Create; let the DB/Model handle them
-    pass
 
 
 class ProjectUpdate(BaseModel):
@@ -24,7 +19,7 @@ class ProjectUpdate(BaseModel):
     instructor: UUID | None = None  # Made optional
 
 
-class ProjectResponse(ProjectBase):
+class ProjectResponse(BaseModel):
     id: UUID | None = None
     name: str | None = None
     description: str | None = None

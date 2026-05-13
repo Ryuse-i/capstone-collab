@@ -3,17 +3,12 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
-import enum
+from sqlalchemy import Enum as SAENUM
+from app.modules.tasks.models.enums import Result
 
 """
     This is the submission history of each task
 """
-
-
-class Result(enum.Enum):
-    REVISION = "revision"
-    ACCEPTED = "accepted"
-    PENDING = "pending"
 
 
 class TaskSubmission(Base):
@@ -25,7 +20,9 @@ class TaskSubmission(Base):
     task_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tasks.id")
     )
-    result: Mapped[Result] = mapped_column(default=Result.PENDING, nullable=True)
+    result: Mapped[Result] = mapped_column(
+        SAENUM(Result, name="result"), default=None, nullable=True
+    )
     comment: Mapped[str] = mapped_column(nullable=True)
     submitted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

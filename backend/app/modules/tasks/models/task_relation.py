@@ -3,18 +3,12 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
-import enum
+from app.modules.tasks.models.enums import Relation
+from sqlalchemy import Enum as SAENUM
 
 """
     This is the documents of files that you can upload to a task
 """
-
-
-class Relation(enum.Enum):
-    BLOCKS = "blocks"
-    BLOCKED_BY = "blocked_by"
-    RELATED = "related"
-    NONE = "none"
 
 
 class TaskRelation(Base):
@@ -27,7 +21,9 @@ class TaskRelation(Base):
     related_to: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tasks.id")
     )
-    relation: Mapped[Relation] = mapped_column(default=Relation.NONE, nullable=True)
+    relation: Mapped[Relation] = mapped_column(
+        SAENUM(Relation, name="relation"), default=None, nullable=True
+    )
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
