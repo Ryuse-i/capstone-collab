@@ -6,7 +6,7 @@ from uuid import UUID
 class ProjectCreate(BaseModel):
     name: str
     description: str
-    created_by: UUID | None = None
+    created_by: UUID
     advisor: UUID | None = None
     instructor: UUID | None = None
 
@@ -20,14 +20,14 @@ class ProjectUpdate(BaseModel):
 
 
 class ProjectResponse(BaseModel):
-    id: UUID | None = None
-    name: str | None = None
-    description: str | None = None
-    created_by: UUID | None = None
+    id: UUID
+    name: str
+    description: str
+    created_by: UUID
     advisor: UUID | None = None
     instructor: UUID | None = None  # Made optional
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     class ConfigDict:
         from_attributes = True

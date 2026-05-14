@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
 from sqlalchemy import Enum as SAENUM
-from app.modules.tasks.models.enums import Priority, Status, Complexity, Category
+from app.modules.tasks.enums import Priority, Status, Complexity, Category
 
 
 """

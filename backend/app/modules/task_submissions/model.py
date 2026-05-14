@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
 from sqlalchemy import Enum as SAENUM
-from app.modules.tasks.models.enums import Result
+from app.modules.tasks.enums import Result
 
 """
     This is the submission history of each task

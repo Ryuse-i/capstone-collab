@@ -3,14 +3,12 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
-from app.modules.tasks.models.enums import Role
+from app.modules.tasks.enums import Role
 from sqlalchemy import Enum as SAENUM
 
 
 """
-    This is the task model
-    This contains the normal tasks that would be mostly used in the system
-    This is the heart of the task modules
+    This is the assigned member for each tasks
 """
 
 

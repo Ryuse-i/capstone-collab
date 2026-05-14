@@ -1,5 +1,5 @@
 from app.core.base_repo import BaseRepo
-from app.modules.tasks.models.task import Task
+from app.modules.tasks.model import Task
 
 
 class TaskRepo(BaseRepo):

@@ -7,45 +7,62 @@ from datetime import datetime, timezone
 class TestTaskEndpoints:
     base_url = "/tasks"
 
-    async def test_create_task(self, ac: AsyncClient, test_user: dict):
-        """Tests POST /tasks/ — creates a new task."""
-        user_id = test_user["id"]
-        payload = {
-            "name": "Integration Test Task",
-            "description": "Testing task creation",
-            "created_by": user_id,
+    async def _task_payload(
+        self,
+        test_user: dict,
+        test_project: dict,
+        name: str,
+        description: str,
+        extra: dict = {},
+    ) -> dict:
+        """Helper to build a full valid task payload."""
+        return {
+            "name": name,
+            "description": description,
+            "created_by": test_user["id"],
+            "project_id": test_project["id"],
             "status": "not_started",
+            "priority": "low",
             "complexity": "low",
+            "complexity_points": 0,
             "category": "development",
+            "deadline": "2099-01-01T00:00:00Z",
+            **extra,
         }
+
+    async def test_create_task(
+        self, ac: AsyncClient, test_user: dict, test_project: dict
+    ):
+        """Tests POST /tasks/ — creates a new task."""
+        payload = await self._task_payload(
+            test_user, test_project, "Integration Test Task", "Testing task creation"
+        )
         response = await ac.post(f"{self.base_url}/", json=payload)
         assert response.status_code == 201, f"Create failed: {response.text}"
         data = response.json()
         assert data["name"] == "Integration Test Task"
         assert "id" in data
 
-    async def test_get_all_tasks(self, ac: AsyncClient, test_user: dict):
+    async def test_get_all_tasks(
+        self, ac: AsyncClient, test_user: dict, test_project: dict
+    ):
         """Tests GET /tasks/ — returns a list of tasks."""
-        user_id = test_user["id"]
-        payload = {
-            "name": "List Test Task",
-            "description": "Should appear in list",
-            "created_by": user_id,
-        }
+        payload = await self._task_payload(
+            test_user, test_project, "List Test Task", "Should appear in list"
+        )
         await ac.post(f"{self.base_url}/", json=payload)
 
         response = await ac.get(f"{self.base_url}/")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
-    async def test_get_one_task(self, ac: AsyncClient, test_user: dict):
+    async def test_get_one_task(
+        self, ac: AsyncClient, test_user: dict, test_project: dict
+    ):
         """Tests GET /tasks/{task_id} — fetches a single task by UUID."""
-        user_id = test_user["id"]
-        payload = {
-            "name": "Fetch Test Task",
-            "description": "Should be fetchable",
-            "created_by": user_id,
-        }
+        payload = await self._task_payload(
+            test_user, test_project, "Fetch Test Task", "Should be fetchable"
+        )
         create_res = await ac.post(f"{self.base_url}/", json=payload)
         assert create_res.status_code == 201, f"Setup failed: {create_res.text}"
         task_id = create_res.json()["id"]
@@ -60,15 +77,13 @@ class TestTaskEndpoints:
         response = await ac.get(f"{self.base_url}/{fake_id}")
         assert response.status_code == 404
 
-    async def test_update_task(self, ac: AsyncClient, test_user: dict):
+    async def test_update_task(
+        self, ac: AsyncClient, test_user: dict, test_project: dict
+    ):
         """Tests PATCH /tasks/{task_id} — partially updates a task."""
-        user_id = test_user["id"]
-        payload = {
-            "name": "Initial Task Name",
-            "description": "Initial description",
-            "created_by": user_id,
-            "status": "not_started",
-        }
+        payload = await self._task_payload(
+            test_user, test_project, "Initial Task Name", "Initial description"
+        )
         create_res = await ac.post(f"{self.base_url}/", json=payload)
         assert create_res.status_code == 201, f"Setup failed: {create_res.text}"
         task_id = create_res.json()["id"]
@@ -90,14 +105,16 @@ class TestTaskEndpoints:
         response = await ac.patch(f"{self.base_url}/{fake_id}", json={"name": "Ghost"})
         assert response.status_code == 404
 
-    async def test_delete_task(self, ac: AsyncClient, test_user: dict):
+    async def test_delete_task(
+        self, ac: AsyncClient, test_user: dict, test_project: dict
+    ):
         """Tests DELETE /tasks/{task_id} — deletes a task and verifies it's gone."""
-        user_id = test_user["id"]
-        payload = {
-            "name": "Task To Be Deleted",
-            "description": "Should not exist after delete",
-            "created_by": user_id,
-        }
+        payload = await self._task_payload(
+            test_user,
+            test_project,
+            "Task To Be Deleted",
+            "Should not exist after delete",
+        )
         create_res = await ac.post(f"{self.base_url}/", json=payload)
         assert create_res.status_code == 201, f"Setup failed: {create_res.text}"
         task_id = create_res.json()["id"]

@@ -3,11 +3,11 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
-from app.modules.tasks.models.enums import Relation
+from app.modules.tasks.enums import Relation
 from sqlalchemy import Enum as SAENUM
 
 """
-    This is the documents of files that you can upload to a task
+    This is the relation of each tasks to each other
 """
 
 

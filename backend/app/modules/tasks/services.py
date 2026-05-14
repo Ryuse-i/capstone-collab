@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.modules.tasks.models.task import Task
-from app.modules.tasks.repos.task import TaskRepo
-from app.modules.tasks.schemas.task import TaskCreate, TaskUpdate
+from app.modules.tasks.model import Task
+from app.modules.tasks.repo import TaskRepo
+from app.modules.tasks.schema import TaskCreate, TaskUpdate
 
 
 class TaskService:

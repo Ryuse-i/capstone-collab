@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
-from app.modules.tasks.schemas.task_content import (
+from app.modules.task_contents.schema import (
     TaskContentCreate,
     TaskContentUpdate,
     TaskContentResponse,
 )
-from app.modules.tasks.services.task_content import TaskContentService
+from app.modules.task_contents.services import TaskContentService
 from uuid import UUID
 from typing import List
 

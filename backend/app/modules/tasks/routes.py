@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
-from app.modules.tasks.schemas.task import TaskCreate, TaskUpdate, TaskResponse
-from app.modules.tasks.services.task import TaskService
+from app.modules.tasks.schema import TaskCreate, TaskUpdate, TaskResponse
+from app.modules.tasks.services import TaskService
 from uuid import UUID
 from typing import List
 

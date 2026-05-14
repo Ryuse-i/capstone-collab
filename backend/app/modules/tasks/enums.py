@@ -31,20 +31,20 @@ class Category(str, enum.Enum):
 
 
 # task relations
-class Relation(enum.Enum):
+class Relation(str, enum.Enum):
     BLOCKS = "blocks"
     BLOCKED_BY = "blocked_by"
     RELATED = "related"
 
 
 # Task submissions
-class Result(enum.Enum):
+class Result(str, enum.Enum):
     REVISION = "revision"
     ACCEPTED = "accepted"
     PENDING = "pending"
 
 
 # Assigned Member
-class Role(enum.Enum):
+class Role(str, enum.Enum):
     LEADER = "leader"
-    MEMBER = "MEMBER"
+    MEMBER = "member"

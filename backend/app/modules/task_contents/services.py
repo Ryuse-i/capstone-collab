@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from app.modules.tasks.models.task_content import TaskContent
-from app.modules.tasks.repos.task_content import TaskContentRepo
-from app.modules.tasks.schemas.task_content import TaskContentCreate, TaskContentUpdate
+from app.modules.task_contents.model import TaskContent
+from app.modules.task_contents.repo import TaskContentRepo
+from app.modules.task_contents.schema import TaskContentCreate, TaskContentUpdate
 
 
 class TaskContentService:

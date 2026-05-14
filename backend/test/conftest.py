@@ -85,14 +85,57 @@ async def test_project(ac: AsyncClient, test_user: dict) -> dict:
     assert response.status_code == 201, f"Project fixture failed: {response.text}"
     return response.json()
 
+
 @pytest.fixture
-async def test_task(ac: AsyncClient, test_user: dict) -> dict:
+async def test_task(ac: AsyncClient, test_user: dict, test_project: dict) -> dict:
     """Creates a real task in the DB for use as a foreign key in task content tests."""
     payload = {
         "name": "Fixture Task",
         "description": "Task fixture for task content tests",
         "created_by": test_user["id"],
+        "project_id": test_project["id"],
+        "status": "not_started",
+        "priority": "low",
+        "complexity": "low",
+        "complexity_points": 0,
+        "category": "development",
+        "deadline": "2099-01-01T00:00:00Z",
     }
     response = await ac.post("/tasks/", json=payload)
     assert response.status_code == 201, f"Task fixture failed: {response.text}"
+    return response.json()
+
+
+@pytest.fixture
+async def test_supertask(ac: AsyncClient, test_user: dict, test_project: dict) -> dict:
+    """Creates a real supertask in the DB for use as a foreign key in tests."""
+    from datetime import datetime, timezone
+
+    payload = {
+        "name": "Fixture Supertask",
+        "description": "Supertask fixture for tests",
+        "created_by": test_user["id"],
+        "project_id": test_project["id"],
+        "deadline": datetime.now(timezone.utc).isoformat(),
+    }
+    response = await ac.post("/supertasks/", json=payload)
+    assert response.status_code == 201, f"Supertask fixture failed: {response.text}"
+    return response.json()
+
+
+@pytest.fixture
+async def test_another_user(ac: AsyncClient):
+    """Creates a second dummy user for peer evaluation and collaboration tests."""
+    unique_suffix = uuid.uuid4().hex[:6]
+    user_payload = {
+        "email": f"test2_{unique_suffix}@example.com",
+        "username": f"testuser2_{unique_suffix}",
+        "full_name": "Test User 2",
+        "password": "securepassword123",
+        "is_active": True,
+        "is_superuser": False,
+        "is_verified": False,
+    }
+    response = await ac.post("/auth/register", json=user_payload)
+    assert response.status_code == 201, f"User registration failed: {response.text}"
     return response.json()
