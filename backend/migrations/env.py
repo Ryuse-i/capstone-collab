@@ -20,7 +20,8 @@ config.set_main_option(
     "sqlalchemy.url",
     f"postgresql+psycopg://{settings.DB_USER}:"
     f"{settings.DB_PASSWORD}@{settings.DB_HOST}:"
-    f"{settings.DB_PORT}/{settings.DB_NAME}",
+    f"{settings.DB_PORT}/{settings.DB_NAME}"
+    f"?sslmode=require",
 )
 
 # Interpret the config file for Python logging.

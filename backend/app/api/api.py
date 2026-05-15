@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from app.modules.users.routes import router as users_router
-from app.modules.projects.routes import project_router, project_member_router
+from app.modules.projects.routes import project_router
+from app.modules.project_members.routes import project_member_router
 from app.modules.tasks.routes import task_router
 from app.modules.supertasks.routes import supertask_router
 from app.modules.task_contents.routes import task_content_router

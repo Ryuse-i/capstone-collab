@@ -29,7 +29,7 @@ class TestProjectMemberEndpoints:
             "id": str(uuid4()),
             "user_id": user_id,
             "project_id": project_id,
-            "project_role": "MEMBER",
+            "project_role": "member",
             "workload_points": 10.0,
             "contribution_points": 5.0,
         }
@@ -52,7 +52,7 @@ class TestProjectMemberEndpoints:
             "id": str(uuid4()),
             "user_id": user_id,
             "project_id": project_id,
-            "project_role": "MEMBER",
+            "project_role": "member",
             "workload_points": 10.0,
             "contribution_points": 5.0,
         }
@@ -79,7 +79,7 @@ class TestProjectMemberEndpoints:
                 "id": str(uuid4()),
                 "user_id": user_id,
                 "project_id": project_id,
-                "project_role": "MEMBER",
+                "project_role": "member",
                 "workload_points": 8.0,
                 "contribution_points": 4.0,
             }
@@ -99,7 +99,7 @@ class TestProjectMemberEndpoints:
             "id": str(uuid4()),
             "user_id": user_id,
             "project_id": project_id,
-            "project_role": "MEMBER",
+            "project_role": "member",
             "workload_points": 10.0,
             "contribution_points": 5.0,
         }
@@ -108,7 +108,7 @@ class TestProjectMemberEndpoints:
         member_id = create_res.json()["id"]
 
         update_payload = {
-            "project_role": "LEADER",
+            "project_role": "leader",
             "workload_points": 20.0,
             "contribution_points": 15.0,
         }
@@ -129,7 +129,7 @@ class TestProjectMemberEndpoints:
             "id": str(uuid4()),
             "user_id": user_id,
             "project_id": project_id,
-            "project_role": "MEMBER",
+            "project_role": "member",
             "workload_points": 10.0,
             "contribution_points": 5.0,
         }

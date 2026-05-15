@@ -9,10 +9,17 @@ from app.core.config import settings
 
 # Use the dedicated test database port (5433)
 TEST_DATABASE_URL = (
-    f"postgresql+psycopg://root:password@{settings.DB_HOST}:5433/capstone_collab_test"
+    f"postgresql+psycopg://{settings.TEST_DB_USER}:"
+    f"{settings.TEST_DB_PASSWORD}@{settings.TEST_DB_HOST}:"
+    f"{settings.TEST_DB_PORT}/postgres"
 )
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=True)
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    echo=True,
+    pool_pre_ping=True,
+)
+
 test_async_session_maker = async_sessionmaker(test_engine, expire_on_commit=False)
 
 
