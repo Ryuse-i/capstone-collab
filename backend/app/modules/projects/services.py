@@ -1,12 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.projects.model import Project
 from app.modules.projects.repo import ProjectRepo
-from app.modules.projects.schema import ProjectCreate, ProjectUpdate
+from app.modules.projects.schema import (
+    ProjectCreate,
+    ProjectUpdate,
+)
 
 
 class ProjectService:
     @staticmethod
-    async def get_one_project(db: AsyncSession, project_id: int):
+    async def get_one_project(db: AsyncSession, project_id):
         repo = ProjectRepo(db)
         return await repo.get_by_id(project_id)
 

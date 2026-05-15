@@ -1,9 +1,8 @@
 import "./App.css";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/user/Dashboard";
 import SignupPage from "./pages/SignupPage";
-import PrivateRoute from "./components/PrivateRoute";
 import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
@@ -14,11 +13,9 @@ export default function App() {
       <Route path="/signup" element={<SignupPage />} />
 
       {/* Protected routes */}
-      <Route element={<PrivateRoute />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        {/* Goto notfound when no page or route*/}
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
+      <Route path="/dashboard" element={<Dashboard />} />
+      {/* Goto notfound when no page or route*/}
+      <Route path="*" element={<NotFoundPage />} />
 
       {/* Goto login when not authenticated*/}
       <Route path="*" element={<Navigate to="/login" replace />} />
