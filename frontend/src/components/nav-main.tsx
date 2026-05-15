@@ -35,6 +35,7 @@ export function NavMain({
               asChild
               tooltip={item.title}
               isActive={pathname === item.url}
+              
             >
               <Link to={item.url}>
                 {item.icon}

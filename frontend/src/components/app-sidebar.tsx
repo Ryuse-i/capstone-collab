@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/sidebar";
 import {
   GalleryVerticalEndIcon,
-  BotIcon,
+  FileText,
   BookOpenIcon,
   LayoutGridIcon,
   Settings,
+  MessageCircleMore,
+  Users,
 } from "lucide-react";
 
 // This is sample data.
@@ -38,21 +40,32 @@ const data = {
       isActive: true,
     },
     {
-      title: "Models",
-      url: "/models",
-      icon: <BotIcon />,
+      title: "Task",
+      url: "/Task",
+      icon: <FileText />,
     },
     {
-      title: "Documentation",
-      url: "/documentation",
+      title: "Workload",
+      url: "/Workload",
+      icon: <MessageCircleMore />
+    },
+    {
+      title: "Team",
+      url: "/Team",
+      icon: <Users />,
+    },
+    {
+      title: "Capstone Search",
+      url: "/capstone-search",
       icon: <BookOpenIcon />,
     },
+    
   ],
   navSecondary: [
    
      {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: <Settings/>
       ,
     },
@@ -68,7 +81,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="data-[slot=sidebar-menu-button]:p-1.5!
+              hover:bg-transparent hover:text-current active:bg-transparent"
             >
               <a href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
@@ -84,7 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-          <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
