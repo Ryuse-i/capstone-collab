@@ -53,28 +53,21 @@ async def ac(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides.clear()
 
 
+# conftest.py
+
+
 @pytest.fixture
-async def test_user(ac: AsyncClient):
-    """
-    Creates a dummy user in the database via the FastAPI Users registration route.
-    """
+async def test_user(ac: AsyncClient) -> dict:
     unique_suffix = uuid.uuid4().hex[:6]
-    user_payload = {
-        "email": f"test_{unique_suffix}@example.com",
-        "username": f"testuser_{unique_suffix}",  # Required by your User model
-        "full_name": "Test User",
+    payload = {
+        "email": f"test_user_{unique_suffix}@example.com",
+        "first_name": "Test",
+        "last_name": "User",
+        "role": "student",
         "password": "securepassword123",
-        "is_active": True,
-        "is_superuser": False,
-        "is_verified": False,
     }
-
-    # The registration route is /auth/register based on your router setup
-    response = await ac.post("/auth/register", json=user_payload)
-
-    # Check for 201 Created
+    response = await ac.post("/auth/register", json=payload)
     assert response.status_code == 201, f"User registration failed: {response.text}"
-
     return response.json()
 
 
@@ -129,20 +122,19 @@ async def test_supertask(ac: AsyncClient, test_user: dict, test_project: dict) -
 
 
 @pytest.fixture
-async def test_another_user(ac: AsyncClient):
-    """Creates a second dummy user for peer evaluation and collaboration tests."""
+async def test_another_user(ac: AsyncClient) -> dict:
     unique_suffix = uuid.uuid4().hex[:6]
-    user_payload = {
-        "email": f"test2_{unique_suffix}@example.com",
-        "username": f"testuser2_{unique_suffix}",
-        "full_name": "Test User 2",
+    payload = {
+        "email": f"test_another_user_{unique_suffix}@example.com",
+        "first_name": "Another",
+        "last_name": "User",
+        "role": "student",
         "password": "securepassword123",
-        "is_active": True,
-        "is_superuser": False,
-        "is_verified": False,
     }
-    response = await ac.post("/auth/register", json=user_payload)
-    assert response.status_code == 201, f"User registration failed: {response.text}"
+    response = await ac.post("/auth/register", json=payload)
+    assert response.status_code == 201, (
+        f"Another user registration failed: {response.text}"
+    )
     return response.json()
 
 

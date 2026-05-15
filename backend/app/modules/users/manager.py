@@ -1,8 +1,7 @@
 import uuid
 from typing import Optional
-from fastapi import Depends, Request, HTTPException
+from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
-from sqlalchemy import select
 from app.core.config import settings
 from .model import User
 from .auth import get_user_db
@@ -19,11 +18,6 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         safe: bool = False,
         request: Optional[Request] = None,
     ):
-        result = await self.user_db.session.execute(  # type: ignore
-            select(User).where(User.username == user_create.username)
-        )
-        if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Username already taken")
         return await super().create(user_create, safe=safe, request=request)
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
