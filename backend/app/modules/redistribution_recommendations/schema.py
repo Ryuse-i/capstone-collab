@@ -5,8 +5,7 @@ from .model import Type
 
 
 class RedisRecomCreate(BaseModel):
-    name: str
-    details: str
+    detail: str
     project_id: UUID
     suggestion_type: Type
     rank: int
@@ -15,8 +14,7 @@ class RedisRecomCreate(BaseModel):
 
 
 class RedisRecomUpdate(BaseModel):
-    name: str | None = None
-    details: str | None = None
+    detail: str | None = None
     project_id: UUID | None = None
     suggestion_type: Type | None = None
     rank: int | None = None
@@ -25,9 +23,8 @@ class RedisRecomUpdate(BaseModel):
 
 
 class RedisRecomResponse(BaseModel):
-    id: UUID
-    name: str
-    details: str
+    id: int
+    detail: str
     project_id: UUID
     suggestion_type: Type
     rank: int

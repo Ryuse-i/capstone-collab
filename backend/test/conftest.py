@@ -16,8 +16,6 @@ TEST_DATABASE_URL = (
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
-    echo=True,
-    pool_pre_ping=True,
 )
 
 test_async_session_maker = async_sessionmaker(test_engine, expire_on_commit=False)
@@ -145,4 +143,24 @@ async def test_another_user(ac: AsyncClient):
     }
     response = await ac.post("/auth/register", json=user_payload)
     assert response.status_code == 201, f"User registration failed: {response.text}"
+    return response.json()
+
+
+@pytest.fixture
+async def test_project_member(
+    ac: AsyncClient, test_user: dict, test_project: dict
+) -> dict:
+    """Creates a project member in the DB for use as a foreign key in member snapshot/activity tests."""
+    payload = {
+        "id": str(uuid.uuid4()),  # required by ProjectMemberCreate
+        "user_id": test_user["id"],
+        "project_id": test_project["id"],
+        "project_role": "member",
+        "workload_points": 0.0,
+        "contribution_points": 0.0,
+    }
+    response = await ac.post("/project_members/", json=payload)
+    assert response.status_code == 201, (
+        f"Project member fixture failed: {response.text}"
+    )
     return response.json()

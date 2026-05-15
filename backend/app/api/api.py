@@ -11,6 +11,10 @@ from app.modules.task_comments.routes import task_comment_router
 from app.modules.task_relations.routes import task_relation_router
 from app.modules.task_submissions.routes import task_submission_router
 from app.modules.task_tags.routes import tag_router, task_tag_router
+from app.modules.member_snapshots.routes import member_snapshot_route
+from app.modules.member_activities.routes import member_activity_route
+from app.modules.redistribution_recommendations.routes import recommendation_route
+from app.modules.project_snapshots.routes import project_snapshot_router
 
 api_router = APIRouter()
 api_router.include_router(users_router)
@@ -26,3 +30,7 @@ api_router.include_router(task_relation_router, prefix="/task_relations")
 api_router.include_router(task_submission_router, prefix="/task_submissions")
 api_router.include_router(tag_router, prefix="/tags")
 api_router.include_router(task_tag_router, prefix="/task_tags")
+api_router.include_router(member_snapshot_route, prefix="/member_snapshots")
+api_router.include_router(member_activity_route, prefix="/member_activities")
+api_router.include_router(recommendation_route, prefix="/recommendations")
+api_router.include_router(project_snapshot_router, prefix="/project_snapshots")

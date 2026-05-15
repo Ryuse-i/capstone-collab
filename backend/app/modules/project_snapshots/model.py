@@ -1,5 +1,5 @@
 from decimal import Decimal
-from sqlalchemy import  Numeric, DateTime
+from sqlalchemy import Numeric, DateTime
 from app.core.db import Base
 from sqlalchemy.orm import mapped_column, Mapped
 from uuid import UUID
@@ -40,6 +40,7 @@ class ProjectSnapshot(Base):
         SAENUM(Severity, name="severity"), default=Severity.LOW
     )
     health_score: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    health_status: Mapped[Status] = mapped_column(SAENUM(Status, name="healt_status"))
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

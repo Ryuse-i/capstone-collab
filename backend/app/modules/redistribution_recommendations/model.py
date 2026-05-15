@@ -21,7 +21,7 @@ class Type(str, enum.Enum):
 
 
 class RedistributionRecommendation(Base):
-    __tablename__ = "redistribution_recommendation"
+    __tablename__ = "redistribution_recommendations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     detail: Mapped[str] = mapped_column(Text)

@@ -13,9 +13,9 @@ class ProjectSnapshotCreate(BaseModel):
     progress_percentage: int
     expected_score: Decimal
     expected_percentage: int
-    schedul_variance: Decimal
+    schedule_variance: Decimal
     workload_balance: Decimal | None = None
-    imabalance_severity: Severity
+    imbalance_severity: Severity
     health_score: Decimal
     health_status: Status
 
@@ -28,9 +28,9 @@ class ProjectSnapshotUpdate(BaseModel):
     progress_percentage: int | None = None
     expected_score: Decimal | None = None
     expected_percentage: int | None = None
-    schedul_variance: Decimal | None = None
+    schedule_variance: Decimal | None = None
     workload_balance: Decimal | None = None
-    imabalance_severity: Severity | None = None
+    imbalance_severity: Severity | None = None
     health_score: Decimal | None = None
     health_status: Status | None = None
 
@@ -44,9 +44,9 @@ class ProjectSnapshotResponse(BaseModel):
     progress_percentage: int
     expected_score: Decimal
     expected_percentage: int
-    schedul_variance: Decimal
+    schedule_variance: Decimal
     workload_balance: Decimal | None = None
-    imabalance_severity: Severity
+    imbalance_severity: Severity
     health_score: Decimal
     health_status: Status
     created_at: datetime | None = None
