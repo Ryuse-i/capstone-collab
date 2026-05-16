@@ -28,9 +28,8 @@ export function SignupForm({
 }: React.ComponentProps<"div">) {
   const navigate = useNavigate();
 
-  // Fix 1: declared all fields that are passed to register.mutate()
-  const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,7 +37,6 @@ export function SignupForm({
 
   const register = useRegister();
 
-  // Fix 2: React.FormEvent (not React.SubmitEvent)
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLocalError("");
@@ -57,9 +55,8 @@ export function SignupForm({
       {
         email,
         password,
-        username,
-        // Fix 3: only send full_name if user typed something (matches full_name: str | None in schema)
-        ...(fullName.trim() ? { full_name: fullName.trim() } : {}),
+        first_name: firstName,
+        last_name: lastName,
       },
       {
         onSuccess: () => {
@@ -95,39 +92,35 @@ export function SignupForm({
 
           <form onSubmit={handleSubmit}>
             <FieldGroup>
-              {/* FULL NAME — optional (str | None in schema.py) */}
-              <Field>
-                <FieldLabel htmlFor="full-name">
-                  Full Name{" "}
-                  <span className="text-muted-foreground text-xs">
-                    (optional)
-                  </span>
-                </FieldLabel>
-                <Input
-                  id="full-name"
-                  type="text"
-                  placeholder="John Doe"
-                  maxLength={100}
-                  disabled={register.isPending}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
-              </Field>
+              {/* FIRST NAME & LAST NAME */}
+              <Field className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="first-name">First Name</FieldLabel>
+                  <Input
+                    id="first-name"
+                    type="text"
+                    placeholder="John"
+                    required
+                    maxLength={100}
+                    disabled={register.isPending}
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                </Field>
 
-              {/* Fix 4: USERNAME — required (str in schema.py) */}
-              <Field>
-                <FieldLabel htmlFor="username">Username</FieldLabel>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="johndoe"
-                  required
-                  maxLength={50}
-                  autoComplete="username"
-                  disabled={register.isPending}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
+                <Field>
+                  <FieldLabel htmlFor="last-name">Last Name</FieldLabel>
+                  <Input
+                    id="last-name"
+                    type="text"
+                    placeholder="Doe"
+                    required
+                    maxLength={100}
+                    disabled={register.isPending}
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
+                </Field>
               </Field>
 
               {/* EMAIL */}

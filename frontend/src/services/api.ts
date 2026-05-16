@@ -1,6 +1,9 @@
+// src/services/api.ts
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export type UserRole = "student" | "instructor" | "admin";
 
 export interface FastAPIErrorDetail {
   code: string;
@@ -21,12 +24,14 @@ export interface LoginResponse {
  * Matches UserRead in schema.py
  * username: str           → always present
  * full_name: str | None   → optional
+ * role: UserRole          → student | instructor | advisor
  */
 export interface UserRead {
   id: string;
   email: string;
-  username: string;
-  full_name: string | null;
+  first_name: string;
+  last_name: string | null;
+  role?: UserRole;
   is_active: boolean;
   is_superuser: boolean;
   is_verified: boolean;
@@ -36,12 +41,14 @@ export interface UserRead {
  * Matches UserCreate in schema.py
  * username: str           → required
  * full_name: str | None   → optional (defaults to None on backend)
+ * role: UserRole          → required on registration
  */
 export interface RegisterCredentials {
   email: string;
   password: string;
-  username: string;
-  full_name?: string;
+  first_name: string;
+  last_name: string;
+  role?: UserRole;
 }
 
 /**
@@ -49,8 +56,8 @@ export interface RegisterCredentials {
  * All fields optional — only send what changed
  */
 export interface UpdateUserPayload {
-  username?: string;
-  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   password?: string;
 }
 
@@ -74,8 +81,8 @@ function parseApiError(error: ApiError): string {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (response.status === 401) {
-    clearToken(); // wipe the bad token
-    window.location.href = "/login"; // hard redirect
+    clearToken();
+    window.dispatchEvent(new Event("auth:expired"));
     throw new Error("Session expired. Please log in again.");
   }
 
@@ -125,18 +132,15 @@ export async function loginUser(
  * POST /auth/jwt/logout
  */
 export async function logoutUser(): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/auth/jwt/logout`, {
+  await fetch(`${API_BASE_URL}/auth/jwt/logout`, {
     method: "POST",
     headers: authHeaders(),
-  });
-  if (!response.ok && response.status !== 401) {
-    await handleResponse<void>(response);
-  }
+  }).catch(() => {});
 }
 
 /**
  * POST /auth/register
- * Body: application/json { email, password, username, full_name? }
+ * Body: application/json { email, password, username, full_name?, role }
  * Matches UserCreate in schema.py
  */
 export async function registerUser(

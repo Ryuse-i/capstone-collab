@@ -1,17 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useLogin } from "@/hooks/useAuth";
+import { useCurrentUser, useLogin } from "@/hooks/useAuth";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
@@ -19,10 +12,8 @@ import {
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
-
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
 import { Loader2, AlertCircle } from "lucide-react";
 
 export function LoginForm({
@@ -35,18 +26,21 @@ export function LoginForm({
   const [password, setPassword] = useState("");
 
   const login = useLogin();
+  const { data: user } = useCurrentUser();
+
+  // If already logged in, redirect away from login page
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true });
+  }, [user, navigate]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     login.mutate(
-      {
-        email,
-        password,
-      },
+      { email, password },
       {
         onSuccess: () => {
-          navigate("/dashboard");
+          navigate("/dashboard", { replace: true });
         },
       },
     );
@@ -57,15 +51,12 @@ export function LoginForm({
       <Card className="bg-[#fafafa] text-[#701d0b]">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Welcome back</CardTitle>
-
-         
         </CardHeader>
 
         <CardContent>
           {login.isError && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
-
               <AlertDescription>
                 {login.error instanceof Error
                   ? login.error.message
@@ -76,17 +67,11 @@ export function LoginForm({
 
           <form onSubmit={handleSubmit}>
             <FieldGroup>
-              {/* SOCIAL LOGIN (optional for later) */}
-         
-
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-              
-              </FieldSeparator>
+              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card" />
 
               {/* EMAIL */}
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-
                 <Input
                   id="email"
                   type="email"
@@ -102,7 +87,6 @@ export function LoginForm({
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
-
                   <a
                     href="/forgot-password"
                     className="ml-auto text-sm underline-offset-4 hover:underline"
@@ -110,7 +94,6 @@ export function LoginForm({
                     Forgot your password?
                   </a>
                 </div>
-
                 <Input
                   id="password"
                   type="password"
@@ -123,7 +106,11 @@ export function LoginForm({
 
               {/* SUBMIT */}
               <Field>
-                <Button type="submit" disabled={login.isPending}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={login.isPending}
+                >
                   {login.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -135,7 +122,13 @@ export function LoginForm({
                 </Button>
 
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <a href="/signup">Sign up</a>
+                  Don&apos;t have an account?{" "}
+                  <a
+                    href="/signup"
+                    className="underline underline-offset-2 hover:text-primary"
+                  >
+                    Sign up
+                  </a>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -144,8 +137,15 @@ export function LoginForm({
       </Card>
 
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our{" "}
+        <a href="#" className="underline underline-offset-2 hover:text-primary">
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a href="#" className="underline underline-offset-2 hover:text-primary">
+          Privacy Policy
+        </a>
+        .
       </FieldDescription>
     </div>
   );

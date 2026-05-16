@@ -40,7 +40,9 @@ class ProjectSnapshot(Base):
         SAENUM(Severity, name="severity"), default=Severity.LOW
     )
     health_score: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    health_status: Mapped[Status] = mapped_column(SAENUM(Status, name="healt_status"))
+    health_status: Mapped[Status] = mapped_column(
+        SAENUM(Status, name="health_status", create_type=True)
+    )
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

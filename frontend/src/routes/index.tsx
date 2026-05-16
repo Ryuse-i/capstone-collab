@@ -1,16 +1,15 @@
-import "./App.css";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import PrivateRoute from "@/components/PrivateRoute";
-import { StudentRoutes } from "@/routes/StudentRoutes";
-import { InstructorRoutes } from "@/routes/InstructorRoutes";
-import { AdminRoutes } from "@/routes/AdminRoutes";
+import { StudentRoutes } from "./StudentRoutes";
+import { InstructorRoutes } from "./InstructorRoutes";
+import { AdminRoutes } from "./AdminRoutes";
 
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
-export default function App() {
+export default function AppRoutes() {
   const navigate = useNavigate();
 
   useEffect(() => {
