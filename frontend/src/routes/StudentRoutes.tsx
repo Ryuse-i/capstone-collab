@@ -3,11 +3,11 @@ import RoleRoute from "@/components/RoleRoute";
 import { ROLES } from "@/constants/roles";
 
 import Dashboard from "@/pages/student/Dashboard";
-import Task from "@/pages/Task";
-import Workload from "@/pages/Workload";
-import Team from "@/pages/Team";
-import CapstoneSearch from "@/pages/CapstoneSearch";
-import Settings from "@/pages/Settings";
+import Task from "@/pages/student/Task";
+import Workload from "@/pages/student/Workload";
+import Team from "@/pages/student/Team";
+import CapstoneSearch from "@/pages/student/CapstoneSearch";
+import Settings from "@/pages/shared/Settings";
 
 export const StudentRoutes = (
   <Route element={<RoleRoute role={ROLES.STUDENT} />}>
