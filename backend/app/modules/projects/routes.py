@@ -5,6 +5,7 @@ from app.modules.projects.schema import (
     ProjectCreate,
     ProjectResponse,
     ProjectUpdate,
+    ProjectResponseSnapshot,
 )
 from app.modules.projects.services import ProjectService
 from uuid import UUID
@@ -62,3 +63,37 @@ async def delete_project(
         )
     await ProjectService.delete_project(db, db_item)
     return None
+
+
+@project_router.get("/user/{user_id}", response_model=ProjectResponse)
+async def get_user_project(
+    user_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Fetch a project belonging to the specified user.
+    """
+    project = await ProjectService.get_project_by_user(db, user_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project found for this user.",
+        )
+    return project
+
+
+@project_router.get(
+    "/user/{user_id}/with-snapshot", response_model=ProjectResponseSnapshot
+)
+async def get_user_project_with_snapshot(
+    user_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Fetch a user's project combined with its latest snapshot data.
+    """
+    project = await ProjectService.get_project_with_snapshot(db, user_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No project found for this user.",
+        )
+    return project

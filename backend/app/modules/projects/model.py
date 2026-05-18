@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from app.modules.project_snapshots.model import ProjectSnapshot
 
 
 class Project(Base):
@@ -28,6 +32,12 @@ class Project(Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
 
+    snapshot: Mapped[Optional["ProjectSnapshot"]] = relationship(
+        "ProjectSnapshot",
+        back_populates="project",
+        uselist=False,  # Tells SQLAlchemy this is a single object, not a list []
+    )
+
     # Timestamps
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -40,6 +50,3 @@ class Project(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=True,
     )
-
-
-

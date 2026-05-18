@@ -17,6 +17,7 @@ modules = [
     "app.modules.redistribution_recommendations.model",
     "app.modules.member_snapshots.model",
     "app.modules.member_activities.model",
+    "app.modules.notifications.model",
 ]
 
 for module in modules:

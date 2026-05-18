@@ -3,9 +3,12 @@ import uuid
 from httpx import AsyncClient, ASGITransport
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import select
 from app.main import app
 from app.core.db import Base, get_async_session
 from app.core.config import settings
+from app.modules.users.model import User
+from app.modules.users.services import current_active_user
 
 # Use the dedicated test database port (5433)
 TEST_DATABASE_URL = (
@@ -14,9 +17,7 @@ TEST_DATABASE_URL = (
     f"{settings.TEST_DB_PORT}/postgres"
 )
 
-test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-)
+test_engine = create_async_engine(TEST_DATABASE_URL)
 
 test_async_session_maker = async_sessionmaker(test_engine, expire_on_commit=False)
 
@@ -39,25 +40,14 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-async def ac(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Configures the AsyncClient to use the test database session."""
+async def test_user(db_session: AsyncSession) -> dict:
+    """Registers a test user using its own unauthenticated client."""
 
     async def override_get_async_session():
         yield db_session
 
     app.dependency_overrides[get_async_session] = override_get_async_session
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
-        yield ac
-    app.dependency_overrides.clear()
 
-
-# conftest.py
-
-
-@pytest.fixture
-async def test_user(ac: AsyncClient) -> dict:
     unique_suffix = uuid.uuid4().hex[:6]
     payload = {
         "email": f"test_user_{unique_suffix}@example.com",
@@ -66,9 +56,72 @@ async def test_user(ac: AsyncClient) -> dict:
         "role": "student",
         "password": "securepassword123",
     }
-    response = await ac.post("/auth/register", json=payload)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as reg_client:
+        response = await reg_client.post("/auth/register", json=payload)
+
     assert response.status_code == 201, f"User registration failed: {response.text}"
     return response.json()
+
+
+@pytest.fixture
+async def test_another_user(db_session: AsyncSession) -> dict:
+    """Registers a second user using its own unauthenticated client."""
+
+    async def override_get_async_session():
+        yield db_session
+
+    app.dependency_overrides[get_async_session] = override_get_async_session
+
+    unique_suffix = uuid.uuid4().hex[:6]
+    payload = {
+        "email": f"test_another_user_{unique_suffix}@example.com",
+        "first_name": "Another",
+        "last_name": "User",
+        "role": "student",
+        "password": "securepassword123",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as reg_client:
+        response = await reg_client.post("/auth/register", json=payload)
+
+    assert response.status_code == 201, (
+        f"Another user registration failed: {response.text}"
+    )
+    return response.json()
+
+
+@pytest.fixture
+async def ac(
+    db_session: AsyncSession, test_user: dict
+) -> AsyncGenerator[AsyncClient, None]:
+    """
+    Authenticated AsyncClient — overrides both get_async_session and
+    current_active_user so requests pass the auth guard as test_user.
+    """
+
+    async def override_get_async_session():
+        yield db_session
+
+    async def override_current_active_user():
+        result = await db_session.execute(
+            select(User).where(User.id == test_user["id"])
+        )
+        return result.scalar_one()
+
+    app.dependency_overrides[get_async_session] = override_get_async_session
+    app.dependency_overrides[current_active_user] = override_current_active_user
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        yield client
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -122,29 +175,12 @@ async def test_supertask(ac: AsyncClient, test_user: dict, test_project: dict) -
 
 
 @pytest.fixture
-async def test_another_user(ac: AsyncClient) -> dict:
-    unique_suffix = uuid.uuid4().hex[:6]
-    payload = {
-        "email": f"test_another_user_{unique_suffix}@example.com",
-        "first_name": "Another",
-        "last_name": "User",
-        "role": "student",
-        "password": "securepassword123",
-    }
-    response = await ac.post("/auth/register", json=payload)
-    assert response.status_code == 201, (
-        f"Another user registration failed: {response.text}"
-    )
-    return response.json()
-
-
-@pytest.fixture
 async def test_project_member(
     ac: AsyncClient, test_user: dict, test_project: dict
 ) -> dict:
     """Creates a project member in the DB for use as a foreign key in member snapshot/activity tests."""
     payload = {
-        "id": str(uuid.uuid4()),  # required by ProjectMemberCreate
+        "id": str(uuid.uuid4()),
         "user_id": test_user["id"],
         "project_id": test_project["id"],
         "project_role": "member",
