@@ -1,11 +1,21 @@
 from datetime import datetime, timezone
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
 from sqlalchemy import Enum as SAENUM
 from app.modules.tasks.enums import Priority, Status, Complexity, Category
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from app.modules.task_comments.model import TaskComment
+    from app.modules.task_submissions.model import TaskSubmission
+    from app.modules.task_contents.model import TaskContent
+    from app.modules.task_relations.model import TaskRelation
+    from app.modules.task_tags.model import TaskTag
+    from app.modules.assigned_members.model import AssignedMember
+    from app.modules.peer_evaluations.model import PeerEvaluation
+    from app.modules.projects.model import Project
 
 """
     This is the task model
@@ -26,7 +36,67 @@ class Task(Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id")
     )
     project_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("projects.id")
+        PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
+    )
+    
+    # Relationships
+    project: Mapped["Project"] = relationship(
+        "Project",
+        back_populates="tasks",
+        foreign_keys=[project_id],
+    )
+    
+    comments: Mapped[list["TaskComment"]] = relationship(
+        "TaskComment",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+    
+    submissions: Mapped[list["TaskSubmission"]] = relationship(
+        "TaskSubmission",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+    
+    contents: Mapped[list["TaskContent"]] = relationship(
+        "TaskContent",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+    
+    task_relations: Mapped[list["TaskRelation"]] = relationship(
+        "TaskRelation",
+        back_populates="task",
+        foreign_keys="TaskRelation.task_id",
+        cascade="all, delete-orphan",
+        primaryjoin="Task.id == TaskRelation.task_id",
+    )
+    
+    related_tasks: Mapped[list["TaskRelation"]] = relationship(
+        "TaskRelation",
+        back_populates="related_task",
+        foreign_keys="TaskRelation.related_to",
+        cascade="all, delete-orphan",
+        primaryjoin="Task.id == TaskRelation.related_to",
+    )
+    
+    tags: Mapped[list["TaskTag"]] = relationship(
+        "TaskTag",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+    
+    assigned_members: Mapped[list["AssignedMember"]] = relationship(
+        "AssignedMember",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+    
+    peer_evaluations: Mapped[list["PeerEvaluation"]] = relationship(
+        "PeerEvaluation",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        foreign_keys="PeerEvaluation.task_id",
     )
     # supertask_id: Mapped[UUID | None] = mapped_column(
     #    PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), default=None, nullable=True

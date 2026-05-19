@@ -7,6 +7,10 @@ from .schema import (
     ProjectInvitationUpdate,
 )
 from .repo import ProjectMemberRepo, ProjectInvitationRepo
+from app.modules.notifications.model import NotificationType
+from app.modules.notifications.services import NotificationService
+from sqlalchemy.future import select
+from app.modules.users.model import User
 
 
 class ProjectMemberService:
@@ -42,6 +46,11 @@ class ProjectMemberService:
 
 class ProjectInvitationService:
     @staticmethod
+    async def _get_user_by_email(db: AsyncSession, email: str) -> User | None:
+        result = await db.execute(select(User).where(User.email == email))  # type: ignore
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def get_one_invitation(db: AsyncSession, invitation_id):
         repo = ProjectInvitationRepo(db)
         return await repo.get_by_id(invitation_id)
@@ -54,7 +63,26 @@ class ProjectInvitationService:
     @staticmethod
     async def create_invitation(db: AsyncSession, invitation: ProjectInvitationCreate):
         repo = ProjectInvitationRepo(db)
-        return await repo.create(invitation)
+        created = await repo.create(invitation)
+
+        # Notify the invited user if they already have an account
+        invited_user = await ProjectInvitationService._get_user_by_email(
+            db, invitation.email
+        )
+        if invited_user:
+            notif_service = NotificationService(db)
+            await notif_service.create_notification(
+                user_id=invited_user.id,
+                notification_type=NotificationType.PROJECT_INVITATION,  # see note below
+                title="You've been invited to a project",
+                body=(
+                    f"You have been invited to join a project as a {invitation.role}. "
+                    "Open the app to accept or decline."
+                ),
+                reference_id=created.id,  # lets the frontend deep-link to the invitation
+            )
+
+        return created
 
     @staticmethod
     async def update_invitation(

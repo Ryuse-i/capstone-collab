@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
 from app.modules.tasks.enums import Relation
 from sqlalchemy import Enum as SAENUM
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.tasks.model import Task
 
 """
     This is the relation of each tasks to each other
@@ -16,11 +20,27 @@ class TaskRelation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     task_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("tasks.id")
+        PG_UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE")
     )
     related_to: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("tasks.id")
+        PG_UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE")
     )
+    
+    # Relationships
+    task: Mapped["Task"] = relationship(
+        "Task",
+        back_populates="task_relations",
+        foreign_keys=[task_id],
+        primaryjoin="TaskRelation.task_id == Task.id",
+    )
+    
+    related_task: Mapped["Task"] = relationship(
+        "Task",
+        back_populates="related_tasks",
+        foreign_keys=[related_to],
+        primaryjoin="TaskRelation.related_to == Task.id",
+    )
+    
     relation: Mapped[Relation] = mapped_column(
         SAENUM(Relation, name="relation"), default=None, nullable=True
     )

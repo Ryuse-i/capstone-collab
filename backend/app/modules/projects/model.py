@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from app.modules.project_snapshots.model import ProjectSnapshot
+    from app.modules.supertasks.model import Supertask
+    from app.modules.tasks.model import Task
+    from app.modules.project_members.model import ProjectMember
 
 
 class Project(Base):
@@ -36,6 +39,27 @@ class Project(Base):
         "ProjectSnapshot",
         back_populates="project",
         uselist=False,  # Tells SQLAlchemy this is a single object, not a list []
+        cascade="all, delete-orphan",
+    )
+    
+    tasks: Mapped[list["Task"]] = relationship(
+        "Task",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        foreign_keys="Task.project_id",
+    )
+    
+    supertasks: Mapped[list["Supertask"]] = relationship(
+        "Supertask",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        foreign_keys="Supertask.project_id",
+    )
+    
+    members: Mapped[list["ProjectMember"]] = relationship(
+        "ProjectMember",
+        back_populates="project",
+        cascade="all, delete-orphan",
     )
 
     # Timestamps
