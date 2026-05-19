@@ -10,7 +10,7 @@ from app.core.config import settings
 DATABASE_URL = (
     f"postgresql+psycopg://{settings.DB_USER}:"
     f"{settings.DB_PASSWORD}@{settings.DB_HOST}:"
-    f"{settings.DB_PORT}/{settings.DB_NAME}"
+    f"{settings.DB_PORT}/{settings.DB_NAME}?sslmode=require"
 )
 
 
@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(DATABASE_URL)
+engine = create_async_engine(DATABASE_URL, connect_args={"prepare_threshold": None})
 
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
