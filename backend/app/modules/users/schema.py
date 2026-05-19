@@ -1,20 +1,21 @@
 import uuid
 from fastapi_users import schemas
+from .model import UserRole
 
 
 class UserRead(schemas.BaseUser[uuid.UUID]):
-    username: str
-    full_name: str | None
-    # what gets returned when you read a user
+    first_name: str
+    last_name: str
+    role: UserRole
 
 
 class UserCreate(schemas.BaseUserCreate):
-    username: str
-    full_name: str | None = None
-    # what's required to register (email + password minimum)
+    first_name: str
+    last_name: str
+    role: UserRole = UserRole.STUDENT
 
 
 class UserUpdate(schemas.BaseUserUpdate):
-    username: str | None = None
-    full_name: str | None = None
-    # what fields can be updated
+    first_name: str | None = None
+    last_name: str | None = None
+    role: UserRole | None = UserRole.STUDENT

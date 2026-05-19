@@ -8,7 +8,7 @@ from .model import Severity, Status
 class ProjectSnapshotCreate(BaseModel):
     project_id: UUID
     total_workload_points: int
-    avg_workload: int
+    avg_workload: Decimal
     progress_score: Decimal
     progress_percentage: int
     expected_score: Decimal
@@ -23,7 +23,7 @@ class ProjectSnapshotCreate(BaseModel):
 class ProjectSnapshotUpdate(BaseModel):
     project_id: UUID | None = None
     total_workload_points: int | None = None
-    avg_workload: int | None = None
+    avg_workload: Decimal | None = None
     progress_score: Decimal | None = None
     progress_percentage: int | None = None
     expected_score: Decimal | None = None
@@ -39,7 +39,7 @@ class ProjectSnapshotResponse(BaseModel):
     id: int
     project_id: UUID
     total_workload_points: int
-    avg_workload: int
+    avg_workload: Decimal
     progress_score: Decimal
     progress_percentage: int
     expected_score: Decimal

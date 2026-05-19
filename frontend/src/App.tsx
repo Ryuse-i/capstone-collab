@@ -1,39 +1,38 @@
 import "./App.css";
-import { Routes, Route, Navigate } from "react-router-dom";
-import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
-import SignupPage from "./pages/SignupPage";
-import NotFoundPage from "./pages/NotFoundPage";
-import Task from "./pages/Task";
-import Workload from "./pages/Workload";
-import Team from "./pages/Team";
-import CapstoneSearch from "./pages/CapstoneSearch";
-import Settings from "./pages/Settings";
+import { Routes, Route, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import PrivateRoute from "@/components/PrivateRoute";
+import { StudentRoutes } from "@/routes/StudentRoutes";
+import { InstructorRoutes } from "@/routes/InstructorRoutes";
+import { AdminRoutes } from "@/routes/AdminRoutes";
 
+import LoginPage from "@/pages/LoginPage";
+import SignupPage from "@/pages/SignupPage";
+import NotFoundPage from "@/pages/NotFoundPage";
+import LandingPage from "./pages/LandingPage";
 
 export default function App() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handler = () => navigate("/login");
+    window.addEventListener("auth:expired", handler);
+    return () => window.removeEventListener("auth:expired", handler);
+  }, [navigate]);
+
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/" element={<LandingPage />} />
 
-      {/* Protected routes */}
-     
-        <Route path="/dashboard" element={<Dashboard />} />  
-        <Route path="/task" element={<Task />} />
-        <Route path="/workload" element={<Workload />} />
-        <Route path="/team" element={<Team />} />
-        <Route path="/capstone-search" element={<CapstoneSearch />} />
-        <Route path="/settings" element={<Settings />} />
+      <Route element={<PrivateRoute />}>
+        {StudentRoutes}
+        {InstructorRoutes}
+        {AdminRoutes}
+      </Route>
 
-
-        {/* Goto notfound when no page or route*/}
-        <Route path="*" element={<NotFoundPage />} />
-      
-
-      {/* Goto login when not authenticated*/}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

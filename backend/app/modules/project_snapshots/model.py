@@ -1,12 +1,16 @@
 from decimal import Decimal
-from sqlalchemy import Numeric, DateTime
+from sqlalchemy import ForeignKey, Numeric, DateTime
 from app.core.db import Base
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import mapped_column, Mapped, relationship
 from uuid import UUID
 from sqlalchemy import UUID as PG_UUID
 from sqlalchemy import Enum as SAENUM
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 import enum
+
+if TYPE_CHECKING:
+    from app.modules.projects.model import Project
 
 
 class Severity(str, enum.Enum):
@@ -26,7 +30,9 @@ class ProjectSnapshot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
     )
     total_workload_points: Mapped[int] = mapped_column(default=0)
     avg_workload: Mapped[Decimal] = mapped_column(Numeric(10, 2))
@@ -40,7 +46,13 @@ class ProjectSnapshot(Base):
         SAENUM(Severity, name="severity"), default=Severity.LOW
     )
     health_score: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    health_status: Mapped[Status] = mapped_column(SAENUM(Status, name="healt_status"))
+    health_status: Mapped[Status] = mapped_column(
+        SAENUM(Status, name="health_status", create_type=True)
+    )
+
+    # Inverse relationship pointing back to Project
+    project: Mapped["Project"] = relationship("Project", back_populates="snapshot")
+
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

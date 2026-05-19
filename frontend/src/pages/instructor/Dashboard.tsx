@@ -151,7 +151,7 @@ export default function Dashboard() {
         ]}
       >
         <p className="text-[#000000] pt-2">
-          Overview of project health and team performance
+          Instructor
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

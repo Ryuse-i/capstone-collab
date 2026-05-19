@@ -5,30 +5,119 @@ from .schema import (
     ProjectMemberResponse,
     ProjectMemberUpdate,
     ProjectMemberCreate,
+    ProjectInvitationResponse,
+    ProjectInvitationCreate,
+    ProjectInvitationUpdate,
 )
-from .services import ProjectMemberService
+from .services import ProjectMemberService, ProjectInvitationService
 from uuid import UUID
 from typing import List
 
 project_member_router = APIRouter()
 
+# =====================================================================
+# 1. SPECIFIC / LITERAL PATHS FIRST
+# =====================================================================
 
-# project member routes
+
 @project_member_router.get("/", response_model=List[ProjectMemberResponse])
 async def get_all_members(db: AsyncSession = Depends(get_async_session)):
     return await ProjectMemberService.get_all_members(db)
+
+
+@project_member_router.get(
+    "/invitations", response_model=List[ProjectInvitationResponse]
+)
+async def get_all_invitations(db: AsyncSession = Depends(get_async_session)):
+    return await ProjectInvitationService.get_all_invitations(db)
+
+
+@project_member_router.get(
+    "/invitations/{invitation_id}", response_model=ProjectInvitationResponse
+)
+async def get_one_invitation(
+    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    invitation = await ProjectInvitationService.get_one_invitation(db, invitation_id)
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    return invitation
+
+
+@project_member_router.post(
+    "/invitations",
+    response_model=ProjectInvitationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_invitation(
+    invitation: ProjectInvitationCreate, db: AsyncSession = Depends(get_async_session)
+):
+    return await ProjectInvitationService.create_invitation(db, invitation)
+
+
+@project_member_router.patch(
+    "/invitations/{invitation_id}", response_model=ProjectInvitationResponse
+)
+async def update_invitation(
+    invitation_id: UUID,
+    invitation: ProjectInvitationUpdate,
+    db: AsyncSession = Depends(get_async_session),
+):
+    db_item = await ProjectInvitationService.get_one_invitation(db, invitation_id)
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    return await ProjectInvitationService.update_invitation(db, db_item, invitation)
+
+
+@project_member_router.post(
+    "/invitations/{invitation_id}/accept", response_model=ProjectInvitationResponse
+)
+async def accept_invitation(
+    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    invitation = await ProjectInvitationService.accept_invitation(db, invitation_id)
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    return invitation
+
+
+@project_member_router.post(
+    "/invitations/{invitation_id}/decline", response_model=ProjectInvitationResponse
+)
+async def decline_invitation(
+    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    invitation = await ProjectInvitationService.decline_invitation(db, invitation_id)
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    return invitation
+
+
+@project_member_router.delete(
+    "/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_invitation(
+    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    db_item = await ProjectInvitationService.get_one_invitation(db, invitation_id)
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    await ProjectInvitationService.delete_invitation(db, db_item)
+
+
+# =====================================================================
+# 2. DYNAMIC / PARAMETERIZED PATHS LAST
+# =====================================================================
 
 
 @project_member_router.get("/{member_id}", response_model=ProjectMemberResponse)
 async def get_one_project_member(
     member_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
-    db_item = await ProjectMemberService.get_one_member(db, member_id)
-    if not db_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
-    return db_item
+    member = await ProjectMemberService.get_one_member(db, member_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return member
 
 
 @project_member_router.post(
@@ -47,18 +136,16 @@ async def update_project_member(
     db: AsyncSession = Depends(get_async_session),
 ):
     db_item = await ProjectMemberService.get_one_member(db, member_id)
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Member not found")
     return await ProjectMemberService.update_member(db, db_item, project_member)
 
 
 @project_member_router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project_member(
-    member_id: UUID,
-    db: AsyncSession = Depends(get_async_session),
+    member_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
     db_item = await ProjectMemberService.get_one_member(db, member_id)
     if not db_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+        raise HTTPException(status_code=404, detail="Member not found")
     await ProjectMemberService.delete_member(db, db_item)
-    return None

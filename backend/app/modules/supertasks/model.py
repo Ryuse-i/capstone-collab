@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.projects.model import Project
 
 
 class Supertask(Base):
@@ -22,8 +26,16 @@ class Supertask(Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     project_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
+        PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
     )
+    
+    # Relationships
+    project: Mapped["Project"] = relationship(
+        "Project",
+        back_populates="supertasks",
+        foreign_keys=[project_id],
+    )
+    
     deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

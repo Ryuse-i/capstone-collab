@@ -7,6 +7,7 @@ from app.modules.projects.schema import (
 )
 
 
+
 class ProjectService:
     @staticmethod
     async def get_one_project(db: AsyncSession, project_id):
@@ -34,3 +35,14 @@ class ProjectService:
     async def delete_project(db: AsyncSession, db_item: Project):
         repo = ProjectRepo(db)
         return await repo.delete(db_item)
+
+    @staticmethod
+    async def get_project_by_user(db: AsyncSession, user_id) -> Project | None:
+        repo = ProjectRepo(db)
+        return await repo.get_by_creator(user_id)
+
+    @staticmethod
+    async def get_project_with_snapshot(db: AsyncSession, user_id) -> Project | None:
+        repo = ProjectRepo(db)
+        return await repo.get_by_creator_with_snapshot(user_id)
+

@@ -35,10 +35,12 @@ export function useLogout() {
   const navigate = useNavigate();
   return useMutation({
     mutationFn: logoutUser,
-    onSettled: () => {
-      clearToken();
+    onMutate: () => {
+      clearToken(); // clear immediately, don't wait for server
       queryClient.clear();
-      navigate("/login");
+    },
+    onSettled: () => {
+      navigate("/login"); // always redirect
     },
   });
 }
@@ -69,7 +71,7 @@ export function useMyProfile() {
   return useQuery({
     queryKey: ["myProfile"],
     queryFn: getMyProfile,
-    enabled: !!localStorage.getItem("access_token"),
+    enabled: !!getStoredToken(),
     retry: false,
     staleTime: 1000 * 60 * 5,
   });

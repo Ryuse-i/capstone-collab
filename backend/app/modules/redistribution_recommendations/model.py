@@ -26,7 +26,7 @@ class RedistributionRecommendation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     detail: Mapped[str] = mapped_column(Text)
     project_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("projects.id")
+        PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
     )
     suggestion_type: Mapped[Type] = mapped_column(SAENUM(Type, name="type"))
     rank: Mapped[int] = mapped_column(Integer)

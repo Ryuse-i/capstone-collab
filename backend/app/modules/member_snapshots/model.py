@@ -1,11 +1,15 @@
 from datetime import datetime, timezone
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, Numeric
 from sqlalchemy import Enum as SAENUM
 from decimal import Decimal
 import enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.project_members.model import ProjectMember
 
 
 """
@@ -25,8 +29,16 @@ class MemberSnapshot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     member_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("project_members.id")
+        PG_UUID(as_uuid=True), ForeignKey("project_members.id", ondelete="CASCADE")
     )
+    
+    # Relationships
+    member: Mapped["ProjectMember"] = relationship(
+        "ProjectMember",
+        back_populates="snapshots",
+        foreign_keys=[member_id],
+    )
+    
     workload_points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     workload_status: Mapped[MemberStatus] = mapped_column(
         SAENUM(MemberStatus, name="member_status"), default=MemberStatus.OK
