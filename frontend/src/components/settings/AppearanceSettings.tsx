@@ -1,7 +1,5 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
+import { cn } from "@/lib/utils";
 
 type ThemeId = "light" | "dark" | "system";
 
@@ -39,13 +37,11 @@ const themes: { id: ThemeId; label: string; preview: React.ReactNode }[] = [
     label: "System",
     preview: (
       <div className="w-full h-20 rounded-md border border-gray-300 overflow-hidden flex">
-        {/* Left half — light */}
         <div className="w-1/2 h-full bg-white p-1.5 flex flex-col gap-1">
           <div className="h-1.5 w-full bg-gray-200 rounded" />
           <div className="h-1.5 w-3/4 bg-gray-200 rounded" />
           <div className="h-1.5 w-1/2 bg-gray-200 rounded" />
         </div>
-        {/* Right half — dark */}
         <div className="w-1/2 h-full bg-[#1e1e2e] p-1.5 flex flex-col gap-1">
           <div className="h-1.5 w-full bg-[#4a4a8a] rounded" />
           <div className="h-1.5 w-3/4 bg-[#4a4a8a] rounded" />
@@ -58,16 +54,9 @@ const themes: { id: ThemeId; label: string; preview: React.ReactNode }[] = [
 
 export default function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
-  const [pending, setPending] = useState<ThemeId>(theme as ThemeId);
-  const isDirty = pending !== theme;
-
-  const handleSave = () => {
-    setTheme(pending);
-  };
 
   return (
     <div className="flex flex-col gap-6 p-6 bg-card border border-border rounded-lg">
-      {/* Theme */}
       <div className="flex flex-col gap-3">
         <div>
           <h3 className="font-medium text-base">Theme</h3>
@@ -79,10 +68,10 @@ export default function AppearanceSettings() {
           {themes.map((t) => (
             <button
               key={t.id}
-              onClick={() => setPending(t.id)}
+              onClick={() => setTheme(t.id)}
               className={cn(
                 "flex flex-col gap-2 rounded-lg border-2 p-2 transition-all",
-                pending === t.id
+                theme === t.id
                   ? "border-primary"
                   : "border-border hover:border-muted-foreground",
               )}
@@ -93,10 +82,6 @@ export default function AppearanceSettings() {
           ))}
         </div>
       </div>
-
-      <Button className="w-fit" onClick={handleSave} disabled={!isDirty}>
-        Update Preference
-      </Button>
     </div>
   );
 }
