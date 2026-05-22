@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/useTheme";
 
-const themes = [
+type ThemeId = "light" | "dark" | "system";
+
+const themes: { id: ThemeId; label: string; preview: React.ReactNode }[] = [
   {
     id: "light",
     label: "Light",
@@ -31,14 +34,39 @@ const themes = [
       </div>
     ),
   },
+  {
+    id: "system",
+    label: "System",
+    preview: (
+      <div className="w-full h-20 rounded-md border border-gray-300 overflow-hidden flex">
+        {/* Left half — light */}
+        <div className="w-1/2 h-full bg-white p-1.5 flex flex-col gap-1">
+          <div className="h-1.5 w-full bg-gray-200 rounded" />
+          <div className="h-1.5 w-3/4 bg-gray-200 rounded" />
+          <div className="h-1.5 w-1/2 bg-gray-200 rounded" />
+        </div>
+        {/* Right half — dark */}
+        <div className="w-1/2 h-full bg-[#1e1e2e] p-1.5 flex flex-col gap-1">
+          <div className="h-1.5 w-full bg-[#4a4a8a] rounded" />
+          <div className="h-1.5 w-3/4 bg-[#4a4a8a] rounded" />
+          <div className="h-1.5 w-1/2 bg-[#4a4a8a] rounded" />
+        </div>
+      </div>
+    ),
+  },
 ];
 
 export default function AppearanceSettings() {
-  const [selectedTheme, setSelectedTheme] = useState("light");
+  const { theme, setTheme } = useTheme();
+  const [pending, setPending] = useState<ThemeId>(theme as ThemeId);
+  const isDirty = pending !== theme;
+
+  const handleSave = () => {
+    setTheme(pending);
+  };
 
   return (
     <div className="flex flex-col gap-6 p-6 bg-card border border-border rounded-lg">
-      
       {/* Theme */}
       <div className="flex flex-col gap-3">
         <div>
@@ -47,29 +75,28 @@ export default function AppearanceSettings() {
             Select the theme for the dashboard.
           </p>
         </div>
-
-        <div className="grid grid-cols-2 gap-4 max-w-sm">
-          {themes.map((theme) => (
+        <div className="grid grid-cols-3 gap-4 max-w-md">
+          {themes.map((t) => (
             <button
-              key={theme.id}
-              onClick={() => setSelectedTheme(theme.id)}
+              key={t.id}
+              onClick={() => setPending(t.id)}
               className={cn(
                 "flex flex-col gap-2 rounded-lg border-2 p-2 transition-all",
-                selectedTheme === theme.id
+                pending === t.id
                   ? "border-primary"
-                  : "border-border hover:border-muted-foreground"
+                  : "border-border hover:border-muted-foreground",
               )}
             >
-              {theme.preview}
-              <span className="text-sm font-medium text-center">
-                {theme.label}
-              </span>
+              {t.preview}
+              <span className="text-sm font-medium text-center">{t.label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <Button className="w-fit">Update Preference</Button>
+      <Button className="w-fit" onClick={handleSave} disabled={!isDirty}>
+        Update Preference
+      </Button>
     </div>
   );
 }
