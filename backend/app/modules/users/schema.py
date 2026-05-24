@@ -3,7 +3,7 @@ from fastapi_users import schemas
 from .model import UserRole
 
 
-class UserRead(schemas.BaseUser[uuid.UUID]):
+class UserResponse(schemas.BaseUser[uuid.UUID]):
     first_name: str
     last_name: str
     role: UserRole

@@ -2,6 +2,9 @@ from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel
 
+from app.modules.projects.schema import ProjectResponse
+from app.modules.users.schema import UserResponse
+
 
 class ProjectMemberCreate(BaseModel):
     id: UUID
@@ -24,6 +27,12 @@ class ProjectMemberResponse(BaseModel):
     id: UUID
     user_id: UUID
     project_id: UUID
+
+
+class ProjectMemberDetailResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    project_id: UUID
     project_role: str
     workload_points: float = 0.0
     contribution_points: float = 0.0
@@ -32,6 +41,14 @@ class ProjectMemberResponse(BaseModel):
 
     class ConfigDict:
         from_attributes = True
+
+
+class ProjectMember_Project_Reponse(ProjectMemberDetailResponse):
+    projects: ProjectResponse
+
+
+class ProjectMember_User_Reponse(ProjectMemberDetailResponse):
+    users: UserResponse
 
 
 class ProjectInvitationCreate(BaseModel):
@@ -58,3 +75,4 @@ class ProjectInvitationResponse(BaseModel):
 
     class ConfigDict:
         from_attributes = True
+

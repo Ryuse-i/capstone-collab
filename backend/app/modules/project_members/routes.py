@@ -3,6 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
 from .schema import (
     ProjectMemberResponse,
+    ProjectMemberDetailResponse,
+    ProjectMember_Project_Reponse,
+    ProjectMember_User_Reponse,
     ProjectMemberUpdate,
     ProjectMemberCreate,
     ProjectInvitationResponse,
@@ -22,6 +25,11 @@ project_member_router = APIRouter()
 
 @project_member_router.get("/", response_model=List[ProjectMemberResponse])
 async def get_all_members(db: AsyncSession = Depends(get_async_session)):
+    return await ProjectMemberService.get_all_members(db)
+
+
+@project_member_router.get("/detail", response_model=List[ProjectMemberDetailResponse])
+async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
     return await ProjectMemberService.get_all_members(db)
 
 
@@ -118,6 +126,36 @@ async def get_one_project_member(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
     return member
+
+
+@project_member_router.get("/detail/{user_id}", response_model=ProjectMemberResponse)
+async def get_one_project_member_detail(
+    user_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    member = await ProjectMemberService.get_one_member(db, user_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return member
+
+
+@project_member_router.get(
+    "/projects/{user_id}", response_model=list[ProjectMember_Project_Reponse]
+)
+async def get_all_projects_by_member(
+    user_id, db: AsyncSession = Depends(get_async_session)
+):
+    projects = await ProjectMemberService.get_all_projects_by_member(db, user_id)
+    return projects
+
+
+@project_member_router.get(
+    "/users/{project_id}", response_model=list[ProjectMember_User_Reponse]
+)
+async def get_all_members_by_project(
+    project_id, db: AsyncSession = Depends(get_async_session)
+):
+    members = await ProjectMemberService.get_all_members_by_project(db, project_id)
+    return members
 
 
 @project_member_router.post(

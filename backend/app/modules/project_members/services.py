@@ -25,6 +25,14 @@ class ProjectMemberService:
         return await repo.get_all()
 
     @staticmethod
+    async def get_all_members_by_project(db, project_id):
+        return ProjectMemberRepo.get_all_members_by_project(db, project_id)
+
+    @staticmethod
+    async def get_all_projects_by_member(db, member_id):
+        return ProjectMemberRepo.get_all_project_by_member(db, member_id)
+
+    @staticmethod
     async def add_member(db: AsyncSession, project_member: ProjectMemberCreate):
         repo = ProjectMemberRepo(db)
         return await repo.create(project_member)
