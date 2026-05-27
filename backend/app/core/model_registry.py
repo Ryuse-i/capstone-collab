@@ -18,6 +18,7 @@ modules = [
     "app.modules.member_snapshots.model",
     "app.modules.member_activities.model",
     "app.modules.notifications.model",
+    "app.modules.invitations.model",
 ]
 
 for module in modules:

@@ -29,5 +29,3 @@ class ProjectInvitation(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-
-    project_member: Mapped["ProjectMember"] = mapped_column(relationship())
