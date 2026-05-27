@@ -8,11 +8,8 @@ from .schema import (
     ProjectMember_User_Reponse,
     ProjectMemberUpdate,
     ProjectMemberCreate,
-    ProjectInvitationResponse,
-    ProjectInvitationCreate,
-    ProjectInvitationUpdate,
 )
-from .services import ProjectMemberService, ProjectInvitationService
+from .services import ProjectMemberService
 from uuid import UUID
 from typing import List
 
@@ -33,86 +30,6 @@ async def get_all_members(db: AsyncSession = Depends(get_async_session)):
 @project_member_router.get("/detail", response_model=List[ProjectMemberDetailResponse])
 async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
     return await ProjectMemberService.get_all_members(db)
-
-
-@project_member_router.get(
-    "/invitations", response_model=List[ProjectInvitationResponse]
-)
-async def get_all_invitations(db: AsyncSession = Depends(get_async_session)):
-    return await ProjectInvitationService.get_all_invitations(db)
-
-
-@project_member_router.get(
-    "/invitations/{invitation_id}", response_model=ProjectInvitationResponse
-)
-async def get_one_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
-):
-    invitation = await ProjectInvitationService.get_one_invitation(db, invitation_id)
-    if not invitation:
-        raise HTTPException(status_code=404, detail="Invitation not found")
-    return invitation
-
-
-@project_member_router.post(
-    "/invitations",
-    response_model=ProjectInvitationResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_invitation(
-    invitation: ProjectInvitationCreate, db: AsyncSession = Depends(get_async_session)
-):
-    return await ProjectInvitationService.create_invitation(db, invitation)
-
-
-@project_member_router.patch(
-    "/invitations/{invitation_id}", response_model=ProjectInvitationResponse
-)
-async def update_invitation(
-    invitation_id: UUID,
-    invitation: ProjectInvitationUpdate,
-    db: AsyncSession = Depends(get_async_session),
-):
-    db_item = await ProjectInvitationService.get_one_invitation(db, invitation_id)
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Invitation not found")
-    return await ProjectInvitationService.update_invitation(db, db_item, invitation)
-
-
-@project_member_router.post(
-    "/invitations/{invitation_id}/accept", response_model=ProjectInvitationResponse
-)
-async def accept_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
-):
-    invitation = await ProjectInvitationService.accept_invitation(db, invitation_id)
-    if not invitation:
-        raise HTTPException(status_code=404, detail="Invitation not found")
-    return invitation
-
-
-@project_member_router.post(
-    "/invitations/{invitation_id}/decline", response_model=ProjectInvitationResponse
-)
-async def decline_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
-):
-    invitation = await ProjectInvitationService.decline_invitation(db, invitation_id)
-    if not invitation:
-        raise HTTPException(status_code=404, detail="Invitation not found")
-    return invitation
-
-
-@project_member_router.delete(
-    "/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT
-)
-async def delete_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
-):
-    db_item = await ProjectInvitationService.get_one_invitation(db, invitation_id)
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Invitation not found")
-    await ProjectInvitationService.delete_invitation(db, db_item)
 
 
 # =====================================================================

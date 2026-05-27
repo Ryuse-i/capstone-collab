@@ -1,5 +1,5 @@
 from app.core.base_repo import BaseRepo
-from .model import ProjectMember, ProjectInvitation
+from .model import ProjectMember
 from sqlalchemy import select
 
 
@@ -20,8 +20,3 @@ class ProjectMemberRepo(BaseRepo):
         result = await db.execute(query)
 
         return result.scalar().all()
-
-
-class ProjectInvitationRepo(BaseRepo):
-    def __init__(self, db):
-        super().__init__(db, ProjectInvitation)

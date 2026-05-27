@@ -1,10 +1,8 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, String
-from sqlalchemy import Enum as SAEnum
-from app.modules.project_members.model import ProjectRole
 
 
 class ProjectInvitation(Base):
@@ -20,14 +18,9 @@ class ProjectInvitation(Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id")
     )
     email: Mapped[str] = mapped_column(String, nullable=False)  # The email invited
-    role: Mapped[ProjectRole] = mapped_column(
-        SAEnum(ProjectRole, name="invite_role"), default=ProjectRole.MEMBER
-    )
     status: Mapped[str] = mapped_column(
         String, default="pending"
     )  # pending, accepted, declined
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-
-    project_member: Mapped["ProjectMember"] = mapped_column(relationship())

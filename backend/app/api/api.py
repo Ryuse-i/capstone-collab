@@ -16,6 +16,7 @@ from app.modules.member_activities.routes import member_activity_route
 from app.modules.redistribution_recommendations.routes import recommendation_route
 from app.modules.project_snapshots.routes import project_snapshot_router
 from app.modules.notifications.routes import notification_router
+from app.modules.invitations.route import project_invitation_router
 
 api_router = APIRouter()
 api_router.include_router(users_router)
@@ -59,4 +60,7 @@ api_router.include_router(
 )
 api_router.include_router(
     notification_router, prefix="/notifications", tags=["notifications"]
+)
+api_router.include_router(
+    project_invitation_router, prefix="/invitations", tags=["invitations"]
 )
