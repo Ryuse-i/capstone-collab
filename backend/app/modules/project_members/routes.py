@@ -16,6 +16,8 @@ from .services import ProjectMemberService, ProjectInvitationService
 from uuid import UUID
 from typing import List
 
+# TODO put invitations into another module
+
 project_member_router = APIRouter()
 
 # =====================================================================
