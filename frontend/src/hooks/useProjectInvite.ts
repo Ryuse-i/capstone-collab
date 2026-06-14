@@ -28,7 +28,7 @@ export interface ProjectInvitationResponse {
 
 const BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/invitations`
-  : "http://127.0.0.1:8000/project_members/invitations";
+  : "http://127.0.0.1:8000/invitations";
 
 // ─── Plain fetcher (not tied to any mutation instance) ────────────────────────
 

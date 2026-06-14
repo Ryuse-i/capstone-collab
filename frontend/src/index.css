@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 @import "tailwindcss";
 @import "tailwindcss/preflight" layer(base);
 @import "tw-animate-css";
@@ -5,25 +6,10 @@
 @import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
- 
+
 :root {
-  /* Custom site tokens */
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --code-bg: #f4f3ec;
-  --accent: oklch(0.97 0 0);
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-  --mono: ui-monospace, Consolas, monospace;
- 
-  /* Shadcn tokens */
   --background: #f1f1f1;
-  --foreground: oklch(0.15 0.02 20);
-  --card: oklch(1 0 0);
+  --foreground: #000000 --card: oklch(1 0 0);
   --card-foreground: oklch(0.15 0.02 20);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
@@ -53,7 +39,7 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 }
- 
+
 @media (prefers-color-scheme: dark) {
   :root {
     /* Custom site tokens — dark */
@@ -68,14 +54,13 @@
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
- 
+
   #social .button-icon {
     filter: invert(1) brightness(2);
   }
 }
- 
+
 .dark {
-  /* Shadcn tokens — dark */
   --background: #16171d;
   --foreground: #fafafa;
   --card: oklch(0.205 0 0);
@@ -108,9 +93,9 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 }
- 
+
 /* ─── Tailwind theme mapping ────────────────────────────── */
- 
+
 @theme inline {
   --font-sans: "Geist Variable", sans-serif;
   --font-heading: var(--font-sans);
@@ -154,9 +139,9 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
- 
+
 /* ─── Base styles ───────────────────────────────────────── */
- 
+
 @layer base {
   html {
     font: 18px/145% var(--font-sans);
@@ -168,51 +153,58 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
- 
+
     @media (max-width: 1024px) {
       font-size: 16px;
     }
   }
- 
+
+  .font-inter {
+    font-family: "Inter", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 200;
+    font-style: normal;
+  }
+
   body {
     margin: 0;
     background: var(--background);
     color: var(--foreground);
   }
- 
+
   h1,
   h2 {
     font-family: var(--font-heading);
     font-weight: 500;
     color: var(--text-h);
   }
- 
+
   h1 {
     font-size: 56px;
     letter-spacing: -1.68px;
     margin: 32px 0;
- 
+
     @media (max-width: 1024px) {
       font-size: 36px;
       margin: 20px 0;
     }
   }
- 
+
   h2 {
     font-size: 24px;
     line-height: 118%;
     letter-spacing: -0.24px;
     margin: 0 0 8px;
- 
+
     @media (max-width: 1024px) {
       font-size: 20px;
     }
   }
- 
+
   p {
     margin: 0;
   }
- 
+
   code,
   .counter {
     font-family: var(--mono);
@@ -220,14 +212,14 @@
     border-radius: 4px;
     color: var(--text-h);
   }
- 
+
   code {
     font-size: 15px;
     line-height: 135%;
     padding: 4px 8px;
     background: var(--code-bg);
   }
- 
+
   * {
     border-color: var(--border);
     /* fix: color-mix() with oklch + transparent can misrender in some browsers;
@@ -235,9 +227,9 @@
     outline-color: oklch(from var(--ring) l c h / 50%);
   }
 }
- 
+
 /* ─── Components ────────────────────────────────────────── */
- 
+
 @layer components {
   #root {
     min-height: 100svh;
