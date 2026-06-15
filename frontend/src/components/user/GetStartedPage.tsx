@@ -33,10 +33,10 @@ export default function GetStarted() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[var(--border)] pb-5">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--text-h)] m-0 sm:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-(--text-h) m-0 sm:text-4xl">
             Get Started
           </h1>
-          <p className="text-[var(--text)] mt-1 text-base">
+          <p className="text-(--text) mt-1 text-base">
             Hi {isLoading ? "..." : firstName}, Welcome to your workspace. Let's
             get your team set up for success.
           </p>
@@ -50,17 +50,17 @@ export default function GetStarted() {
       {/* Top Cards Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Setup Checklist */}
-        <div className="lg:col-span-2 relative overflow-hidden bg-[var(--card)] rounded-[var(--radius)] border border-[var(--border)] p-6 shadow-[var(--shadow)] flex flex-col justify-between">
+        <div className="lg:col-span-2 relative overflow-hidden bg-card rounded-(--radius) border border-border p-6 shadow-[var(--shadow)] flex flex-col justify-between">
           <div className="absolute right-0 top-0 w-32 h-32 bg-[#E4C208]/10 rounded-full blur-2xl -mr-5 -mt-5 pointer-events-none" />
           <div className="absolute right-12 bottom-0 w-24 h-24 bg-[#701D0B]/5 rounded-full blur-xl pointer-events-none" />
 
           <div>
-            <h2 className="text-xl font-semibold text-[var(--text-h)] flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-(--text-h) flex items-center gap-2">
               Setup Checklist
             </h2>
 
             <div className="mt-4 flex items-center gap-4">
-              <div className="flex-1 h-2 bg-[var(--muted)] rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full transition-all duration-500 ease-in-out"
                   style={{
@@ -69,7 +69,7 @@ export default function GetStarted() {
                   }}
                 />
               </div>
-              <span className="text-sm font-mono text-[var(--text)] whitespace-nowrap">
+              <span className="text-sm font-mono text-(--text) whitespace-nowrap">
                 {completedCount} of {steps.length}
               </span>
             </div>
