@@ -10,7 +10,7 @@ import {
   ChevronRight,
   ExternalLink,
 } from "lucide-react";
-import { CreateProjectDialog } from "@/components/user/CreateProjectDialog";
+import CreateProjectDialog from "@/components/user/CreateProjectDialog";
 import { useCurrentUser } from "@/hooks/useAuth";
 
 export default function GetStarted() {
@@ -149,8 +149,9 @@ export default function GetStarted() {
                   layout views.
                 </p>
               </div>
-              {/* ✅ Single source of truth — imported from create-project-dialog.tsx */}
-              <CreateProjectDialog />
+              <div>
+                <CreateProjectDialog />
+              </div>
             </div>
           </div>
         </div>
