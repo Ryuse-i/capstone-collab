@@ -5,6 +5,7 @@ import type {
   CreateProjectMemberInput,
 } from "@/types/project_member";
 import apiClient from "@/services/apiClient";
+import { projectKeys } from "./useProject";
 
 const url = "/project-members";
 
@@ -18,6 +19,17 @@ const api = {
       throw error;
     }
   },
+
+  getOneMember: async (id: string): Promise<ProjectMember> => {
+    try {
+      const response = await apiClient.get(`${url}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch member", error);
+      throw error;
+    }
+  },
+
   create: async (member: CreateProjectMemberInput): Promise<ProjectMember> => {
     try {
       const response = await apiClient.post<ProjectMember>(url, member);
@@ -49,24 +61,41 @@ const api = {
   },
 };
 
-const Project_Member_Key = ["project-members"];
+export const memberKeys = {
+  all: ["members"] as const,
+  list: () => [...memberKeys.all, "list"] as const,
+  details: () => [...memberKeys.all, "detail"] as const,
+  detail: (id: string) => [...memberKeys.details(), id] as const,
+};
 
-export function useProjectMembers() {
-  const queryClient = useQueryClient();
-
-  const getMembers = useQuery({
-    queryKey: Project_Member_Key,
+export function useGetMembers() {
+  return useQuery({
+    queryKey: projectKeys.list(),
     queryFn: api.getAll,
   });
+}
 
-  const createMember = useMutation({
+export function useGetOneMember(id: string) {
+  return useQuery({
+    queryKey: memberKeys.detail(id),
+    queryFn: () => api.getOneMember(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: api.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: Project_Member_Key });
+      queryClient.invalidateQueries({ queryKey: memberKeys.list() });
     },
   });
+}
 
-  const updateMember = useMutation({
+export function useUpdateMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: ({
       id,
       member,
@@ -74,33 +103,22 @@ export function useProjectMembers() {
       id: string;
       member: UpdateProjectMemberInput;
     }) => api.update(id, member),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: Project_Member_Key });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: memberKeys.detail(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: memberKeys.list() });
     },
   });
+}
 
-  const deleteMember = useMutation({
+export function useDeteleMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: api.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: Project_Member_Key });
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: memberKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: memberKeys.list() });
     },
   });
-
-  return {
-    getMembers: getMembers.data ?? [],
-    isLoading: getMembers.isLoading,
-    getError: getMembers.error,
-
-    createMember: createMember.mutate,
-    isCreating: createMember.isPending,
-    createError: createMember.error,
-
-    updateMember: updateMember.mutate,
-    isUpdating: updateMember.isPending,
-    updateError: updateMember.error,
-
-    deleteMember: deleteMember.mutate,
-    isDeleting: deleteMember.isPending,
-    deleteError: deleteMember.error,
-  };
 }

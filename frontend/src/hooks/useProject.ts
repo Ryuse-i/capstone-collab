@@ -30,13 +30,23 @@ const api = {
     }
   },
 
-  getSpanshot: async (id: string): Promise<ProjectResponseSnapshot[]> => {
+  getOneProjectWithSpanshot: async (id: string): Promise<ProjectResponseSnapshot> => {
     try {
       const response = await apiClient.get(`${url}/snapshots/${id}`);
       return response.data;
     } catch (error) {
       console.error("Failed to get snapshots", error);
       throw error;
+    }
+  },
+
+  getProjectsWithSnapshot: async (): Promise<ProjectResponseSnapshot[]> => {
+    try{
+      const response = await apiClient.get(`${url}/snapshots`)
+      return response.data
+    }catch(error){
+      console.error("Failed to fetch projects", error)
+      throw error
     }
   },
 
@@ -115,10 +125,21 @@ export function useUpdateProject() {
       project: UpdateProjectInput;
     }) => api.update(id, project),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.invalidateQueries({
         queryKey: projectKeys.detail(variables.id),
       });
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.delete,
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: projectKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
     },
   });
 }
