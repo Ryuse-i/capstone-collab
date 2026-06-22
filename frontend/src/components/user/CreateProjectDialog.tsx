@@ -1,4 +1,5 @@
-//FIX dito nalang ilagay yung diaog para kasama nya yung next buttons
+// ADD: Form for adding members and use popover to show if the user exist
+// Fix: Be sure the next button for the steps is disabled before all required fields have value
 import { useState } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
@@ -32,12 +33,109 @@ import {
   UserRoundPlus,
   FileSearchCorner,
 } from "lucide-react";
+import AddedMember from "./AddedMember";
 
 const steps = [
   {
     title: "Project Details",
     icon: <FolderCog className="size-4" />,
-    content: (
+    content: (formData, setFormData) => (
+      <div className="w-full flex flex-col gap-2">
+        <Field>
+          <FieldLabel htmlFor="project-name">Project Name</FieldLabel>
+          <Input
+            id="project-name"
+            type="text"
+            placeholder="eg. Capstone Collab"
+            size={90}
+            required
+            value={formData.projectName}
+            onChange={(e) =>
+              setFormData({ ...formData, projectName: e.target.value })
+            }
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="input-field-project-name">
+            Project Description
+          </FieldLabel>
+          <Textarea
+            id="project-description"
+            placeholder="eg. A project Management for PSU Lubao"
+            value={formData.projectDescription}
+            onChange={(e) =>
+              setFormData({ ...formData, projectDescription: e.target.value })
+            }
+            required
+          />
+        </Field>
+      </div>
+    ),
+  },
+  {
+    title: "Add Members",
+    icon: <UserRoundPlus className="size-4" />,
+    content: (formData, setFormData) => (
+      <div className="w-full flex flex-col gap-2">
+        <Field>
+          <FieldLabel htmlFor="instructor">
+            Instructor <span className="text-muted-foreground">(Optional)</span>
+          </FieldLabel>
+          <Input
+            id="Instructor"
+            type="text"
+            placeholder="eg. Capstone Collab"
+            value={formData.instructor}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                instructor: e.target.value,
+              })
+            }
+            size={90}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="advisor">
+            Adivisor <span className="text-muted-foreground">(Optional)</span>
+          </FieldLabel>
+          <Input
+            id="advisor"
+            type="text"
+            placeholder="eg. Capstone Collab"
+            value={formData.advisor}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                advisor: e.target.value,
+              })
+            }
+            size={90}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="members">Members</FieldLabel>
+          <Input
+            id="members"
+            type="text"
+            placeholder="eg. Capstone Collab"
+            value={formData.members}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                members: e.target.value,
+              })
+            }
+            size={90}
+          />
+        </Field>
+      </div>
+    ),
+  },
+  {
+    title: "Review",
+    icon: <FileSearchCorner className="size-4" />,
+    content: () => (
       <div className="w-full flex flex-col gap-2">
         <Field>
           <FieldLabel htmlFor="project-name">Project Name</FieldLabel>
@@ -60,21 +158,19 @@ const steps = [
       </div>
     ),
   },
-  {
-    title: "Add Members",
-    icon: <UserRoundPlus className="size-4" />,
-    content: <div className="flex flex-col"></div>,
-  },
-  {
-    title: "Review",
-    icon: <FileSearchCorner className="size-4" />,
-    content: "Hatog ni Dylan",
-  },
 ];
 
 export default function CreateProjectDialog() {
   // Changed initial state to 1 to match step={index + 1}
   const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    projectName: "",
+    projectDescription: "",
+    admin: "",
+    instructor: "",
+    members: "",
+  });
+  const [memberAdmin, memberInstructor, members] = useState(null);
 
   return (
     <div className="flex justify-center items-center w-full">
@@ -89,7 +185,7 @@ export default function CreateProjectDialog() {
               Setup your project and invite your team.{" "}
             </DialogDescription>
           </DialogHeader>
-          <div className="mx-4 max-h-[50vh] px-4">
+          <div className="mx-4 max-h-[50vh] px-4 overflow-y-auto no-scrollbar">
             <Stepper
               value={currentStep}
               onValueChange={setCurrentStep}
@@ -136,7 +232,7 @@ export default function CreateProjectDialog() {
                     value={index + 1}
                     className="flex items-center justify-center"
                   >
-                    {step.content}
+                    {step.content(formData, setFormData)}
                   </StepperContent>
                 ))}
               </StepperPanel>

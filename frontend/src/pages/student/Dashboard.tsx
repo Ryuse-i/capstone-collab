@@ -15,8 +15,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetUserProjectWithSnapshot } from "@/hooks/useProject";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,34 +92,42 @@ const recentActivities: RecentActivity[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// TODO: Replace with real hook (e.g. useProject / useDashboard) when ready
+// ---------------------------------------------------------------------------
+
+const MOCK_isLoading = false;
+const MOCK_hasProject = true;
+
+const MOCK_project = {
+  name: "Capstone Research Project",
+};
+
+const MOCK_healthScore = 72;
+const MOCK_healthStatus = "at risk"; // e.g. "healthy" | "at risk" | "critical"
+const MOCK_scheduleVariance = -1.35;
+const MOCK_progressPercentage = 58;
+const MOCK_completedTasks = 29;
+const MOCK_totalWorkload = 50;
+const MOCK_snapshot = {
+  expected_percentage: 65,
+};
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function Dashboard() {
-  // 1. Get the logged-in user's ID
-  const { data: currentUser } = useCurrentUser();
-
-  // 2. Fetch the user's project + snapshot on mount (auto-runs when userId is ready)
-  const {
-    data: projectWithSnapshot,
-    isLoading,
-    isError,
-  } = useGetUserProjectWithSnapshot(currentUser?.id ?? "");
-
-  // Derive snapshot and project from the combined response
-  const project = projectWithSnapshot ?? null;
-  const snapshot = projectWithSnapshot?.snapshot ?? null;
-
-  // 3. Decide which view to show
-  const hasProject = !isLoading && !isError && !!project;
-
-  // Health + progress values come from snapshot when available, fall back to defaults
-  const healthScore = snapshot?.health_score ?? 0;
-  const healthStatus = snapshot?.health_status ?? "unknown";
-  const progressPercentage = snapshot?.progress_percentage ?? 0;
-  const completedTasks = snapshot?.progress_score ?? 0;
-  const totalWorkload = snapshot?.total_workload_points ?? 0;
-  const scheduleVariance = snapshot?.schedule_variance ?? 0;
+  // TODO: swap these out once the hook exists
+  const isLoading = MOCK_isLoading;
+  const hasProject = MOCK_hasProject;
+  const project = MOCK_project;
+  const healthScore = MOCK_healthScore;
+  const healthStatus = MOCK_healthStatus;
+  const scheduleVariance = MOCK_scheduleVariance;
+  const progressPercentage = MOCK_progressPercentage;
+  const completedTasks = MOCK_completedTasks;
+  const totalWorkload = MOCK_totalWorkload;
+  const snapshot = MOCK_snapshot;
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
@@ -191,7 +197,7 @@ export default function Dashboard() {
                     total
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-gray-200">
+                <div className="h-2 w-fullrounded-full bg-gray-200">
                   <div
                     className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}
