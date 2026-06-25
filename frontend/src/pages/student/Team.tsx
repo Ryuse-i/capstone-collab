@@ -10,7 +10,7 @@ const members = [
     status: "Active",
     statusColor: "bg-green-500",
     badge: "OVERLOADED",
-    badgeColor: "border-red-400 text-red-500 bg-red-50",
+    badgeColor: "border-red-400 text-red-500 bg-white dark:bg-card-foreground/5",
     currentTask: "User Authentication Module",
     completed: 4,
     inProgress: 1,
@@ -85,15 +85,15 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center bg-white">
-                <span className="text-sm font-bold text-gray-700">{member.initials}</span>
+              <div className="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center bg-white dark:bg-gray-800 dark:border-gray-600">
+                <span className="text-sm font-bold text-card-foreground">{member.initials}</span>
               </div>
               <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${member.statusColor}`} />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="font-semibold text-gray-900 text-sm">{member.name}</span>
-              <span className="text-xs text-gray-500">{member.role}</span>
-              <span className="text-xs border border-green-400 text-green-600 bg-green-50 rounded-full px-2 py-0.5 w-fit">
+              <span className="font-semibold text-card-foreground text-sm">{member.name}</span>
+              <span className="text-xs text-card-foreground dark:text-gray-400">{member.role}</span>
+              <span className="text-xs border border-gray-600 text-green-600 rounded-full px-2 py-0.5 w-fit">
                 {member.status}
               </span>
             </div>
@@ -106,9 +106,9 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
         </div>
 
         {/* Currently Working On */}
-        <div className="bg-gray-50 rounded-lg px-4 py-3">
-          <p className="text-xs text-gray-400">Currently working on</p>
-          <p className="text-sm font-semibold text-gray-800 mt-0.5">{member.currentTask}</p>
+        <div className="bg-gray-50 rounded-lg px-4 py-3 dark:bg-card-foreground/5">
+          <p className="text-xs text-gray-400 dark:text-card-foreground">Currently working on</p>
+          <p className="text-sm font-semibold text-gray-800 dark:text-card-foreground mt-0.5">{member.currentTask}</p>
         </div>
 
         {/* Task Stats */}
@@ -118,28 +118,28 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
               <CheckCircle className="w-3.5 h-3.5" />
               <span className="text-xs text-gray-400">Completed</span>
             </div>
-            <span className="text-2xl font-bold text-gray-800">{member.completed}</span>
+            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">{member.completed}</span>
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1 text-yellow-500">
               <Clock className="w-3.5 h-3.5" />
               <span className="text-xs text-gray-400">In Progress</span>
             </div>
-            <span className="text-2xl font-bold text-gray-800">{member.inProgress}</span>
+            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">{member.inProgress}</span>
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1 text-gray-400">
               <Circle className="w-3.5 h-3.5" />
               <span className="text-xs text-gray-400">Total</span>
             </div>
-            <span className="text-2xl font-bold text-gray-800">{member.total}</span>
+            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">{member.total}</span>
           </div>
         </div>
 
         {/* Progress Bars */}
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
               <span>Workload</span>
               <span>{member.workload}%</span>
             </div>
@@ -148,7 +148,7 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
               <span>On-Time Rate</span>
               <span>{member.onTimeRate}%</span>
             </div>
@@ -156,15 +156,15 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
               <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${member.onTimeRate}%` }} />
             </div>
           </div>
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
             <span>Avg. Completion</span>
-            <span className="font-medium text-gray-700">{member.avgCompletion}</span>
+            <span className="font-medium text-gray-700 dark:text-card-foreground">{member.avgCompletion}</span>
           </div>
         </div>
 
         {/* Strengths */}
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1 text-xs text-gray-600 font-medium">
+          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-card-foreground font-medium">
             <TrendingUp className="w-3.5 h-3.5 text-green-500" />
             Strengths
           </div>
@@ -179,7 +179,7 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
 
         {/* Areas for Improvement */}
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1 text-xs text-gray-600 font-medium">
+          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-card-foreground font-medium">
             <AlertCircle className="w-3.5 h-3.5 text-yellow-500" />
             Areas for improvement
           </div>
@@ -199,7 +199,7 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
 export default function Team() {
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">Team Members</h1>
+      <h1 className="text-3xl font-bold text-foreground mb-4">Team Members</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {members.map((member) => (
           <MemberCard key={member.name} member={member} />

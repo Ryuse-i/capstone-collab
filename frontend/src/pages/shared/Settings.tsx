@@ -18,7 +18,7 @@ export default function Settings() {
 
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold">Settings</h1>
+        <h1 className="text-xl font-semibold dark:text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground">
           Manage your account settings and set e-mail preferences.
         </p>

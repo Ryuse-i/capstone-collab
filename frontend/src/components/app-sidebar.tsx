@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import psuLogo from "@/assets/psu-logo.jpg";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
-  GalleryVerticalEndIcon,
+
   FileText,
   BookOpenIcon,
   LayoutGridIcon,
@@ -47,7 +48,7 @@ const data = {
     {
       title: "Workload",
       url: "/Workload",
-      icon: <MessageCircleMore />
+      icon: <MessageCircleMore />,
     },
     {
       title: "Team",
@@ -59,17 +60,13 @@ const data = {
       url: "/capstone-search",
       icon: <BookOpenIcon />,
     },
-    
   ],
   navSecondary: [
-   
-     {
+    {
       title: "Settings",
       url: "/settings",
-      icon: <Settings/>
-      ,
+      icon: <Settings />,
     },
-   
   ],
 };
 
@@ -81,16 +78,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!
-              hover:bg-transparent hover:text-current active:bg-transparent"
-            >
-              <a href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <GalleryVerticalEndIcon className="size-4" />
+              className="hover:bg-transparent hover:text-current active:bg-transparent group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:w-8! group-data-[collapsible=icon]:h-8! group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center"
+>
+              <a
+                href="/dashboard"
+                className="flex items-center gap-2 overflow-hidden"
+              >
+                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <img src={psuLogo} alt="PSU Logo" className="size-8 object-contain" />
+                  
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">PSU Collab</span>
-                </div>
+                <span className="font-medium truncate group-data-[collapsible=icon]:hidden">
+                  PSU Collab
+                </span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
