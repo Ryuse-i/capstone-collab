@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import axios from "axios";
 import type {
   Project,
   ProjectResponseSnapshot,
@@ -7,9 +8,27 @@ import type {
 } from "@/types/project";
 import apiClient from "@/services/apiClient";
 
+// Create apihelper for 404 and other error handler that would be reusable
+
 const url = "/projects";
 
 const api = {
+  getCurentProjectWithSnapshot: async (
+    id: string,
+  ): Promise<ProjectResponseSnapshot | null> => {
+    try {
+      console.log(`${url}/user/${id}/with-snapshot`);
+      const response = await apiClient.get(`${url}/user/${id}/with-snapshot`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+      console.error("Failed to fetch current project", error);
+      throw error;
+    }
+  },
+
   getOneProject: async (id: string): Promise<Project> => {
     try {
       const response = await apiClient.get(`${url}/${id}`);
@@ -30,7 +49,9 @@ const api = {
     }
   },
 
-  getOneProjectWithSpanshot: async (id: string): Promise<ProjectResponseSnapshot> => {
+  getOneProjectWithSpanshot: async (
+    id: string,
+  ): Promise<ProjectResponseSnapshot> => {
     try {
       const response = await apiClient.get(`${url}/snapshots/${id}`);
       return response.data;
@@ -41,12 +62,12 @@ const api = {
   },
 
   getProjectsWithSnapshot: async (): Promise<ProjectResponseSnapshot[]> => {
-    try{
-      const response = await apiClient.get(`${url}/snapshots`)
-      return response.data
-    }catch(error){
-      console.error("Failed to fetch projects", error)
-      throw error
+    try {
+      const response = await apiClient.get(`${url}/snapshots`);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch projects", error);
+      throw error;
     }
   },
 
@@ -83,9 +104,21 @@ const api = {
 export const projectKeys = {
   all: ["projects"] as const,
   list: () => [...projectKeys.all, "list"] as const,
+  listSnapshot: () => [...projectKeys.all, "listSnapshot"] as const,
   details: () => [...projectKeys.all, "detail"] as const,
   detail: (id: string) => [...projectKeys.details(), id] as const,
+  detailSnapshot: (id: string) =>
+    [...projectKeys.details(), "detailSnapshot", id] as const,
 };
+
+//Get current project of user
+export function useGetCurrentProject(id: string) {
+  return useQuery({
+    queryKey: projectKeys.detailSnapshot(id),
+    queryFn: () => api.getCurentProjectWithSnapshot(id),
+    retry: false,
+  });
+}
 
 // get all projects
 export function useGetProjects() {
@@ -101,6 +134,14 @@ export function useGetOneProject(id: string) {
     queryKey: projectKeys.detail(id),
     queryFn: () => api.getOneProject(id),
     enabled: !!id, //make sure id exist
+  });
+}
+
+export function useGetOneProjectWithSpanshot(id: string) {
+  return useQuery({
+    queryKey: projectKeys.detailSnapshot(id),
+    queryFn: () => api.getOneProjectWithSpanshot(id),
+    enabled: !!id,
   });
 }
 

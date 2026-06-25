@@ -1,4 +1,4 @@
-import { type ProjectSnapshotResponse } from "./project_snapshot";
+import { type ProjectSnapshot } from "./project_snapshot";
 
 export interface Project {
   id: string; // UUID
@@ -22,5 +22,5 @@ export type UpdateProjectInput = Partial<
 >;
 
 export interface ProjectResponseSnapshot extends Project {
-  snapshot: ProjectSnapshotResponse | null;
+  snapshot: ProjectSnapshot;
 }

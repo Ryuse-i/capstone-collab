@@ -16,6 +16,9 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
+import { useGetCurrentProject } from "@/hooks/useProject";
+import { useCurrentUser } from "@/hooks/useAuth";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -95,39 +98,31 @@ const recentActivities: RecentActivity[] = [
 // TODO: Replace with real hook (e.g. useProject / useDashboard) when ready
 // ---------------------------------------------------------------------------
 
-const MOCK_isLoading = false;
-const MOCK_hasProject = true;
-
-const MOCK_project = {
-  name: "Capstone Research Project",
-};
-
-const MOCK_healthScore = 72;
-const MOCK_healthStatus = "at risk"; // e.g. "healthy" | "at risk" | "critical"
-const MOCK_scheduleVariance = -1.35;
-const MOCK_progressPercentage = 58;
-const MOCK_completedTasks = 29;
-const MOCK_totalWorkload = 50;
-const MOCK_snapshot = {
-  expected_percentage: 65,
-};
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function Dashboard() {
-  // TODO: swap these out once the hook exists
-  const isLoading = MOCK_isLoading;
-  const hasProject = MOCK_hasProject;
-  const project = MOCK_project;
-  const healthScore = MOCK_healthScore;
-  const healthStatus = MOCK_healthStatus;
-  const scheduleVariance = MOCK_scheduleVariance;
-  const progressPercentage = MOCK_progressPercentage;
-  const completedTasks = MOCK_completedTasks;
-  const totalWorkload = MOCK_totalWorkload;
-  const snapshot = MOCK_snapshot;
+  const { data: user } = useCurrentUser();
+  const {
+    data: currentProject,
+    isLoading,
+    isError,
+    error,
+  } = useGetCurrentProject(user?.id ?? "");
+
+  if (isError) {
+    console.error("Dashboard project error", error);
+  }
+
+  const hasProject = currentProject;
+  const healthScore = currentProject?.snapshot.health_score ?? 0;
+  const healthStatus = currentProject?.snapshot.health_status ?? "healthy";
+  const scheduleVariance = currentProject?.snapshot.schedule_variance ?? 0;
+  const progressPercentage = currentProject?.snapshot.progress_percentage ?? 0;
+  const completedTasks = currentProject?.snapshot.completed_tasks ?? 0;
+  const totalWorkload = currentProject?.snapshot.total_workload_points ?? 0;
+  const expectedPercentage = currentProject?.snapshot.expected_percentage ?? 0;
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
@@ -181,7 +176,9 @@ export default function Dashboard() {
             {/* ── Project Progress ──────────────────────────────────── */}
             <Card className="bg-primary-foreground shadow-sm p-4 rounded-lg flex flex-col justify-evenly h-full">
               <div>
-                <h2 className="font-semibold text-gray-900">{project.name}</h2>
+                <h2 className="font-semibold text-gray-900">
+                  {currentProject.name}
+                </h2>
                 <p className="text-sm text-gray-500">
                   Overall completion tracking
                 </p>
@@ -209,7 +206,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500">EXPECTED SCORE:</span>
                   <span className="text-sm font-bold text-green-500">
-                    {snapshot?.expected_percentage ?? 0}%
+                    {expectedPercentage ?? 0}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
