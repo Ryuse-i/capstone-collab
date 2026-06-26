@@ -1,6 +1,6 @@
 // ADD: Form for adding members and use popover to show if the user exist
 // Fix: Be sure the next button for the steps is disabled before all required fields have value
-import { useState } from "react";
+import React, { useState, useEffect, type Dispatch } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -33,144 +33,170 @@ import {
   UserRoundPlus,
   FileSearchCorner,
 } from "lucide-react";
-import AddedMember from "./AddedMember";
+import type { UserRead } from "@/services/api";
+import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
+
+interface Data {
+  projectName: string;
+  projectDescription: string;
+  admin: string;
+  advisor: string;
+  instructor: string;
+  members: string;
+}
+
+function emptyData() {
+  return {
+    projectName: "",
+    projectDescription: "",
+    admin: "",
+    advisor: "",
+    instructor: "",
+    members: "",
+  };
+}
+
+function ProjectDetails({
+  formData,
+  setFormData,
+}: {
+  formData: Data;
+  setFormData: React.Dispatch<React.SetStateAction<Data>>;
+}) {
+  return (
+    <div className="w-full flex flex-col gap-2">
+      <Field>
+        <FieldLabel htmlFor="project-name">Project Name</FieldLabel>
+        <Input
+          id="project-name"
+          type="text"
+          placeholder="eg. Capstone Collab"
+          size={90}
+          required
+          value={formData.projectName}
+          onChange={(e) =>
+            setFormData({ ...formData, projectName: e.target.value })
+          }
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="input-field-project-name">
+          Project Description
+        </FieldLabel>
+        <Textarea
+          id="project-description"
+          placeholder="eg. A project Management for PSU Lubao"
+          value={formData.projectDescription}
+          onChange={(e) =>
+            setFormData({ ...formData, projectDescription: e.target.value })
+          }
+          required
+        />
+      </Field>
+    </div>
+  );
+}
+
+function AddMember({
+  instructorEmail,
+  setInstructorEmail,
+  advisorEmail,
+  setAdvisorEmail,
+  memberEmail,
+  setMemberEmail,
+}: {
+  instructorEmail: string;
+  setInstructorEmail: Dispatch<React.SetStateAction<string>>;
+  advisorEmail: string;
+  setAdvisorEmail: Dispatch<React.SetStateAction<string>>;
+  memberEmail: string;
+  setMemberEmail: Dispatch<React.SetStateAction<string>>;
+}) {
+  return (
+    <div className="w-full flex flex-col gap-2">
+      <Field>
+        <FieldLabel htmlFor="instructor">
+          Instructor <span className="text-muted-foreground">(Optional)</span>
+        </FieldLabel>
+        <Input
+          id="Instructor"
+          type="text"
+          placeholder="eg. Capstone Collab"
+          value={instructorEmail}
+          onChange={(e) => setInstructorEmail(e.target.value)}
+          size={90}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="advisor">
+          Adivisor <span className="text-muted-foreground">(Optional)</span>
+        </FieldLabel>
+        <Input
+          id="advisor"
+          type="text"
+          placeholder="eg. Capstone Collab"
+          value={advisorEmail}
+          onChange={(e) => setAdvisorEmail(e.target.value)}
+          size={90}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="members">Members</FieldLabel>
+        <Input
+          id="members"
+          type="text"
+          placeholder="eg. Capstone Collab"
+          value={memberEmail}
+          onChange={(e) => setMemberEmail(e.target.value)}
+          size={90}
+        />
+      </Field>
+    </div>
+  );
+}
+
+function ReivewProjectDetails({ formData }: { formData: Data }) {
+  return (
+    <div className="w-full flex flex-col gap-2">
+      <h2>Double check everything before submitting</h2>
+      <Field>
+        <FieldLabel htmlFor="project-name">ProjectName</FieldLabel>
+        <Input
+          id="project-name"
+          type="text"
+          placeholder="eg. Capstone Collab"
+          value={formData.projectName}
+          disabled
+          size={90}
+        />
+      </Field>
+    </div>
+  );
+}
 
 const steps = [
   {
     title: "Project Details",
     icon: <FolderCog className="size-4" />,
-    content: (formData, setFormData) => (
-      <div className="w-full flex flex-col gap-2">
-        <Field>
-          <FieldLabel htmlFor="project-name">Project Name</FieldLabel>
-          <Input
-            id="project-name"
-            type="text"
-            placeholder="eg. Capstone Collab"
-            size={90}
-            required
-            value={formData.projectName}
-            onChange={(e) =>
-              setFormData({ ...formData, projectName: e.target.value })
-            }
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="input-field-project-name">
-            Project Description
-          </FieldLabel>
-          <Textarea
-            id="project-description"
-            placeholder="eg. A project Management for PSU Lubao"
-            value={formData.projectDescription}
-            onChange={(e) =>
-              setFormData({ ...formData, projectDescription: e.target.value })
-            }
-            required
-          />
-        </Field>
-      </div>
-    ),
   },
   {
     title: "Add Members",
     icon: <UserRoundPlus className="size-4" />,
-    content: (formData, setFormData) => (
-      <div className="w-full flex flex-col gap-2">
-        <Field>
-          <FieldLabel htmlFor="instructor">
-            Instructor <span className="text-muted-foreground">(Optional)</span>
-          </FieldLabel>
-          <Input
-            id="Instructor"
-            type="text"
-            placeholder="eg. Capstone Collab"
-            value={formData.instructor}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                instructor: e.target.value,
-              })
-            }
-            size={90}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="advisor">
-            Adivisor <span className="text-muted-foreground">(Optional)</span>
-          </FieldLabel>
-          <Input
-            id="advisor"
-            type="text"
-            placeholder="eg. Capstone Collab"
-            value={formData.advisor}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                advisor: e.target.value,
-              })
-            }
-            size={90}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="members">Members</FieldLabel>
-          <Input
-            id="members"
-            type="text"
-            placeholder="eg. Capstone Collab"
-            value={formData.members}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                members: e.target.value,
-              })
-            }
-            size={90}
-          />
-        </Field>
-      </div>
-    ),
   },
   {
     title: "Review",
     icon: <FileSearchCorner className="size-4" />,
-    content: () => (
-      <div className="w-full flex flex-col gap-2">
-        <Field>
-          <FieldLabel htmlFor="project-name">Project Name</FieldLabel>
-          <Input
-            id="project-name"
-            type="text"
-            placeholder="eg. Capstone Collab"
-            size={90}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="input-field-project-name">
-            Project Description
-          </FieldLabel>
-          <Textarea
-            id="project-description"
-            placeholder="eg. A project Management for PSU Lubao"
-          />
-        </Field>
-      </div>
-    ),
   },
 ];
 
 export default function CreateProjectDialog() {
   // Changed initial state to 1 to match step={index + 1}
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    projectName: "",
-    projectDescription: "",
-    admin: "",
-    instructor: "",
-    members: "",
-  });
-  const [memberAdmin, memberInstructor, members] = useState(null);
+  // Form data project creation
+  const [formData, setFormData] = useState(emptyData());
+  const [advisorEmail, setAdvisorEmail] = useState<string>("");
+  const [instructorEmail, setInstructorEmail] = useState<string>("");
+  const [foundMembers, setFoundMembers] = useState<UserRead[]>([]);
 
   return (
     <div className="flex justify-center items-center w-full">

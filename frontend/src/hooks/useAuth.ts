@@ -3,6 +3,7 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  getUserByEmail,
   getCurrentUser,
   getMyProfile,
   updateCurrentUser,
@@ -11,6 +12,7 @@ import {
   clearToken,
   type RegisterCredentials,
   type UpdateUserPayload,
+  getUserByEmailAndRole,
 } from "@/services/api";
 import { useNavigate } from "react-router-dom";
 
@@ -25,6 +27,20 @@ export function useLogin() {
       storeToken(data.access_token);
       queryClient.invalidateQueries({ queryKey: ["currentUser"] });
     },
+  });
+}
+
+export function useGetUserByEmail(email: string) {
+  return useQuery({
+    queryKey: ["getUser"],
+    queryFn: () => getUserByEmail(email),
+  });
+}
+
+export function useGetUserByEmailAndRole(email: string, role: string) {
+  return useQuery({
+    queryKey: ["addMembers"],
+    queryFn: () => getUserByEmailAndRole(email, role),
   });
 }
 
