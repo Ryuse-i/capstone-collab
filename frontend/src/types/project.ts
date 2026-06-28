@@ -1,26 +1,26 @@
-import { type ProjectSnapshot } from "./project_snapshot";
+import type { ProjectSnapshotBase } from "./project_snapshot";
 
-export interface Project {
-  id: string; // UUID
+export interface ProjectBase {
   name: string;
   description: string;
   created_by: string; // UUID
   advisor: string | null; // UUID
   instructor: string | null; // UUID
+}
+
+export interface ProjectResponse extends ProjectBase {
+  id: string; // UUID
   created_at: string | null; // datetime
   updated_at: string | null; // datetime
 }
 
-export type CreateProjectInput = Omit<
-  Project,
-  "id" | "created_at" | "updated_at"
-> &
-  Partial<Pick<Project, "advisor" | "instructor">>;
-
-export type UpdateProjectInput = Partial<
-  Omit<Project, "id" | "created_at" | "updated_at">
+export type CreateProject = Pick<ProjectBase, "name" | "description" | "created_by"> & Partial<
+  Pick<ProjectBase, "advisor" | "instructor">
 >;
 
-export interface ProjectResponseSnapshot extends Project {
-  snapshot: ProjectSnapshot;
+export type UpdateProject = Partial<ProjectBase>;
+
+export interface ProjectWithSnapshot extends ProjectBase {
+  snapshot: ProjectSnapshotBase
 }
+

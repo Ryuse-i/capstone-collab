@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import type {
-  Project,
-  ProjectResponseSnapshot,
-  CreateProjectInput,
-  UpdateProjectInput,
+  ProjectBase,
+  ProjectWithSnapshot,
+  CreateProject,
+  UpdateProject,
 } from "@/types/project";
 import apiClient from "@/services/apiClient";
 
@@ -15,7 +15,7 @@ const url = "/projects";
 const api = {
   getCurentProjectWithSnapshot: async (
     id: string,
-  ): Promise<ProjectResponseSnapshot | null> => {
+  ): Promise<ProjectWithSnapshot | null> => {
     try {
       console.log(`${url}/user/${id}/with-snapshot`);
       const response = await apiClient.get(`${url}/user/${id}/with-snapshot`);
@@ -29,7 +29,7 @@ const api = {
     }
   },
 
-  getOneProject: async (id: string): Promise<Project> => {
+  getOneProject: async (id: string): Promise<ProjectBase> => {
     try {
       const response = await apiClient.get(`${url}/${id}`);
       return response.data;
@@ -39,7 +39,7 @@ const api = {
     }
   },
 
-  getAll: async (): Promise<Project[]> => {
+  getAll: async (): Promise<ProjectBase[]> => {
     try {
       const response = await apiClient.get(url);
       return response.data;
@@ -51,7 +51,7 @@ const api = {
 
   getOneProjectWithSpanshot: async (
     id: string,
-  ): Promise<ProjectResponseSnapshot> => {
+  ): Promise<ProjectWithSnapshot> => {
     try {
       const response = await apiClient.get(`${url}/snapshots/${id}`);
       return response.data;
@@ -61,7 +61,7 @@ const api = {
     }
   },
 
-  getProjectsWithSnapshot: async (): Promise<ProjectResponseSnapshot[]> => {
+  getProjectsWithSnapshot: async (): Promise<ProjectWithSnapshot[]> => {
     try {
       const response = await apiClient.get(`${url}/snapshots`);
       return response.data;
@@ -71,7 +71,7 @@ const api = {
     }
   },
 
-  create: async (project: CreateProjectInput): Promise<Project> => {
+  create: async (project: CreateProject): Promise<ProjectBase> => {
     try {
       const response = await apiClient.post(url, project);
       return response.data;
@@ -81,7 +81,7 @@ const api = {
     }
   },
 
-  update: async (id: string, project: UpdateProjectInput): Promise<Project> => {
+  update: async (id: string, project: UpdateProject): Promise<ProjectBase> => {
     try {
       const response = await apiClient.patch(`${url}/${id}`, project);
       return response.data;
@@ -158,13 +158,8 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      project,
-    }: {
-      id: string;
-      project: UpdateProjectInput;
-    }) => api.update(id, project),
+    mutationFn: ({ id, project }: { id: string; project: UpdateProject }) =>
+      api.update(id, project),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.detail(variables.id),

@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
-  ProjectMember,
-  UpdateProjectMemberInput,
-  CreateProjectMemberInput,
+  MemberBase,
+  UpdateProjectMember,
+  CreateProjectMember,
 } from "@/types/project_member";
 import apiClient from "@/services/apiClient";
 import { projectKeys } from "./useProject";
@@ -10,9 +10,9 @@ import { projectKeys } from "./useProject";
 const url = "/project-members";
 
 const api = {
-  getAll: async (): Promise<ProjectMember[]> => {
+  getAll: async (): Promise<MemberBase[]> => {
     try {
-      const response = await apiClient.get<ProjectMember[]>(url);
+      const response = await apiClient.get<MemberBase[]>(url);
       return response.data;
     } catch (error) {
       console.error("Failed to fetch members", error);
@@ -20,7 +20,7 @@ const api = {
     }
   },
 
-  getOneMember: async (id: string): Promise<ProjectMember> => {
+  getOneMember: async (id: string): Promise<MemberBase> => {
     try {
       const response = await apiClient.get(`${url}/${id}`);
       return response.data;
@@ -30,9 +30,9 @@ const api = {
     }
   },
 
-  create: async (member: CreateProjectMemberInput): Promise<ProjectMember> => {
+  create: async (member: CreateProjectMember): Promise<MemberBase> => {
     try {
-      const response = await apiClient.post<ProjectMember>(url, member);
+      const response = await apiClient.post<MemberBase>(url, member);
       return response.data;
     } catch (error) {
       console.error("Failed to add member", error);
@@ -41,8 +41,8 @@ const api = {
   },
   update: async (
     id: string,
-    member: UpdateProjectMemberInput,
-  ): Promise<ProjectMember> => {
+    member: UpdateProjectMember,
+  ): Promise<MemberBase> => {
     try {
       const response = await apiClient.patch(`${url}/${id}`, member);
       return response.data;
@@ -96,13 +96,8 @@ export function useCreateMember() {
 export function useUpdateMember() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      member,
-    }: {
-      id: string;
-      member: UpdateProjectMemberInput;
-    }) => api.update(id, member),
+    mutationFn: ({ id, member }: { id: string; member: UpdateProjectMember }) =>
+      api.update(id, member),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: memberKeys.detail(variables.id),

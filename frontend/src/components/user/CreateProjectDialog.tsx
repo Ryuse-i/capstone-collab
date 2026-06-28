@@ -1,6 +1,10 @@
 // ADD: Form for adding members and use popover to show if the user exist
 // Fix: Be sure the next button for the steps is disabled before all required fields have value
-import React, { useState, useEffect, type Dispatch } from "react";
+import React, {
+  useState,
+  useEffect,
+  type Dispatch,
+} from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -54,6 +58,40 @@ function emptyData() {
     instructor: "",
     members: "",
   };
+}
+
+// Add email to memberEmails(collection of all member emails)
+function addToMembers(
+  newEmail: string,
+  setMemberEmails: Dispatch<React.SetStateAction<string[]>>,
+) {
+  setMemberEmails((memberEmails) => [...memberEmails, newEmail]); //copy yung previous na email then dagdag yung bago
+}
+
+//Remove the selected Member in the memberEmails array
+function removeMemberEmail(
+  emailToRemove: string,
+  setMemberEmails: Dispatch<React.SetStateAction<string[]>>,
+) {
+  setMemberEmails(
+    (memberEmails) => memberEmails.filter((email) => email !== emailToRemove), //filter data maliban sa tatangalin na email
+  );
+}
+
+function addInstructorToFormData(id: string,formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
+  setFormData({...formData, instructor: id})
+}
+
+function removeInstructorInFormData(formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
+  setFormData({...formData, instructor: ""})
+}
+
+function addAdvisorToFormData(id: string,formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
+  setFormData({...formData, advisor: id})
+}
+
+function removeAdvisorInFormData(formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
+  setFormData({...formData, advisor: ""})
 }
 
 function ProjectDetails({
@@ -111,6 +149,8 @@ function AddMember({
   setAdvisorEmail: Dispatch<React.SetStateAction<string>>;
   memberEmail: string;
   setMemberEmail: Dispatch<React.SetStateAction<string>>;
+  memberEmails: string[];
+  setMemberEmails: Dispatch<React.SetStateAction<string[]>>;
 }) {
   return (
     <div className="w-full flex flex-col gap-2">
@@ -155,26 +195,65 @@ function AddMember({
   );
 }
 
-function ReivewProjectDetails({ formData }: { formData: Data }) {
+function ReviewProjectDetails({
+  formData,
+  advisorEmail,
+  instructorEmail,
+  memberEmails,
+}: {
+  formData: Data;
+  advisorEmail: string;
+  instructorEmail: string;
+  memberEmails: string[];
+}) {
   return (
     <div className="w-full flex flex-col gap-2">
-      <h2>Double check everything before submitting</h2>
-      <Field>
-        <FieldLabel htmlFor="project-name">ProjectName</FieldLabel>
-        <Input
-          id="project-name"
-          type="text"
-          placeholder="eg. Capstone Collab"
-          value={formData.projectName}
-          disabled
-          size={90}
-        />
-      </Field>
+      <h2 className="text-gray-500">
+        Double check everything before submitting
+      </h2>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col ">
+          <h2>Project Details</h2>
+          <div className="border border-gray-400">
+            <div className="mx-5">
+              <h3 className="text-gray-400">
+                Project name:
+                <span className="mx-2 text-white">{formData.projectName}</span>
+              </h3>
+              <div className="flex gap-3">
+                <h3 className="text-gray-400 border">Project description:</h3>
+                <div className="border max-w-xl">
+                  <p className="break-words whitespace-pre-wrap">
+                    {formData.projectDescription}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h2>Members</h2>
+          <div className="flex flex-col mx-5">
+            <div className="flex gap-1">
+              <h3>Instructor:</h3>
+              <div className="text-gray-400">{instructorEmail}</div>
+            </div>
+            <div className="flex gap-1">
+              <h3>Advisor:</h3>
+              <div className="text-gray-400">{advisorEmail}</div>
+            </div>
+            <div className="flex gap-1">
+              <h3>Members:</h3>
+              <div className="text-gray-400">{memberEmails}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-const steps = [
+const STEPS = [
   {
     title: "Project Details",
     icon: <FolderCog className="size-4" />,
@@ -196,7 +275,39 @@ export default function CreateProjectDialog() {
   const [formData, setFormData] = useState(emptyData());
   const [advisorEmail, setAdvisorEmail] = useState<string>("");
   const [instructorEmail, setInstructorEmail] = useState<string>("");
+  const [memberEmail, setMemberEmail] = useState<string>("");
+  const [memberEmails, setMemberEmails] = useState<string[]>([]);
   const [foundMembers, setFoundMembers] = useState<UserRead[]>([]);
+
+  const renderStep = (step: number) => {
+    switch (step) {
+      case 1:
+        return <ProjectDetails formData={formData} setFormData={setFormData} />;
+
+      case 2:
+        return (
+          <AddMember
+            instructorEmail={instructorEmail}
+            setInstructorEmail={setInstructorEmail}
+            advisorEmail={advisorEmail}
+            setAdvisorEmail={setAdvisorEmail}
+            memberEmail={memberEmail}
+            setMemberEmail={setMemberEmail}
+            memberEmails={memberEmails}
+            setMemberEmails={setMemberEmails}
+          />
+        );
+      case 3:
+        return (
+          <ReviewProjectDetails
+            formData={formData}
+            instructorEmail={instructorEmail}
+            advisorEmail={advisorEmail}
+            memberEmails={memberEmails}
+          />
+        );
+    }
+  };
 
   return (
     <div className="flex justify-center items-center w-full">
@@ -222,7 +333,7 @@ export default function CreateProjectDialog() {
               className=" w-full  space-y-8"
             >
               <StepperNav className="gap-3">
-                {steps.map((step, index) => (
+                {STEPS.map((step, index) => (
                   <StepperItem
                     key={index}
                     step={index + 1}
@@ -244,7 +355,7 @@ export default function CreateProjectDialog() {
                         </StepperTitle>
                       </div>
                     </StepperTrigger>
-                    {steps.length > index + 1 && (
+                    {STEPS.length > index + 1 && (
                       <StepperSeparator className="group-data-[state=completed]/step:bg-success absolute inset-x-0 start-9 top-4 m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none" />
                     )}
                   </StepperItem>
@@ -252,13 +363,13 @@ export default function CreateProjectDialog() {
               </StepperNav>
 
               <StepperPanel className="text-sm">
-                {steps.map((step, index) => (
+                {STEPS.map((step, index) => (
                   <StepperContent
                     key={index}
                     value={index + 1}
                     className="flex items-center justify-center"
                   >
-                    {step.content(formData, setFormData)}
+                    {renderStep(index + 1)}
                   </StepperContent>
                 ))}
               </StepperPanel>
@@ -275,13 +386,16 @@ export default function CreateProjectDialog() {
               >
                 Previous
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStep((prev) => prev + 1)}
-                disabled={currentStep === steps.length}
-              >
-                Next
-              </Button>
+              {currentStep === STEPS.length ? (
+                <Button variant="outline">Submit</Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep((prev) => prev + 1)}
+                >
+                  Next
+                </Button>
+              )}
             </div>
           </DialogFooter>
         </DialogContent>
