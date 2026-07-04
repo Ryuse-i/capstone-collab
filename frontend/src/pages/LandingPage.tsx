@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 // 1. Import Link from react-router-dom
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Menu, X } from "lucide-react";
+
 
 // ─── Types ───────────────────────────────────────────
 interface NavItem {
@@ -76,6 +77,15 @@ const FEATURES: Feature[] = [
     title: "Live Activity Monitoring",
     desc: "Real-time presence system. See who's Active, Idle, or Offline instantly.",
   },
+];
+
+const FEATURE_DELAYS = [
+  "delay-100",
+  "delay-200",
+  "delay-300",
+  "delay-400",
+  "delay-500",
+  "delay-600",
 ];
 
 const PRICING: PricingPlan[] = [
@@ -224,30 +234,48 @@ function Navbar() {
 }
 
 function HeroSection() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <section className="py-20 md:py-32 px-4 bg-white dark:bg-slate-950">
       <div className="max-w-4xl mx-auto text-center">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-          Manage team workload with
-          <span className="text-amber-700 dark:text-amber-400 block">
-            perfect visibility
-          </span>
-        </h1>
-        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+        <div
+          className={`${
+            mounted ? "animate-in fade-in slide-in-from-bottom-8 duration-700" : "opacity-0"
+          }`}
+        >
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+            Manage team workload with
+            <span className="text-amber-700 dark:text-amber-400 block">
+              perfect visibility
+            </span>
+          </h1>
+        </div>
+        <p
+          className={`text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto ${
+            mounted ? "animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200" : "opacity-0"
+          }`}
+        >
           Real-time health scoring, smart task redistribution, and contribution
           metrics. Everything you need to ship faster and more fairly.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" asChild>
-            <Link to="/register">Get started free</Link>
-          </Button>
-          <Button size="lg" variant="outline" asChild>
-            <a href="#features">Learn more</a>
-          </Button>
+        <div className={`opacity-0 animate-in fade-in slide-in-from-bottom-8 duration-500 delay-600 ${mounted ? "opacity-100" : ""}`}>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" asChild>
+              <Link to="/register">Get started free</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <a href="#features">Learn more</a>
+            </Button>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-6">
+            No credit card required · Free forever on Starter
+          </p>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-6">
-          No credit card required · Free forever on Starter
-        </p>
       </div>
     </section>
   );
@@ -271,10 +299,10 @@ function FeatureSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((feature) => (
+          {FEATURES.map((feature, index) => (
             <Card
               key={feature.title}
-              className="border-2 border-gray-200 dark:border-gray-700 hover:border-amber-600 hover:shadow-lg transition-all"
+              className="border-2 border-gray-200 dark:border-gray-700 hover:border-amber-600 hover:shadow-lg transition-all animate-in fade-in slide-in-from-bottom-6 duration-700 ${FEATURE_DELAYS[index]}`}"
             >
               <CardHeader>
                 <div className="text-4xl mb-3">{feature.icon}</div>
