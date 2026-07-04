@@ -155,7 +155,7 @@ function Navbar() {
               to="/"
               className="text-2xl font-bold text-amber-700 dark:text-amber-400"
             >
-              Nexus
+              PSU-COLLAB
             </Link>
           </div>
 
@@ -284,72 +284,6 @@ function FeatureSection() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {feature.desc}
                 </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PricingSection() {
-  return (
-    <section
-      id="pricing"
-      className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950"
-    >
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Simple, transparent pricing
-          </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            Start free. Scale when you're ready. No hidden fees.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {PRICING.map((plan) => (
-            <Card
-              key={plan.plan}
-              className={`flex flex-col transition-all ${
-                plan.featured
-                  ? "ring-2 ring-amber-600 md:scale-105 shadow-lg"
-                  : "border-gray-200 dark:border-gray-700"
-              }`}
-            >
-              <CardHeader>
-                <CardTitle>{plan.plan}</CardTitle>
-                <CardDescription>{plan.desc}</CardDescription>
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                  <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                    {plan.price}
-                  </span>
-                  {plan.price !== "$0" && (
-                    <span className="text-gray-600 dark:text-gray-400 ml-1">
-                      /month
-                    </span>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <ul className="space-y-3 mb-6 flex-1">
-                  {plan.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400"
-                    >
-                      <span className="text-green-500 mt-0.5 shrink-0">✓</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button className="w-full" asChild>
-                  <Link to="/register">
-                    {plan.featured ? "Get started" : "Choose plan"}
-                  </Link>
-                </Button>
               </CardContent>
             </Card>
           ))}
@@ -537,7 +471,7 @@ function Footer() {
           </div>
         </div>
         <div className="border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>&copy; 2026 Nexus. All rights reserved.</p>
+          <p>&copy; 2026 PSU-COLLAB. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -560,9 +494,6 @@ export default function LandingPage() {
 
         {/* Testimonials Section */}
         <TestimonialsSection />
-
-        {/* Pricing Section */}
-        <PricingSection />
 
         {/* CTA Section */}
         <CTASection />
