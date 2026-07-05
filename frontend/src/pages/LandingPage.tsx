@@ -79,14 +79,7 @@ const FEATURES: Feature[] = [
   },
 ];
 
-const FEATURE_DELAYS = [
-  "delay-100",
-  "delay-200",
-  "delay-300",
-  "delay-400",
-  "delay-500",
-  "delay-600",
-];
+
 
 const PRICING: PricingPlan[] = [
   {
@@ -234,20 +227,12 @@ function Navbar() {
 }
 
 function HeroSection() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   return (
     <section className="py-20 md:py-32 px-4 bg-white dark:bg-slate-950">
       <div className="max-w-4xl mx-auto text-center">
-        <div
-          className={`${
-            mounted ? "animate-in fade-in slide-in-from-bottom-8 duration-700" : "opacity-0"
-          }`}
-        >
+
+        {/* Title */}
+        <div className="animate-on-scroll">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             Manage team workload with
             <span className="text-amber-700 dark:text-amber-400 block">
@@ -255,15 +240,21 @@ function HeroSection() {
             </span>
           </h1>
         </div>
+
+        {/* Subtitle */}
         <p
-          className={`text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto ${
-            mounted ? "animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200" : "opacity-0"
-          }`}
+          className="animate-on-scroll text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto"
+          style={{ transitionDelay: "150ms" }}
         >
           Real-time health scoring, smart task redistribution, and contribution
           metrics. Everything you need to ship faster and more fairly.
         </p>
-        <div className={`opacity-0 animate-in fade-in slide-in-from-bottom-8 duration-500 delay-600 ${mounted ? "opacity-100" : ""}`}>
+
+        {/* Buttons */}
+        <div
+          className="animate-on-scroll"
+          style={{ transitionDelay: "300ms" }}
+        >
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild>
               <Link to="/register">Get started free</Link>
@@ -276,6 +267,7 @@ function HeroSection() {
             No credit card required · Free forever on Starter
           </p>
         </div>
+
       </div>
     </section>
   );
@@ -283,37 +275,36 @@ function HeroSection() {
 
 function FeatureSection() {
   return (
-    <section
-      id="features"
-      className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950"
-    >
+    <section id="features" className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
+
+        {/* Title fades up */}
+        <div className="text-center mb-12 animate-on-scroll">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Everything your team needs
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Built around the real complexity of managing teams — not just
-            tracking tasks.
+            Built around the real complexity of managing teams — not just tracking tasks.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {FEATURES.map((feature, index) => (
-            <Card
+            <div
               key={feature.title}
-              className="border-2 border-gray-200 dark:border-gray-700 hover:border-amber-600 hover:shadow-lg transition-all animate-in fade-in slide-in-from-bottom-6 duration-700 ${FEATURE_DELAYS[index]}`}"
+              className="animate-on-scroll"
+              style={{ transitionDelay: `${index * 100}ms` }}
             >
-              <CardHeader>
-                <div className="text-4xl mb-3">{feature.icon}</div>
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {feature.desc}
-                </p>
-              </CardContent>
-            </Card>
+              <Card className="border-2 border-gray-200 dark:border-gray-700 hover:border-amber-600 hover:shadow-lg transition-all h-full">
+                <CardHeader>
+                  <div className="text-4xl mb-3">{feature.icon}</div>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{feature.desc}</p>
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
       </div>
@@ -325,32 +316,37 @@ function TestimonialsSection() {
   return (
     <section className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
+
+        <div className="text-center mb-12 animate-on-scroll">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Trusted by teams
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            See what others are saying about Nexus
+            See what others are saying about PSU Collab
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((testimonial) => (
-            <Card key={testimonial.name}>
-              <CardHeader>
-                <p className="text-gray-600 dark:text-gray-400 italic mb-4 line-clamp-4">
-                  "{testimonial.text}"
-                </p>
-                <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {testimonial.name}
+          {TESTIMONIALS.map((testimonial, index) => (
+            <div
+              key={testimonial.name}
+              className="animate-on-scroll"
+              style={{ transitionDelay: `${index * 150}ms` }}
+            >
+              <Card className="h-full">
+                <CardHeader>
+                  <p className="text-gray-600 dark:text-gray-400 italic mb-4 line-clamp-4">
+                    "{testimonial.text}"
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {testimonial.role} at {testimonial.company}
-                  </p>
-                </div>
-              </CardHeader>
-            </Card>
+                  <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
+                    <p className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {testimonial.role} at {testimonial.company}
+                    </p>
+                  </div>
+                </CardHeader>
+              </Card>
+            </div>
           ))}
         </div>
       </div>
@@ -362,33 +358,20 @@ function CTASection() {
   return (
     <section
       className="py-16 md:py-24 px-4"
-      style={{
-        background:
-          "linear-gradient(135deg, rgb(112, 29, 11) 0%, rgb(62, 16, 7) 100%)",
-      }}
+      style={{ background: "linear-gradient(135deg, rgb(112, 29, 11) 0%, rgb(62, 16, 7) 100%)" }}
     >
-      <div className="max-w-4xl mx-auto text-center">
+      <div className="max-w-4xl mx-auto text-center animate-on-scroll">
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
           Ready to manage your team better?
         </h2>
         <p className="text-lg text-amber-100 mb-8 max-w-2xl mx-auto">
-          Join thousands of teams using Nexus to ship faster, more fairly, and
-          with full visibility.
+          Join thousands of teams using PSU Collab to ship faster, more fairly, and with full visibility.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            size="lg"
-            className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
-            asChild
-          >
+          <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" asChild>
             <Link to="/register">Get started free</Link>
           </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="text-white border-amber-300 hover:bg-white/10"
-            asChild
-          >
+          <Button size="lg" variant="outline" className="text-white border-amber-300 hover:bg-white/10" asChild>
             <a href="#features">Learn more</a>
           </Button>
         </div>
@@ -404,103 +387,47 @@ function Footer() {
   return (
     <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-950 py-12 px-4">
       <div className="max-w-6xl mx-auto">
+        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
-              Product
-            </h3>
+          
+          <div className="animate-on-scroll" style={{ transitionDelay: "0ms" }}>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Product</h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li>
-                <a
-                  href="#features"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  Features
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#pricing"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  Pricing
-                </a>
-              </li>
+              <li><a href="#features" className="hover:text-gray-900 dark:hover:text-white">Features</a></li>
+              <li><a href="#pricing" className="hover:text-gray-900 dark:hover:text-white">Pricing</a></li>
             </ul>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
-              Company
-            </h3>
+
+          <div className="animate-on-scroll" style={{ transitionDelay: "100ms" }}>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Company</h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  About
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  Blog
-                </a>
-              </li>
+              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">About</a></li>
+              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Blog</a></li>
             </ul>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
-              Legal
-            </h3>
+
+          <div className="animate-on-scroll" style={{ transitionDelay: "200ms" }}>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Legal</h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  Privacy
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  Terms
-                </a>
-              </li>
+              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Privacy</a></li>
+              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Terms</a></li>
             </ul>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
-              Connect
-            </h3>
+
+          <div className="animate-on-scroll" style={{ transitionDelay: "300ms" }}>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Connect</h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  Twitter
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-gray-900 dark:hover:text-white"
-                >
-                  GitHub
-                </a>
-              </li>
+              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Twitter</a></li>
+              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">GitHub</a></li>
             </ul>
           </div>
+
         </div>
-        <div className="border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+
+        <div className="animate-on-scroll border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm text-gray-600 dark:text-gray-400" style={{ transitionDelay: "400ms" }}>
           <p>&copy; 2026 PSU-COLLAB. All rights reserved.</p>
         </div>
+
       </div>
     </footer>
   );
@@ -508,26 +435,35 @@ function Footer() {
 
 // ─── Main Landing Page ────────────────────────────────
 export default function LandingPage() {
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    document
+      .querySelectorAll(".animate-on-scroll, .fade-left, .fade-right")
+      .forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
-      {/* Navbar */}
       <Navbar />
-
       <main>
-        {/* Hero Section */}
         <HeroSection />
-
-        {/* Features Section */}
         <FeatureSection />
-
-        {/* Testimonials Section */}
         <TestimonialsSection />
-
-        {/* CTA Section */}
         <CTASection />
       </main>
-
-      {/* Footer */}
       <Footer />
     </>
   );
