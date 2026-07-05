@@ -41,21 +41,21 @@ class Project(Base):
         uselist=False,  # Tells SQLAlchemy this is a single object, not a list []
         cascade="all, delete-orphan",
     )
-    
+
     tasks: Mapped[list["Task"]] = relationship(
         "Task",
         back_populates="project",
         cascade="all, delete-orphan",
         foreign_keys="Task.project_id",
     )
-    
+
     supertasks: Mapped[list["Supertask"]] = relationship(
         "Supertask",
         back_populates="project",
         cascade="all, delete-orphan",
         foreign_keys="Supertask.project_id",
     )
-    
+
     members: Mapped[list["ProjectMember"]] = relationship(
         "ProjectMember",
         back_populates="project",

@@ -3,10 +3,11 @@ from uuid import UUID, uuid4
 from decimal import Decimal
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import DateTime, ForeignKey, Numeric, UUID as PG_UUID, String
+from sqlalchemy import DateTime, ForeignKey, Numeric, UUID as PG_UUID
 import enum
 from sqlalchemy import Enum as SAEnum
 from typing import TYPE_CHECKING
+
 
 if TYPE_CHECKING:
     from app.modules.member_snapshots.model import MemberSnapshot

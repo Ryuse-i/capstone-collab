@@ -13,7 +13,14 @@ const dark =
     window.matchMedia("(prefers-color-scheme: dark)").matches);
 document.documentElement.classList.toggle("dark", dark);
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 min
+      retry: false,
+    },
+  },
+});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

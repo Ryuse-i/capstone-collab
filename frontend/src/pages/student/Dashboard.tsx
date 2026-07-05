@@ -15,8 +15,9 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+
+import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetUserProjectWithSnapshot } from "@/hooks/useProject";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,34 +95,34 @@ const recentActivities: RecentActivity[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// TODO: Replace with real hook (e.g. useProject / useDashboard) when ready
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function Dashboard() {
-  // 1. Get the logged-in user's ID
-  const { data: currentUser } = useCurrentUser();
-
-  // 2. Fetch the user's project + snapshot on mount (auto-runs when userId is ready)
+  const { data: user } = useCurrentUser();
   const {
-    data: projectWithSnapshot,
+    data: currentProject,
     isLoading,
     isError,
-  } = useGetUserProjectWithSnapshot(currentUser?.id ?? "");
+    error,
+  } = useGetCurrentProject(user?.id ?? "");
 
-  // Derive snapshot and project from the combined response
-  const project = projectWithSnapshot ?? null;
-  const snapshot = projectWithSnapshot?.snapshot ?? null;
+  if (isError) {
+    console.error("Dashboard project error", error);
+  }
 
-  // 3. Decide which view to show
-  const hasProject = !isLoading && !isError && !!project;
-
-  // Health + progress values come from snapshot when available, fall back to defaults
-  const healthScore = snapshot?.health_score ?? 0;
-  const healthStatus = snapshot?.health_status ?? "unknown";
-  const progressPercentage = snapshot?.progress_percentage ?? 0;
-  const completedTasks = snapshot?.progress_score ?? 0;
-  const totalWorkload = snapshot?.total_workload_points ?? 0;
-  const scheduleVariance = snapshot?.schedule_variance ?? 0;
+  const hasProject = currentProject;
+  const healthScore = currentProject?.snapshot.health_score ?? 0;
+  const healthStatus = currentProject?.snapshot.health_status ?? "healthy";
+  const scheduleVariance = currentProject?.snapshot.schedule_variance ?? 0;
+  const progressPercentage = currentProject?.snapshot.progress_percentage ?? 0;
+  const completedTasks = currentProject?.snapshot.completed_tasks ?? 0;
+  const totalWorkload = currentProject?.snapshot.total_workload_points ?? 0;
+  const expectedPercentage = currentProject?.snapshot.expected_percentage ?? 0;
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
@@ -175,7 +176,9 @@ export default function Dashboard() {
             {/* ── Project Progress ──────────────────────────────────── */}
             <Card className="bg-primary-foreground shadow-sm p-4 rounded-lg flex flex-col justify-evenly h-full">
               <div>
-                <h2 className="font-semibold text-gray-900">{project.name}</h2>
+                <h2 className="font-semibold text-gray-900">
+                  {currentProject.name}
+                </h2>
                 <p className="text-sm text-gray-500">
                   Overall completion tracking
                 </p>
@@ -191,7 +194,7 @@ export default function Dashboard() {
                     total
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-gray-200">
+                <div className="h-2 w-fullrounded-full bg-gray-200">
                   <div
                     className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}
@@ -203,7 +206,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500">EXPECTED SCORE:</span>
                   <span className="text-sm font-bold text-green-500">
-                    {snapshot?.expected_percentage ?? 0}%
+                    {expectedPercentage ?? 0}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

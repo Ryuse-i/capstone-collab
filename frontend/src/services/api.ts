@@ -1,5 +1,7 @@
 // src/services/api.ts
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+import apiClient from "./apiClient";
+import axios from "axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -170,6 +172,41 @@ export async function getMyProfile(): Promise<UserRead> {
     headers: authHeaders(),
   });
   return handleResponse<UserRead>(response);
+}
+
+export async function getUserByEmail(email: string): Promise<UserRead | null> {
+  try {
+    const response = await apiClient.get(`${API_BASE_URL}/user/${email}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    console.error("Failed to get user");
+    throw error;
+  }
+}
+
+export async function getUserByEmailAndRole(
+  email: string,
+  role: string,
+): Promise<UserRead[] | null> {
+  try {
+    const response = await apiClient.get(`${API_BASE_URL}/users/search_users`, {
+      params: {
+        email: email,
+        role: role,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      console.error("User does not exist");
+      return null;
+    }
+    console.error("Failed to get user", error);
+    throw error;
+  }
 }
 
 /**

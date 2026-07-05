@@ -10,10 +10,31 @@ from .schema import (
 )
 from .services import ProjectMemberService
 from uuid import UUID
+from typing import List
+from .schema import ProjectMemberResponse, ProjectMemberDetailResponse
 
 # TODO put invitations into another module
 
 project_member_router = APIRouter()
+
+# =====================================================================
+# 1. SPECIFIC / LITERAL PATHS FIRST
+# =====================================================================
+
+
+@project_member_router.get("/", response_model=List[ProjectMemberResponse])
+async def get_all_members(db: AsyncSession = Depends(get_async_session)):
+    return await ProjectMemberService.get_all_members(db)
+
+
+@project_member_router.get("/detail", response_model=List[ProjectMemberDetailResponse])
+async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
+    return await ProjectMemberService.get_all_members(db)
+
+
+# =====================================================================
+# 2. DYNAMIC / PARAMETERIZED PATHS LAST
+# =====================================================================
 
 
 @project_member_router.get("/{member_id}", response_model=ProjectMemberResponse)
