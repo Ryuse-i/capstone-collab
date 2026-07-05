@@ -584,16 +584,6 @@ export default function CreateProjectDialog() {
   const advisorSearch = useMemberSearch(advisorEmail, "advisor");
   const memberSearch = useMemberSearch(memberEmail, "student");
 
-  // Keep formData.members (ids only) derived from the members list, so
-  // adding/removing a member always pushes the correct ids into formData.
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      members: members.map((m) => m.id),
-    }));
-  }, [members]);
-
-
   // Required fields per step - drives the Next button's disabled state.
   const isStepValid = (step: number) => {
     switch (step) {
