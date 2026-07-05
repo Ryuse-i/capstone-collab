@@ -187,15 +187,18 @@ export async function getUserByEmail(email: string): Promise<UserRead | null> {
   }
 }
 
-export async function getUserByEmailAndRole(email: string, role: string): Promise<UserRead| null> {
+export async function getUserByEmailAndRole(
+  email: string,
+  role: string,
+): Promise<UserRead[] | null> {
   try {
-    const response = await apiClient.get(`${API_BASE_URL}/user/by_email_and_role`, {
+    const response = await apiClient.get(`${API_BASE_URL}/users/search_users`, {
       params: {
         email: email,
         role: role,
-      }
-    })
-    return response.data
+      },
+    });
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       console.error("User does not exist");

@@ -39,8 +39,9 @@ export function useGetUserByEmail(email: string) {
 
 export function useGetUserByEmailAndRole(email: string, role: string) {
   return useQuery({
-    queryKey: ["addMembers"],
+    queryKey: ["addMembers", email, role],
     queryFn: () => getUserByEmailAndRole(email, role),
+    enabled: email.length >= 3,
   });
 }
 

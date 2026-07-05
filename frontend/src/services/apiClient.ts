@@ -17,5 +17,4 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-console.log("API baseURL:", apiClient.defaults.baseURL);
 export default apiClient;

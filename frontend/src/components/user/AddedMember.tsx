@@ -1,8 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { UserRead } from "@/services/api";
 
-const email = "Kenson Benson";
 
-export default function AddedMember() {
+export default function AddedMember({user}: {user: UserRead}) {
   return (
     <div className="flex">
       {/* Avatar Profile */}
@@ -17,7 +17,7 @@ export default function AddedMember() {
         </Avatar>
       </div>
       {/* Email */}
-      <div className="">{email}</div>
+      <div className="">{user.email}</div>
     </div>
   );
 }

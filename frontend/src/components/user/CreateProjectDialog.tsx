@@ -1,13 +1,10 @@
-// ADD: Form for adding members and use popover to show if the user exist
-// Fix: Be sure the next button for the steps is disabled before all required fields have value
-import React, {
-  useState,
-  useEffect,
-  type Dispatch,
-} from "react";
+// Improve popover ui
+// fix member email being to formdata instead of ids
+import React, { useState, useEffect, useRef, type Dispatch } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -37,61 +34,102 @@ import {
   UserRoundPlus,
   FileSearchCorner,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+  CommandEmpty,
+} from "@/components/ui/command";
 import type { UserRead } from "@/services/api";
 import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
 
 interface Data {
   projectName: string;
   projectDescription: string;
-  admin: string;
   advisor: string;
   instructor: string;
-  members: string;
+  members: string[];
 }
 
-function emptyData() {
+interface Member {
+  id: string;
+  email: string;
+}
+
+function emptyData(): Data {
   return {
     projectName: "",
     projectDescription: "",
-    admin: "",
     advisor: "",
     instructor: "",
-    members: "",
+    members: [],
   };
 }
 
-// Add email to memberEmails(collection of all member emails)
-function addToMembers(
-  newEmail: string,
-  setMemberEmails: Dispatch<React.SetStateAction<string[]>>,
+function useDebounce<T>(value: T, timer: number): T {
+  const [debounceValue, setDebounceValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebounceValue(value);
+    }, timer);
+
+    return () => clearTimeout(timeoutId);
+  }, [value, timer]);
+
+  return debounceValue;
+}
+
+// Minimum characters before we bother searching at all.
+const MIN_SEARCH_LENGTH = 3;
+
+function useMemberSearch(email: string, role: string, debounceMs = 400) {
+  const debouncedEmail = useDebounce(email, debounceMs);
+  const { data, isFetching } = useGetUserByEmailAndRole(debouncedEmail, role);
+
+  return {
+    results: data ?? [],
+    // Only show "loading" once we've actually got enough characters to search.
+    isLoading: isFetching && debouncedEmail.trim().length >= MIN_SEARCH_LENGTH,
+    // Whether the *current* (non-debounced) input is long enough to search on.
+    isSearchable: email.trim().length >= MIN_SEARCH_LENGTH,
+  };
+}
+
+function addInstructorToFormData(
+  id: string,
+  formData: Data,
+  setFormData: Dispatch<React.SetStateAction<Data>>,
 ) {
-  setMemberEmails((memberEmails) => [...memberEmails, newEmail]); //copy yung previous na email then dagdag yung bago
+  setFormData({ ...formData, instructor: id });
 }
 
-//Remove the selected Member in the memberEmails array
-function removeMemberEmail(
-  emailToRemove: string,
-  setMemberEmails: Dispatch<React.SetStateAction<string[]>>,
+function removeInstructorInFormData(
+  formData: Data,
+  setFormData: Dispatch<React.SetStateAction<Data>>,
 ) {
-  setMemberEmails(
-    (memberEmails) => memberEmails.filter((email) => email !== emailToRemove), //filter data maliban sa tatangalin na email
-  );
+  setFormData({ ...formData, instructor: "" });
 }
 
-function addInstructorToFormData(id: string,formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
-  setFormData({...formData, instructor: id})
+function addAdvisorToFormData(
+  id: string,
+  formData: Data,
+  setFormData: Dispatch<React.SetStateAction<Data>>,
+) {
+  setFormData({ ...formData, advisor: id });
 }
 
-function removeInstructorInFormData(formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
-  setFormData({...formData, instructor: ""})
-}
-
-function addAdvisorToFormData(id: string,formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
-  setFormData({...formData, advisor: id})
-}
-
-function removeAdvisorInFormData(formData: Data, setFormData: Dispatch<React.SetStateAction<Data>>){
-  setFormData({...formData, advisor: ""})
+function removeAdvisorInFormData(
+  formData: Data,
+  setFormData: Dispatch<React.SetStateAction<Data>>,
+) {
+  setFormData({ ...formData, advisor: "" });
 }
 
 function ProjectDetails({
@@ -118,7 +156,7 @@ function ProjectDetails({
         />
       </Field>
       <Field>
-        <FieldLabel htmlFor="input-field-project-name">
+        <FieldLabel htmlFor="project-description">
           Project Description
         </FieldLabel>
         <Textarea
@@ -135,76 +173,336 @@ function ProjectDetails({
   );
 }
 
+/**
+ * Reusable search-and-select field. Handles opening the popover, showing a
+ * loading row while the debounced query is in flight, an empty-state row
+ * when nothing matches, and the list of results otherwise.
+ */
+function SearchSelectField({
+  id,
+  label,
+  optional,
+  placeholder,
+  email,
+  setEmail,
+  results,
+  isLoading,
+  isSearchable,
+  selectedValue,
+  onSelect,
+  onRemove,
+}: {
+  id: string;
+  label: string;
+  optional?: boolean;
+  placeholder: string;
+  email: string;
+  setEmail: Dispatch<React.SetStateAction<string>>;
+  results: UserRead[];
+  isLoading: boolean;
+  isSearchable: boolean;
+  selectedValue: string;
+  onSelect: (user: UserRead) => void;
+  onRemove: () => void;
+}) {
+  const [inputActive, setInputActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keep the popover open as soon as the user has typed enough to search,
+  // so the loading / empty states are visible, not just the results list.
+  const showPopover = inputActive && isSearchable;
+
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>
+        {label}
+        {optional && <span className="text-muted-foreground"> (Optional)</span>}
+      </FieldLabel>
+      {selectedValue ? (
+        <div className="flex items-center justify-between rounded-md border px-3 py-2">
+          <span>{selectedValue}</span>
+          <button type="button" onClick={onRemove}>
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : (
+        <Popover open={showPopover}>
+          <PopoverAnchor asChild>
+            <Input
+              ref={inputRef}
+              id={id}
+              type="text"
+              placeholder={placeholder}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onFocus={() => setInputActive(true)}
+              onBlur={() => setInputActive(false)}
+              size={90}
+            />
+          </PopoverAnchor>
+          <PopoverContent
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            className="w-[--radix-popover-trigger-width] p-0"
+          >
+            <Command shouldFilter={false}>
+              <CommandList>
+                {isLoading ? (
+                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                    <LoaderCircleIcon className="size-3.5 animate-spin" />
+                    Searching...
+                  </div>
+                ) : results.length === 0 ? (
+                  <CommandEmpty className="px-3 py-2 text-sm text-muted-foreground">
+                    No user found
+                  </CommandEmpty>
+                ) : (
+                  <CommandGroup>
+                    {results.map((user) => (
+                      <CommandItem
+                        key={user.id}
+                        value={user.email}
+                        // onMouseDown fires before the input's onBlur, so the
+                        // selection registers before the popover closes.
+                        onMouseDown={(e) => e.preventDefault()}
+                        onSelect={() => {
+                          onSelect(user);
+                          setInputActive(false);
+                        }}
+                      >
+                        {user.email}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+    </Field>
+  );
+}
+
+/**
+ * Multi-select variant of SearchSelectField for Members. Keeps id + email
+ * paired together in a single `Member[]` so formData.members (ids) can never
+ * drift out of sync with what's rendered as chips (emails).
+ */
+function MemberSearchField({
+  members,
+  setMembers,
+  memberEmail,
+  setMemberEmail,
+  memberSearch,
+}: {
+  members: Member[];
+  setMembers: Dispatch<React.SetStateAction<Member[]>>;
+  memberEmail: string;
+  setMemberEmail: Dispatch<React.SetStateAction<string>>;
+  memberSearch: ReturnType<typeof useMemberSearch>;
+}) {
+  const [inputActive, setInputActive] = useState(false);
+
+  const showPopover = inputActive && memberSearch.isSearchable;
+
+  // Don't show someone in the Members results who's already been added.
+  const availableMemberResults = memberSearch.results.filter(
+    (user) => !members.some((m) => m.email === user.email),
+  );
+
+  const addMember = (user: UserRead) => {
+    setMembers((prev) => [...prev, { id: user.id, email: user.email }]);
+    setMemberEmail("");
+    setInputActive(false);
+  };
+
+  const removeMember = (email: string) => {
+    setMembers((prev) => prev.filter((m) => m.email !== email));
+  };
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="members">Members</FieldLabel>
+      <Popover open={showPopover}>
+        <PopoverAnchor asChild>
+          <Input
+            id="members"
+            type="text"
+            placeholder="eg. member@gmail.com"
+            value={memberEmail}
+            onChange={(e) => setMemberEmail(e.target.value)}
+            onFocus={() => setInputActive(true)}
+            onBlur={() => setInputActive(false)}
+            size={90}
+          />
+        </PopoverAnchor>
+        <PopoverContent
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="w-[--radix-popover-trigger-width] p-0"
+        >
+          <Command shouldFilter={false}>
+            <CommandList>
+              {memberSearch.isLoading ? (
+                <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                  <LoaderCircleIcon className="size-3.5 animate-spin" />
+                  Searching...
+                </div>
+              ) : availableMemberResults.length === 0 ? (
+                <CommandEmpty className="px-3 py-2 text-sm text-muted-foreground">
+                  No user found
+                </CommandEmpty>
+              ) : (
+                <CommandGroup>
+                  {availableMemberResults.map((user) => (
+                    <CommandItem
+                      key={user.id}
+                      value={user.email}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onSelect={() => addMember(user)}
+                    >
+                      {user.email}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      {members.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-2">
+          {members.map((member) => (
+            <div
+              key={member.id}
+              className="flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
+            >
+              <span>{member.email}</span>
+              <button
+                type="button"
+                // Prevent the members input's onBlur from firing/re-rendering
+                // before the click registers (same race the popover items
+                // guard against below).
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => removeMember(member.email)}
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Field>
+  );
+}
+
 function AddMember({
   instructorEmail,
   setInstructorEmail,
+  instructorLabel,
+  setInstructorLabel,
+  advisorLabel,
+  setAdvisorLabel,
   advisorEmail,
   setAdvisorEmail,
   memberEmail,
   setMemberEmail,
+  members,
+  setMembers,
+  formData,
+  setFormData,
+  instructorSearch,
+  advisorSearch,
+  memberSearch,
 }: {
   instructorEmail: string;
   setInstructorEmail: Dispatch<React.SetStateAction<string>>;
+  instructorLabel: string;
+  setInstructorLabel: Dispatch<React.SetStateAction<string>>;
+  advisorLabel: string;
+  setAdvisorLabel: Dispatch<React.SetStateAction<string>>;
   advisorEmail: string;
   setAdvisorEmail: Dispatch<React.SetStateAction<string>>;
   memberEmail: string;
   setMemberEmail: Dispatch<React.SetStateAction<string>>;
-  memberEmails: string[];
-  setMemberEmails: Dispatch<React.SetStateAction<string[]>>;
+  members: Member[];
+  setMembers: Dispatch<React.SetStateAction<Member[]>>;
+  formData: Data;
+  setFormData: Dispatch<React.SetStateAction<Data>>;
+  instructorSearch: ReturnType<typeof useMemberSearch>;
+  advisorSearch: ReturnType<typeof useMemberSearch>;
+  memberSearch: ReturnType<typeof useMemberSearch>;
 }) {
   return (
     <div className="w-full flex flex-col gap-2">
-      <Field>
-        <FieldLabel htmlFor="instructor">
-          Instructor <span className="text-muted-foreground">(Optional)</span>
-        </FieldLabel>
-        <Input
-          id="Instructor"
-          type="text"
-          placeholder="eg. Capstone Collab"
-          value={instructorEmail}
-          onChange={(e) => setInstructorEmail(e.target.value)}
-          size={90}
-        />
-      </Field>
-      <Field>
-        <FieldLabel htmlFor="advisor">
-          Adivisor <span className="text-muted-foreground">(Optional)</span>
-        </FieldLabel>
-        <Input
-          id="advisor"
-          type="text"
-          placeholder="eg. Capstone Collab"
-          value={advisorEmail}
-          onChange={(e) => setAdvisorEmail(e.target.value)}
-          size={90}
-        />
-      </Field>
-      <Field>
-        <FieldLabel htmlFor="members">Members</FieldLabel>
-        <Input
-          id="members"
-          type="text"
-          placeholder="eg. Capstone Collab"
-          value={memberEmail}
-          onChange={(e) => setMemberEmail(e.target.value)}
-          size={90}
-        />
-      </Field>
+      <SearchSelectField
+        id="instructor"
+        label="Instructor"
+        placeholder="eg. instructor@gmail.com"
+        email={instructorEmail}
+        setEmail={setInstructorEmail}
+        results={instructorSearch.results}
+        isLoading={instructorSearch.isLoading}
+        isSearchable={instructorSearch.isSearchable}
+        selectedValue={instructorLabel}
+        onSelect={(user) => {
+          addInstructorToFormData(user.id, formData, setFormData);
+          setInstructorEmail("");
+          setInstructorLabel(user.email);
+        }}
+        onRemove={() => {
+          removeInstructorInFormData(formData, setFormData);
+          setInstructorEmail("");
+          setInstructorLabel("");
+        }}
+      />
+
+      <SearchSelectField
+        id="advisor"
+        label="Advisor"
+        optional
+        placeholder="eg. advisor@gmail.com"
+        email={advisorEmail}
+        setEmail={setAdvisorEmail}
+        results={advisorSearch.results}
+        isLoading={advisorSearch.isLoading}
+        isSearchable={advisorSearch.isSearchable}
+        selectedValue={advisorLabel}
+        onSelect={(user) => {
+          addAdvisorToFormData(user.id, formData, setFormData);
+          setAdvisorEmail("");
+          setAdvisorLabel(user.email);
+        }}
+        onRemove={() => {
+          removeAdvisorInFormData(formData, setFormData);
+          setAdvisorEmail("");
+          setAdvisorLabel("");
+        }}
+      />
+
+      <MemberSearchField
+        members={members}
+        setMembers={setMembers}
+        memberEmail={memberEmail}
+        setMemberEmail={setMemberEmail}
+        memberSearch={memberSearch}
+      />
     </div>
   );
 }
 
 function ReviewProjectDetails({
   formData,
-  advisorEmail,
-  instructorEmail,
-  memberEmails,
+  members,
+  instructorLabel,
+  advisorLabel,
 }: {
   formData: Data;
-  advisorEmail: string;
-  instructorEmail: string;
-  memberEmails: string[];
+  members: Member[];
+  instructorLabel: string;
+  advisorLabel: string;
 }) {
   return (
     <div className="w-full flex flex-col gap-2">
@@ -236,15 +534,17 @@ function ReviewProjectDetails({
           <div className="flex flex-col mx-5">
             <div className="flex gap-1">
               <h3>Instructor:</h3>
-              <div className="text-gray-400">{instructorEmail}</div>
+              <div className="text-gray-400">{instructorLabel}</div>
             </div>
             <div className="flex gap-1">
               <h3>Advisor:</h3>
-              <div className="text-gray-400">{advisorEmail}</div>
+              <div className="text-gray-400">{advisorLabel}</div>
             </div>
             <div className="flex gap-1">
               <h3>Members:</h3>
-              <div className="text-gray-400">{memberEmails}</div>
+              <div className="text-gray-400">
+                {members.map((m) => m.email).join(", ")}
+              </div>
             </div>
           </div>
         </div>
@@ -269,15 +569,48 @@ const STEPS = [
 ];
 
 export default function CreateProjectDialog() {
-  // Changed initial state to 1 to match step={index + 1}
-  const [currentStep, setCurrentStep] = useState(1);
-  // Form data project creation
-  const [formData, setFormData] = useState(emptyData());
   const [advisorEmail, setAdvisorEmail] = useState<string>("");
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState(emptyData());
   const [instructorEmail, setInstructorEmail] = useState<string>("");
+  const [instructorLabel, setInstructorLabel] = useState<string>("");
+  const [advisorLabel, setAdvisorLabel] = useState<string>("");
+  // Single source of truth for members: id + email kept together so
+  // formData.members (ids) can never fall out of sync with the chips (emails).
+  const [members, setMembers] = useState<Member[]>([]);
   const [memberEmail, setMemberEmail] = useState<string>("");
-  const [memberEmails, setMemberEmails] = useState<string[]>([]);
-  const [foundMembers, setFoundMembers] = useState<UserRead[]>([]);
+
+  const instructorSearch = useMemberSearch(instructorEmail, "instructor");
+  const advisorSearch = useMemberSearch(advisorEmail, "advisor");
+  const memberSearch = useMemberSearch(memberEmail, "student");
+
+  // Keep formData.members (ids only) derived from the members list, so
+  // adding/removing a member always pushes the correct ids into formData.
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      members: members.map((m) => m.id),
+    }));
+  }, [members]);
+
+  useEffect(() => {
+    window.debugValue = formData;
+  }, [formData]);
+
+  // Required fields per step - drives the Next button's disabled state.
+  const isStepValid = (step: number) => {
+    switch (step) {
+      case 1:
+        return (
+          formData.projectName.trim().length > 0 &&
+          formData.projectDescription.trim().length > 0
+        );
+      case 2:
+        return formData.instructor.trim().length > 0;
+      default:
+        return true;
+    }
+  };
 
   const renderStep = (step: number) => {
     switch (step) {
@@ -289,21 +622,30 @@ export default function CreateProjectDialog() {
           <AddMember
             instructorEmail={instructorEmail}
             setInstructorEmail={setInstructorEmail}
+            instructorLabel={instructorLabel}
+            setInstructorLabel={setInstructorLabel}
+            advisorLabel={advisorLabel}
+            setAdvisorLabel={setAdvisorLabel}
             advisorEmail={advisorEmail}
             setAdvisorEmail={setAdvisorEmail}
             memberEmail={memberEmail}
             setMemberEmail={setMemberEmail}
-            memberEmails={memberEmails}
-            setMemberEmails={setMemberEmails}
+            members={members}
+            setMembers={setMembers}
+            formData={formData}
+            setFormData={setFormData}
+            instructorSearch={instructorSearch}
+            advisorSearch={advisorSearch}
+            memberSearch={memberSearch}
           />
         );
       case 3:
         return (
           <ReviewProjectDetails
             formData={formData}
-            instructorEmail={instructorEmail}
-            advisorEmail={advisorEmail}
-            memberEmails={memberEmails}
+            members={members}
+            instructorLabel={instructorLabel}
+            advisorLabel={advisorLabel}
           />
         );
     }
@@ -392,6 +734,7 @@ export default function CreateProjectDialog() {
                 <Button
                   variant="outline"
                   onClick={() => setCurrentStep((prev) => prev + 1)}
+                  disabled={!isStepValid(currentStep)}
                 >
                   Next
                 </Button>

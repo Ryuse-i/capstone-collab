@@ -17,7 +17,6 @@ const api = {
     id: string,
   ): Promise<ProjectWithSnapshot | null> => {
     try {
-      console.log(`${url}/user/${id}/with-snapshot`);
       const response = await apiClient.get(`${url}/user/${id}/with-snapshot`);
       return response.data;
     } catch (error) {
