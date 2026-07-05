@@ -521,7 +521,7 @@ function ReviewProjectDetails({
               <div className="flex gap-3">
                 <h3 className="text-gray-400 border">Project description:</h3>
                 <div className="border max-w-xl">
-                  <p className="break-words whitespace-pre-wrap">
+                  <p className="break-word whitespace-pre-wrap">
                     {formData.projectDescription}
                   </p>
                 </div>
@@ -593,9 +593,6 @@ export default function CreateProjectDialog() {
     }));
   }, [members]);
 
-  useEffect(() => {
-    window.debugValue = formData;
-  }, [formData]);
 
   // Required fields per step - drives the Next button's disabled state.
   const isStepValid = (step: number) => {
@@ -657,7 +654,7 @@ export default function CreateProjectDialog() {
         <DialogTrigger asChild>
           <Button variant="outline">Create +</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-250 max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create your new project</DialogTitle>
             <DialogDescription>
@@ -698,14 +695,14 @@ export default function CreateProjectDialog() {
                       </div>
                     </StepperTrigger>
                     {STEPS.length > index + 1 && (
-                      <StepperSeparator className="group-data-[state=completed]/step:bg-success absolute inset-x-0 start-9 top-4 m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none" />
+                      <StepperSeparator className="group-data-[state=completed]/step:bg-success absolute inset-x-0 inset-s-9 top-4 m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none" />
                     )}
                   </StepperItem>
                 ))}
               </StepperNav>
 
               <StepperPanel className="text-sm">
-                {STEPS.map((step, index) => (
+                {STEPS.map((_step, index) => (
                   <StepperContent
                     key={index}
                     value={index + 1}
