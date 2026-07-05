@@ -80,7 +80,7 @@ export default function CapstoneSearch() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
+        <h1 className="text-2xl font-semibold flex items-center gap-2 dark:text-foreground">
           ✦ Capstone Semantic Search
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -149,7 +149,7 @@ export default function CapstoneSearch() {
             <div key={i} className="bg-card border border-border rounded-lg p-4 flex flex-col gap-2">
               <div className="flex items-start gap-2">
                 <BookOpen className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                <h3 className="font-semibold text-gray-900">{result.title}</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-card-foreground">{result.title}</h3>
               </div>
               <p className="text-sm text-muted-foreground pl-7">{result.description}</p>
               <div className="flex flex-wrap gap-2 pl-7">

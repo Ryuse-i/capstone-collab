@@ -98,27 +98,27 @@ export default function Workload() {
     <AppLayout
       breadcrumbs={[{ label: "Workload", href: "/workload" }]}
     >
-      <p className="text-[#000000] pt-2">
+      <p className="text-(--text-h) dark:text-card-foreground pt-2">
         Track and optimize task distribution across team members
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Warning Banner */}
-        <Card className="bg-yellow-50 border shadow-sm border-yellow-200 p-4 rounded-lg lg:col-span-2 flex items-start justify-between">
+        <Card className="bg-yellow-50 dark:bg-card dark:border-4 dark:border-yellow-500 p-4 rounded-lg lg:col-span-2 flex items-start justify-between">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <TriangleAlert className="h-5 w-5 text-yellow-500" />
-              <h2 className="font-semibold text-gray-900">
+              <h2 className="font-semibold text-gray-900 dark:text-yellow-500">
                 Mild Workload Imbalance Detected
               </h2>
             </div>
-            <p className="text-sm text-gray-500">{projectHealth.warningMessage}</p>
-            <p className="text-sm text-gray-600">Suggestions</p>
+            <p className="text-sm text-gray-500 dark:text-card-foreground">{projectHealth.warningMessage}</p>
+            <p className="text-sm text-gray-600 dark:text-card-foreground">Suggestions</p>
             <div className="flex gap-2 flex-wrap">
               {projectHealth.suggestions.map((s) => (
                 <span
                   key={s}
-                  className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600"
+                  className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 dark:text-card-foreground"
                 >
                   {s}
                 </span>
@@ -132,13 +132,13 @@ export default function Workload() {
           {workloadStats.map((stat, index) => (
             <Card key={index} className="shadow-sm border rounded-xl">
               <CardContent className="p-5 flex flex-col gap-3">
-                <p className="text-xs tracking-wide text-gray-500 font-medium">
+                <p className="text-xs tracking-wide text-card-foreground font-medium">
                   {stat.title}
                 </p>
-                <h2 className={`text-3xl font-bold ${stat.valueColor}`}>
+                <h2 className={`text-3xl text-card-foreground font-bold ${stat.valueColor}`}>
                   {stat.value}
                 </h2>
-                <p className="text-xs text-gray-400">{stat.description}</p>
+                <p className="text-xs text-card-foreground">{stat.description}</p>
               </CardContent>
             </Card>
           ))}
@@ -156,8 +156,8 @@ export default function Workload() {
               return (
                 <div key={member.name} className="flex flex-col gap-1">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-700 font-medium">{member.name}</span>
-                    <span className={`text-xs font-semibold ${isOver ? "text-red-500" : "text-gray-500"}`}>
+                    <span className="text-card-foreground font-medium">{member.name}</span>
+                    <span className={`text-xs font-semibold ${isOver ? "text-red-500" : "text-card-foreground"}`}>
                       {member.pts}/{member.max} pts
                     </span>
                   </div>
@@ -199,7 +199,7 @@ export default function Workload() {
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                 />
                 <Legend
-                  formatter={(value) => <span className="text-xs text-gray-600">{value}</span>}
+                  formatter={(value) => <span className="text-xs text-card-foreground">{value}</span>}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -209,7 +209,7 @@ export default function Workload() {
                   <span className="text-2xl font-bold" style={{ color: d.color }}>
                     {d.count}
                   </span>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-card-foreground">
                     {d.name.replace(" Complexity", "")}
                   </span>
                 </div>
@@ -230,11 +230,11 @@ export default function Workload() {
                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${item.priorityColor}`}>
                     {item.priority}
                   </span>
-                  <span className="text-xs border border-gray-300 rounded px-2 py-0.5 text-gray-600">
+                  <span className="text-xs border border-gray-300 rounded px-2 py-0.5 text-card-foreground">
                     {item.type}
                   </span>
                 </div>
-                <p className="text-sm text-gray-800">
+                <p className="text-sm text-card-foreground">
                   {item.description}{" "}
                   <span className="font-semibold">{item.from}</span>{" "}
                   <ArrowRight className="inline h-3 w-3 text-gray-400" />{" "}

@@ -167,7 +167,7 @@ export default function Task() {
                 </span>
               </div>
               <p
-                className={`text-3xl font-bold ${stat.valueColor ?? "text-gray-900"}`}
+                className={`text-3xl font-bold ${stat.valueColor ?? "text-gray-900 dark:text-gray-100"}`}
               >
                 {stat.value}
               </p>
@@ -247,7 +247,9 @@ export default function Task() {
               ) : (
                 filteredTasks.map((task, i) => (
                   <TableRow key={i}>
-                    <TableCell className="text-gray-800">{task.name}</TableCell>
+                    <TableCell className="text-gray-800 dark:text-gray-200 font-medium">{
+                      task.name
+                    }</TableCell>
                     <TableCell>
                       <Badge className={`${statusStyle[task.status]} border-0`}>
                         {task.status}
@@ -265,7 +267,7 @@ export default function Task() {
                         {task.assigned.map((a, j) => (
                           <div
                             key={j}
-                            className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold ring-2 ring-white"
+                            className="h-8 w-8 rounded-full bg-primary dark:bg-gray-800 dark:border dark:ring-gray-600 text-primary-foreground dark:text-foreground flex items-center justify-center text-xs font-bold ring-1 ring-white"
                           >
                             {a}
                           </div>
