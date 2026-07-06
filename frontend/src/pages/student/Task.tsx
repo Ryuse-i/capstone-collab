@@ -150,10 +150,12 @@ export default function Task() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Task", href: "/task" }]}>
-      {/* +New Task button */}
-      <div className="flex justify-end">
-        <Button>+ New Task</Button>
-      </div>
+     
+     
+      <h1 className="text-2xl font-bold text-foreground mb-2">
+        Distribute and manage tasks
+      </h1>
+     
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -179,7 +181,8 @@ export default function Task() {
         ))}
       </div>
 
-      {/* Filter tabs */}
+    
+      
       <div className="flex gap-2 flex-wrap">
         {filterTabs.map((f) => (
           <Button

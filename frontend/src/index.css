@@ -23,7 +23,8 @@
  
   /* Shadcn tokens */
   --background: #f1f1f1;
-  --foreground: #000000 --card: oklch(1 0 0);
+  --foreground: #000000;
+  --card: oklch(1 0 0);
   --card-foreground: oklch(0.15 0.02 20);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
@@ -48,7 +49,7 @@
   --sidebar-foreground: oklch(100% 0.00011 271.152);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklab(81.895% -0.01802 0.16644);
+  --sidebar-accent: #e4c208;
   --sidebar-accent-foreground: oklch(100% 0.00011 271.152);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
@@ -113,7 +114,7 @@
   --sidebar-foreground: oklch(100% 0.00011 271.152);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: #8d7f35;
+  --sidebar-accent: #e4c208;
   --sidebar-accent-foreground: oklch(100% 0.00011 271.152);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
