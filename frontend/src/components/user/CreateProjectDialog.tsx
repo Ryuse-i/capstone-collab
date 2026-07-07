@@ -46,15 +46,17 @@ import {
   CommandList,
   CommandEmpty,
 } from "@/components/ui/command";
-import type { UserRead } from "@/services/api";
 import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useCreateProject } from "@/hooks/useProject";
+import type { UserRead } from "@/services/api";
 
 interface Data {
-  projectName: string;
-  projectDescription: string;
+  name: string;
+  description: string;
+  created_by: string;
   advisor: string;
   instructor: string;
-  members: string[];
 }
 
 interface Member {
@@ -64,11 +66,11 @@ interface Member {
 
 function emptyData(): Data {
   return {
-    projectName: "",
-    projectDescription: "",
+    name: "",
+    description: "",
+    created_by: "",
     advisor: "",
     instructor: "",
-    members: [],
   };
 }
 
@@ -149,10 +151,8 @@ function ProjectDetails({
           placeholder="eg. Capstone Collab"
           size={90}
           required
-          value={formData.projectName}
-          onChange={(e) =>
-            setFormData({ ...formData, projectName: e.target.value })
-          }
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         />
       </Field>
       <Field>
@@ -162,9 +162,9 @@ function ProjectDetails({
         <Textarea
           id="project-description"
           placeholder="eg. A project Management for PSU Lubao"
-          value={formData.projectDescription}
+          value={formData.description}
           onChange={(e) =>
-            setFormData({ ...formData, projectDescription: e.target.value })
+            setFormData({ ...formData, description: e.target.value })
           }
           required
         />
@@ -516,13 +516,13 @@ function ReviewProjectDetails({
             <div className="mx-5">
               <h3 className="text-gray-400">
                 Project name:
-                <span className="mx-2 text-white">{formData.projectName}</span>
+                <span className="mx-2 text-white">{formData.name}</span>
               </h3>
               <div className="flex gap-3">
                 <h3 className="text-gray-400 border">Project description:</h3>
                 <div className="border max-w-xl">
                   <p className="break-word whitespace-pre-wrap">
-                    {formData.projectDescription}
+                    {formData.description}
                   </p>
                 </div>
               </div>
@@ -584,23 +584,39 @@ export default function CreateProjectDialog() {
   const advisorSearch = useMemberSearch(advisorEmail, "advisor");
   const memberSearch = useMemberSearch(memberEmail, "student");
 
-  // Keep formData.members (ids only) derived from the members list, so
-  // adding/removing a member always pushes the correct ids into formData.
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      members: members.map((m) => m.id),
-    }));
-  }, [members]);
+  const { data: user } = useCurrentUser();
+  const { mutate, isPending } = useCreateProject();
 
+  function handleSubmit() {
+    if (user) {
+      setFormData({ ...formData, created_by: user.id });
+    }
+
+    mutate(formData, {
+      onSuccess: (newProject) => {
+        console.log("Project Created: ", newProject);
+      },
+      onError: (error) => {
+        console.error("Failed to create project", error);
+      },
+    });
+  }
+
+  useEffect(() => {
+    console.log("Current Formdata: ", formData);
+  }, [formData]);
+
+  useEffect(() => {
+    console.log("members: ", members);
+  }, [members]);
 
   // Required fields per step - drives the Next button's disabled state.
   const isStepValid = (step: number) => {
     switch (step) {
       case 1:
         return (
-          formData.projectName.trim().length > 0 &&
-          formData.projectDescription.trim().length > 0
+          formData.name.trim().length > 0 &&
+          formData.description.trim().length > 0
         );
       case 2:
         return formData.instructor.trim().length > 0;
@@ -726,7 +742,13 @@ export default function CreateProjectDialog() {
                 Previous
               </Button>
               {currentStep === STEPS.length ? (
-                <Button variant="outline">Submit</Button>
+                <Button
+                  variant="outline"
+                  onClick={handleSubmit}
+                  disabled={isPending}
+                >
+                  {isPending ? "Submitting..." : "Submit"}
+                </Button>
               ) : (
                 <Button
                   variant="outline"
