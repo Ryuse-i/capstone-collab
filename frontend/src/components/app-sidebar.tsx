@@ -84,9 +84,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 href="/dashboard"
                 className="flex items-center gap-2 overflow-hidden"
               >
-                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <img src={psuLogo} alt="PSU Logo" className="size-8 object-contain" />
-                  
+                 <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
+                  <img
+                    src={psuLogo}
+                    alt="PSU Logo"
+                    className="size-8 object-cover rounded-full"
+                  />
                 </div>
                 <span className="font-medium truncate group-data-[collapsible=icon]:hidden">
                   PSU Collab

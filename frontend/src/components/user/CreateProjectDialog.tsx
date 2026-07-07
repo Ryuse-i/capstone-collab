@@ -642,7 +642,8 @@ export default function CreateProjectDialog() {
     <div className="flex justify-center items-center w-full">
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="outline">Create +</Button>
+          <Button variant="outline"
+          className="dark:hover:bg-muted">Create +</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-250 max-h-[90vh] flex flex-col">
           <DialogHeader>
