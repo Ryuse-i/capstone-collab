@@ -49,6 +49,7 @@ import {
 import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useCreateProject } from "@/hooks/useProject";
+import { useCreateMember } from "@/hooks/useProjectMember";
 import type { UserRead } from "@/services/api";
 
 interface Data {
@@ -585,14 +586,16 @@ export default function CreateProjectDialog() {
   const memberSearch = useMemberSearch(memberEmail, "student");
 
   const { data: user } = useCurrentUser();
-  const { mutate, isPending } = useCreateProject();
+  const { mutate: projectMutate, isProjectPending } = useCreateProject();
+  const {mutate: memberMutate, isMemberPending} = useCreateMember();
+
 
   function handleSubmit() {
     if (user) {
       setFormData({ ...formData, created_by: user.id });
     }
 
-    mutate(formData, {
+    projectMutate(formData, {
       onSuccess: (newProject) => {
         console.log("Project Created: ", newProject);
       },
@@ -600,6 +603,11 @@ export default function CreateProjectDialog() {
         console.error("Failed to create project", error);
       },
     });
+
+    members.forEach(member => {
+      
+    });
+    
   }
 
   useEffect(() => {
@@ -745,9 +753,9 @@ export default function CreateProjectDialog() {
                 <Button
                   variant="outline"
                   onClick={handleSubmit}
-                  disabled={isPending}
+                  disabled={isProjectPending}
                 >
-                  {isPending ? "Submitting..." : "Submit"}
+                  {isProjectPending? "Submitting..." : "Submit"}
                 </Button>
               ) : (
                 <Button
