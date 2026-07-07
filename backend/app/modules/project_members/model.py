@@ -19,7 +19,6 @@ class ProjectRole(str, enum.Enum):
     ADMIN = "admin"
     LEADER = "leader"
     MEMBER = "member"
-    NONE = "none"
 
 
 class ProjectMember(Base):
@@ -46,7 +45,7 @@ class ProjectMember(Base):
 
     project_role: Mapped[ProjectRole] = mapped_column(
         SAEnum(ProjectRole, name="projectrole"),  # named enum + correct type
-        default=ProjectRole.NONE,
+        default=ProjectRole.MEMBER,
         nullable=True,
     )
     workload_points: Mapped[Decimal] = mapped_column(

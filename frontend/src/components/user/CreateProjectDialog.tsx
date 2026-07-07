@@ -51,6 +51,8 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useCreateProject } from "@/hooks/useProject";
 import { useCreateMember } from "@/hooks/useProjectMember";
 import type { UserRead } from "@/services/api";
+import type { CreateProjectMember } from "@/types/project_member";
+import type { ProjectResponse, ProjectBase } from "@/types/project";
 
 interface Data {
   name: string;
@@ -586,28 +588,37 @@ export default function CreateProjectDialog() {
   const memberSearch = useMemberSearch(memberEmail, "student");
 
   const { data: user } = useCurrentUser();
-  const { mutate: projectMutate, isProjectPending } = useCreateProject();
-  const {mutate: memberMutate, isMemberPending} = useCreateMember();
-
+  const { mutate: projectMutate, isPending: isProjectPending } =
+    useCreateProject();
+  const { mutate: memberMutate, isPending: isMemberPending } =
+    useCreateMember();
 
   function handleSubmit() {
-    if (user) {
-      setFormData({ ...formData, created_by: user.id });
-    }
+    const payload = user ? { ...formData, created_by: user.id } : formData;
 
-    projectMutate(formData, {
-      onSuccess: (newProject) => {
-        console.log("Project Created: ", newProject);
+    projectMutate(payload, {
+      onSuccess: (newProject: ProjectResponse) => {
+        console.log("project created: ", newProject);
+        members.forEach((member) => {
+          const addMember: CreateProjectMember = {
+            user_id: member.id,
+            project_id: newProject.id,
+            project_role: "member",
+          };
+          memberMutate(addMember, {
+            onSuccess: (newMember) => {
+              console.log("Added member: ", newMember);
+            },
+            onError: (error) => {
+              console.error("Failed to add member: ", error);
+            },
+          });
+        }); // closes forEach(...)
       },
       onError: (error) => {
-        console.error("Failed to create project", error);
+        console.error("failed to create project", error);
       },
     });
-
-    members.forEach(member => {
-      
-    });
-    
   }
 
   useEffect(() => {
@@ -755,7 +766,7 @@ export default function CreateProjectDialog() {
                   onClick={handleSubmit}
                   disabled={isProjectPending}
                 >
-                  {isProjectPending? "Submitting..." : "Submit"}
+                  {isProjectPending ? "Submitting..." : "Submit"}
                 </Button>
               ) : (
                 <Button
