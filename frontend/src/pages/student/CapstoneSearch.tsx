@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Search, BookOpen, TrendingUp, Users } from "lucide-react";
 
 const categories = [
-  "All Categorist",
+  "All Categories",
   "Artificial Intelligence",
   "Deep Learning",
   "Blockchain",
@@ -29,28 +29,37 @@ const examples = [
 const results = [
   {
     title: "AI-Based Early Detection of Diabetes Using Machine Learning",
-    description: "Developing a machine learning model to predict diabetes onset using patient health data and lifestyle factors.",
-    tags: ["Artificial Intelligence", "Machine Learning", "Healthcare", "Predictive Analysis"],
+    description:
+      "Developing a machine learning model to predict diabetes onset using patient health data and lifestyle factors.",
+    tags: [
+      "Artificial Intelligence",
+      "Machine Learning",
+      "Healthcare",
+      "Predictive Analysis",
+    ],
     year: "2025",
     authors: "Sarah Johnson, Michael Chen",
   },
   {
     title: "Blockchain-Based Supply Chain Transparency System",
-    description: "A decentralized system for tracking and verifying supply chain transactions using blockchain technology.",
+    description:
+      "A decentralized system for tracking and verifying supply chain transactions using blockchain technology.",
     tags: ["Blockchain", "Supply Chain", "Decentralized"],
     year: "2025",
     authors: "Mark Rivera, Anna Cruz",
   },
   {
     title: "Natural Language Processing for Sentiment Analysis in Social Media",
-    description: "Using NLP techniques to analyze public sentiment from social media posts in real time.",
+    description:
+      "Using NLP techniques to analyze public sentiment from social media posts in real time.",
     tags: ["Natural Language Processing", "Sentiment Analysis", "Social Media"],
     year: "2024",
     authors: "Luis Reyes, Carla Mendes",
   },
   {
     title: "Computer Vision for Autonomous Vehicle Navigation",
-    description: "Implementing object detection and lane recognition for self-driving car systems.",
+    description:
+      "Implementing object detection and lane recognition for self-driving car systems.",
     tags: ["Computer Vision", "Autonomous", "Deep Learning"],
     year: "2024",
     authors: "James Park, Elena Gomez",
@@ -76,32 +85,38 @@ export default function CapstoneSearch() {
   });
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Capstone Search", href: "/capstone-search" }]}>
-
+    <AppLayout
+      breadcrumbs={[{ label: "Capstone Search", href: "/capstone-search" }]}
+    >
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold flex items-center gap-2 dark:text-foreground">
           ✦ Capstone Semantic Search
         </h1>
         <p className="text-sm text-muted-foreground">
-          Intelligent, meaning-based searching of capstone project titles using semantic similarity
+          Intelligent, meaning-based searching of capstone project titles using
+          semantic similarity
         </p>
       </div>
 
-      {/* Search input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Enter search query eg.( 'machine learning for disease prediction' )"
-          className="pl-9"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      {/* Search input - sticky, stays within content area */}
+      <div className="sticky top-12 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 py-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Enter search query eg.( 'machine learning for disease prediction' )"
+            className="pl-9"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Example queries */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">Try these examples</span>
+        <span className="text-sm text-muted-foreground">
+          Try these examples
+        </span>
         {examples.map((ex) => (
           <button
             key={ex}
@@ -146,12 +161,19 @@ export default function CapstoneSearch() {
           </div>
         ) : (
           filteredResults.map((result, i) => (
-            <div key={i} className="bg-card border border-border rounded-lg p-4 flex flex-col gap-2">
+            <div
+              key={i}
+              className="bg-card border border-border rounded-lg p-4 flex flex-col gap-2"
+            >
               <div className="flex items-start gap-2">
                 <BookOpen className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                <h3 className="font-semibold text-gray-900 dark:text-card-foreground">{result.title}</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-card-foreground">
+                  {result.title}
+                </h3>
               </div>
-              <p className="text-sm text-muted-foreground pl-7">{result.description}</p>
+              <p className="text-sm text-muted-foreground pl-7">
+                {result.description}
+              </p>
               <div className="flex flex-wrap gap-2 pl-7">
                 {result.tags.map((tag) => (
                   <Badge key={tag} variant="outline" className="text-xs">
@@ -169,7 +191,6 @@ export default function CapstoneSearch() {
           ))
         )}
       </div>
-
     </AppLayout>
   );
 }
