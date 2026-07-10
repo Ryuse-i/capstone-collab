@@ -100,7 +100,7 @@ export default function CapstoneSearch() {
       </div>
 
       {/* Search input - sticky, stays within content area */}
-      <div className="sticky top-12 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 py-3">
+      <div className="sticky top-1 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input

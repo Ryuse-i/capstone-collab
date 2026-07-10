@@ -25,6 +25,7 @@ import { useCurrentUser } from "@/hooks/useAuth";
 
 type ChartDataPoint = { month: string; desktop: number };
 type ActivityColor = "bg-green-500" | "bg-yellow-500" | "bg-red-500";
+type TextColor = "text-green-500" | "text-yellow-500" | "text-red-500";
 type RecentActivity = {
   id: number;
   user: string;
@@ -32,6 +33,7 @@ type RecentActivity = {
   task: string;
   time: string;
   color: ActivityColor;
+  text: TextColor; // Optional text color for the action
 };
 
 // ---------------------------------------------------------------------------
@@ -59,6 +61,7 @@ const recentActivities: RecentActivity[] = [
     task: "Database Migration Design",
     time: "5m ago",
     color: "bg-green-500",
+    text: "text-green-500"
   },
   {
     id: 2,
@@ -67,6 +70,7 @@ const recentActivities: RecentActivity[] = [
     task: "Dashboard UI",
     time: "1d ago",
     color: "bg-yellow-500",
+    text: "text-yellow-500",
   },
   {
     id: 3,
@@ -75,6 +79,7 @@ const recentActivities: RecentActivity[] = [
     task: "Website Wireframe",
     time: "2d ago",
     color: "bg-red-500",
+    text: "text-red-500",
   },
   {
     id: 4,
@@ -83,6 +88,7 @@ const recentActivities: RecentActivity[] = [
     task: "Research on Chapter 1",
     time: "4d ago",
     color: "bg-green-500",
+    text: "text-green-500",
   },
   {
     id: 5,
@@ -91,6 +97,7 @@ const recentActivities: RecentActivity[] = [
     task: "Questionnaire Items",
     time: "5d ago",
     color: "bg-yellow-500",
+    text: "text-yellow-500",
   },
 ];
 
@@ -115,14 +122,16 @@ export default function Dashboard() {
     console.error("Dashboard project error", error);
   }
 
-  const hasProject = currentProject;
-  const healthScore = currentProject?.snapshot.health_score ?? 0;
-  const healthStatus = currentProject?.snapshot.health_status ?? "healthy";
-  const scheduleVariance = currentProject?.snapshot.schedule_variance ?? 0;
-  const progressPercentage = currentProject?.snapshot.progress_percentage ?? 0;
-  const completedTasks = currentProject?.snapshot.completed_tasks ?? 0;
-  const totalWorkload = currentProject?.snapshot.total_workload_points ?? 0;
-  const expectedPercentage = currentProject?.snapshot.expected_percentage ?? 0;
+  const hasProject = Boolean(currentProject);
+
+  const healthScore = currentProject?.snapshot?.health_score ?? 0;
+  const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
+  const scheduleVariance = currentProject?.snapshot?.schedule_variance ?? 0;
+  const isAtRisk = scheduleVariance < 0 || healthStatus !== "healthy";
+  const progressPercentage = currentProject?.snapshot?.progress_percentage ?? 0;
+  const completedTasks = currentProject?.snapshot?.completed_tasks ?? 0;
+  const totalWorkload = currentProject?.snapshot?.total_workload_points ?? 0;
+  const expectedPercentage = currentProject?.snapshot?.expected_percentage ?? 0;
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
@@ -139,62 +148,90 @@ export default function Dashboard() {
       ) : (
         // Active project → show analytics
         <div>
-          <p className="text-[#000000] pt-2">
+          <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground mb-2">
             Overview of project health and team performance
-          </p>
+          </h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* ── Project Health Banner ─────────────────────────────── */}
-            <Card className="bg-yellow-50 border shadow-sm border-yellow-200 p-4 rounded-lg lg:col-span-2 flex items-start justify-between">
+            <Card
+              className={`border-4 p-4 rounded-lg lg:col-span-2 flex items-start justify-between ${
+                isAtRisk
+                  ? "border-red-500 dark:border-red-500"
+                  : "border-yellow-500 dark:border-yellow-500"
+              }`}
+            >
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <TriangleAlert className="h-5 w-5 text-yellow-500" />
-                  <h2 className="font-semibold text-gray-900">
-                    Project Health
+                  <TriangleAlert
+                    className={`h-5 w-5 ${isAtRisk ? "text-red-500" : "text-yellow-500"}`}
+                  />
+                  <h2
+                    className={`font-semibold ${
+                      isAtRisk
+                        ? "text-red-700 dark:text-red-500"
+                        : "text-gray-900 dark:text-yellow-500"
+                    }`}
+                  >
+                    {isAtRisk
+                      ? "Project Health Alert"
+                      : "Project Health On Track"}
                   </h2>
                 </div>
-                <p className="text-sm text-gray-500">
-                  {scheduleVariance < 0
+                <p className="text-sm text-gray-500 dark:text-card-foreground">
+                  {isAtRisk
                     ? "Some tasks are approaching deadlines. Monitor workload distribution."
                     : "Project is on track. Keep up the great work!"}
                 </p>
-                <p className="text-sm text-gray-600">Status</p>
-                <div className="flex gap-2">
-                  <span className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 capitalize">
+                <p className="text-sm text-gray-600 dark:text-card-foreground">
+                  Status
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs capitalize ${
+                      isAtRisk
+                        ? "border-red-600 text-red-600"
+                        : "border-gray-300 text-gray-600 dark:text-card-foreground"
+                    }`}
+                  >
                     {healthStatus}
                   </span>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-gray-900 dark:text-card-foreground">
                   {Number(healthScore).toFixed(0)}%
                 </p>
-                <p className="text-sm text-gray-500">Project health</p>
+                <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
+                  Project health
+                </p>
               </div>
             </Card>
 
             {/* ── Project Progress ──────────────────────────────────── */}
             <Card className="bg-primary-foreground shadow-sm p-4 rounded-lg flex flex-col justify-evenly h-full">
               <div>
-                <h2 className="font-semibold text-gray-900">
-                  {currentProject.name}
+                <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
+                  {currentProject?.name}
                 </h2>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
                   Overall completion tracking
                 </p>
               </div>
 
               <div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700 font-medium">
+                  <span className="text-gray-700 font-medium dark:text-card-foreground">
                     {progressPercentage}%
                   </span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-500 dark:text-card-foreground">
                     {Number(completedTasks).toFixed(0)} pts / {totalWorkload}{" "}
                     total
                   </span>
                 </div>
-                <div className="h-2 w-fullrounded-full bg-gray-200">
+                {/* FIX: was "w-fullrounded-full" (missing space), an invalid
+                    Tailwind class that silently did nothing */}
+                <div className="h-2 w-full rounded-full bg-gray-200">
                   <div
                     className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}
@@ -204,13 +241,13 @@ export default function Dashboard() {
 
               <div className="flex flex-col gap-1 pt-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">EXPECTED SCORE:</span>
+                  <span className="text-sm text-gray-500 dark:text-card-foreground">EXPECTED SCORE:</span>
                   <span className="text-sm font-bold text-green-500">
                     {expectedPercentage ?? 0}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-card-foreground">
                     SCHEDULE VARIANCE:
                   </span>
                   <span
@@ -267,10 +304,10 @@ export default function Dashboard() {
             <Card className="bg-primary-foreground p-6 rounded-2xl lg:col-span-2 shadow-sm border">
               <div className="flex items-center justify-between mb-1">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-card-foreground">
                     Recent Activity
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
                     Latest team updates and progress
                   </p>
                 </div>
@@ -284,19 +321,21 @@ export default function Dashboard() {
                 {recentActivities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-start justify-between border-b border-gray-100 pb-4 last:border-none hover:bg-gray-50 rounded-lg px-2 py-2 transition"
+                    className="flex items-start justify-between border-b border-gray-100 pb-4 last:border-none hover:bg-gray-200 dark:hover:bg-[#303233] rounded-lg px-2 py-2 transition"
                   >
                     <div className="flex items-start gap-4">
                       <div
                         className={`mt-2 h-3 w-3 rounded-full ${activity.color}`}
                       />
                       <div>
-                        <p className="text-sm text-gray-700">
-                          <span className="font-semibold text-gray-900">
+                        <p className="text-sm text-gray-700 dark:text-(--semi-foreground)">
+                          <span className="font-semibold text-gray-900 dark:text-card-foreground">
                             {activity.user}
                           </span>{" "}
-                          {activity.action}{" "}
-                          <span className="font-medium text-black">
+                          <span className={`${activity.text} font-semibold`}>
+                            {activity.action}
+                          </span>{" "}
+                          <span className="font-medium text-black dark:text-card-foreground">
                             {activity.task}
                           </span>
                         </p>

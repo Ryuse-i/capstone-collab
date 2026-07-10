@@ -144,7 +144,7 @@ export default function Workload() {
                   key={s}
                   className={`rounded-full border px-3 py-1 text-xs dark:text-card-foreground ${
                     isBad
-                      ? "border-red-300 text-red-600"
+                      ? "border-red-600 text-red-600"
                       : "border-gray-300 text-gray-600"
                   }`}
                 >
