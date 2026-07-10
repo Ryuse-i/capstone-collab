@@ -386,7 +386,6 @@ function AddMember({
   setMemberEmail,
   members,
   setMembers,
-  formData,
   setFormData,
   instructorSearch,
   advisorSearch,

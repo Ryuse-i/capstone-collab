@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from .schema import ProjectSnapshotCreate, ProjectSnapshotUpdate
 from .repo import ProjectSnapshotRepo
+from uuid import UUID
 
 
 class ProjectSnapshotService:
@@ -11,8 +12,13 @@ class ProjectSnapshotService:
 
     @staticmethod
     async def create_snapshot(
-        db: AsyncSession, project_snapshot: ProjectSnapshotCreate
+        db: AsyncSession,
+        project_id: UUID,
+        project_snapshot: ProjectSnapshotCreate | None = None,
     ):
+        if project_snapshot is None:
+            project_snapshot = ProjectSnapshotCreate(project_id=project_id)
+
         repo = ProjectSnapshotRepo(db)
         return await repo.create(project_snapshot)
 

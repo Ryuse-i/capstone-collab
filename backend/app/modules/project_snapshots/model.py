@@ -1,11 +1,11 @@
 from decimal import Decimal
-from sqlalchemy import ForeignKey, Numeric, DateTime
+from sqlalchemy import ForeignKey, Numeric, Date
 from app.core.db import Base
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from uuid import UUID
 from sqlalchemy import UUID as PG_UUID
 from sqlalchemy import Enum as SAENUM
-from datetime import datetime, timezone
+from datetime import  date
 from typing import TYPE_CHECKING
 import enum
 
@@ -53,14 +53,8 @@ class ProjectSnapshot(Base):
     # Inverse relationship pointing back to Project
     project: Mapped["Project"] = relationship("Project", back_populates="snapshot")
 
-    created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=True,
+    snapshot_date: Mapped[date] = mapped_column(
+        Date, 
+        default=date.today()
     )
-    updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=True,
-    )
+
