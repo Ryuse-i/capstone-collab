@@ -52,14 +52,14 @@ import { useCreateProject } from "@/hooks/useProject";
 import { useCreateMember } from "@/hooks/useProjectMember";
 import type { UserRead } from "@/services/api";
 import type { CreateProjectMember } from "@/types/project_member";
-import type { ProjectResponse, ProjectBase } from "@/types/project";
+import type { ProjectResponse } from "@/types/project";
 
 interface Data {
   name: string;
   description: string;
   created_by: string;
-  advisor: string;
-  instructor: string;
+  instructor_id: string;
+  advisor_id: string;
 }
 
 interface Member {
@@ -72,8 +72,8 @@ function emptyData(): Data {
     name: "",
     description: "",
     created_by: "",
-    advisor: "",
-    instructor: "",
+    instructor_id: "",
+    advisor_id: "",
   };
 }
 
@@ -105,36 +105,6 @@ function useMemberSearch(email: string, role: string, debounceMs = 400) {
     // Whether the *current* (non-debounced) input is long enough to search on.
     isSearchable: email.trim().length >= MIN_SEARCH_LENGTH,
   };
-}
-
-function addInstructorToFormData(
-  id: string,
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, instructor: id });
-}
-
-function removeInstructorInFormData(
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, instructor: "" });
-}
-
-function addAdvisorToFormData(
-  id: string,
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, advisor: id });
-}
-
-function removeAdvisorInFormData(
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, advisor: "" });
 }
 
 function ProjectDetails({
@@ -289,8 +259,8 @@ function SearchSelectField({
 
 /**
  * Multi-select variant of SearchSelectField for Members. Keeps id + email
- * paired together in a single `Member[]` so formData.members (ids) can never
- * drift out of sync with what's rendered as chips (emails).
+ * paired together in a single `Member[]` so the members payload (ids) can
+ * never drift out of sync with what's rendered as chips (emails).
  */
 function MemberSearchField({
   members,
@@ -326,7 +296,9 @@ function MemberSearchField({
 
   return (
     <Field>
-      <FieldLabel htmlFor="members">Members</FieldLabel>
+      <FieldLabel htmlFor="members">
+        Members <span className="text-muted-foreground"> (Optional)</span>
+      </FieldLabel>
       <Popover open={showPopover}>
         <PopoverAnchor asChild>
           <Input
@@ -443,6 +415,7 @@ function AddMember({
       <SearchSelectField
         id="instructor"
         label="Instructor"
+        optional
         placeholder="eg. instructor@gmail.com"
         email={instructorEmail}
         setEmail={setInstructorEmail}
@@ -451,12 +424,12 @@ function AddMember({
         isSearchable={instructorSearch.isSearchable}
         selectedValue={instructorLabel}
         onSelect={(user) => {
-          addInstructorToFormData(user.id, formData, setFormData);
+          setFormData((prev) => ({ ...prev, instructor_id: user.id }));
           setInstructorEmail("");
           setInstructorLabel(user.email);
         }}
         onRemove={() => {
-          removeInstructorInFormData(formData, setFormData);
+          setFormData((prev) => ({ ...prev, instructor_id: "" }));
           setInstructorEmail("");
           setInstructorLabel("");
         }}
@@ -474,12 +447,12 @@ function AddMember({
         isSearchable={advisorSearch.isSearchable}
         selectedValue={advisorLabel}
         onSelect={(user) => {
-          addAdvisorToFormData(user.id, formData, setFormData);
+          setFormData((prev) => ({ ...prev, advisor_id: user.id }));
           setAdvisorEmail("");
           setAdvisorLabel(user.email);
         }}
         onRemove={() => {
-          removeAdvisorInFormData(formData, setFormData);
+          setFormData((prev) => ({ ...prev, advisor_id: "" }));
           setAdvisorEmail("");
           setAdvisorLabel("");
         }}
@@ -579,13 +552,15 @@ export default function CreateProjectDialog() {
   const [instructorLabel, setInstructorLabel] = useState<string>("");
   const [advisorLabel, setAdvisorLabel] = useState<string>("");
   // Single source of truth for members: id + email kept together so
-  // formData.members (ids) can never fall out of sync with the chips (emails).
+  // the members payload (ids) can never fall out of sync with the chips
+  // (emails).
   const [members, setMembers] = useState<Member[]>([]);
   const [memberEmail, setMemberEmail] = useState<string>("");
 
   const instructorSearch = useMemberSearch(instructorEmail, "instructor");
   const advisorSearch = useMemberSearch(advisorEmail, "advisor");
   const memberSearch = useMemberSearch(memberEmail, "student");
+  const [open, setOpen] = useState(false);
 
   const { data: user } = useCurrentUser();
   const { mutate: projectMutate, isPending: isProjectPending } =
@@ -593,27 +568,86 @@ export default function CreateProjectDialog() {
   const { mutate: memberMutate, isPending: isMemberPending } =
     useCreateMember();
 
+  function resetForm() {
+    setFormData(emptyData());
+    setMembers([]);
+    setMemberEmail("");
+    setInstructorEmail("");
+    setInstructorLabel("");
+    setAdvisorEmail("");
+    setAdvisorLabel("");
+    setCurrentStep(1);
+  }
+
   function handleSubmit() {
-    const payload = user ? { ...formData, created_by: user.id } : formData;
+    const payload = {
+      ...(user && { created_by: user.id }),
+      ...formData,
+    };
 
     projectMutate(payload, {
       onSuccess: (newProject: ProjectResponse) => {
         console.log("project created: ", newProject);
-        members.forEach((member) => {
-          const addMember: CreateProjectMember = {
-            user_id: member.id,
-            project_id: newProject.id,
-            project_role: "member",
-          };
-          memberMutate(addMember, {
-            onSuccess: (newMember) => {
-              console.log("Added member: ", newMember);
-            },
-            onError: (error) => {
-              console.error("Failed to add member: ", error);
-            },
+
+        const roleAssignments: CreateProjectMember[] = [
+          ...(user
+            ? [
+                {
+                  user_id: user.id,
+                  project_id: newProject.id,
+                  project_role: "leader",
+                } as CreateProjectMember,
+              ]
+            : []),
+          ...(formData.advisor_id
+            ? [
+                {
+                  user_id: formData.advisor_id,
+                  project_id: newProject.id,
+                  project_role: "advisor",
+                } as CreateProjectMember,
+              ]
+            : []),
+          ...(formData.instructor_id
+            ? [
+                {
+                  user_id: formData.instructor_id,
+                  project_id: newProject.id,
+                  project_role: "instructor",
+                } as CreateProjectMember,
+              ]
+            : []),
+          ...members.map(
+            (member): CreateProjectMember => ({
+              user_id: member.id,
+              project_id: newProject.id,
+              project_role: "member",
+            }),
+          ),
+        ];
+
+        const memberPromises = roleAssignments.map((assignment) => {
+          return new Promise<void>((resolve) => {
+            memberMutate(assignment, {
+              onSuccess: (newMember) => {
+                console.log(`Added ${assignment.project_role}: `, newMember);
+                resolve();
+              },
+              onError: (error) => {
+                console.error(
+                  `Failed to add ${assignment.project_role}: `,
+                  error,
+                );
+                resolve();
+              },
+            });
           });
-        }); // closes forEach(...)
+        });
+
+        Promise.allSettled(memberPromises).then(() => {
+          setOpen(false);
+          resetForm();
+        });
       },
       onError: (error) => {
         console.error("failed to create project", error);
@@ -637,8 +671,6 @@ export default function CreateProjectDialog() {
           formData.name.trim().length > 0 &&
           formData.description.trim().length > 0
         );
-      case 2:
-        return formData.instructor.trim().length > 0;
       default:
         return true;
     }
@@ -685,7 +717,7 @@ export default function CreateProjectDialog() {
 
   return (
     <div className="flex justify-center items-center w-full">
-      <Dialog>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">Create +</Button>
         </DialogTrigger>
@@ -764,9 +796,11 @@ export default function CreateProjectDialog() {
                 <Button
                   variant="outline"
                   onClick={handleSubmit}
-                  disabled={isProjectPending}
+                  disabled={isProjectPending || isMemberPending}
                 >
-                  {isProjectPending ? "Submitting..." : "Submit"}
+                  {isProjectPending || isMemberPending
+                    ? "Submitting..."
+                    : "Submit"}
                 </Button>
               ) : (
                 <Button

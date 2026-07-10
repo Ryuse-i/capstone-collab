@@ -115,14 +115,15 @@ export default function Dashboard() {
     console.error("Dashboard project error", error);
   }
 
-  const hasProject = currentProject;
-  const healthScore = currentProject?.snapshot.health_score ?? 0;
-  const healthStatus = currentProject?.snapshot.health_status ?? "healthy";
-  const scheduleVariance = currentProject?.snapshot.schedule_variance ?? 0;
-  const progressPercentage = currentProject?.snapshot.progress_percentage ?? 0;
-  const completedTasks = currentProject?.snapshot.completed_tasks ?? 0;
-  const totalWorkload = currentProject?.snapshot.total_workload_points ?? 0;
-  const expectedPercentage = currentProject?.snapshot.expected_percentage ?? 0;
+  const hasProject = Boolean(currentProject);
+
+  const healthScore = currentProject?.snapshot?.health_score ?? 0;
+  const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
+  const scheduleVariance = currentProject?.snapshot?.schedule_variance ?? 0;
+  const progressPercentage = currentProject?.snapshot?.progress_percentage ?? 0;
+  const completedTasks = currentProject?.snapshot?.completed_tasks ?? 0;
+  const totalWorkload = currentProject?.snapshot?.total_workload_points ?? 0;
+  const expectedPercentage = currentProject?.snapshot?.expected_percentage ?? 0;
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
@@ -177,7 +178,7 @@ export default function Dashboard() {
             <Card className="bg-primary-foreground shadow-sm p-4 rounded-lg flex flex-col justify-evenly h-full">
               <div>
                 <h2 className="font-semibold text-gray-900">
-                  {currentProject.name}
+                  {currentProject?.name}
                 </h2>
                 <p className="text-sm text-gray-500">
                   Overall completion tracking
@@ -194,7 +195,9 @@ export default function Dashboard() {
                     total
                   </span>
                 </div>
-                <div className="h-2 w-fullrounded-full bg-gray-200">
+                {/* FIX: was "w-fullrounded-full" (missing space), an invalid
+                    Tailwind class that silently did nothing */}
+                <div className="h-2 w-full rounded-full bg-gray-200">
                   <div
                     className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}

@@ -1,4 +1,4 @@
-export type ProjectRole = "advisor" | "leader" | "member";
+export type ProjectRole = "advisor" | "instructor" | "leader" | "member";
 
 export interface MemberBase {
   user_id: string;
