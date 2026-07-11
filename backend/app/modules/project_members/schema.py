@@ -6,6 +6,7 @@ from app.modules.projects.schema import ProjectResponse
 from app.modules.users.schema import UserResponse
 from .model import ProjectRole
 
+
 class ProjectMemberCreate(BaseModel):
     id: UUID
     user_id: UUID

@@ -5,7 +5,7 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 from uuid import UUID
 from sqlalchemy import UUID as PG_UUID
 from sqlalchemy import Enum as SAENUM
-from datetime import  date
+from datetime import date
 from typing import TYPE_CHECKING
 import enum
 
@@ -54,7 +54,6 @@ class ProjectSnapshot(Base):
     project: Mapped["Project"] = relationship("Project", back_populates="snapshot")
 
     snapshot_date: Mapped[date] = mapped_column(
-        Date, 
+        Date,
         default=date.today()
     )
-

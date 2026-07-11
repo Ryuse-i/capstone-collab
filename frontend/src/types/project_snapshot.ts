@@ -19,10 +19,9 @@ export interface ProjectSnapshotBase {
 
 export interface ProjectSnapshotResponse extends ProjectSnapshotBase {
   id: string;
-  created_at: string; // datetime
-  updated_at: string; // datetime
+  snapshot_date: string;
 }
 
-export type CreateProjectSnapshot = ProjectSnapshotBase
+export type CreateProjectSnapshot = ProjectSnapshotBase;
 
-export type UpdateProjectSnapshot = Partial<ProjectSnapshotBase>
+export type UpdateProjectSnapshot = Partial<ProjectSnapshotBase>;

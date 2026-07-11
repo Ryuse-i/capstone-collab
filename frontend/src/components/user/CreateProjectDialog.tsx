@@ -57,9 +57,9 @@ import type { ProjectResponse } from "@/types/project";
 interface Data {
   name: string;
   description: string;
+  instructor: string;
+  advisor: string;
   created_by: string;
-  instructor_id: string;
-  advisor_id: string;
 }
 
 interface Member {
@@ -71,9 +71,9 @@ function emptyData(): Data {
   return {
     name: "",
     description: "",
+    instructor: "",
+    advisor: "",
     created_by: "",
-    instructor_id: "",
-    advisor_id: "",
   };
 }
 
@@ -423,12 +423,12 @@ function AddMember({
         isSearchable={instructorSearch.isSearchable}
         selectedValue={instructorLabel}
         onSelect={(user) => {
-          setFormData((prev) => ({ ...prev, instructor_id: user.id }));
+          setFormData((prev) => ({ ...prev, instructor: user.id }));
           setInstructorEmail("");
           setInstructorLabel(user.email);
         }}
         onRemove={() => {
-          setFormData((prev) => ({ ...prev, instructor_id: "" }));
+          setFormData((prev) => ({ ...prev, instructor: "" }));
           setInstructorEmail("");
           setInstructorLabel("");
         }}
@@ -446,12 +446,12 @@ function AddMember({
         isSearchable={advisorSearch.isSearchable}
         selectedValue={advisorLabel}
         onSelect={(user) => {
-          setFormData((prev) => ({ ...prev, advisor_id: user.id }));
+          setFormData((prev) => ({ ...prev, advisor: user.id }));
           setAdvisorEmail("");
           setAdvisorLabel(user.email);
         }}
         onRemove={() => {
-          setFormData((prev) => ({ ...prev, advisor_id: "" }));
+          setFormData((prev) => ({ ...prev, advisor: "" }));
           setAdvisorEmail("");
           setAdvisorLabel("");
         }}
@@ -479,6 +479,11 @@ function ReviewProjectDetails({
   instructorLabel: string;
   advisorLabel: string;
 }) {
+  const hasInstructor = instructorLabel.trim().length > 0;
+  const hasAdvisor = advisorLabel.trim().length > 0;
+  const hasMembers = members.length > 0;
+  const hasAnyMembers = hasInstructor || hasAdvisor || hasMembers;
+
   return (
     <div className="w-full flex flex-col gap-2">
       <h2 className="text-gray-500">
@@ -491,7 +496,7 @@ function ReviewProjectDetails({
             <div className="mx-5">
               <h3 className="text-gray-400">
                 Project name:
-                <span className="mx-2 text-white">{formData.name}</span>
+                <span className="mx-2 text-black">{formData.name}</span>
               </h3>
               <div className="flex gap-3">
                 <h3 className="text-gray-400 border">Project description:</h3>
@@ -507,20 +512,32 @@ function ReviewProjectDetails({
         <div>
           <h2>Members</h2>
           <div className="flex flex-col mx-5">
-            <div className="flex gap-1">
-              <h3>Instructor:</h3>
-              <div className="text-gray-400">{instructorLabel}</div>
-            </div>
-            <div className="flex gap-1">
-              <h3>Advisor:</h3>
-              <div className="text-gray-400">{advisorLabel}</div>
-            </div>
-            <div className="flex gap-1">
-              <h3>Members:</h3>
-              <div className="text-gray-400">
-                {members.map((m) => m.email).join(", ")}
-              </div>
-            </div>
+            {hasAnyMembers ? (
+              <>
+                {hasInstructor && (
+                  <div className="flex gap-1">
+                    <h3>Instructor:</h3>
+                    <div className="text-gray-400">{instructorLabel}</div>
+                  </div>
+                )}
+                {hasAdvisor && (
+                  <div className="flex gap-1">
+                    <h3>Advisor:</h3>
+                    <div className="text-gray-400">{advisorLabel}</div>
+                  </div>
+                )}
+                {hasMembers && (
+                  <div className="flex gap-1">
+                    <h3>Members:</h3>
+                    <div className="text-gray-400">
+                      {members.map((m) => m.email).join(", ")}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-gray-400">No members added</div>
+            )}
           </div>
         </div>
       </div>
@@ -580,9 +597,10 @@ export default function CreateProjectDialog() {
 
   function handleSubmit() {
     const payload = {
-      ...(user && { created_by: user.id }),
       ...formData,
+      ...(user && { created_by: user.id }),
     };
+    console.log(user);
 
     projectMutate(payload, {
       onSuccess: (newProject: ProjectResponse) => {
@@ -598,19 +616,19 @@ export default function CreateProjectDialog() {
                 } as CreateProjectMember,
               ]
             : []),
-          ...(formData.advisor_id
+          ...(formData.advisor
             ? [
                 {
-                  user_id: formData.advisor_id,
+                  user_id: formData.advisor,
                   project_id: newProject.id,
                   project_role: "advisor",
                 } as CreateProjectMember,
               ]
             : []),
-          ...(formData.instructor_id
+          ...(formData.instructor
             ? [
                 {
-                  user_id: formData.instructor_id,
+                  user_id: formData.instructor,
                   project_id: newProject.id,
                   project_role: "instructor",
                 } as CreateProjectMember,

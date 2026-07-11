@@ -8,7 +8,6 @@ from app.modules.projects.schema import (
     ProjectResponseSnapshot,
 )
 from app.modules.projects.services import ProjectService
-from app.modules.project_snapshots.services import ProjectSnapshotService
 from uuid import UUID
 from typing import List
 
@@ -40,8 +39,7 @@ async def create_project(
     project: ProjectCreate, db: AsyncSession = Depends(get_async_session)
 ):
 
-    project = await ProjectService.create_project(db, project)
-    
+    return await ProjectService.create_project(db, project)
 
 
 @project_router.patch("/{project_id}", response_model=ProjectResponse)

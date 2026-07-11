@@ -49,4 +49,4 @@ class ProjectSnapshotResponse(BaseModel):
     imbalance_severity: Severity
     health_score: Decimal
     health_status: Status
-    snapshot_time: date
+    snapshot_date: date
