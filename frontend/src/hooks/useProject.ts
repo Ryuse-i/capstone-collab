@@ -3,6 +3,7 @@ import axios from "axios";
 import type {
   ProjectBase,
   ProjectWithSnapshot,
+  ProjectResponse,
   CreateProject,
   UpdateProject,
 } from "@/types/project";
@@ -70,7 +71,7 @@ const api = {
     }
   },
 
-  create: async (project: CreateProject): Promise<ProjectBase> => {
+  create: async (project: CreateProject): Promise<ProjectResponse> => {
     try {
       const response = await apiClient.post(url, project);
       return response.data;

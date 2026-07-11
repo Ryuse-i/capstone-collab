@@ -46,15 +46,20 @@ import {
   CommandList,
   CommandEmpty,
 } from "@/components/ui/command";
-import type { UserRead } from "@/services/api";
 import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useCreateProject } from "@/hooks/useProject";
+import { useCreateMember } from "@/hooks/useProjectMember";
+import type { UserRead } from "@/services/api";
+import type { CreateProjectMember } from "@/types/project_member";
+import type { ProjectResponse } from "@/types/project";
 
 interface Data {
-  projectName: string;
-  projectDescription: string;
-  advisor: string;
+  name: string;
+  description: string;
   instructor: string;
-  members: string[];
+  advisor: string;
+  created_by: string;
 }
 
 interface Member {
@@ -64,11 +69,11 @@ interface Member {
 
 function emptyData(): Data {
   return {
-    projectName: "",
-    projectDescription: "",
-    advisor: "",
+    name: "",
+    description: "",
     instructor: "",
-    members: [],
+    advisor: "",
+    created_by: "",
   };
 }
 
@@ -102,36 +107,6 @@ function useMemberSearch(email: string, role: string, debounceMs = 400) {
   };
 }
 
-function addInstructorToFormData(
-  id: string,
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, instructor: id });
-}
-
-function removeInstructorInFormData(
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, instructor: "" });
-}
-
-function addAdvisorToFormData(
-  id: string,
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, advisor: id });
-}
-
-function removeAdvisorInFormData(
-  formData: Data,
-  setFormData: Dispatch<React.SetStateAction<Data>>,
-) {
-  setFormData({ ...formData, advisor: "" });
-}
-
 function ProjectDetails({
   formData,
   setFormData,
@@ -149,10 +124,8 @@ function ProjectDetails({
           placeholder="eg. Capstone Collab"
           size={90}
           required
-          value={formData.projectName}
-          onChange={(e) =>
-            setFormData({ ...formData, projectName: e.target.value })
-          }
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         />
       </Field>
       <Field>
@@ -162,9 +135,9 @@ function ProjectDetails({
         <Textarea
           id="project-description"
           placeholder="eg. A project Management for PSU Lubao"
-          value={formData.projectDescription}
+          value={formData.description}
           onChange={(e) =>
-            setFormData({ ...formData, projectDescription: e.target.value })
+            setFormData({ ...formData, description: e.target.value })
           }
           required
         />
@@ -286,8 +259,8 @@ function SearchSelectField({
 
 /**
  * Multi-select variant of SearchSelectField for Members. Keeps id + email
- * paired together in a single `Member[]` so formData.members (ids) can never
- * drift out of sync with what's rendered as chips (emails).
+ * paired together in a single `Member[]` so the members payload (ids) can
+ * never drift out of sync with what's rendered as chips (emails).
  */
 function MemberSearchField({
   members,
@@ -323,7 +296,9 @@ function MemberSearchField({
 
   return (
     <Field>
-      <FieldLabel htmlFor="members">Members</FieldLabel>
+      <FieldLabel htmlFor="members">
+        Members <span className="text-muted-foreground"> (Optional)</span>
+      </FieldLabel>
       <Popover open={showPopover}>
         <PopoverAnchor asChild>
           <Input
@@ -411,7 +386,6 @@ function AddMember({
   setMemberEmail,
   members,
   setMembers,
-  formData,
   setFormData,
   instructorSearch,
   advisorSearch,
@@ -440,6 +414,7 @@ function AddMember({
       <SearchSelectField
         id="instructor"
         label="Instructor"
+        optional
         placeholder="eg. instructor@gmail.com"
         email={instructorEmail}
         setEmail={setInstructorEmail}
@@ -448,12 +423,12 @@ function AddMember({
         isSearchable={instructorSearch.isSearchable}
         selectedValue={instructorLabel}
         onSelect={(user) => {
-          addInstructorToFormData(user.id, formData, setFormData);
+          setFormData((prev) => ({ ...prev, instructor: user.id }));
           setInstructorEmail("");
           setInstructorLabel(user.email);
         }}
         onRemove={() => {
-          removeInstructorInFormData(formData, setFormData);
+          setFormData((prev) => ({ ...prev, instructor: "" }));
           setInstructorEmail("");
           setInstructorLabel("");
         }}
@@ -471,12 +446,12 @@ function AddMember({
         isSearchable={advisorSearch.isSearchable}
         selectedValue={advisorLabel}
         onSelect={(user) => {
-          addAdvisorToFormData(user.id, formData, setFormData);
+          setFormData((prev) => ({ ...prev, advisor: user.id }));
           setAdvisorEmail("");
           setAdvisorLabel(user.email);
         }}
         onRemove={() => {
-          removeAdvisorInFormData(formData, setFormData);
+          setFormData((prev) => ({ ...prev, advisor: "" }));
           setAdvisorEmail("");
           setAdvisorLabel("");
         }}
@@ -504,6 +479,11 @@ function ReviewProjectDetails({
   instructorLabel: string;
   advisorLabel: string;
 }) {
+  const hasInstructor = instructorLabel.trim().length > 0;
+  const hasAdvisor = advisorLabel.trim().length > 0;
+  const hasMembers = members.length > 0;
+  const hasAnyMembers = hasInstructor || hasAdvisor || hasMembers;
+
   return (
     <div className="w-full flex flex-col gap-2">
       <h2 className="text-gray-500">
@@ -516,13 +496,13 @@ function ReviewProjectDetails({
             <div className="mx-5">
               <h3 className="text-gray-400">
                 Project name:
-                <span className="mx-2 text-white">{formData.projectName}</span>
+                <span className="mx-2 text-black">{formData.name}</span>
               </h3>
               <div className="flex gap-3">
                 <h3 className="text-gray-400 border">Project description:</h3>
                 <div className="border max-w-xl">
                   <p className="break-word whitespace-pre-wrap">
-                    {formData.projectDescription}
+                    {formData.description}
                   </p>
                 </div>
               </div>
@@ -532,20 +512,32 @@ function ReviewProjectDetails({
         <div>
           <h2>Members</h2>
           <div className="flex flex-col mx-5">
-            <div className="flex gap-1">
-              <h3>Instructor:</h3>
-              <div className="text-gray-400">{instructorLabel}</div>
-            </div>
-            <div className="flex gap-1">
-              <h3>Advisor:</h3>
-              <div className="text-gray-400">{advisorLabel}</div>
-            </div>
-            <div className="flex gap-1">
-              <h3>Members:</h3>
-              <div className="text-gray-400">
-                {members.map((m) => m.email).join(", ")}
-              </div>
-            </div>
+            {hasAnyMembers ? (
+              <>
+                {hasInstructor && (
+                  <div className="flex gap-1">
+                    <h3>Instructor:</h3>
+                    <div className="text-gray-400">{instructorLabel}</div>
+                  </div>
+                )}
+                {hasAdvisor && (
+                  <div className="flex gap-1">
+                    <h3>Advisor:</h3>
+                    <div className="text-gray-400">{advisorLabel}</div>
+                  </div>
+                )}
+                {hasMembers && (
+                  <div className="flex gap-1">
+                    <h3>Members:</h3>
+                    <div className="text-gray-400">
+                      {members.map((m) => m.email).join(", ")}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-gray-400">No members added</div>
+            )}
           </div>
         </div>
       </div>
@@ -576,24 +568,126 @@ export default function CreateProjectDialog() {
   const [instructorLabel, setInstructorLabel] = useState<string>("");
   const [advisorLabel, setAdvisorLabel] = useState<string>("");
   // Single source of truth for members: id + email kept together so
-  // formData.members (ids) can never fall out of sync with the chips (emails).
+  // the members payload (ids) can never fall out of sync with the chips
+  // (emails).
   const [members, setMembers] = useState<Member[]>([]);
   const [memberEmail, setMemberEmail] = useState<string>("");
 
   const instructorSearch = useMemberSearch(instructorEmail, "instructor");
   const advisorSearch = useMemberSearch(advisorEmail, "advisor");
   const memberSearch = useMemberSearch(memberEmail, "student");
+  const [open, setOpen] = useState(false);
+
+  const { data: user } = useCurrentUser();
+  const { mutate: projectMutate, isPending: isProjectPending } =
+    useCreateProject();
+  const { mutate: memberMutate, isPending: isMemberPending } =
+    useCreateMember();
+
+  function resetForm() {
+    setFormData(emptyData());
+    setMembers([]);
+    setMemberEmail("");
+    setInstructorEmail("");
+    setInstructorLabel("");
+    setAdvisorEmail("");
+    setAdvisorLabel("");
+    setCurrentStep(1);
+  }
+
+  function handleSubmit() {
+    const payload = {
+      ...formData,
+      ...(user && { created_by: user.id }),
+    };
+    console.log(user);
+
+    projectMutate(payload, {
+      onSuccess: (newProject: ProjectResponse) => {
+        console.log("project created: ", newProject);
+
+        const roleAssignments: CreateProjectMember[] = [
+          ...(user
+            ? [
+                {
+                  user_id: user.id,
+                  project_id: newProject.id,
+                  project_role: "leader",
+                } as CreateProjectMember,
+              ]
+            : []),
+          ...(formData.advisor
+            ? [
+                {
+                  user_id: formData.advisor,
+                  project_id: newProject.id,
+                  project_role: "advisor",
+                } as CreateProjectMember,
+              ]
+            : []),
+          ...(formData.instructor
+            ? [
+                {
+                  user_id: formData.instructor,
+                  project_id: newProject.id,
+                  project_role: "instructor",
+                } as CreateProjectMember,
+              ]
+            : []),
+          ...members.map(
+            (member): CreateProjectMember => ({
+              user_id: member.id,
+              project_id: newProject.id,
+              project_role: "member",
+            }),
+          ),
+        ];
+
+        const memberPromises = roleAssignments.map((assignment) => {
+          return new Promise<void>((resolve) => {
+            memberMutate(assignment, {
+              onSuccess: (newMember) => {
+                console.log(`Added ${assignment.project_role}: `, newMember);
+                resolve();
+              },
+              onError: (error) => {
+                console.error(
+                  `Failed to add ${assignment.project_role}: `,
+                  error,
+                );
+                resolve();
+              },
+            });
+          });
+        });
+
+        Promise.allSettled(memberPromises).then(() => {
+          setOpen(false);
+          resetForm();
+        });
+      },
+      onError: (error) => {
+        console.error("failed to create project", error);
+      },
+    });
+  }
+
+  useEffect(() => {
+    console.log("Current Formdata: ", formData);
+  }, [formData]);
+
+  useEffect(() => {
+    console.log("members: ", members);
+  }, [members]);
 
   // Required fields per step - drives the Next button's disabled state.
   const isStepValid = (step: number) => {
     switch (step) {
       case 1:
         return (
-          formData.projectName.trim().length > 0 &&
-          formData.projectDescription.trim().length > 0
+          formData.name.trim().length > 0 &&
+          formData.description.trim().length > 0
         );
-      case 2:
-        return formData.instructor.trim().length > 0;
       default:
         return true;
     }
@@ -640,7 +734,7 @@ export default function CreateProjectDialog() {
 
   return (
     <div className="flex justify-center items-center w-full">
-      <Dialog>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">Create +</Button>
         </DialogTrigger>
@@ -716,7 +810,15 @@ export default function CreateProjectDialog() {
                 Previous
               </Button>
               {currentStep === STEPS.length ? (
-                <Button variant="outline">Submit</Button>
+                <Button
+                  variant="outline"
+                  onClick={handleSubmit}
+                  disabled={isProjectPending || isMemberPending}
+                >
+                  {isProjectPending || isMemberPending
+                    ? "Submitting..."
+                    : "Submit"}
+                </Button>
               ) : (
                 <Button
                   variant="outline"

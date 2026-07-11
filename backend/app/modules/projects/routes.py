@@ -38,6 +38,7 @@ async def get_one_project(
 async def create_project(
     project: ProjectCreate, db: AsyncSession = Depends(get_async_session)
 ):
+
     return await ProjectService.create_project(db, project)
 
 
