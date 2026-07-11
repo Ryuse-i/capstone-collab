@@ -12,11 +12,13 @@ import {
 } from "recharts";
 
 interface WorkloadHealth {
+  severity: "mild" | "bad";
   warningMessage: string;
   suggestions: string[];
 }
 
 const projectHealth: WorkloadHealth = {
+  severity: "bad", // switch to "bad" to preview the severe/red state
   warningMessage: "2 member(s) underutilized. Imbalance ratio: 1.27",
   suggestions: ["Task Redistribution Recommended"],
 };
@@ -94,31 +96,57 @@ const redistributionItems = [
 ];
 
 export default function Workload() {
+  const isBad = projectHealth.severity === "bad";
+
   return (
     <AppLayout
       breadcrumbs={[{ label: "Workload", href: "/workload" }]}
     >
-      <p className="text-(--text-h) dark:text-card-foreground pt-2">
+      <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground mb-2">
         Track and optimize task distribution across team members
-      </p>
+      </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Warning Banner */}
-        <Card className="bg-yellow-50 dark:bg-card dark:border-4 dark:border-yellow-500 p-4 rounded-lg lg:col-span-2 flex items-start justify-between">
+        <Card
+          className={`bg-card border-4 p-4 rounded-lg lg:col-span-2 flex items-start justify-between ${
+            isBad
+              ? "border-red-500 dark:border-red-500"
+              : "border-yellow-500 dark:border-yellow-500"
+          }`}
+        >
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <TriangleAlert className="h-5 w-5 text-yellow-500" />
-              <h2 className="font-semibold text-gray-900 dark:text-yellow-500">
-                Mild Workload Imbalance Detected
+              <TriangleAlert
+                className={`h-5 w-5 ${isBad ? "text-red-500" : "text-yellow-500"}`}
+              />
+              <h2
+                className={`font-semibold ${
+                  isBad
+                    ? "text-red-700 dark:text-red-500"
+                    : "text-gray-900 dark:text-yellow-500"
+                }`}
+              >
+                {isBad
+                  ? "Severe Workload Imbalance Detected"
+                  : "Mild Workload Imbalance Detected"}
               </h2>
             </div>
-            <p className="text-sm text-gray-500 dark:text-card-foreground">{projectHealth.warningMessage}</p>
-            <p className="text-sm text-gray-600 dark:text-card-foreground">Suggestions</p>
+            <p className="text-sm text-gray-500 dark:text-card-foreground">
+              {projectHealth.warningMessage}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-card-foreground">
+              Suggestions
+            </p>
             <div className="flex gap-2 flex-wrap">
               {projectHealth.suggestions.map((s) => (
                 <span
                   key={s}
-                  className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 dark:text-card-foreground"
+                  className={`rounded-full border px-3 py-1 text-xs dark:text-card-foreground ${
+                    isBad
+                      ? "border-red-600 text-red-600"
+                      : "border-gray-300 text-gray-600"
+                  }`}
                 >
                   {s}
                 </span>

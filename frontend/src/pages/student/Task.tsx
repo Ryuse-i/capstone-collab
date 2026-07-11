@@ -1,8 +1,22 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { CheckSquare, Clock, XSquare, BarChart2 } from "lucide-react";
+import { CheckSquare, Clock, XSquare, BarChart2, PlusCircle, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -25,6 +39,7 @@ const allTasks = [
     name: "Implement user authentication system",
     status: "Completed",
     priority: "High",
+    complexity: "High",
     assigned: ["JW"],
     due: "Apr 20",
   },
@@ -32,6 +47,7 @@ const allTasks = [
     name: "Design dashboard wireframes",
     status: "Completed",
     priority: "Medium",
+    complexity: "Low",
     assigned: ["DM"],
     due: "Apr 3",
   },
@@ -39,6 +55,7 @@ const allTasks = [
     name: "API endpoint testing",
     status: "Submitted",
     priority: "Low",
+    complexity: "Medium",
     assigned: ["HG"],
     due: "Mar 13",
   },
@@ -46,6 +63,7 @@ const allTasks = [
     name: "Database migration script",
     status: "In Progress",
     priority: "High",
+    complexity: "High",
     assigned: ["JW", "HG"],
     due: "Mar 28",
   },
@@ -53,6 +71,7 @@ const allTasks = [
     name: "Deploy CI/CD pipeline",
     status: "Not Started",
     priority: "High",
+    complexity: "Medium",
     assigned: ["RM"],
     due: "Apr 17",
   },
@@ -60,6 +79,7 @@ const allTasks = [
     name: "Write unit tests",
     status: "In Progress",
     priority: "Medium",
+    complexity: "Low",
     assigned: ["DM"],
     due: "Apr 25",
   },
@@ -67,6 +87,7 @@ const allTasks = [
     name: "Fix login bug",
     status: "Completed",
     priority: "High",
+    complexity: "Low",
     assigned: ["JW"],
     due: "Mar 10",
   },
@@ -85,35 +106,173 @@ const priorityStyle: Record<string, string> = {
   Low: "bg-gray-100 text-gray-500",
 };
 
-const filterTabs = [
-  "All Task",
-  "In Progress",
-  "Submitted",
-  "Completed",
-  "High Priority",
+const complexityStyle: Record<string, string> = {
+  High: "bg-purple-100 text-purple-600",
+  Medium: "bg-blue-100 text-blue-600",
+  Low: "bg-gray-100 text-gray-500",
+};
+
+// Option lists for the faceted filters (dot color mirrors the badge palette)
+const statusOptions = [
+  { label: "Completed", value: "Completed", color: "#22c55e" },
+  { label: "Submitted", value: "Submitted", color: "#eab308" },
+  { label: "In Progress", value: "In Progress", color: "#3b82f6" },
+  { label: "Not Started", value: "Not Started", color: "#9ca3af" },
 ];
 
+const priorityOptions = [
+  { label: "High", value: "High", color: "#ef4444" },
+  { label: "Medium", value: "Medium", color: "#eab308" },
+  { label: "Low", value: "Low", color: "#9ca3af" },
+];
+
+const complexityOptions = [
+  { label: "High", value: "High", color: "#a855f7" },
+  { label: "Medium", value: "Medium", color: "#3b82f6" },
+  { label: "Low", value: "Low", color: "#9ca3af" },
+];
+
+// ---- Reusable faceted filter dropdown (shadcn Popover + Command pattern) ----
+type FacetedOption = { label: string; value: string; color?: string };
+
+function FacetedFilter({
+  title,
+  options,
+  selected,
+  onChange,
+  styleMap,
+}: {
+  title: string;
+  options: FacetedOption[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+  styleMap: Record<string, string>;
+}) {
+  const toggle = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter((v) => v !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
+  const clearAll = () => onChange([]);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          {title}
+          {selected.length > 0 && (
+            <>
+              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Badge
+                variant="secondary"
+                className="rounded-sm px-1 font-normal lg:hidden"
+              >
+                {selected.length}
+              </Badge>
+              <div className="hidden space-x-1 lg:flex">
+                {selected.length > 2 ? (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-sm px-1 font-normal"
+                  >
+                    {selected.length} selected
+                  </Badge>
+                ) : (
+                  options
+                    .filter((o) => selected.includes(o.value))
+                    .map((o) => (
+                      <Badge
+                        key={o.value}
+                        className={`rounded-sm px-1 font-normal border-0 ${styleMap[o.value]}`}
+                      >
+                        {o.label}
+                      </Badge>
+                    ))
+                )}
+              </div>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0" align="start">
+        <Command>
+          <CommandList>
+            <CommandGroup>
+              {options.map((option) => {
+                const isSelected = selected.includes(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => toggle(option.value)}
+                  >
+                    <div
+                      className={cn(
+                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                        isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "opacity-50 [&_svg]:invisible"
+                      )}
+                    >
+                      <Check className="h-3 w-3" />
+                    </div>
+                    {option.color && (
+                      <span
+                        className="mr-2 h-2 w-2 rounded-full"
+                        style={{ backgroundColor: option.color }}
+                      />
+                    )}
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            {selected.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={clearAll}
+                    className="justify-center text-center"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function Task() {
-  const [activeTab, setActiveTab] = useState("All Task");
   const [selectValue, setSelectValue] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
 
   // Filter logic
   const filteredTasks = allTasks.filter((task) => {
-    if (activeTab === "High Priority" && task.priority !== "High") {
+    if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) {
       return false;
     }
-
+    if (statusFilter.length > 0 && !statusFilter.includes(task.status)) {
+      return false;
+    }
     if (
-      activeTab !== "All Task" &&
-      activeTab !== "High Priority" &&
-      task.status !== activeTab
+      complexityFilter.length > 0 &&
+      !complexityFilter.includes(task.complexity)
     ) {
       return false;
     }
-
     // ASSIGNED MEMBER FILTER
-    if (selectValue !== "all") {
-      return task.assigned.includes(selectValue);
+    if (selectValue !== "all" && !task.assigned.includes(selectValue)) {
+      return false;
     }
 
     return true;
@@ -150,10 +309,9 @@ export default function Task() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Task", href: "/task" }]}>
-      {/* +New Task button */}
-      <div className="flex justify-end">
-        <Button>+ New Task</Button>
-      </div>
+      <h1 className="text-2xl font-bold text-foreground mb-2">
+        Distribute and manage tasks
+      </h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -179,30 +337,37 @@ export default function Task() {
         ))}
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {filterTabs.map((f) => (
-          <Button
-            key={f}
-            variant={activeTab === f ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setActiveTab(f);
-              setSelectValue("all"); // reset dropdown when tab changes
-            }}
-          >
-            {f}
-          </Button>
-        ))}
+      {/* Faceted filter dropdowns */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <FacetedFilter
+          title="Priority"
+          options={priorityOptions}
+          selected={priorityFilter}
+          onChange={setPriorityFilter}
+          styleMap={priorityStyle}
+        />
+        <FacetedFilter
+          title="Status"
+          options={statusOptions}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          styleMap={statusStyle}
+        />
+        <FacetedFilter
+          title="Complexity"
+          options={complexityOptions}
+          selected={complexityFilter}
+          onChange={setComplexityFilter}
+          styleMap={complexityStyle}
+        />
       </div>
 
-      {/* Dropdown */}
+      {/* Existing dropdown — left unchanged */}
       <div>
         <Select
           value={selectValue}
           onValueChange={(val) => {
             setSelectValue(val);
-            
           }}
         >
           <SelectTrigger className="w-44">
@@ -247,9 +412,9 @@ export default function Task() {
               ) : (
                 filteredTasks.map((task, i) => (
                   <TableRow key={i}>
-                    <TableCell className="text-gray-800 dark:text-gray-200 font-medium">{
-                      task.name
-                    }</TableCell>
+                    <TableCell className="text-gray-800 dark:text-gray-200 font-medium">
+                      {task.name}
+                    </TableCell>
                     <TableCell>
                       <Badge className={`${statusStyle[task.status]} border-0`}>
                         {task.status}
@@ -277,7 +442,13 @@ export default function Task() {
                     <TableCell className="text-muted-foreground">
                       {task.due}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">—</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`${complexityStyle[task.complexity]} border-0`}
+                      >
+                        {task.complexity}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm">

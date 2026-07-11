@@ -32,7 +32,7 @@
   --primary-foreground: oklch(100% 0.00011 271.152);
   --secondary: oklch(0.75 0.12 85);
   --secondary-foreground: oklch(0.15 0 0);
-  --muted: #efefef;
+  --muted: #cecece;
   --muted-foreground: oklch(0.45 0.02 20);
   --accent-foreground: oklch(0.15 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -49,7 +49,7 @@
   --sidebar-foreground: oklch(100% 0.00011 271.152);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklab(81.895% -0.01802 0.16644);
+  --sidebar-accent: #e4c208;
   --sidebar-accent-foreground: oklch(100% 0.00011 271.152);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
@@ -87,8 +87,8 @@
 .dark {
   /* Shadcn tokens — dark */
   --background: #18191a;
-  --foreground: #f5f5f7;
-  --dark-foreground: oklch(100% 0.00011 271.152);
+  --foreground: #F5F5F7;
+  --semi-foreground: #888888;
   --card: #242526;
   --card-foreground: #e4e6eb;
   --popover: oklch(0.205 0 0);
@@ -114,7 +114,7 @@
   --sidebar-foreground: oklch(100% 0.00011 271.152);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: #8d7f35;
+  --sidebar-accent: #e4c208;
   --sidebar-accent-foreground: oklch(100% 0.00011 271.152);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
@@ -187,6 +187,23 @@
 /* ─── Base styles ───────────────────────────────────────── */
 
 @layer base {
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #fafafa inset !important;
+    -webkit-text-fill-color: #701d0b !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px var(--card) inset !important;
+    -webkit-text-fill-color: var(--card-foreground) !important;
+  }
+
   html {
     font: 18px/145% var(--font-sans);
     letter-spacing: 0.18px;
