@@ -3,7 +3,7 @@ import AppLayout from "@/layouts/Applayout";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, BookOpen, TrendingUp, Users } from "lucide-react";
+import { Search, BookOpen, TrendingUp, Users, LucideCalendarDays} from "lucide-react";
 
 const categories = [
   "All Categories",
@@ -100,7 +100,7 @@ export default function CapstoneSearch() {
       </div>
 
       {/* Search input - sticky, stays within content area */}
-      <div className="sticky top-1 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 py-3">
+      <div className="sticky top-12 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -182,7 +182,9 @@ export default function CapstoneSearch() {
                 ))}
               </div>
               <div className="flex items-center gap-4 pl-7 text-xs text-muted-foreground">
-                <span>📅 {result.year}</span>
+                <span className="flex items-center gap-1">
+                  <LucideCalendarDays className="h-3 w-3" /> {result.year}
+                </span>
                 <span className="flex items-center gap-1">
                   <Users className="h-3 w-3" /> {result.authors}
                 </span>
