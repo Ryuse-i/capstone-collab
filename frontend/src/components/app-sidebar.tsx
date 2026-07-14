@@ -56,6 +56,11 @@ const data = {
       icon: <Users />,
     },
     {
+      title: "Chat",
+      url: "/chat",
+      icon: <MessageCircleMore />,
+    },
+    {
       title: "Capstone Search",
       url: "/capstone-search",
       icon: <BookOpenIcon />,
