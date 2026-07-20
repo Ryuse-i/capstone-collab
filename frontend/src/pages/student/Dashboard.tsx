@@ -61,7 +61,7 @@ const recentActivities: RecentActivity[] = [
     task: "Database Migration Design",
     time: "5m ago",
     color: "bg-green-500",
-    text: "text-green-500"
+    text: "text-green-500",
   },
   {
     id: 2,
@@ -241,7 +241,9 @@ export default function Dashboard() {
 
               <div className="flex flex-col gap-1 pt-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 dark:text-card-foreground">EXPECTED SCORE:</span>
+                  <span className="text-sm text-gray-500 dark:text-card-foreground">
+                    EXPECTED SCORE:
+                  </span>
                   <span className="text-sm font-bold text-green-500">
                     {expectedPercentage ?? 0}%
                   </span>

@@ -4,8 +4,8 @@ export interface ProjectBase {
   name: string;
   description: string;
   created_by: string; // UUID
-  advisor: string; // UUID
-  instructor: string; // UUID
+  advisor: string | null; // UUID
+  instructor: string | null; // UUID
 }
 
 export interface ProjectResponse extends ProjectBase {

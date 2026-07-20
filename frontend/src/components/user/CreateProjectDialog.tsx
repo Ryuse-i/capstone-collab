@@ -1,5 +1,3 @@
-// Improve popover ui
-// fix member email being to formdata instead of ids
 import React, { useState, useEffect, useRef, type Dispatch } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
@@ -49,9 +47,9 @@ import {
 import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useCreateProject } from "@/hooks/useProject";
-import { useCreateMember } from "@/hooks/useProjectMember";
+import { useCreateInvite } from "@/hooks/useProjectInvite";
 import type { UserRead } from "@/services/api";
-import type { CreateProjectMember } from "@/types/project_member";
+import type { CreateInvite } from "@/types/project_invite";
 import type { ProjectResponse } from "@/types/project";
 
 interface Data {
@@ -194,7 +192,11 @@ function SearchSelectField({
       {selectedValue ? (
         <div className="flex items-center justify-between rounded-md border px-3 py-2">
           <span>{selectedValue}</span>
-          <button type="button" onClick={onRemove}>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             <X className="size-4" />
           </button>
         </div>
@@ -216,10 +218,12 @@ function SearchSelectField({
           <PopoverContent
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
+            align="start"
+            sideOffset={4}
             className="w-[--radix-popover-trigger-width] p-0"
           >
             <Command shouldFilter={false}>
-              <CommandList>
+              <CommandList className="max-h-48 overflow-y-auto">
                 {isLoading ? (
                   <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
                     <LoaderCircleIcon className="size-3.5 animate-spin" />
@@ -242,6 +246,7 @@ function SearchSelectField({
                           onSelect(user);
                           setInputActive(false);
                         }}
+                        className="cursor-pointer px-3 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
                       >
                         {user.email}
                       </CommandItem>
@@ -315,10 +320,12 @@ function MemberSearchField({
         <PopoverContent
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
+          align="start"
+          sideOffset={4}
           className="w-[--radix-popover-trigger-width] p-0"
         >
           <Command shouldFilter={false}>
-            <CommandList>
+            <CommandList className="max-h-48 overflow-y-auto">
               {memberSearch.isLoading ? (
                 <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
                   <LoaderCircleIcon className="size-3.5 animate-spin" />
@@ -336,6 +343,7 @@ function MemberSearchField({
                       value={user.email}
                       onMouseDown={(e) => e.preventDefault()}
                       onSelect={() => addMember(user)}
+                      className="cursor-pointer px-3 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
                     >
                       {user.email}
                     </CommandItem>
@@ -362,6 +370,7 @@ function MemberSearchField({
                 // guard against below).
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => removeMember(member.email)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="size-3.5" />
               </button>
@@ -568,8 +577,7 @@ export default function CreateProjectDialog() {
   const [instructorLabel, setInstructorLabel] = useState<string>("");
   const [advisorLabel, setAdvisorLabel] = useState<string>("");
   // Single source of truth for members: id + email kept together so
-  // the members payload (ids) can never fall out of sync with the chips
-  // (emails).
+  // the members payload can never fall out of sync with the chips (emails).
   const [members, setMembers] = useState<Member[]>([]);
   const [memberEmail, setMemberEmail] = useState<string>("");
 
@@ -581,8 +589,8 @@ export default function CreateProjectDialog() {
   const { data: user } = useCurrentUser();
   const { mutate: projectMutate, isPending: isProjectPending } =
     useCreateProject();
-  const { mutate: memberMutate, isPending: isMemberPending } =
-    useCreateMember();
+  const { mutate: inviteMutate, isPending: isInvitePending } =
+    useCreateInvite();
 
   function resetForm() {
     setFormData(emptyData());
@@ -598,61 +606,67 @@ export default function CreateProjectDialog() {
   function handleSubmit() {
     const payload = {
       ...formData,
+      instructor: formData.instructor.trim() ? formData.instructor : null,
+      advisor: formData.advisor.trim() ? formData.advisor : null,
       ...(user && { created_by: user.id }),
     };
-    console.log(user);
 
     projectMutate(payload, {
       onSuccess: (newProject: ProjectResponse) => {
         console.log("project created: ", newProject);
 
-        const roleAssignments: CreateProjectMember[] = [
-          ...(user
+        if (!user) {
+          console.error("No user found, cannot determine invite sender");
+          setOpen(false);
+          resetForm();
+          return;
+        }
+
+        // NOTE: formData.advisor / formData.instructor hold the selected
+        // user's *id*, not their email. The email is tracked separately in
+        // advisorLabel / instructorLabel (set when the user is selected from
+        // the search popover), and that's what CreateInvite needs.
+        const invites: CreateInvite[] = [
+          ...(formData.advisor && advisorLabel
             ? [
                 {
-                  user_id: user.id,
                   project_id: newProject.id,
-                  project_role: "leader",
-                } as CreateProjectMember,
+                  email: advisorLabel,
+                  sender_id: user.id,
+                  role: "advisor",
+                } as CreateInvite,
               ]
             : []),
-          ...(formData.advisor
+          ...(formData.instructor && instructorLabel
             ? [
                 {
-                  user_id: formData.advisor,
                   project_id: newProject.id,
-                  project_role: "advisor",
-                } as CreateProjectMember,
-              ]
-            : []),
-          ...(formData.instructor
-            ? [
-                {
-                  user_id: formData.instructor,
-                  project_id: newProject.id,
-                  project_role: "instructor",
-                } as CreateProjectMember,
+                  email: instructorLabel,
+                  sender_id: user.id,
+                  role: "instructor",
+                } as CreateInvite,
               ]
             : []),
           ...members.map(
-            (member): CreateProjectMember => ({
-              user_id: member.id,
+            (member): CreateInvite => ({
               project_id: newProject.id,
-              project_role: "member",
+              email: member.email,
+              sender_id: user.id,
+              role: "member",
             }),
           ),
         ];
 
-        const memberPromises = roleAssignments.map((assignment) => {
+        const invitePromises = invites.map((invite) => {
           return new Promise<void>((resolve) => {
-            memberMutate(assignment, {
-              onSuccess: (newMember) => {
-                console.log(`Added ${assignment.project_role}: `, newMember);
+            inviteMutate(invite, {
+              onSuccess: (newInvite) => {
+                console.log(`Sent invite for ${invite.role}: `, newInvite);
                 resolve();
               },
               onError: (error) => {
                 console.error(
-                  `Failed to add ${assignment.project_role}: `,
+                  `Failed to send invite for ${invite.role}: `,
                   error,
                 );
                 resolve();
@@ -661,7 +675,7 @@ export default function CreateProjectDialog() {
           });
         });
 
-        Promise.allSettled(memberPromises).then(() => {
+        Promise.allSettled(invitePromises).then(() => {
           setOpen(false);
           resetForm();
         });
@@ -736,8 +750,9 @@ export default function CreateProjectDialog() {
     <div className="flex justify-center items-center w-full">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline"
-          className="dark:hover:bg-muted">Create +</Button>
+          <Button variant="outline" className="dark:hover:bg-muted">
+            Create +
+          </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-250 max-h-[90vh] flex flex-col">
           <DialogHeader>
@@ -814,9 +829,9 @@ export default function CreateProjectDialog() {
                 <Button
                   variant="outline"
                   onClick={handleSubmit}
-                  disabled={isProjectPending || isMemberPending}
+                  disabled={isProjectPending || isInvitePending}
                 >
-                  {isProjectPending || isMemberPending
+                  {isProjectPending || isInvitePending
                     ? "Submitting..."
                     : "Submit"}
                 </Button>

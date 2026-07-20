@@ -71,7 +71,7 @@ const api = {
     }
   },
 
-  create: async (project: CreateProject): Promise<ProjectResponse> => {
+  create: async (project: CreateProject): Promise<ProjectResponse[]> => {
     try {
       const response = await apiClient.post(url, project);
       return response.data;
@@ -137,6 +137,7 @@ export function useGetOneProject(id: string) {
   });
 }
 
+// need id to execute
 export function useGetOneProjectWithSpanshot(id: string) {
   return useQuery({
     queryKey: projectKeys.detailSnapshot(id),
