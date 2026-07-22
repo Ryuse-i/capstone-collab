@@ -14,6 +14,9 @@ from sqlalchemy import select, func
 
 
 class UserDB(SQLAlchemyUserDatabase):
+    async def get_by_email(self, email: str) -> User | None:
+        return await super().get_by_email(email)
+
     async def search_by_email_and_role(self, email: str, role: UserRole) -> List[User]:
         stmt = select(User).where(
             func.lower(User.email).like(f"%{email.lower()}%"),

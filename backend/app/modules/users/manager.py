@@ -5,7 +5,7 @@ from fastapi_users import BaseUserManager, UUIDIDMixin
 from app.core.config import settings
 from .model import User
 from .auth import get_user_db
-from .schema import UserCreate
+from .schema import UserCreate, UserResponse
 from typing import List
 from .model import UserRole
 
@@ -30,8 +30,6 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     ):
         print(f"User {user.id} forgot password. Token: {token}")
 
-    async def get_by_email(self, user_email: str) -> User:
-        return await super().get_by_email(user_email)
 
     async def search_by_email_and_role(self, email: str, role: UserRole) -> List[User]:
         return await self.user_db.search_by_email_and_role(email, role)  # type: ignore[attr-defined]

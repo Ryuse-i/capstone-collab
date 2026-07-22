@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import DateTime, ForeignKey, String, Boolean, UUID as PG_UUID
+from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
 import enum
 from sqlalchemy import Enum as SAEnum
 
@@ -25,14 +25,10 @@ class Notification(Base):
         SAEnum(NotificationType, name="notificationtype"),
         default=NotificationType.GENERAL,
     )
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    body: Mapped[str] = mapped_column(String, nullable=False)
-    # For invitation notifications, store the invitation_id so frontend
-    # knows what to call when user clicks Accept/Decline
-    reference_id: Mapped[UUID | None] = mapped_column(
+    # invitation reference
+    invitation_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), nullable=True
     )
-    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

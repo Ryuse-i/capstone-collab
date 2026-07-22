@@ -7,16 +7,12 @@ from .schema import (
 from .repo import ProjectInvitationRepo
 from app.modules.notifications.model import NotificationType
 from app.modules.notifications.services import NotificationService
-from sqlalchemy.future import select
-from app.modules.users.model import User
+from .model import InviteStatus
+from app.modules.notifications.schema import CreateNotification
+from app.modules.users.auth import User, UserDB
 
 
 class ProjectInvitationService:
-    @staticmethod
-    async def _get_user_by_email(db: AsyncSession, email: str) -> User | None:
-        result = await db.execute(select(User).where(User.email == email))  # type: ignore
-        return result.scalar_one_or_none()
-
     @staticmethod
     async def get_one_invitation(db: AsyncSession, invitation_id):
         repo = ProjectInvitationRepo(db)
@@ -28,28 +24,33 @@ class ProjectInvitationService:
         return await repo.get_all()
 
     @staticmethod
-    async def create_invitation(db: AsyncSession, invitation: ProjectInvitationCreate):
+    async def create_invitation(
+        db: AsyncSession, invitation: ProjectInvitationCreate  
+    ):
+        user = UserDB(db, User)
         repo = ProjectInvitationRepo(db)
-        created = await repo.create(invitation)
 
-        # Notify the invited user if they already have an account
-        invited_user = await ProjectInvitationService._get_user_by_email(
-            db, invitation.email
-        )
-        if invited_user:
-            notif_service = NotificationService(db)
-            await notif_service.create_notification(
-                user_id=invited_user.id,
-                notification_type=NotificationType.PROJECT_INVITATION,  # see note below
-                title="You've been invited to a project",
-                body=(
-                    f"You have been invited to join a project as a {invitation.role}. "
-                    "Open the app to accept or decline."
-                ),
-                reference_id=created.id,  # lets the frontend deep-link to the invitation
+        invited_user = await user.get_by_email(invitation.email)
+
+            # check if user exists
+        if invited_user is None: 
+            return None
+
+        # automatic commit if successful and rollback for failure
+        async with db.begin():
+
+            invitation_result = await repo.create(invitation)
+
+            #create the noticication
+            notification = CreateNotification(
+                user_id = invited_user.id,
+                type = NotificationType.PROJECT_INVITATION,
+                invitation_id = invitation_result.id
             )
+            await NotificationService.create_notification(db, notification)
 
-        return created
+        #return the invitation only if nothing fails
+        return invitation_result
 
     @staticmethod
     async def update_invitation(
@@ -70,7 +71,7 @@ class ProjectInvitationService:
         repo = ProjectInvitationRepo(db)
         invitation = await repo.get_by_id(invitation_id)
         if invitation:
-            update_data = ProjectInvitationUpdate(status="accepted")
+            update_data = ProjectInvitationUpdate(status=InviteStatus.ACCEPTED)
             return await repo.update(invitation, update_data)
         return None
 
@@ -78,7 +79,7 @@ class ProjectInvitationService:
     async def decline_invitation(db: AsyncSession, invitation_id):
         repo = ProjectInvitationRepo(db)
         invitation = await repo.get_by_id(invitation_id)
-        if invitation:
-            update_data = ProjectInvitationUpdate(status="declined")
-            return await repo.update(invitation, update_data)
-        return None
+        if not invitation:
+            return None
+        update_data = ProjectInvitationUpdate(status=InviteStatus.REJECTED)
+        return await repo.update(invitation, update_data)

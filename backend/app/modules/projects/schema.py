@@ -8,8 +8,8 @@ class ProjectCreate(BaseModel):
     name: str
     description: str
     created_by: UUID
-    advisor: UUID | None
-    instructor: UUID | None
+    advisor: UUID | None = None
+    instructor: UUID | None = None
 
 
 class ProjectUpdate(BaseModel):

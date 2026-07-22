@@ -1,47 +1,39 @@
-from typing import Sequence
-from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.modules.users.model import User
-from .model import Notification, NotificationType
+from app.modules.notifications.schema import (
+    CreateNotification,
+    NotificationResponse,
+    UpdateNotification,
+)
 from .repo import NotificationRepo
-from .exceptions import NotificationNotFound  # new: domain exception (see exceptions.py)
+from uuid import UUID
 
 
 class NotificationService:
-    def __init__(self, db: AsyncSession):
-        self.repo = NotificationRepo(db)
+    @staticmethod
+    async def get_one_notification(db: AsyncSession, id: UUID):
+        repo = NotificationRepo(db)
+        return await repo.get_by_id(id)
 
-    async def create_notification(
-        self,
-        user_id: UUID,
-        notification_type: NotificationType,  # was: str — caused DB-layer type error
-        title: str,
-        body: str,
-        reference_id: UUID | None = None,
-    ) -> Notification:
-        return await self.repo.create(
-            user_id=user_id,
-            type=notification_type,
-            title=title,
-            body=body,
-            reference_id=reference_id,
-        )
+    @staticmethod
+    async def create_notification(db: AsyncSession, notification: CreateNotification):
+        repo = NotificationRepo(db)
+        notification = await repo.create(notification)
+        await db.commit()
+        return notification
 
-    async def get_user_notifications(self, user_id: UUID) -> Sequence[Notification]:
-        return await self.repo.get_for_user(user_id)
+    @staticmethod
+    async def update_notification(
+        db: AsyncSession, db_item: UpdateNotification, notification: UpdateNotification
+    ):
+        repo = NotificationRepo(db)
+        notification = await repo.update(db_item, notification)
+        await db.commit()
+        return notification
 
-    async def mark_notification_as_read(
-        self,
-        notif_id: UUID,
-        user: User,
-        is_read: bool = True,  # new: accepts the value from NotificationMarkRead payload
-    ) -> Notification:
-        notif = await self.repo.get_by_id(notif_id)
 
-        # was: raised HTTPException here — services should be framework-agnostic.
-        # The router catches NotificationNotFound and converts it to a 404.
-        if not notif or notif.user_id != user.id:
-            raise NotificationNotFound(notif_id)
-
-        return await self.repo.mark_read(notif, is_read=is_read)
+    @staticmethod
+    async def delete_notification(db: AsyncSession, db_item: NotificationResponse):
+        repo = NotificationRepo(db)
+        await repo.delete(db_item)
+        await db.commit()
+        return None

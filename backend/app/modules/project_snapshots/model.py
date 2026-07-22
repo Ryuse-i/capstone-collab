@@ -4,7 +4,7 @@ from app.core.db import Base
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from uuid import UUID
 from sqlalchemy import UUID as PG_UUID
-from sqlalchemy import Enum as SAENUM
+from sqlalchemy import Enum as SAENUM, UniqueConstraint
 from datetime import date
 from typing import TYPE_CHECKING
 import enum
@@ -32,28 +32,31 @@ class ProjectSnapshot(Base):
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="CASCADE"),
-        nullable=True,
     )
     total_workload_points: Mapped[int] = mapped_column(default=0)
-    avg_workload: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    progress_score: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    avg_workload: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
+    progress_score: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
     progress_percentage: Mapped[int] = mapped_column(default=0)
-    expected_score: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    expected_score: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
     expected_percentage: Mapped[int] = mapped_column(default=0)
-    schedule_variance: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    workload_balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=True)
+    schedule_variance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
+    workload_balance: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=True, default=0.0
+    )
     imbalance_severity: Mapped[Severity] = mapped_column(
         SAENUM(Severity, name="severity"), default=Severity.LOW
     )
-    health_score: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    health_score: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
     health_status: Mapped[Status] = mapped_column(
-        SAENUM(Status, name="health_status", create_type=True)
+        SAENUM(Status, name="health_status", create_type=True),
+        default=Status.GOOD,
     )
+    snapshot_date: Mapped[date] = mapped_column(Date, default=date.today)
 
-    # Inverse relationship pointing back to Project
     project: Mapped["Project"] = relationship("Project", back_populates="snapshot")
 
-    snapshot_date: Mapped[date] = mapped_column(
-        Date,
-        default=date.today()
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id", "snapshot_date", name="uq_project_snapshot_date"
+        ),
     )

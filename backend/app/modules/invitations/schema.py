@@ -1,19 +1,22 @@
 from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel
+from app.modules.project_members.model import ProjectRole
+from .model import InviteStatus
 
 
 class ProjectInvitationCreate(BaseModel):
     project_id: UUID
     sender_id: UUID
     email: str
-    role: str = "member"  # or use ProjectRole enum
-
+    role: ProjectRole
 
 class ProjectInvitationUpdate(BaseModel):
+    project_id: UUID | None = None
+    sender_id: UUID | None = None
     email: str | None = None
     role: str | None = None
-    status: str | None = None  # pending, accepted, declined
+    status: InviteStatus | None = None
 
 
 class ProjectInvitationResponse(BaseModel):
@@ -22,7 +25,7 @@ class ProjectInvitationResponse(BaseModel):
     sender_id: UUID
     email: str
     role: str
-    status: str
+    status: InviteStatus
     created_at: datetime
 
     class ConfigDict:

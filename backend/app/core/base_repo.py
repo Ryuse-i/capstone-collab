@@ -18,7 +18,9 @@ class BaseRepo:
     async def create(self, item):
         db_item = self.model(**item.model_dump(exclude_unset=True))
         self.db.add(db_item)
-        await self.db.commit()
+
+        # execute the transaction and returns the id but not permanent
+        await self.db.flush()
         await self.db.refresh(db_item)
         return db_item
 
@@ -28,12 +30,12 @@ class BaseRepo:
         for key, value in data.items():
             setattr(db_item, key, value)
 
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(db_item)
         return db_item
 
     async def delete(self, db_item):
         await self.db.delete(db_item)
-        await self.db.commit()
+        await self.db.flush()
 
         return {"message": "Deleted succesfully"}

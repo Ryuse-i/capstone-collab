@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
 from app.modules.projects.model import Project
 from app.modules.projects.repo import ProjectRepo
 from app.modules.projects.schema import (
     ProjectCreate,
     ProjectUpdate,
 )
+from app.modules.project_snapshots.repo import ProjectSnapshotRepo
 
 
 
@@ -21,8 +23,24 @@ class ProjectService:
 
     @staticmethod
     async def create_project(db: AsyncSession, project: ProjectCreate):
-        repo = ProjectRepo(db)
-        return await repo.create(project)
+        #initialize the repos
+        project_repo = ProjectRepo(db)
+        snapshot_repo = ProjectSnapshotRepo(db)
+
+        #create project and snapshot
+        try: 
+            project_result = await project_repo.create(project)
+            await snapshot_repo.upsert_today_snapshot(
+                project_result.id,
+                ProjectSnapshotUpsert()
+            )
+            await db.commit()
+            return project_result
+            # rollback all transaction and raise the exception
+        except Exception:
+            await db.rollback()
+            raise
+
 
     @staticmethod
     async def update_project(
