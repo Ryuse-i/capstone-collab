@@ -41,8 +41,13 @@ const data = {
       isActive: true,
     },
     {
-      title: "Task",
-      url: "/Task",
+      title: "Project Task",
+      url: "/project-task",
+      icon: <FileText />,
+    },
+    {
+      title: "My Task",
+      url: "/my-task",
       icon: <FileText />,
     },
     {

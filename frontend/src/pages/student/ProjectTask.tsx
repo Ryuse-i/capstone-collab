@@ -315,7 +315,7 @@ export default function Task() {
   ];
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Task", href: "/task" }]}>
+    <AppLayout breadcrumbs={[{ label: "Project Task", href: "/project-task" }]}>
       <h1 className="text-2xl font-bold text-foreground mb-2">
         Distribute and manage tasks
       </h1>

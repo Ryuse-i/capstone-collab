@@ -85,8 +85,10 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center bg-white dark:bg-gray-800 dark:border-gray-600">
-                <span className="text-sm font-bold text-card-foreground">{member.initials}</span>
+              <div className="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center bg-primary dark:bg-gray-800 dark:border-gray-600">
+                <span className="text-sm font-bold text-primary-foreground dark:text-foreground">
+                  {member.initials}
+                </span>
               </div>
               <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${member.statusColor}`} />
             </div>

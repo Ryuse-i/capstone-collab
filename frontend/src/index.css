@@ -33,7 +33,7 @@
   --secondary: oklch(0.75 0.12 85);
   --secondary-foreground: oklch(0.15 0 0);
   --muted: #cecece;
-  --muted-foreground: oklch(0.45 0.02 20);
+  --muted-foreground: oklch(66.655% 0.00008 271.152);
   --accent-foreground: oklch(0.15 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(73.16% 0.00008 271.152);
@@ -320,6 +320,32 @@
 .fade-right.visible {
   opacity: 1;
   transform: translateX(0);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--muted-foreground) transparent; /* Firefox */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: transparent; /* the track background you actually want */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--sidebar);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box; /* keeps the thumb from touching the transparent track edges */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--foreground);
 }
  
 /* ─── Components ────────────────────────────────────────── */
