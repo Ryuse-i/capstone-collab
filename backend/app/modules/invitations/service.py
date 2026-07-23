@@ -24,33 +24,86 @@ class ProjectInvitationService:
         return await repo.get_all()
 
     @staticmethod
-    async def create_invitation(
-        db: AsyncSession, invitation: ProjectInvitationCreate  
-    ):
+    async def create_invitation(db: AsyncSession, invitation: ProjectInvitationCreate):
         user = UserDB(db, User)
         repo = ProjectInvitationRepo(db)
 
         invited_user = await user.get_by_email(invitation.email)
 
-            # check if user exists
-        if invited_user is None: 
+        # check if user exists
+        if invited_user is None:
             return None
 
         # automatic commit if successful and rollback for failure
-        async with db.begin():
-
+        async with db.begin_nested():
             invitation_result = await repo.create(invitation)
 
-            #create the noticication
+            # create the noticication
             notification = CreateNotification(
-                user_id = invited_user.id,
-                type = NotificationType.PROJECT_INVITATION,
-                invitation_id = invitation_result.id
+                user_id=invited_user.id,
+                type=NotificationType.PROJECT_INVITATION,
+                invitation_id=invitation_result.id,
             )
             await NotificationService.create_notification(db, notification)
 
-        #return the invitation only if nothing fails
+        # return the invitation only if nothing fails
         return invitation_result
+
+    """
+        Create batch method that would iterate over a list of invitations 
+        Atomic transactions so each query is independent towards each other 
+        would return a list of created invitation, could be success and failure 
+    """
+
+    @staticmethod
+    async def batch_create(
+        db: AsyncSession, invitation_list: list[ProjectInvitationCreate]
+    ):
+        user_repo = UserDB(db, User)
+        inv_repo = ProjectInvitationRepo(db)
+        results = []
+
+        # iterate over invitation list
+        for invitation in invitation_list:
+            # check if user with email exists
+            invited_user = await user_repo.get_by_email(invitation.email)
+            if invited_user is None:
+                results.append(
+                    {
+                        "email": invitation.email,
+                        "success": False,
+                        "reason": "user not found",
+                    }
+                )
+                continue
+
+            try:
+                async with db.begin():
+                    # create invitation
+                    invitation_result = await inv_repo.create(invitation)
+                    # create the noticication
+                    notification = CreateNotification(
+                        user_id=invited_user.id,
+                        type=NotificationType.PROJECT_INVITATION,
+                        invitation_id=invitation_result.id,
+                    )
+                    # create notification
+                    await NotificationService.create_notification(db, notification)
+                results.append(
+                    {
+                        "email": invitation.email,
+                        "success": True,
+                        "invitation_id": invitation_result.id,
+                    }
+                )
+
+            except Exception as e:
+                # add errors to results
+                results.append(
+                    {"email": invitation.email, "success": False, "reason": str(e)}
+                )
+
+        return results
 
     @staticmethod
     async def update_invitation(

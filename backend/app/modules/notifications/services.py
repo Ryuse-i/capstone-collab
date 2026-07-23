@@ -15,6 +15,11 @@ class NotificationService:
         return await repo.get_by_id(id)
 
     @staticmethod
+    async def get_all_notifications(db: AsyncSession, user_id: UUID):
+        repo = NotificationRepo(db)
+        return await repo.get_user_notifications(user_id)
+
+    @staticmethod
     async def create_notification(db: AsyncSession, notification: CreateNotification):
         repo = NotificationRepo(db)
         notification = await repo.create(notification)
