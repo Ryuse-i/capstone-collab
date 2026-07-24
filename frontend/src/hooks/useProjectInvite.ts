@@ -6,7 +6,7 @@ import type {
   InviteResponse,
 } from "@/types/project_invite";
 
-const url = "/project_invite";
+const url = "/invitations";
 
 const api = {
   getOne: async (id: string): Promise<InviteResponse> => {
@@ -35,6 +35,21 @@ const api = {
       return response.data;
     } catch (error) {
       console.error("Failed to create invite", error);
+      throw error;
+    }
+  },
+
+  batch_create: async (
+    invite_list: CreateInvite[],
+  ): Promise<InviteResponse[]> => {
+    try {
+      const response = await apiClient.post<InviteResponse[]>(
+        `${url}/batch`,
+        invite_list,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Something went wrong when batch creating invite");
       throw error;
     }
   },
@@ -84,6 +99,16 @@ export function useCreateInvite() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inviteKeys.list() });
+    },
+  });
+}
+
+export function useBatchCreateInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.batch_create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inviteKeys.list() });
     },

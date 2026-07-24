@@ -11,6 +11,7 @@ class ProjectInvitationCreate(BaseModel):
     email: str
     role: ProjectRole
 
+
 class ProjectInvitationUpdate(BaseModel):
     project_id: UUID | None = None
     sender_id: UUID | None = None
@@ -20,14 +21,13 @@ class ProjectInvitationUpdate(BaseModel):
 
 
 class ProjectInvitationResponse(BaseModel):
-    id: UUID
-    project_id: UUID
-    sender_id: UUID
-    email: str
-    role: str
-    status: InviteStatus
-    created_at: datetime
+    id: UUID | None = None
+    project_id: UUID | None = None
+    sender_id: UUID | None = None
+    email: str | None = None
+    role: str | None = None
+    status: InviteStatus | None = None
+    created_at: datetime | None = None
 
     class ConfigDict:
         from_attributes = True
-

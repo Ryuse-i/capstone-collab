@@ -19,6 +19,8 @@ class ProjectRole(str, enum.Enum):
     ADMIN = "admin"
     LEADER = "leader"
     MEMBER = "member"
+    ADVISOR = "advisor"
+    INSTRUCTOR = "instructor"
 
 
 class ProjectMember(Base):

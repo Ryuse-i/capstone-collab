@@ -1,13 +1,13 @@
-from uuid import UUID
 from typing import List
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
+from app.modules.notifications.services import NotificationService
 from app.modules.users.services import current_active_user
 from app.modules.users.model import User
-from .services import NotificationService
+
 from .schema import NotificationResponse
 
 # was: APIRouter() with no prefix — prefix now lives here, not scattered across include_router calls
@@ -23,5 +23,4 @@ async def get_my_notifications(
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
 ):
-    service = NotificationService(db)
-    return await service.get_user_notifications(user.id)
+    return await NotificationService.get_all_notifications(db, user.id)

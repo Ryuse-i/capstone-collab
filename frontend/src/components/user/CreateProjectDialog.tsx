@@ -47,7 +47,7 @@ import {
 import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useCreateProject } from "@/hooks/useProject";
-import { useCreateInvite } from "@/hooks/useProjectInvite";
+import { useBatchCreateInvite } from "@/hooks/useProjectInvite";
 import type { UserRead } from "@/services/api";
 import type { CreateInvite } from "@/types/project_invite";
 import type { ProjectResponse } from "@/types/project";
@@ -589,8 +589,8 @@ export default function CreateProjectDialog() {
   const { data: user } = useCurrentUser();
   const { mutate: projectMutate, isPending: isProjectPending } =
     useCreateProject();
-  const { mutate: inviteMutate, isPending: isInvitePending } =
-    useCreateInvite();
+  const { mutate: batchInviteMutate, isPending: isInvitePending } =
+    useBatchCreateInvite();
 
   function resetForm() {
     setFormData(emptyData());
@@ -622,10 +622,6 @@ export default function CreateProjectDialog() {
           return;
         }
 
-        // NOTE: formData.advisor / formData.instructor hold the selected
-        // user's *id*, not their email. The email is tracked separately in
-        // advisorLabel / instructorLabel (set when the user is selected from
-        // the search popover), and that's what CreateInvite needs.
         const invites: CreateInvite[] = [
           ...(formData.advisor && advisorLabel
             ? [
@@ -657,27 +653,25 @@ export default function CreateProjectDialog() {
           ),
         ];
 
-        const invitePromises = invites.map((invite) => {
-          return new Promise<void>((resolve) => {
-            inviteMutate(invite, {
-              onSuccess: (newInvite) => {
-                console.log(`Sent invite for ${invite.role}: `, newInvite);
-                resolve();
-              },
-              onError: (error) => {
-                console.error(
-                  `Failed to send invite for ${invite.role}: `,
-                  error,
-                );
-                resolve();
-              },
-            });
-          });
-        });
-
-        Promise.allSettled(invitePromises).then(() => {
+        if (invites.length === 0) {
           setOpen(false);
           resetForm();
+          return;
+        }
+
+        batchInviteMutate(invites, {
+          onSuccess: (newInvites) => {
+            console.log("Sent invites: ", newInvites);
+            setOpen(false);
+            resetForm();
+          },
+          onError: (error) => {
+            console.error("Failed to send invites", error);
+            // Project was created even though invites failed, so still
+            // close/reset rather than leaving the user stuck on this step.
+            setOpen(false);
+            resetForm();
+          },
         });
       },
       onError: (error) => {

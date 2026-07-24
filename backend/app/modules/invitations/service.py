@@ -78,7 +78,7 @@ class ProjectInvitationService:
                 continue
 
             try:
-                async with db.begin():
+                async with db.begin_nested():
                     # create invitation
                     invitation_result = await inv_repo.create(invitation)
                     # create the noticication

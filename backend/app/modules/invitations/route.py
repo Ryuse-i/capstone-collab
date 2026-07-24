@@ -41,6 +41,18 @@ async def create_invitation(
     return await ProjectInvitationService.create_invitation(db, invitation)
 
 
+@project_invitation_router.post(
+    "/batch",
+    response_model=list[ProjectInvitationResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def batch_create_invitation(
+    invitation_list: list[ProjectInvitationCreate],
+    db: AsyncSession = Depends(get_async_session),
+):
+    return await ProjectInvitationService.batch_create(db, invitation_list)
+
+
 @project_invitation_router.patch(
     "/{invitation_id}", response_model=ProjectInvitationResponse
 )
