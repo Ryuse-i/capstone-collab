@@ -1,22 +1,19 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Pin, CalendarDays, Users, Eye } from "lucide-react";
+import { Pin, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 // ---------------------------------------------------------------------------
 // remove the unused imports and variables if you don't need them. I kept them here for reference in case you want to use them later, input what wesley said in the cards information
@@ -155,16 +152,6 @@ const allProjects: Project[] = [
   },
 ];
 
-const attachmentIcon: Record<
-  NonNullable<Project["attachment"]>["icon"],
-  string
-> = {
-  loom: "🎥",
-  drive: "📁",
-  gitlab: "🦊",
-  file: "🎨",
-};
-
 const priorityStyle: Record<ProjectPriority, string> = {
   High: "bg-red-100 text-red-600",
   Medium: "bg-yellow-100 text-yellow-600",
@@ -180,6 +167,8 @@ const tabs: { label: string; status: ProjectFilterStatus }[] = [
 
 export default function ProjectsList() {
   const [activeTab, setActiveTab] = useState<ProjectFilterStatus>("All");
+  const [openTaskDialog, setOpenTaskDialog] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const filteredProjects =
     activeTab === "All"
@@ -260,85 +249,19 @@ export default function ProjectsList() {
                 </div>
 
                 {project.attachment && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full h-11 justify-between rounded-md border bg-muted/30 px-3 text-sm font-medium hover:bg-muted/50"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className="text-base leading-none">
-                            {attachmentIcon[project.attachment.icon]}
-                          </span>
-                          <span>View Task</span>
-                        </span>
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-[280px] p-0 rounded-xl border shadow-lg"
-                      align="start"
-                    >
-                      <Command className="rounded-xl">
-                        <div className="border-b px-3 py-2">
-                          <p className="text-sm font-semibold text-foreground">
-                            {project.title}
-                          </p>
-                          <p className="mt-1 text-xs leading-5 text-muted-foreground line-clamp-2">
-                            {project.description}
-                          </p>
-                        </div>
-                        <CommandList>
-                          <CommandGroup heading="Task details">
-                            <CommandItem className="flex flex-col items-start gap-1 rounded-md py-2">
-                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Status
-                              </span>
-                              <Badge
-                                className={cn(
-                                  "border-0",
-                                  priorityStyle[project.priority],
-                                )}
-                              >
-                                {project.status}
-                              </Badge>
-                            </CommandItem>
-                            <CommandItem className="flex flex-col items-start gap-1 rounded-md py-2">
-                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Priority
-                              </span>
-                              <Badge
-                                className={cn(
-                                  "border-0",
-                                  priorityStyle[project.priority],
-                                )}
-                              >
-                                {project.priority}
-                              </Badge>
-                            </CommandItem>
-                            <CommandItem className="flex items-center gap-2 rounded-md py-2">
-                              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">Due {project.due}</span>
-                            </CommandItem>
-                          </CommandGroup>
-                          <CommandSeparator />
-                          <CommandGroup heading="Assigned users">
-                            {project.assigned.map((member) => (
-                              <CommandItem
-                                key={member}
-                                className="flex items-center gap-2 rounded-md"
-                              >
-                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                                  {member}
-                                </div>
-                                <span className="text-sm">{member}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 justify-between rounded-md border bg-muted/30 px-3 text-sm font-medium hover:bg-muted/50"
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setOpenTaskDialog(true);
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>View Task</span>
+                    </span>
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                 )}
 
                 <div className="flex items-center justify-between pt-1">
@@ -356,6 +279,109 @@ export default function ProjectsList() {
           ))
         )}
       </div>
+
+      <Dialog
+        open={openTaskDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedProject(null);
+          }
+          setOpenTaskDialog(open);
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="rounded-xl p-4 pb-0 overflow-hidden sm:max-w-250 sm:h-160"
+        >
+          <DialogHeader className="border-b px-4 py-3">
+            <DialogTitle>Task Details</DialogTitle>
+            <DialogDescription>
+              {selectedProject
+                ? selectedProject.title
+                : "Select a project to view details."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedProject ? (
+            <div className="space-y-4 p-4">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">
+                  {selectedProject.title}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedProject.description}
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </p>
+                  <Badge
+                    className={cn(
+                      "border-0 mt-2",
+                      priorityStyle[selectedProject.priority],
+                    )}
+                  >
+                    {selectedProject.status}
+                  </Badge>
+                </div>
+
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Priority
+                  </p>
+                  <Badge
+                    className={cn(
+                      "border-0 mt-2",
+                      priorityStyle[selectedProject.priority],
+                    )}
+                  >
+                    {selectedProject.priority}
+                  </Badge>
+                </div>
+
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Due date
+                  </p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {selectedProject.due}
+                  </p>
+                </div>
+
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Assigned users
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {selectedProject.assigned.map((member) => (
+                      <div
+                        key={member}
+                        className="flex items-center gap-2 rounded-md bg-background/50 px-2 py-2"
+                      >
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                          {member}
+                        </div>
+                        <span className="text-sm text-foreground">
+                          {member}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
