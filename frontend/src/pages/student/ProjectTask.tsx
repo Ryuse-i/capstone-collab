@@ -1,6 +1,13 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { CheckSquare, Clock, XSquare, BarChart2, PlusCircle, Check } from "lucide-react";
+import {
+  CheckSquare,
+  Clock,
+  XSquare,
+  BarChart2,
+  PlusCircle,
+  Check,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -107,8 +114,8 @@ const priorityStyle: Record<string, string> = {
 };
 
 const complexityStyle: Record<string, string> = {
-  High: "bg-purple-100 text-purple-600",
-  Medium: "bg-blue-100 text-blue-600",
+  High: "bg-red-100 text-red-600",
+  Medium: "bg-yellow-100 text-yellow-600",
   Low: "bg-gray-100 text-gray-500",
 };
 
@@ -127,8 +134,8 @@ const priorityOptions = [
 ];
 
 const complexityOptions = [
-  { label: "High", value: "High", color: "#a855f7" },
-  { label: "Medium", value: "Medium", color: "#3b82f6" },
+  { label: "High", value: "High", color: "#ef4444" },
+  { label: "Medium", value: "Medium", color: "#eab308" },
   { label: "Low", value: "Low", color: "#9ca3af" },
 ];
 
@@ -214,7 +221,7 @@ function FacetedFilter({
                         "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
                         isSelected
                           ? "bg-primary text-primary-foreground"
-                          : "opacity-50 [&_svg]:invisible"
+                          : "opacity-50 [&_svg]:invisible",
                       )}
                     >
                       <Check className="h-3 w-3" />
@@ -308,7 +315,7 @@ export default function Task() {
   ];
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Task", href: "/task" }]}>
+    <AppLayout breadcrumbs={[{ label: "Project Task", href: "/project-task" }]}>
       <h1 className="text-2xl font-bold text-foreground mb-2">
         Distribute and manage tasks
       </h1>

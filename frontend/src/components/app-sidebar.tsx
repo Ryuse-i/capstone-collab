@@ -24,7 +24,10 @@ import {
   Settings,
   MessageCircleMore,
   Users,
+  ClipboardCheck,
+  LucideLayers,
 } from "lucide-react";
+
 
 // This is sample data.
 const data = {
@@ -41,19 +44,29 @@ const data = {
       isActive: true,
     },
     {
-      title: "Task",
-      url: "/Task",
+      title: "Project Task",
+      url: "/project-task",
       icon: <FileText />,
+    },
+    {
+      title: "My Task",
+      url: "/my-task",
+      icon: <ClipboardCheck />,
     },
     {
       title: "Workload",
       url: "/Workload",
-      icon: <MessageCircleMore />,
+      icon: <LucideLayers />,
     },
     {
       title: "Team",
       url: "/Team",
       icon: <Users />,
+    },
+    {
+      title: "Chat",
+      url: "/chat",
+      icon: <MessageCircleMore />,
     },
     {
       title: "Capstone Search",

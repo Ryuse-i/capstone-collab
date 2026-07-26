@@ -1,13 +1,16 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import { Button } from "@/components/ui/button";
-import { User, Palette } from "lucide-react";
+import { User, Palette, FolderKanban } from "lucide-react";
 import AccountSettings from "@/components/settings/AccountSettings";
 import AppearanceSettings from "@/components/settings/AppearanceSettings";
+import ProjectSettings from "@/components/settings/ProjectSettings";
 
 const tabs = [
+   { id: "project", label: "Project Settings", icon: <FolderKanban className="h-4 w-4" /> },
   { id: "account", label: "Account", icon: <User className="h-4 w-4" /> },
   { id: "appearance", label: "Appearance", icon: <Palette className="h-4 w-4" /> },
+ 
 ];
 
 export default function Settings() {
@@ -41,8 +44,10 @@ export default function Settings() {
       </div>
 
       {/* Tab content */}
+      {activeTab === "project" && <ProjectSettings />}
       {activeTab === "account" && <AccountSettings />}
       {activeTab === "appearance" && <AppearanceSettings />}
+      
 
     </AppLayout>
   );
