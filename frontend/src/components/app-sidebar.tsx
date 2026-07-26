@@ -24,7 +24,10 @@ import {
   Settings,
   MessageCircleMore,
   Users,
+  ClipboardCheck,
+  LucideLayers,
 } from "lucide-react";
+
 
 // This is sample data.
 const data = {
@@ -48,12 +51,12 @@ const data = {
     {
       title: "My Task",
       url: "/my-task",
-      icon: <FileText />,
+      icon: <ClipboardCheck />,
     },
     {
       title: "Workload",
       url: "/Workload",
-      icon: <MessageCircleMore />,
+      icon: <LucideLayers />,
     },
     {
       title: "Team",
