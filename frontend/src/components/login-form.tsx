@@ -43,6 +43,16 @@ export function LoginForm({
         onSuccess: () => {
           navigate("/dashboard", { replace: true });
         },
+        onError: (error) => {
+          const message =
+            error instanceof Error ? error.message : "Unknown login error";
+
+          console.error("Login failed for instructor/advisor attempt:", {
+            email,
+            message,
+            rawError: error,
+          });
+        },
       },
     );
   }

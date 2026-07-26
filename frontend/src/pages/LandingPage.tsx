@@ -1,15 +1,9 @@
-import { useState,useEffect } from "react";
+import { useEffect, useState } from "react";
 // 1. Import Link from react-router-dom
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Menu, X } from "lucide-react";
-
 
 // ─── Types ───────────────────────────────────────────
 interface NavItem {
@@ -21,14 +15,6 @@ interface Feature {
   icon: string;
   title: string;
   desc: string;
-}
-
-interface PricingPlan {
-  plan: string;
-  price: string;
-  desc: string;
-  features: string[];
-  featured?: boolean;
 }
 
 interface Testimonial {
@@ -75,50 +61,6 @@ const FEATURES: Feature[] = [
     icon: "🟢",
     title: "Live Activity Monitoring",
     desc: "Real-time presence system. See who's Active, Idle, or Offline instantly.",
-  },
-];
-
-
-
-const PRICING: PricingPlan[] = [
-  {
-    plan: "Starter",
-    price: "$0",
-    desc: "For small teams getting started.",
-    features: [
-      "Up to 5 members",
-      "3 active projects",
-      "Basic workload view",
-      "Task approval flow",
-      "Email support",
-    ],
-  },
-  {
-    plan: "Team",
-    price: "$18",
-    desc: "Everything your growing team needs.",
-    features: [
-      "Up to 25 members",
-      "Unlimited projects",
-      "Full workload engine",
-      "AI-assisted review",
-      "Live activity monitor",
-      "Contribution scoring",
-    ],
-    featured: true,
-  },
-  {
-    plan: "Enterprise",
-    price: "$49",
-    desc: "For large organizations.",
-    features: [
-      "Unlimited members",
-      "SSO & SAML",
-      "Custom roles",
-      "Audit logs",
-      "API access",
-      "Dedicated support",
-    ],
   },
 ];
 
@@ -229,7 +171,6 @@ function HeroSection() {
   return (
     <section className="py-20 md:py-32 px-4 bg-white dark:bg-slate-950">
       <div className="max-w-4xl mx-auto text-center">
-
         {/* Title */}
         <div className="animate-on-scroll">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
@@ -250,10 +191,7 @@ function HeroSection() {
         </p>
 
         {/* Buttons */}
-        <div
-          className="animate-on-scroll"
-          style={{ transitionDelay: "300ms" }}
-        >
+        <div className="animate-on-scroll" style={{ transitionDelay: "300ms" }}>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild>
               <Link to="/register">Get started free</Link>
@@ -266,7 +204,6 @@ function HeroSection() {
             No credit card required · Free forever on Starter
           </p>
         </div>
-
       </div>
     </section>
   );
@@ -274,16 +211,19 @@ function HeroSection() {
 
 function FeatureSection() {
   return (
-    <section id="features" className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950">
+    <section
+      id="features"
+      className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950"
+    >
       <div className="max-w-6xl mx-auto">
-
         {/* Title fades up */}
         <div className="text-center mb-12 animate-on-scroll">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Everything your team needs
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Built around the real complexity of managing teams — not just tracking tasks.
+            Built around the real complexity of managing teams — not just
+            tracking tasks.
           </p>
         </div>
 
@@ -300,7 +240,9 @@ function FeatureSection() {
                   <CardTitle className="text-lg">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{feature.desc}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {feature.desc}
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -315,7 +257,6 @@ function TestimonialsSection() {
   return (
     <section className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950">
       <div className="max-w-6xl mx-auto">
-
         <div className="text-center mb-12 animate-on-scroll">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Trusted by teams
@@ -338,7 +279,9 @@ function TestimonialsSection() {
                     "{testimonial.text}"
                   </p>
                   <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-                    <p className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {testimonial.name}
+                    </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {testimonial.role} at {testimonial.company}
                     </p>
@@ -357,20 +300,33 @@ function CTASection() {
   return (
     <section
       className="py-16 md:py-24 px-4"
-      style={{ background: "linear-gradient(135deg, rgb(112, 29, 11) 0%, rgb(62, 16, 7) 100%)" }}
+      style={{
+        background:
+          "linear-gradient(135deg, rgb(112, 29, 11) 0%, rgb(62, 16, 7) 100%)",
+      }}
     >
       <div className="max-w-4xl mx-auto text-center animate-on-scroll">
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
           Ready to manage your team better?
         </h2>
         <p className="text-lg text-amber-100 mb-8 max-w-2xl mx-auto">
-          Join thousands of teams using PSU Collab to ship faster, more fairly, and with full visibility.
+          Join thousands of teams using PSU Collab to ship faster, more fairly,
+          and with full visibility.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" asChild>
+          <Button
+            size="lg"
+            className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+            asChild
+          >
             <Link to="/register">Get started free</Link>
           </Button>
-          <Button size="lg" variant="outline" className="text-white border-amber-300 hover:bg-white/10" asChild>
+          <Button
+            size="lg"
+            variant="outline"
+            className="text-white border-amber-300 hover:bg-white/10"
+            asChild
+          >
             <a href="#features">Learn more</a>
           </Button>
         </div>
@@ -386,47 +342,119 @@ function Footer() {
   return (
     <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-950 py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-          
           <div className="animate-on-scroll" style={{ transitionDelay: "0ms" }}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Product</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              Product
+            </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li><a href="#features" className="hover:text-gray-900 dark:hover:text-white">Features</a></li>
-              <li><a href="#pricing" className="hover:text-gray-900 dark:hover:text-white">Pricing</a></li>
+              <li>
+                <a
+                  href="#features"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  Features
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#pricing"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  Pricing
+                </a>
+              </li>
             </ul>
           </div>
 
-          <div className="animate-on-scroll" style={{ transitionDelay: "100ms" }}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Company</h3>
+          <div
+            className="animate-on-scroll"
+            style={{ transitionDelay: "100ms" }}
+          >
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              Company
+            </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">About</a></li>
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Blog</a></li>
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  About
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  Blog
+                </a>
+              </li>
             </ul>
           </div>
 
-          <div className="animate-on-scroll" style={{ transitionDelay: "200ms" }}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Legal</h3>
+          <div
+            className="animate-on-scroll"
+            style={{ transitionDelay: "200ms" }}
+          >
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              Legal
+            </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Privacy</a></li>
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Terms</a></li>
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  Privacy
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  Terms
+                </a>
+              </li>
             </ul>
           </div>
 
-          <div className="animate-on-scroll" style={{ transitionDelay: "300ms" }}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Connect</h3>
+          <div
+            className="animate-on-scroll"
+            style={{ transitionDelay: "300ms" }}
+          >
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              Connect
+            </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">Twitter</a></li>
-              <li><a href="#" className="hover:text-gray-900 dark:hover:text-white">GitHub</a></li>
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-gray-900 dark:hover:text-white"
+                >
+                  GitHub
+                </a>
+              </li>
             </ul>
           </div>
-
         </div>
 
-        <div className="animate-on-scroll border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm text-gray-600 dark:text-gray-400" style={{ transitionDelay: "400ms" }}>
+        <div
+          className="animate-on-scroll border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm text-gray-600 dark:text-gray-400"
+          style={{ transitionDelay: "400ms" }}
+        >
           <p>&copy; 2026 PSU-COLLAB. All rights reserved.</p>
         </div>
-
       </div>
     </footer>
   );
@@ -434,7 +462,6 @@ function Footer() {
 
 // ─── Main Landing Page ────────────────────────────────
 export default function LandingPage() {
-
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -444,7 +471,7 @@ export default function LandingPage() {
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     document
