@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Send, Phone, Video, MoreHorizontal } from "lucide-react";
+import { Send, Video, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type Member = {
   id: string;
@@ -92,8 +100,6 @@ export default function Chat() {
     setInput("");
   };
 
-  const otherMember = members.find((m) => m.id === "DM")!;
-
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
       <Card className="mt-2 pb-1">
@@ -107,12 +113,32 @@ export default function Chat() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="h-8 px-2">
-                <Video className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 px-2">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <Video className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start">
+                  <PopoverHeader>
+                    <PopoverTitle>Dimensions</PopoverTitle>
+                    <PopoverDescription>
+                      Set the dimensions for the layer.
+                    </PopoverDescription>
+                  </PopoverHeader>
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent>
+                  <p>More options</p>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import { Button } from "@/components/ui/button";
 import { User, Palette, FolderKanban } from "lucide-react";
@@ -7,18 +7,37 @@ import AppearanceSettings from "@/components/settings/AppearanceSettings";
 import ProjectSettings from "@/components/settings/ProjectSettings";
 
 const tabs = [
-   { id: "project", label: "Project Settings", icon: <FolderKanban className="h-4 w-4" /> },
+  {
+    id: "project",
+    label: "Project Settings",
+    icon: <FolderKanban className="h-4 w-4" />,
+  },
   { id: "account", label: "Account", icon: <User className="h-4 w-4" /> },
-  { id: "appearance", label: "Appearance", icon: <Palette className="h-4 w-4" /> },
- 
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: <Palette className="h-4 w-4" />,
+  },
 ];
 
+const STORAGE_KEY = "settings-active-tab";
+
+function getInitialTab() {
+  if (typeof window === "undefined") return "account";
+
+  const savedTab = window.localStorage.getItem(STORAGE_KEY);
+  return tabs.some((tab) => tab.id === savedTab) ? savedTab! : "account";
+}
+
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("account");
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   return (
     <AppLayout breadcrumbs={[{ label: "Settings", href: "/settings" }]}>
-
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold dark:text-foreground">Settings</h1>
@@ -47,8 +66,6 @@ export default function Settings() {
       {activeTab === "project" && <ProjectSettings />}
       {activeTab === "account" && <AccountSettings />}
       {activeTab === "appearance" && <AppearanceSettings />}
-      
-
     </AppLayout>
   );
 }
