@@ -47,10 +47,12 @@ import {
 import { useGetUserByEmailAndRole } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useCreateProject } from "@/hooks/useProject";
+import { useCreateMember } from "@/hooks/useProjectMember";
 import { useBatchCreateInvite } from "@/hooks/useProjectInvite";
 import type { UserRead } from "@/services/api";
 import type { CreateInvite } from "@/types/project_invite";
 import type { ProjectResponse } from "@/types/project";
+import type { CreateProjectMember } from "@/types/project_member";
 
 interface Data {
   name: string;
@@ -591,6 +593,8 @@ export default function CreateProjectDialog() {
     useCreateProject();
   const { mutate: batchInviteMutate, isPending: isInvitePending } =
     useBatchCreateInvite();
+  const { mutate: memberMutate, isPending: isMemberPending } =
+    useCreateMember();
 
   function resetForm() {
     setFormData(emptyData());
@@ -658,6 +662,18 @@ export default function CreateProjectDialog() {
           resetForm();
           return;
         }
+
+        const projectLeader: CreateProjectMember = {
+          user_id: user.id,
+          project_id: newProject.id,
+          project_role: "leader",
+        };
+
+        memberMutate(projectLeader, {
+          onSuccess: (newMember) => {
+            console.log("created member", newMember);
+          },
+        });
 
         batchInviteMutate(invites, {
           onSuccess: (newInvites) => {
@@ -823,9 +839,11 @@ export default function CreateProjectDialog() {
                 <Button
                   variant="outline"
                   onClick={handleSubmit}
-                  disabled={isProjectPending || isInvitePending}
+                  disabled={
+                    isProjectPending || isInvitePending || isMemberPending
+                  }
                 >
-                  {isProjectPending || isInvitePending
+                  {isProjectPending || isInvitePending || isMemberPending
                     ? "Submitting..."
                     : "Submit"}
                 </Button>

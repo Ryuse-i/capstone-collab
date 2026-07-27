@@ -6,12 +6,14 @@ import RoleBasedDashboard from "@/components/RoleBasedDashboard";
 import { StudentRoutes } from "@/routes/StudentRoutes";
 import { InstructorRoutes } from "@/routes/InstructorRoutes";
 import { AdminRoutes } from "@/routes/AdminRoutes";
+import { AdvisorRoutes } from "./routes/AdvisorRoutes";
 
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
+import Settings from "@/pages/shared/Settings";
 
 export default function App() {
   const navigate = useNavigate();
@@ -31,8 +33,10 @@ export default function App() {
 
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<RoleBasedDashboard />} />
+        <Route path="/settings" element={<Settings />} />
         {StudentRoutes}
         {InstructorRoutes}
+        {AdvisorRoutes}
         {AdminRoutes}
       </Route>
 

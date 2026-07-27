@@ -11,7 +11,7 @@ from .schema import (
 from .services import ProjectMemberService
 from uuid import UUID
 from typing import List
-from .schema import ProjectMemberResponse, ProjectMemberDetailResponse
+from .schema import ProjectMemberDetailResponse
 
 # TODO put invitations into another module
 

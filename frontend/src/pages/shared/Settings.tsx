@@ -14,7 +14,7 @@ const tabs = [
 ];
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("account");
+  const [activeTab, setActiveTab] = useState("project");
 
   return (
     <AppLayout breadcrumbs={[{ label: "Settings", href: "/settings" }]}>

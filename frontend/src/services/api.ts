@@ -5,7 +5,7 @@ import axios from "axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type UserRole = "student" | "instructor" | "admin";
+export type UserRole = "student" | "instructor" | "advisor" | "admin";
 
 export interface FastAPIErrorDetail {
   code: string;

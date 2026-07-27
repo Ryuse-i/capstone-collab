@@ -8,12 +8,11 @@ from .model import ProjectRole
 
 
 class ProjectMemberCreate(BaseModel):
-    id: UUID
     user_id: UUID
     project_id: UUID
     project_role: ProjectRole
-    workload_points: float
-    contribution_points: float
+    workload_points: float | None = None
+    contribution_points: float | None = None
 
 
 class ProjectMemberUpdate(BaseModel):

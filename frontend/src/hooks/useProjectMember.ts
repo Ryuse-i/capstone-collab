@@ -7,7 +7,7 @@ import type {
 import apiClient from "@/services/apiClient";
 import { projectKeys } from "./useProject";
 
-const url = "/project-members";
+const url = "/project_members/";
 
 const api = {
   getAll: async (): Promise<MemberBase[]> => {
@@ -29,7 +29,6 @@ const api = {
       throw error;
     }
   },
-
 
   create: async (member: CreateProjectMember): Promise<MemberBase> => {
     try {
