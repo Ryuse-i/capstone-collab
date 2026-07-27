@@ -294,7 +294,7 @@ export default function Dashboard() {
                     />
                     <Bar
                       dataKey="desktop"
-                      fill="var(--color-desktop)"
+                      fill="var(--primary)"
                       radius={5}
                     />
                   </BarChart>

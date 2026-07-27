@@ -8,6 +8,7 @@ import { NavUser } from "@/components/nav-user";
 import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetCurrentProject } from "@/hooks/useProject";
 import {
   Sidebar,
   SidebarContent,
@@ -48,8 +49,15 @@ const commonNavMain = [
   },
 ];
 
+const capstoneSearchNavItem = {
+  title: "Capstone Search",
+  url: "/capstone-search",
+  icon: <BookOpenIcon />,
+};
+
 const studentNavMain = [
   ...commonNavMain,
+  
   {
     title: "Project Task",
     url: "/project-task",
@@ -75,22 +83,26 @@ const studentNavMain = [
     url: "/chat",
     icon: <MessageCircleMore />,
   },
-  {
-    title: "Capstone Search",
-    url: "/capstone-search",
-    icon: <BookOpenIcon />,
-  },
+  capstoneSearchNavItem,
 ];
+
+const studentNoProjectNavMain = [...commonNavMain, capstoneSearchNavItem];
 
 const instructorNavMain = [...commonNavMain];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
+  const { data: currentProject, isLoading: isProjectLoading } =
+    useGetCurrentProject(user?.id ?? "");
   const role = user?.role?.toLowerCase();
+  const hasProject = Boolean(currentProject);
+  const shouldShowProjectNav = !isProjectLoading && hasProject;
 
   const navMain =
     role === ROLES.STUDENT
-      ? studentNavMain
+      ? shouldShowProjectNav
+        ? studentNavMain
+        : studentNoProjectNavMain
       : role === ROLES.ADMIN ||
           role === ROLES.INSTRUCTOR ||
           role === ROLES.ADVISOR
