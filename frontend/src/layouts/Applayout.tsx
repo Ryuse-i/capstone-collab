@@ -67,10 +67,9 @@ import { Button } from "@/components/ui/button";
 
 // Import your custom notification hooks
 import {
-  useGetMyNotifications,
-  useMarkNotificationRead,
-} from "@/hooks/useNotification";
+  useGetUserNotifications, } from "@/hooks/useNotification";
 
+import { useCurrentUser } from "@/hooks/useAuth";
 
 interface BreadcrumbItemType {
   label: string;
@@ -89,25 +88,11 @@ export default function AppLayout({
   const [open, setOpen] = React.useState(false);
 
   // ─── Notification Data Fetching & Mutations ─────────────────────────────────
-  const { data: notifications = [], isLoading } = useGetMyNotifications();
-  const { mutate: markAsRead } = useMarkNotificationRead();
+  const {data: user  } = useCurrentUser()
+  const { data: notifications = [], isLoading: notificationLoading } = useGetUserNotifications(user!.id);
 
-  // Filter or count unread items safely
-  const unreadNotifications = notifications.filter((n) => !n.is_read);
-  const unreadCount = unreadNotifications.length;
 
-  const handleNotificationClick = (id: string, isRead: boolean) => {
-    if (!isRead) {
-      markAsRead({ notifId: id });
-    }
-  };
 
-  const handleMarkAllAsRead = () => {
-    const unreadIds = unreadNotifications.map((n) => n.id);
-    if (unreadIds.length > 0) {
-      markAsRead({ notifId: unreadIds }); // passes the whole array at once
-    }
-  };
 
   return (
     <SidebarProvider>
@@ -267,9 +252,6 @@ export default function AppLayout({
                 <Button variant="outline" size="icon" className="relative">
                   <LucideBellRing className="h-4 w-4" />
                   {/* Dynamic red badge indicator shown only when there are unread notifications */}
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-destructive" />
-                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
@@ -278,28 +260,25 @@ export default function AppLayout({
                     Notifications
                   </PopoverTitle>
                   <PopoverDescription>
-                    {isLoading
-                      ? "Loading notifications..."
-                      : `You have ${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}.`}
+                    {notificationLoading
+                      ? "Loading notifications..." : ""
+                    }
                   </PopoverDescription>
                 </PopoverHeader>
 
                 <div className="max-h-64 overflow-y-auto">
-                  {isLoading ? (
+                  {notificationLoading? (
                     <div className="p-4 text-center text-xs text-muted-foreground">
                       Loading...
                     </div>
-                  ) : notifications.length === 0 ? (
+                  ) : notifications?.length === 0 ? (
                     <div className="p-4 text-center text-xs text-muted-foreground">
                       No notifications found.
                     </div>
                   ) : (
-                    notifications.map((item) => (
+                    notifications?.map((item) => (
                       <div
                         key={item.id}
-                        onClick={() =>
-                          handleNotificationClick(item.id, item.is_read)
-                        }
                         className={`flex flex-col gap-1 p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer text-sm relative ${
                           !item.is_read
                             ? "bg-muted/30 font-medium"
@@ -318,7 +297,6 @@ export default function AppLayout({
                                 : "text-muted-foreground"
                             }
                           >
-                            {item.title}
                           </span>
                           <span className="text-xs text-muted-foreground font-normal whitespace-nowrap ml-2">
                             {new Date(item.created_at).toLocaleDateString([], {
@@ -328,24 +306,11 @@ export default function AppLayout({
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-2 pl-1 font-normal">
-                          {item.body}
                         </p>
                       </div>
                     ))
                   )}
                 </div>
-
-                {unreadCount > 0 && (
-                  <div className="p-2 border-t text-center">
-                    <Button
-                      variant="ghost"
-                      className="w-full text-xs h-8"
-                      onClick={handleMarkAllAsRead}
-                    >
-                      Mark all as read
-                    </Button>
-                  </div>
-                )}
               </PopoverContent>
             </Popover>
           </div>

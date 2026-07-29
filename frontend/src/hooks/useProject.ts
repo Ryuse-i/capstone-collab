@@ -21,6 +21,7 @@ const api = {
       const response = await apiClient.get(`${url}/user/${id}/with-snapshot`);
       return response.data;
     } catch (error) {
+      // if no items found
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return null;
       }
@@ -152,6 +153,7 @@ export function useCreateProject() {
     mutationFn: api.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.listSnapshot() });
     },
   });
 }

@@ -41,6 +41,8 @@ class ProjectInvitationService:
             # create the noticication
             notification = CreateNotification(
                 user_id=invited_user.id,
+                title="Project Invitation",
+                body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}",
                 type=NotificationType.PROJECT_INVITATION,
                 invitation_id=invitation_result.id,
             )
@@ -84,6 +86,8 @@ class ProjectInvitationService:
                     # create the noticication
                     notification = CreateNotification(
                         user_id=invited_user.id,
+                        title="Project Invitation",
+                        body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}",
                         type=NotificationType.PROJECT_INVITATION,
                         invitation_id=invitation_result.id,
                     )

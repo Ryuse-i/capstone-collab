@@ -1,108 +1,171 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getStoredToken } from "@/services/api";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import axios from "axios";
+import apiClient from "@/services/apiClient";
+import type {
+  NotificationCreate,
+  NotificationUpdate,
+  NotificationResponse,
+} from "@/types/notification";
 
-export type NotificationType = "info" | "warning" | "success" | "error";
+const url = "/notifications";
 
-export interface NotificationResponse {
-  id: string;
-  user_id: string;
-  type: NotificationType;
-  title: string;
-  body: string;
-  reference_id: string | null;
-  is_read: boolean;
-  created_at: string;
-}
+const api = {
+  getOneNotification: async (id: string): Promise<NotificationResponse> => {
+    try {
+      const response = await apiClient.get(`${url}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get notification", error);
+      throw error;
+    }
+  },
 
-export interface NotificationMarkRead {
-  is_read: boolean;
-}
+  getAllNotifications: async (): Promise<NotificationResponse[]> => {
+    try {
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get notifications", error);
+      throw error;
+    }
+  },
 
-interface MarkReadVariables {
-  notifId: string | string[];
-  payload?: NotificationMarkRead;
-}
-
-type MutationContext = { previous: NotificationResponse[] | undefined };
-
-const BASE_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/notifications`
-  : "http://127.0.0.1:8000/notifications";
-
-async function fetchMyNotifications(): Promise<NotificationResponse[]> {
-  const res = await fetch(`${BASE_URL}/`, {
-    headers: { Authorization: `Bearer ${getStoredToken()}` },
-  });
-  if (!res.ok) throw new Error("Failed to fetch notifications");
-  return res.json();
-}
-
-export function useGetMyNotifications() {
-  return useQuery<NotificationResponse[], Error>({
-    queryKey: ["notifications"],
-    queryFn: fetchMyNotifications,
-    enabled: !!getStoredToken(),
-    staleTime: 1000 * 30,
-    refetchOnWindowFocus: false,
-  });
-}
-
-export function useMarkNotificationRead() {
-  const queryClient = useQueryClient();
-
-  return useMutation<void, Error, MarkReadVariables, MutationContext>({
-    mutationFn: async ({ notifId, payload = { is_read: true } }) => {
-      const ids = Array.isArray(notifId) ? notifId : [notifId];
-
-      await Promise.all(
-        ids.map((id) =>
-          fetch(`${BASE_URL}/${id}/read`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${getStoredToken()}`,
-            },
-            body: JSON.stringify(payload),
-          }).then((res) => {
-            if (!res.ok) {
-              if (res.status === 404)
-                throw new Error(`Notification ${id} not found`);
-              throw new Error(`Failed to mark notification ${id} as read`);
-            }
-          }),
-        ),
-      );
-    },
-
-    onMutate: async ({ notifId }): Promise<MutationContext> => {
-      await queryClient.cancelQueries({ queryKey: ["notifications"] });
-
-      const previous = queryClient.getQueryData<NotificationResponse[]>([
-        "notifications",
-      ]);
-
-      const ids = Array.isArray(notifId) ? notifId : [notifId];
-      const idSet = new Set(ids);
-
-      queryClient.setQueryData<NotificationResponse[]>(
-        ["notifications"],
-        (old) =>
-          old
-            ? old.map((n) => (idSet.has(n.id) ? { ...n, is_read: true } : n))
-            : [],
-      );
-
-      return { previous };
-    },
-
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["notifications"], context.previous);
+  getUserNotification: async (
+    user_id: string,
+  ): Promise<NotificationResponse[] | null> => {
+    try {
+      const response = await apiClient.get(`${url}/${user_id}`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
       }
-    },
+      console.error("Failed to fetch notification", error);
+      throw error;
+    }
+  },
 
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  create: async (
+    notification: NotificationCreate,
+  ): Promise<NotificationResponse> => {
+    try {
+      const response = await apiClient.post(url, notification);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to create notification", error);
+      throw error;
+    }
+  },
+
+  update: async (
+    id: string,
+    notification: NotificationUpdate,
+  ): Promise<NotificationResponse> => {
+    try {
+      const response = await apiClient.patch(`${url}/${id}`, notification);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to update notification", error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string): Promise<string> => {
+    try {
+      const response = await apiClient.delete(id);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to delete notification", error);
+      throw error;
+    }
+  },
+  markAdRead: async (id: string): Promise<NotificationResponse> => {
+    try {
+      const response = await apiClient.patch(`${url}/mark_as_read/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to mark as read", error);
+      throw error;
+    }
+  },
+};
+
+export const notificatonKeys = {
+  all: ["notifications"] as const,
+  list: () => [...notificatonKeys.all, "list"] as const,
+  details: () => [...notificatonKeys.all, "details"] as const,
+  detail: (id: string) => [...notificatonKeys.details(), id] as const,
+};
+
+export function useGetOneNotification(id: string) {
+  return useQuery({
+    queryKey: notificatonKeys.detail(id),
+    queryFn: () => api.getOneNotification(id),
+  });
+}
+
+export function useGetAllNotifications() {
+  return useQuery({
+    queryKey: notificatonKeys.list(),
+    queryFn: api.getAllNotifications,
+  });
+}
+
+export function useGetUserNotifications(id: string) {
+  return useQuery({
+    queryKey: notificatonKeys.list(),
+    queryFn: () => api.getUserNotification(id),
+  });
+}
+
+export function useNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
+    },
+  });
+}
+
+export function useUpdateNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      notification,
+    }: {
+      id: string;
+      notification: NotificationUpdate;
+    }) => api.update(id, notification),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
+      queryClient.invalidateQueries({
+        queryKey: notificatonKeys.detail(variables.id),
+      });
+    },
+  });
+}
+
+export function useDeleteNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
+    },
+  });
+}
+
+export function useMarkAsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.markAdRead(id),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
+      queryClient.invalidateQueries({
+        queryKey: notificatonKeys.detail(variables),
+      });
     },
   });
 }

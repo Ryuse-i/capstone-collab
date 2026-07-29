@@ -29,7 +29,9 @@ class ProjectMemberService:
     @staticmethod
     async def add_member(db: AsyncSession, project_member: ProjectMemberCreate):
         repo = ProjectMemberRepo(db)
-        return await repo.create(project_member)
+        member = await repo.create(project_member)
+        await db.commit()
+        return member
 
     @staticmethod
     async def update_member(
@@ -38,9 +40,13 @@ class ProjectMemberService:
         project_member: ProjectMemberUpdate,
     ):
         repo = ProjectMemberRepo(db)
-        return await repo.update(db_item, project_member)
+        member = await repo.update(db_item, project_member)
+        await db.commit()
+        return member
 
     @staticmethod
     async def delete_member(db: AsyncSession, db_item: ProjectMember):
         repo = ProjectMemberRepo(db)
-        return await repo.delete(db_item)
+        await repo.delete(db_item)
+        await db.commit()
+        return None

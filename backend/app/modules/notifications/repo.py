@@ -12,3 +12,4 @@ class NotificationRepo(BaseRepo):
         notification = await self.db.execute(query)
 
         return list(notification.scalars().all())
+

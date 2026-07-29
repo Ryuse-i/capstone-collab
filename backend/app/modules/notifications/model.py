@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
+from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, String
 import enum
 from sqlalchemy import Enum as SAEnum
 
@@ -21,10 +21,13 @@ class Notification(Base):
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
     )
+    title: Mapped[str] = mapped_column(String(150), nullable=False)
+    body: Mapped[str] = mapped_column(String, nullable=False)
     type: Mapped[NotificationType] = mapped_column(
         SAEnum(NotificationType, name="notificationtype"),
         default=NotificationType.GENERAL,
     )
+    is_read: Mapped[bool] = mapped_column(default=False)
     # invitation reference
     invitation_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), nullable=True

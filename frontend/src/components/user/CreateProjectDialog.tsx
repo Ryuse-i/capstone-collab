@@ -608,90 +608,91 @@ export default function CreateProjectDialog() {
   }
 
   function handleSubmit() {
-    const payload = {
+    if (!user) {
+      console.error("No user found, cannot create project");
+      return;
+    }
+
+    const projectPayload = {
       ...formData,
       instructor: formData.instructor.trim() ? formData.instructor : null,
       advisor: formData.advisor.trim() ? formData.advisor : null,
-      ...(user && { created_by: user.id }),
+      created_by: user.id,
     };
 
-    projectMutate(payload, {
+    projectMutate(projectPayload, {
       onSuccess: (newProject: ProjectResponse) => {
-        console.log("project created: ", newProject);
-
-        if (!user) {
-          console.error("No user found, cannot determine invite sender");
-          setOpen(false);
-          resetForm();
-          return;
-        }
-
-        const invites: CreateInvite[] = [
-          ...(formData.advisor && advisorLabel
-            ? [
-                {
-                  project_id: newProject.id,
-                  email: advisorLabel,
-                  sender_id: user.id,
-                  role: "advisor",
-                } as CreateInvite,
-              ]
-            : []),
-          ...(formData.instructor && instructorLabel
-            ? [
-                {
-                  project_id: newProject.id,
-                  email: instructorLabel,
-                  sender_id: user.id,
-                  role: "instructor",
-                } as CreateInvite,
-              ]
-            : []),
-          ...members.map(
-            (member): CreateInvite => ({
-              project_id: newProject.id,
-              email: member.email,
-              sender_id: user.id,
-              role: "member",
-            }),
-          ),
-        ];
-
-        if (invites.length === 0) {
-          setOpen(false);
-          resetForm();
-          return;
-        }
-
         const projectLeader: CreateProjectMember = {
           user_id: user.id,
           project_id: newProject.id,
           project_role: "leader",
         };
 
+        //Add current project leader fist before proceeding with the invites
         memberMutate(projectLeader, {
-          onSuccess: (newMember) => {
-            console.log("created member", newMember);
-          },
-        });
+          onSuccess: () => {
+            const invites: CreateInvite[] = [
+              ...(formData.advisor && advisorLabel
+                ? [
+                    {
+                      project_id: newProject.id,
+                      email: advisorLabel,
+                      sender_id: user.id,
+                      role: "advisor",
+                    } as CreateInvite,
+                  ]
+                : []),
+              ...(formData.instructor && instructorLabel
+                ? [
+                    {
+                      project_id: newProject.id,
+                      email: instructorLabel,
+                      sender_id: user.id,
+                      role: "instructor",
+                    } as CreateInvite,
+                  ]
+                : []),
+              ...members.map(
+                (member): CreateInvite => ({
+                  project_id: newProject.id,
+                  email: member.email,
+                  sender_id: user.id,
+                  role: "member",
+                }),
+              ),
+            ];
 
-        batchInviteMutate(invites, {
-          onSuccess: (newInvites) => {
-            console.log("Sent invites: ", newInvites);
-            setOpen(false);
-            resetForm();
+            if (invites.length === 0) {
+              setOpen(false);
+              resetForm();
+              return;
+            }
+
+            batchInviteMutate(invites, {
+              onSuccess: () => {
+                setOpen(false);
+                resetForm();
+              },
+              onError: (error) => {
+                console.error("Failed to send invites", error);
+                // Project + leader membership exist even though invites
+                // failed, so still close/reset rather than leaving the
+                // user stuck on this step.
+                setOpen(false);
+                resetForm();
+              },
+            });
           },
           onError: (error) => {
-            console.error("Failed to send invites", error);
-            // Project was created even though invites failed, so still
-            // close/reset rather than leaving the user stuck on this step.
-            setOpen(false);
-            resetForm();
+            console.error("Failed to add leader membership", error);
+            // Project exists but has no leader recorded. Keep the dialog
+            // open on this step so the user knows something went wrong,
+            // rather than closing as if it succeeded.
           },
         });
       },
       onError: (error) => {
-        console.error("failed to create project", error);
+        console.error("Failed to create project", error);
       },
     });
   }

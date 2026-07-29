@@ -5,9 +5,8 @@ import type {
   UpdateProjectMember,
 } from "@/types/project_member";
 import apiClient from "@/services/apiClient";
-import { projectKeys } from "./useProject";
 
-const url = "/project_members/";
+const url = "/project_members";
 
 const api = {
   getAll: async (): Promise<MemberBase[]> => {
@@ -22,7 +21,7 @@ const api = {
 
   getOneMember: async (id: string): Promise<MemberBase> => {
     try {
-      const response = await apiClient.get(`${url}/${id}`);
+      const response = await apiClient.get<MemberBase>(`${url}/${id}`);
       return response.data;
     } catch (error) {
       console.error("Failed to fetch member", error);
@@ -71,7 +70,7 @@ export const memberKeys = {
 
 export function useGetMembers() {
   return useQuery({
-    queryKey: projectKeys.list(),
+    queryKey: memberKeys.list(),
     queryFn: api.getAll,
   });
 }
@@ -108,7 +107,7 @@ export function useUpdateMember() {
   });
 }
 
-export function useDeteleMember() {
+export function useDeleteMember() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.delete,

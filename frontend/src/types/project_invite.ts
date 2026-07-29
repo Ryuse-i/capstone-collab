@@ -16,5 +16,5 @@ export type UpdateInvite = Partial<ProjectInviteBase>;
 
 export interface InviteResponse extends ProjectInviteBase {
   id: string;
-  create_at: string;
+  created_at: string;
 }
