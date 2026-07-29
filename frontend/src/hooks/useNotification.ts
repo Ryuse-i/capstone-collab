@@ -157,15 +157,13 @@ export function useDeleteNotification() {
   });
 }
 
-export function useMarkAsRead() {
+export function useMarkAsRead( ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.markAdRead(id),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
-      queryClient.invalidateQueries({
-        queryKey: notificatonKeys.detail(variables),
-      });
+      queryClient.invalidateQueries({queryKey: notificatonKeys.detail(variables)})
     },
   });
 }

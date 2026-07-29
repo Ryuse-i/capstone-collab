@@ -9,7 +9,6 @@ from app.modules.projects.schema import (
 from app.modules.project_snapshots.repo import ProjectSnapshotRepo
 
 
-
 class ProjectService:
     @staticmethod
     async def get_one_project(db: AsyncSession, project_id):
@@ -23,16 +22,15 @@ class ProjectService:
 
     @staticmethod
     async def create_project(db: AsyncSession, project: ProjectCreate):
-        #initialize the repos
+        # initialize the repos
         project_repo = ProjectRepo(db)
         snapshot_repo = ProjectSnapshotRepo(db)
 
-        #create project and snapshot
-        try: 
+        # create project and snapshot
+        try:
             project_result = await project_repo.create(project)
             await snapshot_repo.upsert_today_snapshot(
-                project_result.id,
-                ProjectSnapshotUpsert()
+                project_result.id, ProjectSnapshotUpsert()
             )
             await db.commit()
             return project_result
@@ -41,13 +39,14 @@ class ProjectService:
             await db.rollback()
             raise
 
-
     @staticmethod
     async def update_project(
         db: AsyncSession, db_item: ProjectUpdate, project: ProjectUpdate
     ):
         repo = ProjectRepo(db)
-        return await repo.update(db_item, project)
+        project_result = await repo.update(db_item, project)
+        await db.commit()
+        return project_result
 
     @staticmethod
     async def delete_project(db: AsyncSession, db_item: Project):
@@ -63,4 +62,3 @@ class ProjectService:
     async def get_project_with_snapshot(db: AsyncSession, user_id) -> Project | None:
         repo = ProjectRepo(db)
         return await repo.get_by_creator_with_snapshot(user_id)
-

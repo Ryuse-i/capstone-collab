@@ -1,4 +1,3 @@
-// components/app-layout.tsx
 "use client";
 
 import React from "react";
@@ -19,6 +18,14 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import {
   BellIcon,
   CalculatorIcon,
@@ -65,10 +72,11 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-// Import your custom notification hooks
 import {
-  useGetUserNotifications, } from "@/hooks/useNotification";
-
+  useGetUserNotifications,
+  useMarkAsRead,
+} from "@/hooks/useNotification";
+import type { NotificationResponse } from "@/types/notification";
 import { useCurrentUser } from "@/hooks/useAuth";
 
 interface BreadcrumbItemType {
@@ -87,12 +95,33 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const [open, setOpen] = React.useState(false);
 
-  // ─── Notification Data Fetching & Mutations ─────────────────────────────────
-  const {data: user  } = useCurrentUser()
-  const { data: notifications = [], isLoading: notificationLoading } = useGetUserNotifications(user!.id);
+  const [selectedNotification, setSelectedNotification] =
+    React.useState<NotificationResponse | null>(null);
 
+  const { data: user } = useCurrentUser();
+  const { data: notifications = [], isLoading: notificationLoading } =
+    useGetUserNotifications(user!.id);
+  const { mutate: readMutate } = useMarkAsRead();
 
+  function markRead(id: string) {
+    readMutate(id, {
+      onSuccess: () => {
+        console.log("Notification mark as read");
+      },
+      onError: (error) => {
+        console.error("Failed to mark notification as read", error);
+      },
+    });
+  }
 
+  function handleNotificationClick(item: NotificationResponse) {
+    setSelectedNotification(item);
+    if (!item.is_read) {
+      markRead(item.id);
+    }
+  }
+
+  const hasUnread = notifications?.some((item) => !item.is_read);
 
   return (
     <SidebarProvider>
@@ -251,7 +280,9 @@ export default function AppLayout({
               <PopoverTrigger asChild>
                 <Button variant="outline" size="icon" className="relative">
                   <LucideBellRing className="h-4 w-4" />
-                  {/* Dynamic red badge indicator shown only when there are unread notifications */}
+                  {hasUnread && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
@@ -260,53 +291,49 @@ export default function AppLayout({
                     Notifications
                   </PopoverTitle>
                   <PopoverDescription>
-                    {notificationLoading
-                      ? "Loading notifications..." : ""
-                    }
+                    View and manage your notifications
                   </PopoverDescription>
                 </PopoverHeader>
 
                 <div className="max-h-64 overflow-y-auto">
-                  {notificationLoading? (
+                  {notificationLoading ? (
                     <div className="p-4 text-center text-xs text-muted-foreground">
                       Loading...
                     </div>
                   ) : notifications?.length === 0 ? (
                     <div className="p-4 text-center text-xs text-muted-foreground">
-                      No notifications found.
+                      You currently have no notifications
                     </div>
                   ) : (
                     notifications?.map((item) => (
                       <div
                         key={item.id}
-                        className={`flex flex-col gap-1 p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer text-sm relative ${
+                        className={`flex items-center gap-2 p-4 border-b last:border-0 transition-colors text-sm relative ${
                           !item.is_read
-                            ? "bg-muted/30 font-medium"
-                            : "opacity-70"
+                            ? "bg-muted/30 font-medium hover:bg-muted/50 cursor-pointer"
+                            : "opacity-70 hover:bg-muted/30 cursor-pointer"
                         }`}
+                        onClick={() => handleNotificationClick(item)}
                       >
                         {/* Little circle marker representing unread items */}
                         {!item.is_read && (
-                          <span className="absolute top-5 left-2 h-1.5 w-1.5 rounded-full bg-blue-500" />
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
                         )}
-                        <div className="flex items-center justify-between pl-1">
-                          <span
-                            className={
-                              !item.is_read
-                                ? "text-foreground font-semibold"
-                                : "text-muted-foreground"
-                            }
-                          >
-                          </span>
-                          <span className="text-xs text-muted-foreground font-normal whitespace-nowrap ml-2">
-                            {new Date(item.created_at).toLocaleDateString([], {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 pl-1 font-normal">
-                        </p>
+                        <span
+                          className={`flex-1 truncate pl-1 ${
+                            !item.is_read
+                              ? "text-foreground font-semibold"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {item.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-normal whitespace-nowrap ml-2">
+                          {new Date(item.created_at).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
                       </div>
                     ))
                   )}
@@ -315,6 +342,48 @@ export default function AppLayout({
             </Popover>
           </div>
         </header>
+
+        {/* Notification Detail Dialog */}
+        <Dialog
+          open={!!selectedNotification}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedNotification(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            {selectedNotification && (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-2">
+                    <DialogTitle>{selectedNotification.title}</DialogTitle>
+                    <Badge
+                      variant={
+                        selectedNotification.is_read ? "secondary" : "default"
+                      }
+                    >
+                      {selectedNotification.is_read ? "Read" : "Unread"}
+                    </Badge>
+                  </div>
+                  <DialogDescription className="text-xs">
+                    {new Date(selectedNotification.created_at).toLocaleString(
+                      [],
+                      {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+                <p className="text-sm text-foreground whitespace-pre-wrap">
+                  {selectedNotification.body}
+                </p>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
