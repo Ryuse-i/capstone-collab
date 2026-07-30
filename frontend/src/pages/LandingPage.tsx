@@ -1,9 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 // 1. Import Link from react-router-dom
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, X } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  LayoutGridIcon,
+  Menu,
+  RefreshCw,
+  Scale,
+  Trophy,
+  X,
+} from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────
 interface NavItem {
@@ -12,7 +21,7 @@ interface NavItem {
 }
 
 interface Feature {
-  icon: string;
+  icon: ReactNode;
   title: string;
   desc: string;
 }
@@ -33,32 +42,32 @@ const NAV_ITEMS: NavItem[] = [
 
 const FEATURES: Feature[] = [
   {
-    icon: "📊",
+    icon: <LayoutGridIcon />,
     title: "Project Health Dashboard",
     desc: "Real-time health scoring based on task completion, workload distribution, and deadline adherence.",
   },
   {
-    icon: "⚖️",
+    icon: <Scale />,
     title: "Workload Balance Engine",
     desc: "Automatic workload calculation. Instantly spot overloaded and underutilized members.",
   },
   {
-    icon: "🔄",
+    icon: <RefreshCw />,
     title: "Smart Task Redistribution",
     desc: "System suggests actionable fixes — transfer, split, or convert tasks with impact previews.",
   },
   {
-    icon: "🏆",
+    icon: <Trophy />,
     title: "Contribution Scoring",
     desc: "Transparent performance metrics using complexity, effort share, and submission timing.",
   },
   {
-    icon: "✅",
+    icon: <CheckCircle2 />,
     title: "Task Approval Workflow",
     desc: "Structured review pipeline with AI-assisted evaluation and inline comments.",
   },
   {
-    icon: "🟢",
+    icon: <Activity />,
     title: "Live Activity Monitoring",
     desc: "Real-time presence system. See who's Active, Idle, or Offline instantly.",
   },
@@ -207,6 +216,7 @@ function HeroSection() {
       </div>
     </section>
   );
+  ``;
 }
 
 function FeatureSection() {

@@ -40,6 +40,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const allTasks = [
   {
@@ -262,6 +271,10 @@ export default function Task() {
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
+  const [selectedTask, setSelectedTask] = useState<
+    (typeof allTasks)[number] | null
+  >(null);
+  const [openTaskDialog, setOpenTaskDialog] = useState(false);
 
   // Filter logic
   const filteredTasks = allTasks.filter((task) => {
@@ -392,7 +405,7 @@ export default function Task() {
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="p-0">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -457,7 +470,17 @@ export default function Task() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setOpenTaskDialog(true);
+                          }}
+                        >
+                          View Task
+                        </Button>
                         <Button variant="outline" size="sm">
                           Edit
                         </Button>
@@ -473,6 +496,116 @@ export default function Task() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={openTaskDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedTask(null);
+          }
+          setOpenTaskDialog(open);
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="rounded-xl p-0 overflow-hidden sm:max-w-250 max-h-[75vh] flex flex-col"
+        >
+          <DialogHeader className="border-b px-4 py-3 shrink-0">
+            <DialogTitle>Task Details</DialogTitle>
+            <DialogDescription>
+              {selectedTask
+                ? selectedTask.name
+                : "Select a task to view details."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedTask ? (
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">
+                  {selectedTask.name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Review the task information and current progress below.
+                </p>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </p>
+                  <Badge
+                    className={`border-0 mt-2 ${statusStyle[selectedTask.status]}`}
+                  >
+                    {selectedTask.status}
+                  </Badge>
+                </div>
+
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Priority
+                  </p>
+                  <Badge
+                    className={`border-0 mt-2 ${priorityStyle[selectedTask.priority]}`}
+                  >
+                    {selectedTask.priority}
+                  </Badge>
+                </div>
+
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Complexity
+                  </p>
+                  <Badge
+                    className={`border-0 mt-2 ${complexityStyle[selectedTask.complexity]}`}
+                  >
+                    {selectedTask.complexity}
+                  </Badge>
+                </div>
+
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Due date
+                  </p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {selectedTask.due}
+                  </p>
+                </div>
+
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Assigned users
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {selectedTask.assigned.map((member) => (
+                      <div
+                        key={member}
+                        className="flex items-center gap-2 rounded-md bg-background/50 px-2 py-2"
+                      >
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                          {member}
+                        </div>
+                        <span className="text-sm text-foreground">
+                          {member}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter className="sticky bottom-0 z-10 border-t bg-background/95 px-8 shrink-0">
+            <DialogClose asChild>
+              <Button variant="outline" className="min-w-24">
+                Close
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
