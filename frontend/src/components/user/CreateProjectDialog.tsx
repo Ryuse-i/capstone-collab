@@ -53,6 +53,8 @@ import type { UserRead } from "@/services/api";
 import type { CreateInvite } from "@/types/project_invite";
 import type { ProjectResponse } from "@/types/project";
 import type { CreateProjectMember } from "@/types/project_member";
+import { projectKeys } from "@/hooks/useProject";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Data {
   name: string;
@@ -595,6 +597,7 @@ export default function CreateProjectDialog() {
     useBatchCreateInvite();
   const { mutate: memberMutate, isPending: isMemberPending } =
     useCreateMember();
+  const queryClient = useQueryClient();
 
   function resetForm() {
     setFormData(emptyData());
@@ -670,6 +673,9 @@ export default function CreateProjectDialog() {
 
             batchInviteMutate(invites, {
               onSuccess: () => {
+                queryClient.invalidateQueries({
+                  queryKey: [...projectKeys.details(), "detailSnapshot"],
+                });
                 setOpen(false);
                 resetForm();
               },

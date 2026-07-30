@@ -153,9 +153,6 @@ export function useCreateProject() {
     mutationFn: api.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
-      queryClient.invalidateQueries({
-        queryKey: [...projectKeys.details(), "detailSnapshot"],
-      });
     },
   });
 }

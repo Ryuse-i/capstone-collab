@@ -93,6 +93,7 @@ class ProjectInvitationService:
                     )
                     # create notification
                     await NotificationService.create_notification(db, notification)
+
                 results.append(
                     {
                         "email": invitation.email,
@@ -107,6 +108,7 @@ class ProjectInvitationService:
                     {"email": invitation.email, "success": False, "reason": str(e)}
                 )
 
+        await db.commit()
         return results
 
     @staticmethod
@@ -125,18 +127,37 @@ class ProjectInvitationService:
 
     @staticmethod
     async def accept_invitation(db: AsyncSession, invitation_id):
-        repo = ProjectInvitationRepo(db)
-        invitation = await repo.get_by_id(invitation_id)
-        if invitation:
-            update_data = ProjectInvitationUpdate(status=InviteStatus.ACCEPTED)
-            return await repo.update(invitation, update_data)
+        inv_repo = ProjectInvitationRepo(db)
+        user_repo = UserDB(db, User)
+
+        invitation = await inv_repo.get_by_id(invitation_id)
+        invited_user = await user_repo.get_by_email(invitation.email)
+
+        if invitation and invited_user:
+            try:
+                async with db.begin_nested():
+                    update_data = ProjectInvitationUpdate(status=InviteStatus.ACCEPTED)
+                    invitation_result = await inv_repo.update(invitation, update_data)
+
+                    notification = CreateNotification(
+                        user_id=invitation.sender_id,
+                        body=f"{invited_user.first_name} has accepted to be part of our project as {invitation_result.role}",
+                        title="Project Invite Accept",
+                        type=NotificationType.PROJECT_INVITATION,
+                        invitation_id=invitation_result.id,
+                    )
+                    await NotificationService.create_notification(db, notification)
+
+            except Exception:
+                raise
+
         return None
 
     @staticmethod
     async def decline_invitation(db: AsyncSession, invitation_id):
-        repo = ProjectInvitationRepo(db)
-        invitation = await repo.get_by_id(invitation_id)
+        inv_repo = ProjectInvitationRepo(db)
+        invitation = await inv_repo.get_by_id(invitation_id)
         if not invitation:
             return None
         update_data = ProjectInvitationUpdate(status=InviteStatus.REJECTED)
-        return await repo.update(invitation, update_data)
+        return await inv_repo.update(invitation, update_data)
