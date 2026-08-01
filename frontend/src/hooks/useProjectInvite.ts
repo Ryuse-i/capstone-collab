@@ -72,6 +72,30 @@ const api = {
       throw error;
     }
   },
+
+  accept: async (id: string): Promise<InviteResponse> => {
+    try {
+      const response = await apiClient.post<InviteResponse>(
+        `${url}/${id}/accept`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to accept invite", error);
+      throw error;
+    }
+  },
+
+  decline: async (id: string): Promise<InviteResponse> => {
+    try {
+      const response = await apiClient.post<InviteResponse>(
+        `${url}/${id}/decline`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to decline invite", error);
+      throw error;
+    }
+  },
 };
 
 export const inviteKeys = {
@@ -81,10 +105,12 @@ export const inviteKeys = {
   detail: (id: string) => [...inviteKeys.details(), id] as const,
 };
 
-export function useGetOneInvite(id: string) {
+export function useGetOneInvite(id?: string) {
   return useQuery({
-    queryKey: inviteKeys.detail(id),
-    queryFn: () => api.getOne(id),
+    // only enable the query when an id is provided
+    queryKey: id ? inviteKeys.detail(id) : (["invites", "idle"] as const),
+    queryFn: () => api.getOne(id!),
+    enabled: !!id,
   });
 }
 
@@ -137,6 +163,36 @@ export function useDeleteInvite() {
     mutationFn: api.delete,
     onSuccess: (_, id) => {
       queryClient.removeQueries({
+        queryKey: inviteKeys.detail(id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: inviteKeys.list(),
+      });
+    },
+  });
+}
+
+export function useAcceptInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.accept(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
+        queryKey: inviteKeys.detail(id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: inviteKeys.list(),
+      });
+    },
+  });
+}
+
+export function useDeclineInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.decline(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
         queryKey: inviteKeys.detail(id),
       });
       queryClient.invalidateQueries({

@@ -76,6 +76,13 @@ import {
   useGetUserNotifications,
   useMarkAsRead,
 } from "@/hooks/useNotification";
+import { useUpdateNotification } from "@/hooks/useNotification";
+import {
+  useGetOneInvite,
+  useAcceptInvite,
+  useDeclineInvite,
+} from "@/hooks/useProjectInvite";
+import { useGetOneProject } from "@/hooks/useProject";
 import type { NotificationResponse } from "@/types/notification";
 import { useCurrentUser } from "@/hooks/useAuth";
 
@@ -102,6 +109,13 @@ export default function AppLayout({
   const { data: notifications = [], isLoading: notificationLoading } =
     useGetUserNotifications(user!.id);
   const { mutate: readMutate } = useMarkAsRead();
+  const { mutate: acceptInvite, isPending: isAcceptPending } =
+    useAcceptInvite();
+  const { mutate: declineInvite, isPending: isDeclinePending } =
+    useDeclineInvite();
+  const { mutate: updateNotification } = useUpdateNotification();
+  const { data: invite } = useGetOneInvite(selectedNotification?.invitation_id);
+  const { data: project } = useGetOneProject(invite?.project_id ?? "");
 
   function markRead(id: string) {
     readMutate(id, {
@@ -119,6 +133,50 @@ export default function AppLayout({
     if (!item.is_read) {
       markRead(item.id);
     }
+  }
+
+  function handleAcceptInvite() {
+    if (!selectedNotification?.invitation_id) return;
+
+    const notificationId = selectedNotification.id;
+
+    const projectName = project?.name ?? "the project";
+    acceptInvite(selectedNotification.invitation_id, {
+      onSuccess: () => {
+        updateNotification({
+          id: notificationId,
+          notification: {
+            body: `You have accepted the invitation to join ${projectName}.`,
+          },
+        });
+        setSelectedNotification(null);
+      },
+      onError: (error) => {
+        console.error("Failed to accept invite", error);
+      },
+    });
+  }
+
+  function handleDeclineInvite() {
+    if (!selectedNotification?.invitation_id) return;
+
+    const notificationId = selectedNotification.id;
+
+    const projectName = project?.name ?? "the project";
+    declineInvite(selectedNotification.invitation_id, {
+      onSuccess: () => {
+        updateNotification({
+          id: notificationId,
+          notification: {
+            body: `You have declined the invitation to join ${projectName}.`,
+          },
+        });
+        setSelectedNotification(null);
+      },
+      onError: (error) => {
+        console.error("Failed to decline invite", error);
+      },
+    });
   }
 
   const hasUnread = notifications?.some((item) => !item.is_read);
@@ -380,6 +438,55 @@ export default function AppLayout({
                 <p className="text-sm text-foreground whitespace-pre-wrap">
                   {selectedNotification.body}
                 </p>
+
+                {project &&
+                  selectedNotification.type === "project_invitation" && (
+                    <div className="mt-3 rounded-md border p-3 bg-muted/5">
+                      <h4 className="text-sm font-semibold">{project.name}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {project.description}
+                      </p>
+                    </div>
+                  )}
+
+                {/* inviter info removed — included in notification body */}
+
+                {selectedNotification.type === "project_invitation" &&
+                  invite?.status === "pending" && (
+                    <div className="flex gap-2 pt-3">
+                      <Button
+                        type="button"
+                        variant="default"
+                        className="flex-1"
+                        onClick={handleAcceptInvite}
+                        disabled={isAcceptPending || isDeclinePending}
+                      >
+                        {isAcceptPending ? "Accepting..." : "Accept Invite"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handleDeclineInvite}
+                        disabled={isAcceptPending || isDeclinePending}
+                      >
+                        {isDeclinePending ? "Declining..." : "Decline Invite"}
+                      </Button>
+                    </div>
+                  )}
+                {/* Show explicit status when invite already accepted or rejected */}
+                {selectedNotification.type === "project_invitation" &&
+                  invite?.status === "accepted" && (
+                    <div className="mt-3 rounded-md border p-3 bg-green-50 text-sm text-green-800">
+                      You have accepted this invitation.
+                    </div>
+                  )}
+                {selectedNotification.type === "project_invitation" &&
+                  invite?.status === "rejected" && (
+                    <div className="mt-3 rounded-md border p-3 bg-red-50 text-sm text-red-800">
+                      You have declined this invitation.
+                    </div>
+                  )}
               </>
             )}
           </DialogContent>

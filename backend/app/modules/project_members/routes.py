@@ -1,19 +1,22 @@
+from typing import List
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_async_session
+from app.modules.projects.schema import ProjectResponseSnapshot
+
 from .schema import (
-    ProjectMemberResponse,
-    ProjectMember_Project_Reponse,
-    ProjectMember_User_Reponse,
-    ProjectMemberUpdate,
     ProjectMemberCreate,
+    ProjectMemberDetailResponse,
+    ProjectMemberResponse,
+    ProjectMemberUpdate,
+    ProjectMember_Project_Response,
+    ProjectMember_User_Response,
 )
 from .services import ProjectMemberService
-from uuid import UUID
-from typing import List
-from .schema import ProjectMemberDetailResponse
 
-# TODO put invitations into another module
 
 project_member_router = APIRouter()
 
@@ -47,34 +50,51 @@ async def get_one_project_member(
     return member
 
 
-@project_member_router.get("/detail/{user_id}", response_model=ProjectMemberResponse)
+@project_member_router.get("/detail/{user_id}", response_model=ProjectMemberDetailResponse)
 async def get_one_project_member_detail(
     user_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
-    member = await ProjectMemberService.get_one_member(db, user_id)
+    member = await ProjectMemberService.get_member_by_user_id(db, user_id)
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
     return member
 
 
 @project_member_router.get(
-    "/projects/{user_id}", response_model=list[ProjectMember_Project_Reponse]
+    "/projects/{user_id}", response_model=list[ProjectMember_Project_Response]
 )
 async def get_all_projects_by_member(
-    user_id, db: AsyncSession = Depends(get_async_session)
+    user_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
     projects = await ProjectMemberService.get_all_projects_by_member(db, user_id)
     return projects
 
 
 @project_member_router.get(
-    "/users/{project_id}", response_model=list[ProjectMember_User_Reponse]
+    "/users/{project_id}", response_model=list[ProjectMember_User_Response]
 )
 async def get_all_members_by_project(
-    project_id, db: AsyncSession = Depends(get_async_session)
+    project_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
     members = await ProjectMemberService.get_all_members_by_project(db, project_id)
     return members
+
+
+@project_member_router.get(
+    "/{user_id}/projects/{project_id}/with-snapshot",
+    response_model=ProjectResponseSnapshot,
+)
+async def get_project_for_member_with_snapshot(
+    user_id: UUID,
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+):
+    project = await ProjectMemberService.get_project_for_member_with_snapshot(
+        db, user_id, project_id
+    )
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found for this member")
+    return project
 
 
 @project_member_router.post(

@@ -10,19 +10,26 @@ from app.modules.projects.schema import (
 from app.modules.projects.services import ProjectService
 from uuid import UUID
 from typing import List
+from app.modules.users.services import current_active_user
+from app.modules.users.model import User
 
 project_router = APIRouter()
 project_member_router = APIRouter()
 
 
 @project_router.get("/", response_model=List[ProjectResponse])
-async def get_all_projects(db: AsyncSession = Depends(get_async_session)):
+async def get_all_projects(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
     return await ProjectService.get_all_projects(db)
 
 
 @project_router.get("/{project_id}", response_model=ProjectResponse)
 async def get_one_project(
-    project_id: UUID, db: AsyncSession = Depends(get_async_session)
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     db_item = await ProjectService.get_one_project(db, project_id)
     if not db_item:
@@ -36,7 +43,9 @@ async def get_one_project(
     "/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_project(
-    project: ProjectCreate, db: AsyncSession = Depends(get_async_session)
+    project: ProjectCreate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     return await ProjectService.create_project(db, project)
 
@@ -46,6 +55,7 @@ async def update_project(
     project_id: UUID,
     project: ProjectUpdate,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     db_item = await ProjectService.get_one_project(db, project_id)
     return await ProjectService.update_project(db, db_item, project)
@@ -55,6 +65,7 @@ async def update_project(
 async def delete_project(
     project_id: UUID,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     db_item = await ProjectService.get_one_project(db, project_id)
     if not db_item:
@@ -67,7 +78,9 @@ async def delete_project(
 
 @project_router.get("/user/{user_id}", response_model=ProjectResponse)
 async def get_user_project(
-    user_id: UUID, db: AsyncSession = Depends(get_async_session)
+    user_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     """
     Fetch a project belonging to the specified user.
@@ -85,7 +98,9 @@ async def get_user_project(
     "/user/{user_id}/with-snapshot", response_model=ProjectResponseSnapshot
 )
 async def get_user_project_with_snapshot(
-    user_id: UUID, db: AsyncSession = Depends(get_async_session)
+    user_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     """
     Fetch a user's project combined with its latest snapshot data.

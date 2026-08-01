@@ -1,11 +1,15 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, String
 from app.modules.project_members.model import ProjectRole
 from sqlalchemy import Enum as SAEnum
 import enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.projects.model import Project
 
 
 class InviteStatus(str, enum.Enum):
@@ -36,6 +40,14 @@ class ProjectInvitation(Base):
     status: Mapped[InviteStatus] = mapped_column(
         SAEnum(InviteStatus, name="invite_status"), default="pending"
     )  # pending, accepted, declined
+    project: Mapped["Project"] = relationship(
+        "Project",
+        back_populates="invitations",
+        foreign_keys=[project_id],
+    )
+
+
+
     # timestamp
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

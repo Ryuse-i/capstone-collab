@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.modules.member_snapshots.model import MemberSnapshot
     from app.modules.projects.model import Project
     from app.modules.member_activities.model import MemberActivity
+    from app.modules.users.model import User
 
 
 class ProjectRole(str, enum.Enum):
@@ -44,6 +45,18 @@ class ProjectMember(Base):
         back_populates="members",
         foreign_keys=[project_id],
     )
+    user: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[user_id],
+    )
+
+    @property
+    def projects(self) -> "Project | None":
+        return self.project
+
+    @property
+    def users(self) -> "User | None":
+        return self.user
 
     project_role: Mapped[ProjectRole] = mapped_column(
         SAEnum(ProjectRole, name="projectrole"),  # named enum + correct type

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Send, Phone, Video, MoreHorizontal } from "lucide-react";
+import { Send, Video, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -91,8 +91,6 @@ export default function Chat() {
     setMessages((s) => [...s, m]);
     setInput("");
   };
-
-  const otherMember = members.find((m) => m.id === "DM")!;
 
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>

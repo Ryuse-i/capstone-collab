@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.modules.projects.schema import ProjectResponse
 from app.modules.users.schema import UserResponse
@@ -24,28 +24,28 @@ class ProjectMemberUpdate(BaseModel):
 
 
 class ProjectMemberResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     user_id: UUID
     project_id: UUID
 
 
 class ProjectMemberDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     user_id: UUID
     project_id: UUID
-    project_role: ProjectRole
-    workload_points: float = 0.0
-    contribution_points: float = 0.0
-    created_at: datetime
-    updated_at: datetime
-
-    class ConfigDict:
-        from_attributes = True
+    project_role: ProjectRole | None = None
+    workload_points: float | None = None
+    contribution_points: float | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
-class ProjectMember_Project_Reponse(ProjectMemberDetailResponse):
+class ProjectMember_Project_Response(ProjectMemberDetailResponse):
     projects: ProjectResponse
 
 
-class ProjectMember_User_Reponse(ProjectMemberDetailResponse):
+class ProjectMember_User_Response(ProjectMemberDetailResponse):
     users: UserResponse

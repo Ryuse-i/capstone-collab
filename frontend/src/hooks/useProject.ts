@@ -17,11 +17,25 @@ const api = {
   getCurentProjectWithSnapshot: async (
     id: string,
   ): Promise<ProjectWithSnapshot | null> => {
+    if (!id) return null;
+
     try {
-      const response = await apiClient.get(`${url}/user/${id}/with-snapshot`);
+      const membershipsResponse = await apiClient.get(
+        `/project_members/projects/${id}`,
+      );
+      const firstMembership = membershipsResponse.data?.[0];
+      const projectId =
+        firstMembership?.project_id ?? firstMembership?.projects?.id;
+
+      if (!projectId) {
+        return null;
+      }
+
+      const response = await apiClient.get(
+        `/project_members/${id}/projects/${projectId}/with-snapshot`,
+      );
       return response.data;
     } catch (error) {
-      // if no items found
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return null;
       }

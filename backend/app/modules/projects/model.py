@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.modules.supertasks.model import Supertask
     from app.modules.tasks.model import Task
     from app.modules.project_members.model import ProjectMember
+    from app.modules.invitations.model import ProjectInvitation
 
 
 class Project(Base):
@@ -60,6 +61,13 @@ class Project(Base):
         "ProjectMember",
         back_populates="project",
         cascade="all, delete-orphan",
+    )
+
+    invitations: Mapped[list["ProjectInvitation"]] = relationship(
+        "ProjectInvitation",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # Timestamps

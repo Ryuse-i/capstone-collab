@@ -8,7 +8,6 @@ from app.modules.projects.schema import (
 )
 from app.modules.project_snapshots.repo import ProjectSnapshotRepo
 
-
 class ProjectService:
     @staticmethod
     async def get_one_project(db: AsyncSession, project_id):
@@ -26,15 +25,13 @@ class ProjectService:
         project_repo = ProjectRepo(db)
         snapshot_repo = ProjectSnapshotRepo(db)
 
-        # create project and snapshot
         try:
             project_result = await project_repo.create(project)
             await snapshot_repo.upsert_today_snapshot(
                 project_result.id, ProjectSnapshotUpsert()
             )
-            await db.commit()
+
             return project_result
-            # rollback all transaction and raise the exception
         except Exception:
             await db.rollback()
             raise
@@ -44,9 +41,7 @@ class ProjectService:
         db: AsyncSession, db_item: ProjectUpdate, project: ProjectUpdate
     ):
         repo = ProjectRepo(db)
-        project_result = await repo.update(db_item, project)
-        await db.commit()
-        return project_result
+        return await repo.update(db_item, project)
 
     @staticmethod
     async def delete_project(db: AsyncSession, db_item: Project):

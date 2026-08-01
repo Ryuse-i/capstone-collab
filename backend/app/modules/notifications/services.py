@@ -22,25 +22,17 @@ class NotificationService:
     @staticmethod
     async def create_notification(db: AsyncSession, notification: CreateNotification):
         repo = NotificationRepo(db)
-        notification = await repo.create(notification)
-        await db.commit()
-        return notification
+        return await repo.create(notification)
 
     @staticmethod
     async def update_notification(
         db: AsyncSession, db_item: UpdateNotification, notification: UpdateNotification
     ):
         repo = NotificationRepo(db)
-        notification = await repo.update(db_item, notification)
-        await db.commit()
-        return notification
-
+        return await repo.update(db_item, notification)
 
     @staticmethod
     async def delete_notification(db: AsyncSession, db_item: NotificationResponse):
         repo = NotificationRepo(db)
         await repo.delete(db_item)
-        await db.commit()
         return None
-
-

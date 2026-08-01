@@ -1,3 +1,5 @@
+from fastapi import HTTPException
+
 from .model import ProjectInvitation
 from sqlalchemy.ext.asyncio import AsyncSession
 from .schema import (
@@ -10,6 +12,8 @@ from app.modules.notifications.services import NotificationService
 from .model import InviteStatus
 from app.modules.notifications.schema import CreateNotification
 from app.modules.users.auth import User, UserDB
+from app.modules.project_members.schema import ProjectMemberCreate
+from app.modules.project_members.services import ProjectMemberService
 
 
 class ProjectInvitationService:
@@ -24,7 +28,7 @@ class ProjectInvitationService:
         return await repo.get_all()
 
     @staticmethod
-    async def create_invitation(db: AsyncSession, invitation: ProjectInvitationCreate):
+    async def create_invitation(db: AsyncSession, invitation: ProjectInvitationCreate, current_user: User):
         user = UserDB(db, User)
         repo = ProjectInvitationRepo(db)
 
@@ -34,15 +38,17 @@ class ProjectInvitationService:
         if invited_user is None:
             return None
 
-        # automatic commit if successful and rollback for failure
+        # start a savepoint on where to rollback to
         async with db.begin_nested():
             invitation_result = await repo.create(invitation)
 
             # create the noticication
+            # include sender first name in notification body so frontend doesn't need extra user fetch
+            sender_name = getattr(current_user, "first_name", "")
             notification = CreateNotification(
                 user_id=invited_user.id,
                 title="Project Invitation",
-                body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}",
+                body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}. From: {sender_name}",
                 type=NotificationType.PROJECT_INVITATION,
                 invitation_id=invitation_result.id,
             )
@@ -59,7 +65,7 @@ class ProjectInvitationService:
 
     @staticmethod
     async def batch_create(
-        db: AsyncSession, invitation_list: list[ProjectInvitationCreate]
+        db: AsyncSession, invitation_list: list[ProjectInvitationCreate], current_user: User
     ):
         user_repo = UserDB(db, User)
         inv_repo = ProjectInvitationRepo(db)
@@ -84,9 +90,10 @@ class ProjectInvitationService:
                     # create invitation
                     invitation_result = await inv_repo.create(invitation)
                     # create the noticication
+                    sender_name = getattr(current_user, "first_name", "")
                     notification = CreateNotification(
                         user_id=invited_user.id,
-                        body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role.value}",
+                        body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role.value}. From: {sender_name}",
                         title="Project Invitation",
                         type=NotificationType.PROJECT_INVITATION,
                         invitation_id=invitation_result.id,
@@ -108,7 +115,6 @@ class ProjectInvitationService:
                     {"email": invitation.email, "success": False, "reason": str(e)}
                 )
 
-        await db.commit()
         return results
 
     @staticmethod
@@ -126,38 +132,75 @@ class ProjectInvitationService:
         return await repo.delete(db_item)
 
     @staticmethod
-    async def accept_invitation(db: AsyncSession, invitation_id):
-        inv_repo = ProjectInvitationRepo(db)
-        user_repo = UserDB(db, User)
-
-        invitation = await inv_repo.get_by_id(invitation_id)
-        invited_user = await user_repo.get_by_email(invitation.email)
-
-        if invitation and invited_user:
-            try:
-                async with db.begin_nested():
-                    update_data = ProjectInvitationUpdate(status=InviteStatus.ACCEPTED)
-                    invitation_result = await inv_repo.update(invitation, update_data)
-
-                    notification = CreateNotification(
-                        user_id=invitation.sender_id,
-                        body=f"{invited_user.first_name} has accepted to be part of our project as {invitation_result.role}",
-                        title="Project Invite Accept",
-                        type=NotificationType.PROJECT_INVITATION,
-                        invitation_id=invitation_result.id,
-                    )
-                    await NotificationService.create_notification(db, notification)
-
-            except Exception:
-                raise
-
-        return None
-
-    @staticmethod
-    async def decline_invitation(db: AsyncSession, invitation_id):
+    async def accept_invitation(db: AsyncSession, current_user: User, invitation_id):
         inv_repo = ProjectInvitationRepo(db)
         invitation = await inv_repo.get_by_id(invitation_id)
         if not invitation:
-            return None
-        update_data = ProjectInvitationUpdate(status=InviteStatus.REJECTED)
-        return await inv_repo.update(invitation, update_data)
+            raise HTTPException(status_code=404, detail="Invitation not found")
+
+        # check authorization before leaking invitation state
+        if invitation.email != current_user.email:
+            raise HTTPException(status_code=403, detail="Unauthorized process")
+
+        if invitation.status != InviteStatus.PENDING:
+            raise HTTPException(
+                status_code=400, detail="Invitation is no longer pending"
+            )
+
+        async with db.begin_nested():
+            update_data = ProjectInvitationUpdate(status=InviteStatus.ACCEPTED)
+            invitation_result = await inv_repo.update(invitation, update_data)
+
+            await ProjectMemberService.add_member(
+                db,
+                ProjectMemberCreate(
+                    user_id=current_user.id,
+                    project_id=invitation.project_id,
+                    project_role=invitation_result.role,
+                ),
+            )
+
+            await NotificationService.create_notification(
+                db,
+                notification=CreateNotification(
+                    user_id=invitation.sender_id,
+                    body=f"{current_user.first_name} has accepted to be part of our project as {invitation_result.role}",
+                    title="Project Invite Accept",
+                    type=NotificationType.PROJECT_INVITATION,
+                    invitation_id=invitation_result.id,
+                ),
+            )
+
+        await db.commit()
+        return invitation_result
+
+    @staticmethod
+    async def decline_invitation(db: AsyncSession, current_user: User, invitation_id):
+        inv_repo = ProjectInvitationRepo(db)
+        invitation = await inv_repo.get_by_id(invitation_id)
+        if not invitation:
+            raise HTTPException(status_code=404, detail="Invitation not found")
+
+        if invitation.email != current_user.email:
+            raise HTTPException(status_code=403, detail="Unauthorized process")
+
+        if invitation.status != InviteStatus.PENDING:
+            raise HTTPException(
+                status_code=400, detail="Invitation is no longer pending"
+            )
+
+        async with db.begin_nested():
+            update_data = ProjectInvitationUpdate(status=InviteStatus.REJECTED)
+            invitation_result = await inv_repo.update(invitation, update_data)
+
+            notification = CreateNotification(
+                user_id=invitation.sender_id,
+                body=f"{current_user.first_name} has declined the invitation to join the project",
+                title="Project Invite Declined",
+                type=NotificationType.PROJECT_INVITATION,
+                invitation_id=invitation_result.id,
+            )
+            await NotificationService.create_notification(db, notification)
+
+        await db.commit()
+        return invitation_result

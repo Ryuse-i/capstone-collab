@@ -9,12 +9,17 @@ from .schema import (
 from .service import ProjectInvitationService
 from uuid import UUID
 from typing import List
+from app.modules.users.model import User
+from app.modules.users.services import current_active_user
 
 project_invitation_router = APIRouter()
 
 
 @project_invitation_router.get("/", response_model=List[ProjectInvitationResponse])
-async def get_all_invitations(db: AsyncSession = Depends(get_async_session)):
+async def get_all_invitations(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
     return await ProjectInvitationService.get_all_invitations(db)
 
 
@@ -22,7 +27,9 @@ async def get_all_invitations(db: AsyncSession = Depends(get_async_session)):
     "/{invitation_id}", response_model=ProjectInvitationResponse
 )
 async def get_one_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+    invitation_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     invitation = await ProjectInvitationService.get_one_invitation(db, invitation_id)
     if not invitation:
@@ -36,9 +43,11 @@ async def get_one_invitation(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_invitation(
-    invitation: ProjectInvitationCreate, db: AsyncSession = Depends(get_async_session)
+    invitation: ProjectInvitationCreate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
-    return await ProjectInvitationService.create_invitation(db, invitation)
+    return await ProjectInvitationService.create_invitation(db, invitation, current_user)
 
 
 @project_invitation_router.post(
@@ -49,8 +58,9 @@ async def create_invitation(
 async def batch_create_invitation(
     invitation_list: list[ProjectInvitationCreate],
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
-    return await ProjectInvitationService.batch_create(db, invitation_list)
+    return await ProjectInvitationService.batch_create(db, invitation_list, current_user)
 
 
 @project_invitation_router.patch(
@@ -60,6 +70,7 @@ async def update_invitation(
     invitation_id: UUID,
     invitation: ProjectInvitationUpdate,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     db_item = await ProjectInvitationService.get_one_invitation(db, invitation_id)
     if not db_item:
@@ -71,9 +82,13 @@ async def update_invitation(
     "/{invitation_id}/accept", response_model=ProjectInvitationResponse
 )
 async def accept_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+    invitation_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
-    invitation = await ProjectInvitationService.accept_invitation(db, invitation_id)
+    invitation = await ProjectInvitationService.accept_invitation(
+        db, current_user, invitation_id
+    )
     if not invitation:
         raise HTTPException(status_code=404, detail="Invitation not found")
     return invitation
@@ -83,9 +98,13 @@ async def accept_invitation(
     "/{invitation_id}/decline", response_model=ProjectInvitationResponse
 )
 async def decline_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+    invitation_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
-    invitation = await ProjectInvitationService.decline_invitation(db, invitation_id)
+    invitation = await ProjectInvitationService.decline_invitation(
+        db, current_user, invitation_id
+    )
     if not invitation:
         raise HTTPException(status_code=404, detail="Invitation not found")
     return invitation
@@ -95,7 +114,9 @@ async def decline_invitation(
     "/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT
 )
 async def delete_invitation(
-    invitation_id: UUID, db: AsyncSession = Depends(get_async_session)
+    invitation_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     db_item = await ProjectInvitationService.get_one_invitation(db, invitation_id)
     if not db_item:
