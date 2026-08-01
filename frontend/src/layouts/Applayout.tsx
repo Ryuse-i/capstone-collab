@@ -43,6 +43,7 @@ import {
   InboxIcon,
   LayoutGridIcon,
   ListIcon,
+  Loader2Icon,
   PlusIcon,
   ScissorsIcon,
   SettingsIcon,
@@ -112,8 +113,16 @@ export default function AppLayout({
     useAcceptInvite();
   const { mutate: declineInvite, isPending: isDeclinePending } =
     useDeclineInvite();
-  const { data: invite } = useGetOneInvite(selectedNotification?.invitation_id);
-  const { data: project } = useGetOneProject(invite?.project_id ?? "");
+  const {
+    data: invite,
+    isLoading: inviteLoading,
+    isFetching: inviteFetching,
+  } = useGetOneInvite(selectedNotification?.invitation_id);
+  const {
+    data: project,
+    isLoading: projectLoading,
+    isFetching: projectFetching,
+  } = useGetOneProject(invite?.project_id ?? "");
 
   function markRead(id: string) {
     readMutate(id, {
@@ -160,6 +169,16 @@ export default function AppLayout({
   }
 
   const hasUnread = notifications?.some((item) => !item.is_read);
+
+  // True while we're still fetching invite/project details for a
+  // project-invitation notification that's currently open in the dialog.
+  const isInviteDataLoading =
+    !!selectedNotification &&
+    selectedNotification.type === "project_invitation" &&
+    !!selectedNotification.invitation_id &&
+    (inviteLoading ||
+      inviteFetching ||
+      (!!invite?.project_id && (projectLoading || projectFetching)));
 
   return (
     <SidebarProvider>
@@ -335,8 +354,9 @@ export default function AppLayout({
 
                 <div className="max-h-64 overflow-y-auto">
                   {notificationLoading ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground">
-                      Loading...
+                    <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                      Loading notifications...
                     </div>
                   ) : notifications?.length === 0 ? (
                     <div className="p-4 text-center text-xs text-muted-foreground">
@@ -419,54 +439,76 @@ export default function AppLayout({
                   {selectedNotification.body}
                 </p>
 
-                {project &&
-                  selectedNotification.type === "project_invitation" && (
-                    <div className="mt-3 rounded-md border p-3 bg-muted/5">
-                      <h4 className="text-sm font-semibold">{project.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {project.description}
-                      </p>
-                    </div>
-                  )}
-
                 {/* inviter info removed — included in notification body */}
 
                 {selectedNotification.type === "project_invitation" &&
-                  invite?.status === "pending" && (
-                    <div className="flex gap-2 pt-3">
-                      <Button
-                        type="button"
-                        variant="default"
-                        className="flex-1"
-                        onClick={handleAcceptInvite}
-                        disabled={isAcceptPending || isDeclinePending}
-                      >
-                        {isAcceptPending ? "Accepting..." : "Accept Invite"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={handleDeclineInvite}
-                        disabled={isAcceptPending || isDeclinePending}
-                      >
-                        {isDeclinePending ? "Declining..." : "Decline Invite"}
-                      </Button>
+                  (isInviteDataLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                      Loading invitation details...
                     </div>
-                  )}
-                {/* Show explicit status when invite already accepted or rejected */}
-                {selectedNotification.type === "project_invitation" &&
-                  invite?.status === "accepted" && (
-                    <div className="mt-3 rounded-md border p-3 bg-green-50 text-sm text-green-800">
-                      You have accepted this invitation.
-                    </div>
-                  )}
-                {selectedNotification.type === "project_invitation" &&
-                  invite?.status === "rejected" && (
-                    <div className="mt-3 rounded-md border p-3 bg-red-50 text-sm text-red-800">
-                      You have declined this invitation.
-                    </div>
-                  )}
+                  ) : (
+                    <>
+                      {project && (
+                        <div className="mt-3 rounded-md border p-3 bg-muted/5">
+                          <h4 className="text-sm font-semibold">
+                            {project.name}
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {project.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {invite?.status === "pending" && (
+                        <div className="flex gap-2 pt-3">
+                          <Button
+                            type="button"
+                            variant="default"
+                            className="flex-1"
+                            onClick={handleAcceptInvite}
+                            disabled={isAcceptPending || isDeclinePending}
+                          >
+                            {isAcceptPending ? (
+                              <span className="flex items-center gap-2">
+                                <Loader2Icon className="h-4 w-4 animate-spin" />
+                                Accepting...
+                              </span>
+                            ) : (
+                              "Accept Invite"
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={handleDeclineInvite}
+                            disabled={isAcceptPending || isDeclinePending}
+                          >
+                            {isDeclinePending ? (
+                              <span className="flex items-center gap-2">
+                                <Loader2Icon className="h-4 w-4 animate-spin" />
+                                Declining...
+                              </span>
+                            ) : (
+                              "Decline Invite"
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      {/* Show explicit status when invite already accepted or rejected */}
+                      {invite?.status === "accepted" && (
+                        <div className="mt-3 rounded-md border p-3 bg-green-50 text-sm text-green-800">
+                          You have accepted this invitation.
+                        </div>
+                      )}
+                      {invite?.status === "rejected" && (
+                        <div className="mt-3 rounded-md border p-3 bg-red-50 text-sm text-red-800">
+                          You have declined this invitation.
+                        </div>
+                      )}
+                    </>
+                  ))}
               </>
             )}
           </DialogContent>
