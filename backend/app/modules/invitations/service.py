@@ -34,7 +34,12 @@ class ProjectInvitationService:
         user = UserDB(db, User)
         repo = ProjectInvitationRepo(db)
 
+        sender = await user.get_by_id(invitation.sender_id)
         invited_user = await user.get_by_email(invitation.email)
+
+        # check if sender exists
+        if not sender:
+            raise HTTPException(status_code=404, detail="sender does not exists")
 
         # check if user exists
         if invited_user is None:
@@ -46,11 +51,11 @@ class ProjectInvitationService:
 
             # create the noticication
             # include sender first name in notification body so frontend doesn't need extra user fetch
-            sender_name = getattr(current_user, "first_name", "")
             notification = CreateNotification(
                 user_id=invited_user.id,
                 title="Project Invitation",
-                body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}. From: {sender_name}",
+                body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}.
+                From: {sender.first_name} {sender.last_name}""",
                 type=NotificationType.PROJECT_INVITATION,
                 invitation_id=invitation_result.id,
             )
@@ -77,6 +82,11 @@ class ProjectInvitationService:
 
         # iterate over invitation list
         for invitation in invitation_list:
+            # check if the sender exists
+            sender = await user_repo.get_by_id(invitation.sender_id)
+            if not sender:
+                raise HTTPException(status_code=404, detail="sender does not exists")
+
             # check if user with email exists
             invited_user = await user_repo.get_by_email(invitation.email)
             if invited_user is None:
@@ -94,10 +104,11 @@ class ProjectInvitationService:
                     # create invitation
                     invitation_result = await inv_repo.create(invitation)
                     # create the noticication
-                    sender_name = getattr(current_user, "first_name", "")
                     notification = CreateNotification(
                         user_id=invited_user.id,
-                        body=f"Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role.value}. From: {sender_name}",
+                        body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role.value}. 
+
+From: {sender.first_name} {sender.last_name}""",
                         title="Project Invitation",
                         type=NotificationType.PROJECT_INVITATION,
                         invitation_id=invitation_result.id,
@@ -138,18 +149,10 @@ class ProjectInvitationService:
     @staticmethod
     async def accept_invitation(db: AsyncSession, current_user: User, invitation_id):
         inv_repo = ProjectInvitationRepo(db)
-        user_repo = UserDB(db, User)
         invitation = await inv_repo.get_by_id(invitation_id)
-        inviter = await user_repo.get_by_id(invitation.user_id)
 
         if not invitation:
             raise HTTPException(status_code=404, detail="Invitation not found")
-
-        if not inviter:
-            raise HTTPException(
-                status_code=403,
-                detail="Sorry the one who invited you is no longer in the project",
-            )
 
         # check authorization before leaking invitation state
         if invitation.email != current_user.email:
@@ -177,9 +180,7 @@ class ProjectInvitationService:
                 db,
                 notification=CreateNotification(
                     user_id=invitation.sender_id,
-                    body=f"""{current_user.first_name} has accepted to be part of our project as {invitation_result.role}
-                        From: {inviter.first_name} {inviter.last_name}
-                    """,
+                    body=f"{current_user.first_name} has accepted to be part of our project as {invitation_result.role}",
                     title="Project Invite Accept",
                     type=NotificationType.PROJECT_INVITATION,
                     invitation_id=invitation_result.id,

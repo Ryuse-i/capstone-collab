@@ -76,7 +76,6 @@ import {
   useGetUserNotifications,
   useMarkAsRead,
 } from "@/hooks/useNotification";
-import { useUpdateNotification } from "@/hooks/useNotification";
 import {
   useGetOneInvite,
   useAcceptInvite,
@@ -113,7 +112,6 @@ export default function AppLayout({
     useAcceptInvite();
   const { mutate: declineInvite, isPending: isDeclinePending } =
     useDeclineInvite();
-  const { mutate: updateNotification } = useUpdateNotification();
   const { data: invite } = useGetOneInvite(selectedNotification?.invitation_id);
   const { data: project } = useGetOneProject(invite?.project_id ?? "");
 
@@ -138,17 +136,8 @@ export default function AppLayout({
   function handleAcceptInvite() {
     if (!selectedNotification?.invitation_id) return;
 
-    const notificationId = selectedNotification.id;
-
-    const projectName = project?.name ?? "the project";
     acceptInvite(selectedNotification.invitation_id, {
       onSuccess: () => {
-        updateNotification({
-          id: notificationId,
-          notification: {
-            body: `You have accepted the invitation to join ${projectName}.`,
-          },
-        });
         setSelectedNotification(null);
       },
       onError: (error) => {
@@ -160,17 +149,8 @@ export default function AppLayout({
   function handleDeclineInvite() {
     if (!selectedNotification?.invitation_id) return;
 
-    const notificationId = selectedNotification.id;
-
-    const projectName = project?.name ?? "the project";
     declineInvite(selectedNotification.invitation_id, {
       onSuccess: () => {
-        updateNotification({
-          id: notificationId,
-          notification: {
-            body: `You have declined the invitation to join ${projectName}.`,
-          },
-        });
         setSelectedNotification(null);
       },
       onError: (error) => {
