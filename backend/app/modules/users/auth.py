@@ -11,11 +11,15 @@ from app.core.config import settings
 from .model import User, UserRole
 from typing import List
 from sqlalchemy import select, func
+from uuid import UUID
 
 
 class UserDB(SQLAlchemyUserDatabase):
     async def get_by_email(self, email: str) -> User | None:
         return await super().get_by_email(email)
+
+    async def get_by_id(self, user_id: UUID) -> User | None:
+        return await super().get(user_id)
 
     async def search_by_email_and_role(self, email: str, role: UserRole) -> List[User]:
         stmt = select(User).where(

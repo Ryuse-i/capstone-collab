@@ -6,10 +6,11 @@ from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, String
 from app.modules.project_members.model import ProjectRole
 from sqlalchemy import Enum as SAEnum
 import enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from app.modules.projects.model import Project
+    from app.modules.notifications.model import Notification
 
 
 class InviteStatus(str, enum.Enum):
@@ -46,7 +47,10 @@ class ProjectInvitation(Base):
         foreign_keys=[project_id],
     )
 
-
+    notifications: Mapped[List["Notification"]] = relationship(
+        "Notification",
+        back_populates="invitation",
+    )
 
     # timestamp
     created_at: Mapped[datetime] = mapped_column(

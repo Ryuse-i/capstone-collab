@@ -7,6 +7,7 @@ import { StudentRoutes } from "@/routes/StudentRoutes";
 import { InstructorRoutes } from "@/routes/InstructorRoutes";
 import { AdminRoutes } from "@/routes/AdminRoutes";
 import { AdvisorRoutes } from "./routes/AdvisorRoutes";
+import RoleRoute from "./components/RoleRoute";
 
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -14,6 +15,7 @@ import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
 import Settings from "@/pages/shared/Settings";
+import ProjectTasks from "./pages/instructor/ProjectTask";
 
 export default function App() {
   const navigate = useNavigate();
@@ -30,6 +32,10 @@ export default function App() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/" element={<LandingPage />} />
+
+      <Route element={<RoleRoute role={["instructor", "advisor"]} />}>
+        <Route path="/student-project-tasks" element={<ProjectTasks />}></Route>
+      </Route>
 
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<RoleBasedDashboard />} />

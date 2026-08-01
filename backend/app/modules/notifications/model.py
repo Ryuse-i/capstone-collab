@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 from app.core.db import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, String
 import enum
 from sqlalchemy import Enum as SAEnum
+
+if TYPE_CHECKING:
+    from app.modules.invitations.model import ProjectInvitation
 
 
 class NotificationType(str, enum.Enum):
@@ -30,8 +34,17 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(default=False)
     # invitation reference
     invitation_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("project_invitations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    # relationships
+    invitation: Mapped["ProjectInvitation"] = relationship(
+        "ProjectInvitation",
+        back_populates="notifications",
+        foreign_keys=[invitation_id],
     )

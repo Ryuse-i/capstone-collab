@@ -28,7 +28,9 @@ class ProjectInvitationService:
         return await repo.get_all()
 
     @staticmethod
-    async def create_invitation(db: AsyncSession, invitation: ProjectInvitationCreate, current_user: User):
+    async def create_invitation(
+        db: AsyncSession, invitation: ProjectInvitationCreate, current_user: User
+    ):
         user = UserDB(db, User)
         repo = ProjectInvitationRepo(db)
 
@@ -65,7 +67,9 @@ class ProjectInvitationService:
 
     @staticmethod
     async def batch_create(
-        db: AsyncSession, invitation_list: list[ProjectInvitationCreate], current_user: User
+        db: AsyncSession,
+        invitation_list: list[ProjectInvitationCreate],
+        current_user: User,
     ):
         user_repo = UserDB(db, User)
         inv_repo = ProjectInvitationRepo(db)
@@ -134,9 +138,18 @@ class ProjectInvitationService:
     @staticmethod
     async def accept_invitation(db: AsyncSession, current_user: User, invitation_id):
         inv_repo = ProjectInvitationRepo(db)
+        user_repo = UserDB(db, User)
         invitation = await inv_repo.get_by_id(invitation_id)
+        inviter = await user_repo.get_by_id(invitation.user_id)
+
         if not invitation:
             raise HTTPException(status_code=404, detail="Invitation not found")
+
+        if not inviter:
+            raise HTTPException(
+                status_code=403,
+                detail="Sorry the one who invited you is no longer in the project",
+            )
 
         # check authorization before leaking invitation state
         if invitation.email != current_user.email:
@@ -164,7 +177,9 @@ class ProjectInvitationService:
                 db,
                 notification=CreateNotification(
                     user_id=invitation.sender_id,
-                    body=f"{current_user.first_name} has accepted to be part of our project as {invitation_result.role}",
+                    body=f"""{current_user.first_name} has accepted to be part of our project as {invitation_result.role}
+                        From: {inviter.first_name} {inviter.last_name}
+                    """,
                     title="Project Invite Accept",
                     type=NotificationType.PROJECT_INVITATION,
                     invitation_id=invitation_result.id,
