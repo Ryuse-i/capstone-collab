@@ -88,7 +88,14 @@ const studentNavMain = [
 
 const studentNoProjectNavMain = [...commonNavMain, capstoneSearchNavItem];
 
-const instructorNavMain = [...commonNavMain];
+const instructorNavMain = [
+  ...commonNavMain,
+  {
+    title: "Projects",
+    url: "/project-list",
+    icon: <FileText />,
+  },
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
