@@ -8,11 +8,12 @@ import Team from "@/pages/student/Team";
 import CapstoneSearch from "@/pages/student/CapstoneSearch";
 import Chat from "@/pages/student/Chat";
 import MyTask from "@/pages/student/MyTask";
+import ProjectTask from "@/pages/student/ProjectTask";
 
 export const StudentRoutes = (
   <Route element={<RoleRoute role={ROLES.STUDENT} />}>
-    <Route path="/my-task" element={<MyTask />} />
-    <Route path="/project-task" element={<ProjectTask/>} />
+    <Route path="/project-task" element={<ProjectTask />} />
+    <Route path="/mytask" element={<MyTask />} />
     <Route path="/workload" element={<Workload />} />
     <Route path="/team" element={<Team />} />
     <Route path="/capstone-search" element={<CapstoneSearch />} />

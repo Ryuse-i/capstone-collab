@@ -19,7 +19,7 @@ import {
 // remove the unused imports and variables if you don't need them. I kept them here for reference in case you want to use them later, input what wesley said in the cards information
 // ---------------------------------------------------------------------------
 
-type ProjectStatus = "Todo" | "In Progress" | "Completed";
+type ProjectStatus = "Not Started" | "In Progress" | "Submitted" | "Completed";
 type ProjectFilterStatus = "All" | ProjectStatus;
 type ProjectPriority = "High" | "Medium" | "Low";
 
@@ -45,7 +45,7 @@ const allProjects: Project[] = [
     tag: "Web design",
     title: "Twottir - Redesign Project",
     description: "Here you will make a Twitter web redesign project",
-    status: "Todo",
+    status: "Not Started",
     priority: "High",
     attachment: {
       label: "Twottir Project",
@@ -60,7 +60,7 @@ const allProjects: Project[] = [
     tag: "Mobile Design",
     title: "Sudoku - Mobile App",
     description: "Hello guys, here is the loom for this project. Keep it up!",
-    status: "Todo",
+    status: "Submitted",
     priority: "Medium",
     attachment: { label: "Loom Video", source: "www.loom.com", icon: "loom" },
     assigned: ["HG"],
@@ -72,7 +72,7 @@ const allProjects: Project[] = [
     title: "Yalla Invoice",
     description:
       "Please check the file below and put all results into that file",
-    status: "Todo",
+    status: "Not Started",
     priority: "Low",
     attachment: {
       label: "Invoice Check Up",
@@ -158,10 +158,18 @@ const priorityStyle: Record<ProjectPriority, string> = {
   Low: "bg-gray-100 text-gray-500",
 };
 
+const statusStyle: Record<ProjectStatus, string> = {
+  "Not Started": "bg-gray-100 text-gray-500",
+  "In Progress": "bg-blue-100 text-blue-700",
+  Submitted: "bg-yellow-100 text-yellow-700",
+  Completed: "bg-green-100 text-green-700",
+};
+
 const tabs: { label: string; status: ProjectFilterStatus }[] = [
   { label: "All", status: "All" },
-  { label: "Todo", status: "Todo" },
+  { label: "Not Started", status: "Not Started" },
   { label: "In Progress", status: "In Progress" },
+  { label: "Submitted", status: "Submitted" },
   { label: "Completed", status: "Completed" },
 ];
 
@@ -291,9 +299,9 @@ export default function ProjectsList() {
       >
         <DialogContent
           showCloseButton={false}
-          className="rounded-xl p-4 pb-0 overflow-hidden sm:max-w-250 sm:h-160"
+          className="rounded-xl p-0 overflow-hidden sm:max-w-250 max-h-[75vh] flex flex-col"
         >
-          <DialogHeader className="border-b px-4 py-3">
+          <DialogHeader className="border-b px-4 py-3 shrink-0">
             <DialogTitle>Task Details</DialogTitle>
             <DialogDescription>
               {selectedProject
@@ -303,7 +311,7 @@ export default function ProjectsList() {
           </DialogHeader>
 
           {selectedProject ? (
-            <div className="space-y-4 p-4">
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar overflow-hidden px-4 py-4">
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">
                   {selectedProject.title}
@@ -321,7 +329,7 @@ export default function ProjectsList() {
                   <Badge
                     className={cn(
                       "border-0 mt-2",
-                      priorityStyle[selectedProject.priority],
+                      statusStyle[selectedProject.status],
                     )}
                   >
                     {selectedProject.status}
@@ -375,9 +383,11 @@ export default function ProjectsList() {
             </div>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 z-10 bg-background/95 px-8 py-2 shrink-0">
             <DialogClose asChild>
-              <Button variant="outline">Close</Button>
+              <Button variant="outline" className="min-w-24">
+                Close
+              </Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>

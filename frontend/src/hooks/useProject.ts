@@ -132,6 +132,7 @@ export function useGetCurrentProject(id: string) {
     queryKey: projectKeys.detailSnapshot(id),
     queryFn: () => api.getCurentProjectWithSnapshot(id),
     retry: false,
+    enabled: !!id,
   });
 }
 
