@@ -196,18 +196,18 @@ export default function AppLayout({
             <Breadcrumb>
               <BreadcrumbList>
                 {breadcrumbs.map((crumb, i) => (
-                  <BreadcrumbItem key={i} className="md:block">
-                    {i < breadcrumbs.length - 1 ? (
-                      <>
+                  <React.Fragment key={i}>
+                    <BreadcrumbItem>
+                      {i < breadcrumbs.length - 1 ? (
                         <BreadcrumbLink href={crumb.href ?? "#"}>
                           {crumb.label}
                         </BreadcrumbLink>
-                        <BreadcrumbSeparator className="hidden md:block" />
-                      </>
-                    ) : (
-                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                    )}
-                  </BreadcrumbItem>
+                      ) : (
+                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      )}
+                    </BreadcrumbItem>
+                    {i < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+                  </React.Fragment>
                 ))}
               </BreadcrumbList>
             </Breadcrumb>

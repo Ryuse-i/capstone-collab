@@ -16,6 +16,7 @@ import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
 import Settings from "@/pages/shared/Settings";
 import ProjectTasks from "./pages/instructor/ProjectTask";
+import Projects from "./pages/instructor/Projects";
 
 export default function App() {
   const navigate = useNavigate();
@@ -34,7 +35,8 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
 
       <Route element={<RoleRoute role={["instructor", "advisor"]} />}>
-        <Route path="/student-project-tasks" element={<ProjectTasks />}></Route>
+        <Route path="/project-tasks" element={<ProjectTasks />}></Route>
+        <Route path="/projects" element={<Projects />}></Route>
       </Route>
 
       <Route element={<PrivateRoute />}>
