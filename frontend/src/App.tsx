@@ -15,8 +15,6 @@ import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
 import Settings from "@/pages/shared/Settings";
-import ProjectTasks from "./pages/instructor/ProjectTask";
-import Projects from "./pages/instructor/Projects";
 
 export default function App() {
   const navigate = useNavigate();
@@ -34,10 +32,8 @@ export default function App() {
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/" element={<LandingPage />} />
 
-      <Route element={<RoleRoute role={["instructor", "advisor"]} />}>
-        <Route path="/project-tasks" element={<ProjectTasks />}></Route>
-        <Route path="/projects" element={<Projects />}></Route>
-      </Route>
+      {/* instructor and advisor shared route */}
+      <Route element={<RoleRoute role={["instructor", "advisor"]} />}></Route>
 
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<RoleBasedDashboard />} />
