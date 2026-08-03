@@ -9,7 +9,6 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     STUDENT = "student"
     INSTRUCTOR = "instructor"
-    ADVISOR = "advisor"
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):

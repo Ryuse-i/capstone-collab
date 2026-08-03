@@ -3,7 +3,7 @@ import { Eye, GraduationCap } from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetInstructorProjectsWithSnapshot } from "@/hooks/useProject";
+import { useGetInstructorProjects } from "@/hooks/useProject";
 import type { ProjectWithSnapshot } from "@/types/project";
 
 function ProjectCard({
@@ -94,7 +94,7 @@ export default function ProjectsPage() {
     data: projects,
     isLoading: isProjectsLoading,
     isError,
-  } = useGetInstructorProjectsWithSnapshot(user?.id ?? "");
+  } = useGetInstructorProjects(user?.id ?? "");
 
   const isLoading = isUserLoading || isProjectsLoading;
 

@@ -5,7 +5,7 @@ from fastapi_users import BaseUserManager, UUIDIDMixin
 from app.core.config import settings
 from .model import User
 from .auth import get_user_db
-from .schema import UserCreate, UserResponse
+from .schema import UserCreate
 from typing import List
 from .model import UserRole
 

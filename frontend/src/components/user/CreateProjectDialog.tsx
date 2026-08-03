@@ -586,7 +586,7 @@ export default function CreateProjectDialog() {
   const [memberEmail, setMemberEmail] = useState<string>("");
 
   const instructorSearch = useMemberSearch(instructorEmail, "instructor");
-  const advisorSearch = useMemberSearch(advisorEmail, "advisor");
+  const advisorSearch = useMemberSearch(advisorEmail, "instructor");
   const memberSearch = useMemberSearch(memberEmail, "student");
   const [open, setOpen] = useState(false);
 

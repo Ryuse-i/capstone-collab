@@ -17,6 +17,15 @@ project_router = APIRouter()
 project_member_router = APIRouter()
 
 
+@project_router.get("/snapshot/{project_id}")
+async def get_by_id_with_snapshot(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await ProjectService.get_by_id_with_snapshot(db, project_id)
+
+
 @project_router.get("/", response_model=List[ProjectResponse])
 async def get_all_projects(
     db: AsyncSession = Depends(get_async_session),
@@ -103,6 +112,15 @@ async def get_user_project(
     return project
 
 
+@project_router.get("/user/{user_id}/all", response_model=list[ProjectResponse])
+async def get_instructor_project(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    project = await ProjectService.get_projects_for_instructor(db, user_id)
+    return project
+
 
 @project_router.get(
     "/user/{user_id}/all-with-snapshot", response_model=list[ProjectResponseSnapshot]
@@ -112,10 +130,7 @@ async def get_instructor_project_with_snapshot(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    project = await ProjectService.get_projects_for_instructor_with_snapshot(db, user_id)
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No project found for this user.",
-        )
+    project = await ProjectService.get_projects_for_instructor_with_snapshot(
+        db, user_id
+    )
     return project
