@@ -88,11 +88,11 @@ const api = {
     }
   },
 
-  getOneProjectWithSpanshot: async (
+  getOneProjectWithSnapshot: async (
     id: string,
   ): Promise<ProjectWithSnapshot> => {
     try {
-      const response = await apiClient.get(`${url}/snapshots/${id}`);
+      const response = await apiClient.get(`${url}/snapshot/${id}`);
       return response.data;
     } catch (error) {
       console.error("Failed to get snapshots", error);
@@ -184,7 +184,7 @@ export function useGetOneProject(id: string) {
 export function useGetOneProjectWithSpanshot(id: string) {
   return useQuery({
     queryKey: projectKeys.detailSnapshot(id),
-    queryFn: () => api.getOneProjectWithSpanshot(id),
+    queryFn: () => api.getOneProjectWithSnapshot(id),
     enabled: !!id,
   });
 }

@@ -1,6 +1,13 @@
 import pytest
-from httpx import AsyncClient
-from uuid import uuid4
+from httpx import ASGITransport, AsyncClient
+from uuid import UUID, uuid4
+from sqlalchemy import select
+
+from app.main import app
+from app.core.db import get_async_session
+from app.modules.projects.model import Project
+from app.modules.users.model import User
+from app.modules.users.services import current_active_user
 
 
 @pytest.mark.asyncio
@@ -169,6 +176,49 @@ class TestProjectInvitationEndpoints:
 
         response = await ac.post(f"{self.invitations_url}/{invitation_id}/accept")
         assert response.status_code in [200, 403, 409]
+
+    async def test_accept_invitation_sets_project_advisor(
+        self, ac: AsyncClient, db_session, test_user: dict
+    ):
+        """Accepting an advisor invitation should assign that user to the project advisor field."""
+        user_id = test_user["id"]
+        project_id = await self._create_project(ac, user_id)
+        invitee = await self._create_target_user(ac)
+        invitee_id = UUID(invitee["id"])
+
+        init_payload = {
+            "project_id": project_id,
+            "sender_id": user_id,
+            "email": invitee["email"],
+            "role": "advisor",
+        }
+        create_res = await ac.post(f"{self.invitations_url}", json=init_payload)
+        invitation_id = create_res.json()["id"]
+
+        async def override_get_async_session():
+            yield db_session
+
+        async def override_current_active_user():
+            result = await db_session.execute(select(User).where(User.id == invitee_id))
+            return result.scalar_one()
+
+        app.dependency_overrides[get_async_session] = override_get_async_session
+        app.dependency_overrides[current_active_user] = override_current_active_user
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as invitee_client:
+            response = await invitee_client.post(
+                f"{self.invitations_url}/{invitation_id}/accept"
+            )
+
+        assert response.status_code == 200, response.text
+
+        project = await db_session.get(Project, UUID(project_id))
+        assert project is not None
+        assert project.advisor == invitee_id
+
+        app.dependency_overrides.clear()
 
     async def test_accept_nonexistent_invitation(
         self, ac: AsyncClient, test_user: dict

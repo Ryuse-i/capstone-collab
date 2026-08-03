@@ -59,8 +59,6 @@ import { useQueryClient } from "@tanstack/react-query";
 interface Data {
   name: string;
   description: string;
-  instructor: string;
-  advisor: string;
   created_by: string;
 }
 
@@ -73,8 +71,6 @@ function emptyData(): Data {
   return {
     name: "",
     description: "",
-    instructor: "",
-    advisor: "",
     created_by: "",
   };
 }
@@ -399,7 +395,6 @@ function AddMember({
   setMemberEmail,
   members,
   setMembers,
-  setFormData,
   instructorSearch,
   advisorSearch,
   memberSearch,
@@ -416,8 +411,6 @@ function AddMember({
   setMemberEmail: Dispatch<React.SetStateAction<string>>;
   members: Member[];
   setMembers: Dispatch<React.SetStateAction<Member[]>>;
-  formData: Data;
-  setFormData: Dispatch<React.SetStateAction<Data>>;
   instructorSearch: ReturnType<typeof useMemberSearch>;
   advisorSearch: ReturnType<typeof useMemberSearch>;
   memberSearch: ReturnType<typeof useMemberSearch>;
@@ -436,12 +429,10 @@ function AddMember({
         isSearchable={instructorSearch.isSearchable}
         selectedValue={instructorLabel}
         onSelect={(user) => {
-          setFormData((prev) => ({ ...prev, instructor: user.id }));
           setInstructorEmail("");
           setInstructorLabel(user.email);
         }}
         onRemove={() => {
-          setFormData((prev) => ({ ...prev, instructor: "" }));
           setInstructorEmail("");
           setInstructorLabel("");
         }}
@@ -459,12 +450,10 @@ function AddMember({
         isSearchable={advisorSearch.isSearchable}
         selectedValue={advisorLabel}
         onSelect={(user) => {
-          setFormData((prev) => ({ ...prev, advisor: user.id }));
           setAdvisorEmail("");
           setAdvisorLabel(user.email);
         }}
         onRemove={() => {
-          setFormData((prev) => ({ ...prev, advisor: "" }));
           setAdvisorEmail("");
           setAdvisorLabel("");
         }}
@@ -618,8 +607,6 @@ export default function CreateProjectDialog() {
 
     const projectPayload = {
       ...formData,
-      instructor: formData.instructor.trim() ? formData.instructor : null,
-      advisor: formData.advisor.trim() ? formData.advisor : null,
       created_by: user.id,
     };
 
@@ -635,7 +622,7 @@ export default function CreateProjectDialog() {
         memberMutate(projectLeader, {
           onSuccess: () => {
             const invites: CreateInvite[] = [
-              ...(formData.advisor && advisorLabel
+              ...(advisorLabel
                 ? [
                     {
                       project_id: newProject.id,
@@ -645,7 +632,7 @@ export default function CreateProjectDialog() {
                     } as CreateInvite,
                   ]
                 : []),
-              ...(formData.instructor && instructorLabel
+              ...(instructorLabel
                 ? [
                     {
                       project_id: newProject.id,
@@ -744,8 +731,6 @@ export default function CreateProjectDialog() {
             setMemberEmail={setMemberEmail}
             members={members}
             setMembers={setMembers}
-            formData={formData}
-            setFormData={setFormData}
             instructorSearch={instructorSearch}
             advisorSearch={advisorSearch}
             memberSearch={memberSearch}

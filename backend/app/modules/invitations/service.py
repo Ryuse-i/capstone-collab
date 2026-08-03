@@ -1,5 +1,11 @@
 from fastapi import HTTPException
 
+from sqlalchemy import select
+
+from app.modules.projects.model import Project
+from app.modules.projects.schema import ProjectCreate, ProjectUpdate
+from app.modules.projects.services import ProjectService
+
 from .model import ProjectInvitation
 from sqlalchemy.ext.asyncio import AsyncSession
 from .schema import (
@@ -12,6 +18,7 @@ from app.modules.notifications.services import NotificationService
 from .model import InviteStatus
 from app.modules.notifications.schema import CreateNotification
 from app.modules.users.auth import User, UserDB
+from app.modules.project_members.model import ProjectRole
 from app.modules.project_members.schema import ProjectMemberCreate
 from app.modules.project_members.services import ProjectMemberService
 
@@ -151,6 +158,7 @@ From: {sender.first_name} {sender.last_name}""",
         inv_repo = ProjectInvitationRepo(db)
         invitation = await inv_repo.get_by_id(invitation_id)
 
+        # check if invitation exists
         if not invitation:
             raise HTTPException(status_code=404, detail="Invitation not found")
 
@@ -176,6 +184,20 @@ From: {sender.first_name} {sender.last_name}""",
                 ),
             )
 
+            project_result = await db.execute(
+                select(Project).where(Project.id == invitation.project_id)
+            )
+            project = project_result.scalar_one_or_none()
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            if invitation_result.role == ProjectRole.ADVISOR:
+                project.advisor = current_user.id
+            elif invitation_result.role == ProjectRole.INSTRUCTOR:
+                project.instructor = current_user.id
+
+            await db.flush()
+
             await NotificationService.create_notification(
                 db,
                 notification=CreateNotification(
@@ -187,7 +209,6 @@ From: {sender.first_name} {sender.last_name}""",
                 ),
             )
 
-        await db.commit()
         return invitation_result
 
     @staticmethod

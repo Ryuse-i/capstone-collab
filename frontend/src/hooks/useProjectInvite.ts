@@ -5,6 +5,7 @@ import type {
   UpdateInvite,
   InviteResponse,
 } from "@/types/project_invite";
+import { projectKeys } from "./useProject";
 
 const url = "/invitations";
 
@@ -182,6 +183,9 @@ export function useAcceptInvite() {
       });
       queryClient.invalidateQueries({
         queryKey: inviteKeys.list(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [...projectKeys.details(), "detailSnapshot"],
       });
     },
   });
