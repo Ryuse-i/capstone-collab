@@ -43,6 +43,25 @@ class TestProjectMemberEndpoints:
         assert data["project_role"] == "member"
         assert "id" in data
 
+    async def test_create_project_member_accepts_uppercase_role_value(
+        self, ac: AsyncClient, test_user: dict
+    ):
+        """Tests POST /project_members/ with an uppercase role value."""
+        user_id = test_user["id"]
+        project_id = await self._create_project(ac, user_id)
+
+        payload = {
+            "id": str(uuid4()),
+            "user_id": user_id,
+            "project_id": project_id,
+            "project_role": "LEADER",
+            "workload_points": 10.0,
+            "contribution_points": 5.0,
+        }
+
+        response = await ac.post(f"{self.base_url}/", json=payload)
+        assert response.status_code in [200, 201], f"Create failed: {response.text}"
+
     async def test_get_one_project_member(self, ac: AsyncClient, test_user: dict):
         """Tests GET /project-members/{member_id}."""
         user_id = test_user["id"]

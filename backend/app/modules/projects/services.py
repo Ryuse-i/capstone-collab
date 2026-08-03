@@ -57,3 +57,13 @@ class ProjectService:
     async def get_project_with_snapshot(db: AsyncSession, user_id) -> Project | None:
         repo = ProjectRepo(db)
         return await repo.get_by_creator_with_snapshot(user_id)
+
+    @staticmethod
+    async def get_projects_for_instructor(db: AsyncSession, user_id):
+        repo = ProjectRepo(db)
+        return await repo.get_projects_for_instructor(user_id)
+
+    @staticmethod
+    async def get_projects_for_instructor_with_snapshot(db: AsyncSession, user_id):
+        repo = ProjectRepo(db)
+        return await repo.get_projects_for_user_with_snapshot(user_id)

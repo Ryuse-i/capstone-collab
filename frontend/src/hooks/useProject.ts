@@ -6,6 +6,7 @@ import type {
   ProjectResponse,
   CreateProject,
   UpdateProject,
+  ProjectRoleGroup,
 } from "@/types/project";
 import apiClient from "@/services/apiClient";
 
@@ -60,6 +61,20 @@ const api = {
       return response.data;
     } catch (error) {
       console.error("Failed to fetch projects", error);
+      throw error;
+    }
+  },
+
+  getInstructorProjectsWithSnapshot: async (
+    id: string,
+  ): Promise<ProjectWithSnapshot[]> => {
+    try {
+      const response = await apiClient.get(
+        `${url}/user/${id}/all-with-snapshot`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get instructor projects");
       throw error;
     }
   },
@@ -119,7 +134,8 @@ const api = {
 export const projectKeys = {
   all: ["projects"] as const,
   list: () => [...projectKeys.all, "list"] as const,
-  listSnapshot: () => [...projectKeys.all, "listSnapshot"] as const,
+  listSnapshotUser: (id: string) =>
+    [...projectKeys.all, "listSnapshot", "for-user", id] as const,
   details: () => [...projectKeys.all, "detail"] as const,
   detail: (id: string) => [...projectKeys.details(), id] as const,
   detailSnapshot: (id: string) =>
@@ -144,6 +160,24 @@ export function useGetProjects() {
   });
 }
 
+export function useGetProjectsForCurrentUser(userId?: string) {
+  return useQuery<ProjectRoleGroup>({
+    queryKey: [...projectKeys.list(), "for-user", userId ?? "anonymous"],
+    queryFn: async () => {
+      if (!userId) {
+        return {
+          instructorProjects: [],
+          advisorProjects: [],
+        };
+      }
+
+      const response = await apiClient.get<ProjectRoleGroup>(`${url}/me/roles`);
+      return response.data;
+    },
+    enabled: !!userId,
+  });
+}
+
 // get on project
 export function useGetOneProject(id: string) {
   return useQuery({
@@ -158,6 +192,14 @@ export function useGetOneProjectWithSpanshot(id: string) {
   return useQuery({
     queryKey: projectKeys.detailSnapshot(id),
     queryFn: () => api.getOneProjectWithSpanshot(id),
+    enabled: !!id,
+  });
+}
+
+export function useGetInstructorProjectsWithSnapshot(id: string) {
+  return useQuery({
+    queryKey: projectKeys.listSnapshotUser(id),
+    queryFn: () => api.getInstructorProjectsWithSnapshot(id),
     enabled: !!id,
   });
 }

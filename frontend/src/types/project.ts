@@ -1,11 +1,17 @@
 import type { ProjectSnapshotBase } from "./project_snapshot";
 
 export interface ProjectBase {
+  id?: string;
   name: string;
   description: string;
   created_by: string; // UUID
   advisor: string | null; // UUID
   instructor: string | null; // UUID
+}
+
+export interface ProjectRoleGroup {
+  instructorProjects: ProjectBase[];
+  advisorProjects: ProjectBase[];
 }
 
 export interface ProjectResponse extends ProjectBase {

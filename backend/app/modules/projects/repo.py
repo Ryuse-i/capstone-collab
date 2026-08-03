@@ -35,3 +35,19 @@ class ProjectRepo(BaseRepo):
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+
+    async def get_projects_for_instructor(self, user_id: UUID) -> list[Project]:
+        query = select(Project).where(
+            (Project.instructor == user_id) | (Project.advisor == user_id)
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_projects_for_user_with_snapshot(self, user_id: UUID) -> list[Project]:
+        query = (
+            select(Project)
+            .where((Project.instructor == user_id) | (Project.advisor == user_id))
+            .options(joinedload(Project.snapshot))
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())

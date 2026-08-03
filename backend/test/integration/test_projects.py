@@ -98,6 +98,35 @@ class TestProjectEndpoints:
         verify_res = await ac.get(f"{self.base_url}/{project_id}")
         assert verify_res.status_code == 404
 
+    async def test_get_projects_for_current_user_by_role(
+        self, ac: AsyncClient, test_user: dict
+    ):
+        """Tests GET /projects/me/roles."""
+        user_id = test_user["id"]
+        await ac.post(
+            f"{self.base_url}/",
+            json={
+                "name": "Instructor Project",
+                "description": "Instructor role",
+                "created_by": user_id,
+                "instructor": user_id,
+            },
+        )
+        await ac.post(
+            f"{self.base_url}/",
+            json={
+                "name": "Advisor Project",
+                "description": "Advisor role",
+                "created_by": user_id,
+                "advisor": user_id,
+            },
+        )
+
+        response = await ac.get(f"{self.base_url}/me/roles")
+        assert response.status_code == 200
+        assert any(project["name"] == "Instructor Project" for project in response.json()["instructor_projects"])
+        assert any(project["name"] == "Advisor Project" for project in response.json()["advisor_projects"])
+
     # ==========================================
     # USER-CENTRIC PROJECT ROUTE TESTS
     # ==========================================

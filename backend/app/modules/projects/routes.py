@@ -25,6 +25,15 @@ async def get_all_projects(
     return await ProjectService.get_all_projects(db)
 
 
+@project_router.get("/me/roles")
+async def get_projects_for_current_user(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    """Return the projects where the current user is instructor or advisor."""
+    return await ProjectService.get_projects_for_instructor(db, current_user.id)
+
+
 @project_router.get("/{project_id}", response_model=ProjectResponse)
 async def get_one_project(
     project_id: UUID,
@@ -94,18 +103,16 @@ async def get_user_project(
     return project
 
 
+
 @project_router.get(
-    "/user/{user_id}/with-snapshot", response_model=ProjectResponseSnapshot
+    "/user/{user_id}/all-with-snapshot", response_model=list[ProjectResponseSnapshot]
 )
-async def get_user_project_with_snapshot(
+async def get_instructor_project_with_snapshot(
     user_id: UUID,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    """
-    Fetch a user's project combined with its latest snapshot data.
-    """
-    project = await ProjectService.get_project_with_snapshot(db, user_id)
+    project = await ProjectService.get_projects_for_instructor_with_snapshot(db, user_id)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

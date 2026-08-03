@@ -8,7 +8,6 @@ import Team from "@/pages/student/Team";
 import CapstoneSearch from "@/pages/student/CapstoneSearch";
 import Chat from "@/pages/student/Chat";
 import MyTask from "@/pages/student/MyTask";
-import ProjectTask from "@/pages/student/ProjectTask";
 
 export const StudentRoutes = (
   <Route element={<RoleRoute role={ROLES.STUDENT} />}>

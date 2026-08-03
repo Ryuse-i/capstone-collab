@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 
 class ProjectRole(str, enum.Enum):
-    ADMIN = "admin"
     LEADER = "leader"
     MEMBER = "member"
     ADVISOR = "advisor"
@@ -59,7 +58,11 @@ class ProjectMember(Base):
         return self.user
 
     project_role: Mapped[ProjectRole] = mapped_column(
-        SAEnum(ProjectRole, name="projectrole"),  # named enum + correct type
+        SAEnum(
+            ProjectRole,
+            name="projectrole",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         default=ProjectRole.MEMBER,
         nullable=True,
     )
