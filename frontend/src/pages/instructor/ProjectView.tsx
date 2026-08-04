@@ -38,12 +38,31 @@ function getHealthClasses(status?: string) {
   }
 }
 
+// Returns "None" for missing, NaN, or zero values so the UI doesn't imply
+// a real (but empty) measurement when there's actually no data.
 function formatNumber(value?: number, digits = 1) {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return "—";
+  if (typeof value !== "number" || Number.isNaN(value) || value === 0) {
+    return "None";
   }
 
   return value.toFixed(digits);
+}
+
+// Same "None" fallback, but for plain integer counts (e.g. completed tasks)
+// that shouldn't be run through toFixed.
+function formatCount(value?: number) {
+  if (typeof value !== "number" || Number.isNaN(value) || value === 0) {
+    return "None";
+  }
+
+  return `${value}`;
+}
+
+// Percentage values need the trailing "%" suppressed when there's no data,
+// otherwise "None%" reads oddly.
+function formatPercentage(value?: number, digits = 1) {
+  const formatted = formatNumber(value, digits);
+  return formatted === "None" ? "None" : `${formatted}%`;
 }
 
 export default function ProjectView() {
@@ -62,8 +81,8 @@ export default function ProjectView() {
   const overviewCards = [
     {
       label: "Progress",
-      value: `${formatNumber(snapshot?.progress_percentage)}%`,
-      caption: `Expected ${formatNumber(snapshot?.expected_percentage)}%`,
+      value: formatPercentage(snapshot?.progress_percentage),
+      caption: `Expected ${formatPercentage(snapshot?.expected_percentage)}`,
       icon: <Gauge className="h-4 w-4 text-[#7A0C2E]" />,
     },
     {
@@ -76,13 +95,13 @@ export default function ProjectView() {
     },
     {
       label: "Completed tasks",
-      value: `${snapshot?.completed_tasks ?? 0}`,
+      value: formatCount(snapshot?.completed_tasks),
       caption: "Tasks completed",
       icon: <FolderKanban className="h-4 w-4 text-[#3F3350]" />,
     },
     {
       label: "Workload balance",
-      value: `${formatNumber(snapshot?.workload_balance)}%`,
+      value: formatPercentage(snapshot?.workload_balance),
       caption: snapshot?.imbalance_severity ?? "No severity data",
       icon: <BarChart3 className="h-4 w-4 text-[#7A0C2E]" />,
     },
@@ -165,7 +184,7 @@ export default function ProjectView() {
                     : "Unknown"}
                 </span>
                 <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-[#7A0C2E] shadow-sm">
-                  {formatNumber(snapshot?.progress_percentage)}% progress
+                  {formatPercentage(snapshot?.progress_percentage)} progress
                 </span>
               </div>
             </div>
@@ -282,7 +301,7 @@ export default function ProjectView() {
                     <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
                       <span>Completed tasks</span>
                       <span className="font-semibold text-[#231A2E]">
-                        {snapshot?.completed_tasks ?? 0}
+                        {formatCount(snapshot?.completed_tasks)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
@@ -307,7 +326,7 @@ export default function ProjectView() {
                   </div>
                   <p className="mt-4 text-sm text-neutral-600">
                     This project is tracking{" "}
-                    {formatNumber(snapshot?.progress_percentage)}% of its
+                    {formatPercentage(snapshot?.progress_percentage)} of its
                     expected progress and is currently marked as{" "}
                     {snapshot?.health_status ?? "unknown"}.
                   </p>
@@ -385,7 +404,7 @@ export default function ProjectView() {
                     <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
                       <span>Workload balance</span>
                       <span className="font-semibold text-[#231A2E]">
-                        {formatNumber(snapshot?.workload_balance)}%
+                        {formatPercentage(snapshot?.workload_balance)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">

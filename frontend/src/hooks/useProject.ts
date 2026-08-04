@@ -92,7 +92,7 @@ const api = {
     id: string,
   ): Promise<ProjectWithSnapshot> => {
     try {
-      const response = await apiClient.get(`${url}/snapshot/${id}`);
+      const response = await apiClient.get<ProjectWithSnapshot>(`${url}/snapshot/${id}`);
       return response.data;
     } catch (error) {
       console.error("Failed to get snapshots", error);
