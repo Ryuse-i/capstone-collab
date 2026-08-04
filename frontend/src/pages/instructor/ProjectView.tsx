@@ -12,8 +12,17 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
-import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
@@ -87,6 +96,62 @@ export default function ProjectView() {
       icon: <BarChart3 className="h-4 w-4 text-[#7A0C2E]" />,
     },
   ];
+
+  const allTasks = [
+    {
+      name: "Implement user authentication system",
+      status: "Completed",
+      priority: "High",
+      complexity: "High",
+      assigned: ["JW"],
+      due: "Apr 20",
+    },
+    {
+      name: "Design dashboard wireframes",
+      status: "Completed",
+      priority: "Medium",
+      complexity: "Low",
+      assigned: ["DM"],
+      due: "Apr 3",
+    },
+    {
+      name: "API endpoint testing",
+      status: "Submitted",
+      priority: "Low",
+      complexity: "Medium",
+      assigned: ["HG"],
+      due: "Mar 13",
+    },
+    {
+      name: "Database migration script",
+      status: "In Progress",
+      priority: "High",
+      complexity: "High",
+      assigned: ["JW", "HG"],
+      due: "Mar 28",
+    },
+  ];
+
+  const statusStyle: Record<string, string> = {
+    Completed: "bg-green-100 text-green-700",
+    Submitted: "bg-yellow-100 text-yellow-700",
+    "In Progress": "bg-blue-100 text-blue-700",
+    "Not Started": "bg-gray-100 text-gray-500",
+  };
+
+  const priorityStyle: Record<string, string> = {
+    High: "bg-red-100 text-red-600",
+    Medium: "bg-yellow-100 text-yellow-600",
+    Low: "bg-gray-100 text-gray-500",
+  };
+
+  const complexityStyle: Record<string, string> = {
+    High: "bg-red-100 text-red-600",
+    Medium: "bg-yellow-100 text-yellow-600",
+    Low: "bg-gray-100 text-gray-500",
+  };
+
+  const filteredTasks = allTasks;
 
   if (isLoading) {
     return (
@@ -212,7 +277,7 @@ export default function ProjectView() {
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Card className="border border-neutral-200 p-4">
                     <h2 className="text-lg font-semibold text-[#231A2E]">
-                      Snapshot details
+                      Details
                     </h2>
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
                       <div className="flex justify-between gap-3">
@@ -272,45 +337,120 @@ export default function ProjectView() {
             )}
 
             {activeTab === "tasks" && (
-              <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <Card className="border border-neutral-200 p-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
-                    <Target className="h-5 w-5 text-[#7A0C2E]" />
-                    Task progress
-                  </div>
-                  <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
-                      <span>Completed tasks</span>
-                      <span className="font-semibold text-[#231A2E]">
-                        {snapshot?.completed_tasks ?? 0}
-                      </span>
+              <div className="mt-6 space-y-6">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Card className="border border-neutral-200 p-4">
+                    <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                      <Target className="h-5 w-5 text-[#7A0C2E]" />
+                      Task progress
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
-                      <span>Expected score</span>
-                      <span className="font-semibold text-[#231A2E]">
-                        {formatNumber(snapshot?.expected_score)}
-                      </span>
+                    <div className="mt-4 space-y-3 text-sm text-neutral-600">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                        <span>Completed tasks</span>
+                        <span className="font-semibold text-[#231A2E]">
+                          {snapshot?.completed_tasks ?? 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                        <span>Expected score</span>
+                        <span className="font-semibold text-[#231A2E]">
+                          {formatNumber(snapshot?.expected_score)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                        <span>Schedule variance</span>
+                        <span className="font-semibold text-[#231A2E]">
+                          {formatNumber(snapshot?.schedule_variance)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
-                      <span>Schedule variance</span>
-                      <span className="font-semibold text-[#231A2E]">
-                        {formatNumber(snapshot?.schedule_variance)}
-                      </span>
-                    </div>
-                  </div>
-                </Card>
+                  </Card>
 
-                <Card className="border border-neutral-200 p-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
-                    <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
-                    Timeline insight
-                  </div>
-                  <p className="mt-4 text-sm text-neutral-600">
-                    This project is tracking{" "}
-                    {formatNumber(snapshot?.progress_percentage)}% of its
-                    expected progress and is currently marked as{" "}
-                    {snapshot?.health_status ?? "unknown"}.
-                  </p>
+                  <Card className="border border-neutral-200 p-4">
+                    <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                      <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
+                      Timeline insight
+                    </div>
+                    <p className="mt-4 text-sm text-neutral-600">
+                      This project is tracking{" "}
+                      {formatNumber(snapshot?.progress_percentage)}% of its
+                      expected progress and is currently marked as{" "}
+                      {snapshot?.health_status ?? "unknown"}.
+                    </p>
+                  </Card>
+                </div>
+
+                <Card className="border border-neutral-200 p-0">
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Task</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Priority</TableHead>
+                          <TableHead>Assigned</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Complexity</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredTasks.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={6}
+                              className="py-8 text-center text-muted-foreground"
+                            >
+                              No tasks found.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredTasks.map((task) => (
+                            <TableRow key={task.name}>
+                              <TableCell className="font-medium text-[#231A2E]">
+                                {task.name}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={`${statusStyle[task.status]} border-0`}
+                                >
+                                  {task.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={`${priorityStyle[task.priority]} border-0`}
+                                >
+                                  {task.priority}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex -space-x-2">
+                                  {task.assigned.map((member) => (
+                                    <div
+                                      key={member}
+                                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7A0C2E] text-xs font-bold text-white ring-1 ring-white"
+                                    >
+                                      {member}
+                                    </div>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {task.due}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={`${complexityStyle[task.complexity]} border-0`}
+                                >
+                                  {task.complexity}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
                 </Card>
               </div>
             )}
