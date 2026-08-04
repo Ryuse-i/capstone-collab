@@ -7,6 +7,8 @@ import {
   Files,
   FolderKanban,
   Gauge,
+  Layers,
+  ListTodo,
   Target,
   Users,
 } from "lucide-react";
@@ -14,7 +16,26 @@ import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
 
@@ -24,6 +45,430 @@ const tabs: { id: ProjectViewTab; label: string; icon: React.ReactNode }[] = [
   { id: "members", label: "Members", icon: <Users className="h-4 w-4" /> },
   { id: "resources", label: "Resources", icon: <Files className="h-4 w-4" /> },
 ];
+
+// ---- Enum mirrors of app/modules/tasks/enums.py ----
+const STATUS_OPTIONS = [
+  { value: "not_started", label: "Not started" },
+  { value: "in_progress", label: "In progress" },
+  { value: "submitted", label: "Submitted" },
+  { value: "completed", label: "Completed" },
+  { value: "none", label: "None" },
+] as const;
+
+const PRIORITY_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+] as const;
+
+const COMPLEXITY_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "none", label: "None" },
+] as const;
+
+const CATEGORY_OPTIONS = [
+  { value: "document", label: "Document" },
+  { value: "research", label: "Research" },
+  { value: "development", label: "Development" },
+  { value: "none", label: "None" },
+] as const;
+
+type TaskType = "task" | "supertask";
+
+type TaskFormState = {
+  name: string;
+  description: string;
+  status: string;
+  priority: string;
+  complexity: string;
+  category: string;
+  complexity_points: string;
+  deadline: string;
+};
+
+type SupertaskFormState = {
+  name: string;
+  description: string;
+  deadline: string;
+};
+
+const initialTaskForm: TaskFormState = {
+  name: "",
+  description: "",
+  status: "not_started",
+  priority: "medium",
+  complexity: "none",
+  category: "none",
+  complexity_points: "",
+  deadline: "",
+};
+
+const initialSupertaskForm: SupertaskFormState = {
+  name: "",
+  description: "",
+  deadline: "",
+};
+
+interface CreateTaskProps {
+  projectId: string;
+  onCreated?: () => void;
+}
+
+const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
+  const [open, setOpen] = useState(false);
+  const [taskType, setTaskType] = useState<TaskType>("task");
+  const [taskForm, setTaskForm] = useState<TaskFormState>(initialTaskForm);
+  const [supertaskForm, setSupertaskForm] =
+    useState<SupertaskFormState>(initialSupertaskForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const resetForms = () => {
+    setTaskForm(initialTaskForm);
+    setSupertaskForm(initialSupertaskForm);
+    setTaskType("task");
+    setError(null);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) resetForms();
+  };
+
+  const handleTaskFieldChange = (field: keyof TaskFormState, value: string) => {
+    setTaskForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSupertaskFieldChange = (
+    field: keyof SupertaskFormState,
+    value: string,
+  ) => {
+    setSupertaskForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    setError(null);
+
+    if (taskType === "task" && !taskForm.name.trim()) {
+      setError("Task name is required.");
+      return;
+    }
+    if (taskType === "supertask") {
+      if (!supertaskForm.name.trim()) {
+        setError("Supertask name is required.");
+        return;
+      }
+      if (!supertaskForm.description.trim()) {
+        setError("Supertask description is required.");
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (taskType === "task") {
+        const payload = {
+          project_id: projectId,
+          name: taskForm.name.trim(),
+          description: taskForm.description.trim() || null,
+          status: taskForm.status,
+          priority: taskForm.priority,
+          complexity: taskForm.complexity,
+          category: taskForm.category,
+          complexity_points: taskForm.complexity_points
+            ? Number(taskForm.complexity_points)
+            : 0,
+          deadline: taskForm.deadline
+            ? new Date(taskForm.deadline).toISOString()
+            : null,
+        };
+
+        // TODO: wire up to your task creation mutation, e.g.
+        // await createTask(payload);
+        console.log("Creating task:", payload);
+      } else {
+        const payload = {
+          project_id: projectId,
+          name: supertaskForm.name.trim(),
+          description: supertaskForm.description.trim(),
+          deadline: supertaskForm.deadline
+            ? new Date(supertaskForm.deadline).toISOString()
+            : null,
+        };
+
+        // TODO: wire up to your supertask creation mutation, e.g.
+        // await createSupertask(payload);
+        console.log("Creating supertask:", payload);
+      }
+
+      onCreated?.();
+      handleOpenChange(false);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while creating this item.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button>+ Add Task</Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Create item for this project</DialogTitle>
+          <DialogDescription>
+            Supertasks are milestones. Tasks are the individual units of work
+            that actually drive project progress.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 no-scrollbar">
+          {/* Type selector */}
+          <div>
+            <Label className="mb-2 block text-sm font-semibold text-[#231A2E]">
+              What are you creating?
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setTaskType("task")}
+                className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                  taskType === "task"
+                    ? "border-[#7A0C2E] bg-[#FBF3E7]"
+                    : "border-neutral-200 bg-white hover:border-neutral-300"
+                }`}
+              >
+                <ListTodo className="mt-0.5 h-5 w-5 text-[#7A0C2E]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#231A2E]">Task</p>
+                  <p className="text-xs text-neutral-500">
+                    A concrete, trackable unit of work.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTaskType("supertask")}
+                className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                  taskType === "supertask"
+                    ? "border-[#7A0C2E] bg-[#FBF3E7]"
+                    : "border-neutral-200 bg-white hover:border-neutral-300"
+                }`}
+              >
+                <Layers className="mt-0.5 h-5 w-5 text-[#C9A84C]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#231A2E]">
+                    Supertask
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    A milestone that groups related tasks.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Shared: name */}
+          <div className="space-y-2">
+            <Label htmlFor="item-name">Name</Label>
+            <Input
+              id="item-name"
+              placeholder={
+                taskType === "task"
+                  ? "e.g. Set up auth routes"
+                  : "e.g. MVP backend complete"
+              }
+              value={taskType === "task" ? taskForm.name : supertaskForm.name}
+              onChange={(e) =>
+                taskType === "task"
+                  ? handleTaskFieldChange("name", e.target.value)
+                  : handleSupertaskFieldChange("name", e.target.value)
+              }
+            />
+          </div>
+
+          {/* Shared: description */}
+          <div className="space-y-2">
+            <Label htmlFor="item-description">
+              Description{taskType === "supertask" ? " (required)" : ""}
+            </Label>
+            <Textarea
+              id="item-description"
+              rows={3}
+              placeholder="What does this involve?"
+              value={
+                taskType === "task"
+                  ? taskForm.description
+                  : supertaskForm.description
+              }
+              onChange={(e) =>
+                taskType === "task"
+                  ? handleTaskFieldChange("description", e.target.value)
+                  : handleSupertaskFieldChange("description", e.target.value)
+              }
+            />
+          </div>
+
+          {taskType === "task" ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={taskForm.status}
+                    onValueChange={(v) => handleTaskFieldChange("status", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select
+                    value={taskForm.priority}
+                    onValueChange={(v) => handleTaskFieldChange("priority", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Complexity</Label>
+                  <Select
+                    value={taskForm.complexity}
+                    onValueChange={(v) =>
+                      handleTaskFieldChange("complexity", v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select complexity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPLEXITY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select
+                    value={taskForm.category}
+                    onValueChange={(v) => handleTaskFieldChange("category", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="complexity-points">Complexity points</Label>
+                  <Input
+                    id="complexity-points"
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={taskForm.complexity_points}
+                    onChange={(e) =>
+                      handleTaskFieldChange("complexity_points", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="task-deadline">Deadline</Label>
+                  <Input
+                    id="task-deadline"
+                    type="datetime-local"
+                    value={taskForm.deadline}
+                    onChange={(e) =>
+                      handleTaskFieldChange("deadline", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="supertask-deadline">Deadline</Label>
+              <Input
+                id="supertask-deadline"
+                type="datetime-local"
+                value={supertaskForm.deadline}
+                onChange={(e) =>
+                  handleSupertaskFieldChange("deadline", e.target.value)
+                }
+              />
+            </div>
+          )}
+
+          {error && (
+            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <DialogFooter className="mt-2">
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting
+              ? "Creating..."
+              : taskType === "task"
+                ? "Create task"
+                : "Create supertask"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 function getHealthClasses(status?: string) {
   switch (status) {
@@ -38,28 +483,20 @@ function getHealthClasses(status?: string) {
   }
 }
 
-// Returns "None" for missing, NaN, or zero values so the UI doesn't imply
-// a real (but empty) measurement when there's actually no data.
 function formatNumber(value?: number, digits = 1) {
   if (typeof value !== "number" || Number.isNaN(value) || value === 0) {
     return "None";
   }
-
   return value.toFixed(digits);
 }
 
-// Same "None" fallback, but for plain integer counts (e.g. completed tasks)
-// that shouldn't be run through toFixed.
 function formatCount(value?: number) {
   if (typeof value !== "number" || Number.isNaN(value) || value === 0) {
     return "None";
   }
-
   return `${value}`;
 }
 
-// Percentage values need the trailing "%" suppressed when there's no data,
-// otherwise "None%" reads oddly.
 function formatPercentage(value?: number, digits = 1) {
   const formatted = formatNumber(value, digits);
   return formatted === "None" ? "None" : `${formatted}%`;
@@ -419,6 +856,9 @@ export default function ProjectView() {
             )}
           </div>
         </Card>
+        <div className="flex w-full border justify-end">
+          <CreateTask projectId={projectId} />
+        </div>
       </div>
     </AppLayout>
   );
