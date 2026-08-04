@@ -16,6 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -151,6 +160,10 @@ export default function ProjectView() {
     Low: "bg-gray-100 text-gray-500",
   };
 
+  const [selectedTask, setSelectedTask] = useState<
+    (typeof allTasks)[number] | null
+  >(null);
+  const [openTaskDialog, setOpenTaskDialog] = useState(false);
   const filteredTasks = allTasks;
 
   if (isLoading) {
@@ -337,123 +350,206 @@ export default function ProjectView() {
             )}
 
             {activeTab === "tasks" && (
-              <div className="mt-6 space-y-6">
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <Card className="border border-neutral-200 p-4">
-                    <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
-                      <Target className="h-5 w-5 text-[#7A0C2E]" />
-                      Task progress
-                    </div>
-                    <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
-                        <span>Completed tasks</span>
-                        <span className="font-semibold text-[#231A2E]">
-                          {snapshot?.completed_tasks ?? 0}
-                        </span>
+              <>
+                <div className="mt-6 space-y-6">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <Card className="border border-neutral-200 p-4">
+                      <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                        <Target className="h-5 w-5 text-[#7A0C2E]" />
+                        Task progress
                       </div>
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
-                        <span>Expected score</span>
-                        <span className="font-semibold text-[#231A2E]">
-                          {formatNumber(snapshot?.expected_score)}
-                        </span>
+                      <div className="mt-4 space-y-3 text-sm text-neutral-600">
+                        <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                          <span>Completed tasks</span>
+                          <span className="font-semibold text-[#231A2E]">
+                            {snapshot?.completed_tasks ?? 0}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                          <span>Expected score</span>
+                          <span className="font-semibold text-[#231A2E]">
+                            {formatNumber(snapshot?.expected_score)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                          <span>Schedule variance</span>
+                          <span className="font-semibold text-[#231A2E]">
+                            {formatNumber(snapshot?.schedule_variance)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
-                        <span>Schedule variance</span>
-                        <span className="font-semibold text-[#231A2E]">
-                          {formatNumber(snapshot?.schedule_variance)}
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
+                    </Card>
 
-                  <Card className="border border-neutral-200 p-4">
-                    <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
-                      <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
-                      Timeline insight
-                    </div>
-                    <p className="mt-4 text-sm text-neutral-600">
-                      This project is tracking{" "}
-                      {formatNumber(snapshot?.progress_percentage)}% of its
-                      expected progress and is currently marked as{" "}
-                      {snapshot?.health_status ?? "unknown"}.
-                    </p>
+                    <Card className="border border-neutral-200 p-4">
+                      <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                        <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
+                        Timeline insight
+                      </div>
+                      <p className="mt-4 text-sm text-neutral-600">
+                        This project is tracking{" "}
+                        {formatNumber(snapshot?.progress_percentage)}% of its
+                        expected progress and is currently marked as{" "}
+                        {snapshot?.health_status ?? "unknown"}.
+                      </p>
+                    </Card>
+                  </div>
+
+                  <Card className="p-0 border border-neutral-200">
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Task</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Priority</TableHead>
+                            <TableHead>Assigned</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead>Complexity</TableHead>
+                            <TableHead className="w-40">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredTasks.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={7}
+                                className="py-8 text-center text-muted-foreground"
+                              >
+                                No tasks found.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredTasks.map((task) => (
+                              <TableRow key={task.name}>
+                                <TableCell className="font-medium text-[#231A2E]">
+                                  {task.name}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    className={`${statusStyle[task.status]} border-0`}
+                                  >
+                                    {task.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    className={`${priorityStyle[task.priority]} border-0`}
+                                  >
+                                    {task.priority}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex -space-x-2">
+                                    {task.assigned.map((member) => (
+                                      <div
+                                        key={member}
+                                        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7A0C2E] text-xs font-bold text-white ring-1 ring-white"
+                                      >
+                                        {member}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {task.due}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    className={`${complexityStyle[task.complexity]} border-0`}
+                                  >
+                                    {task.complexity}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedTask(task);
+                                        setOpenTaskDialog(true);
+                                      }}
+                                    >
+                                      View
+                                    </Button>
+                                    <Button variant="outline" size="sm">
+                                      Edit
+                                    </Button>
+                                    <Button variant="destructive" size="sm">
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
                   </Card>
                 </div>
 
-                <Card className="border border-neutral-200 p-0">
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Task</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Priority</TableHead>
-                          <TableHead>Assigned</TableHead>
-                          <TableHead>Due Date</TableHead>
-                          <TableHead>Complexity</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredTasks.length === 0 ? (
-                          <TableRow>
-                            <TableCell
-                              colSpan={6}
-                              className="py-8 text-center text-muted-foreground"
-                            >
-                              No tasks found.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredTasks.map((task) => (
-                            <TableRow key={task.name}>
-                              <TableCell className="font-medium text-[#231A2E]">
-                                {task.name}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  className={`${statusStyle[task.status]} border-0`}
-                                >
-                                  {task.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  className={`${priorityStyle[task.priority]} border-0`}
-                                >
-                                  {task.priority}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex -space-x-2">
-                                  {task.assigned.map((member) => (
-                                    <div
-                                      key={member}
-                                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7A0C2E] text-xs font-bold text-white ring-1 ring-white"
-                                    >
-                                      {member}
-                                    </div>
-                                  ))}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {task.due}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  className={`${complexityStyle[task.complexity]} border-0`}
-                                >
-                                  {task.complexity}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </div>
+                <Dialog
+                  open={openTaskDialog}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setSelectedTask(null);
+                    }
+                    setOpenTaskDialog(open);
+                  }}
+                >
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Task details</DialogTitle>
+                      <DialogDescription>
+                        {selectedTask
+                          ? selectedTask.name
+                          : "Select a task to view details."}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedTask ? (
+                      <div className="space-y-3 text-sm text-neutral-600">
+                        <div className="rounded-lg bg-neutral-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                            Status
+                          </p>
+                          <Badge
+                            className={`mt-2 border-0 ${statusStyle[selectedTask.status]}`}
+                          >
+                            {selectedTask.status}
+                          </Badge>
+                        </div>
+                        <div className="rounded-lg bg-neutral-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                            Priority
+                          </p>
+                          <p className="mt-2 font-semibold text-[#231A2E]">
+                            {selectedTask.priority}
+                          </p>
+                        </div>
+                        <div className="rounded-lg bg-neutral-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                            Due date
+                          </p>
+                          <p className="mt-2 font-semibold text-[#231A2E]">
+                            {selectedTask.due}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline">Close</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
+
+            
 
             {activeTab === "members" && (
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
