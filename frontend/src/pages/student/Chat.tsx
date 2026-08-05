@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState,} from "react";
+import { useEffect, useRef, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import googlemeetlogo from "@/assets/googlemeetlogo.png";
 import zoomlogo from "@/assets/zoomlogo.png";
-import { Send, Video, MoreHorizontal } from "lucide-react";
+import { Send, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -76,6 +76,7 @@ export default function Chat() {
   const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
+  const [activeCall, setActiveCall] = useState<"Gmeet" | "Zoom" | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const currentUserId = "JW";
 
@@ -101,6 +102,39 @@ export default function Chat() {
     setInput("");
   };
 
+  const startCall = (provider: "Gmeet" | "Zoom") => {
+    const callText = `${provider} call is ongoing. Tap to join.`;
+    setActiveCall(provider);
+    setMessages((s) => [
+      ...s,
+      {
+        id: `call_${Date.now()}`,
+        senderId: currentUserId,
+        text: callText,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+  };
+
+  const joinCall = () => {
+    if (!activeCall) return;
+    setMessages((s) => [
+      ...s,
+      {
+        id: `join_${Date.now()}`,
+        senderId: currentUserId,
+        text: `You joined the ${activeCall} call.`,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+  };
+
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
       <Card className="mt-2 pb-1">
@@ -120,23 +154,31 @@ export default function Chat() {
                     <Video className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-40 p-3 mr-15">
+                <PopoverContent className="w-40 p-3">
                   <PopoverHeader>
                     <PopoverDescription className="flex flex-col gap-2">
                       <Button
+                        onClick={() => startCall("Gmeet")}
                         className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
                         variant="outline"
                       >
-                        <img src={googlemeetlogo} alt="googlemeetlogo"
-                        className="size-4 shrink-0" />
+                        <img
+                          src={googlemeetlogo}
+                          alt="google meet"
+                          className="h-5 w-5 shrink-0"
+                        />
                         Gmeet
                       </Button>
                       <Button
+                        onClick={() => startCall("Zoom")}
                         className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
                         variant="outline"
                       >
-                        <img src={zoomlogo} alt="zoomlogo"
-                        className="size-4 shrink-0" />
+                        <img
+                          src={zoomlogo}
+                          alt="zoom"
+                          className="h-5 w-5 shrink-0"
+                        />
                         Zoom
                       </Button>
                     </PopoverDescription>
@@ -146,6 +188,19 @@ export default function Chat() {
             </div>
           </div>
 
+          {activeCall ? (
+            <div className="mx-4 mb-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/50 dark:text-blue-100">
+              {activeCall} call is ongoing.{" "}
+              <button
+                type="button"
+                onClick={joinCall}
+                className="font-semibold underline"
+              >
+                Tap to join
+              </button>
+            </div>
+          ) : null}
+
           {/* Messages area */}
           <div
             ref={scrollRef}
@@ -154,22 +209,29 @@ export default function Chat() {
             <div className="flex flex-col gap-4">
               {messages.map((msg) => {
                 const isMe = msg.senderId === currentUserId;
-                const sender = members.find((m) => m.id === msg.senderId)!;
+                const isSystem = msg.senderId === "system";
+                const isCallMessage = isSystem && /call/i.test(msg.text);
+                const sender = members.find((m) => m.id === msg.senderId);
                 return (
                   <div
                     key={msg.id}
-                    className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                    className={`flex ${isSystem ? "justify-center" : isMe ? "justify-end" : "justify-start"}`}
                   >
-                    {!isMe && (
+                    {!isMe && !isSystem && (
                       <div className="mr-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold">
-                        {sender.initials}
+                        {sender?.initials}
                       </div>
                     )}
 
                     <div
-                      className={`max-w-[70%] p-3 rounded-lg ${isMe ? "bg-[#800000] text-white dark:bg-[#6a0101]" : "bg-gray-100 dark:bg-[#16161a] text-foreground"}`}
+                      onClick={isSystem ? joinCall : undefined}
+                      className={`max-w-[70%] p-3 rounded-lg ${isCallMessage ? "border border-blue-200 bg-blue-50 text-blue-900 shadow-sm dark:border-blue-950/40 dark:bg-blue-950/40 dark:text-blue-100 cursor-pointer" : isSystem ? "bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100 cursor-pointer" : isMe ? "bg-[#800000] text-white dark:bg-[#6a0101]" : "bg-gray-100 dark:bg-[#16161a] text-foreground"}`}
                     >
-                      <div className="text-sm">{msg.text}</div>
+                      <div
+                        className={`text-sm ${isCallMessage ? "font-semibold" : ""}`}
+                      >
+                        {msg.text}
+                      </div>
                       <div className="text-[11px] text-muted-foreground mt-1 text-right">
                         {msg.time}
                       </div>
