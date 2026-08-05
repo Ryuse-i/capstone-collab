@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.modules.invitations.model import ProjectInvitation
 
 
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -69,6 +70,7 @@ class Project(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
 
     # Timestamps
     created_at: Mapped[datetime | None] = mapped_column(

@@ -3,8 +3,6 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.modules.projects.model import Project
-from app.modules.projects.schema import ProjectCreate, ProjectUpdate
-from app.modules.projects.services import ProjectService
 
 from .model import ProjectInvitation
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,7 +111,7 @@ class ProjectInvitationService:
                     # create the noticication
                     notification = CreateNotification(
                         user_id=invited_user.id,
-                        body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role.value}. 
+                        body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}. 
 
 From: {sender.first_name} {sender.last_name}""",
                         title="Project Invitation",

@@ -44,6 +44,7 @@ import {
   DialogDescription,
   DialogTrigger,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
@@ -666,7 +667,6 @@ export default function ProjectView() {
           <ArrowLeft size={16} />
           Back to projects
         </button>
-
         <Card className="overflow-hidden border border-neutral-200 shadow-sm">
           <div className="border-b border-neutral-200 bg-[#FBF3E7] p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -996,8 +996,6 @@ export default function ProjectView() {
               </>
             )}
 
-            
-
             {activeTab === "members" && (
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 <Card className="border border-neutral-200 p-4">
@@ -1086,6 +1084,157 @@ export default function ProjectView() {
         <div className="flex w-full border justify-end">
           <CreateTask projectId={projectId} />
         </div>
+        <Card className="p-0 border border-neutral-200">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Task</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Assigned</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Complexity</TableHead>
+                  <TableHead className="w-40">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTasks.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="py-8 text-center text-muted-foreground"
+                    >
+                      No tasks found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredTasks.map((task) => (
+                    <TableRow key={task.name}>
+                      <TableCell className="font-medium text-[#231A2E]">
+                        {task.name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`${statusStyle[task.status]} border-0`}
+                        >
+                          {task.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`${priorityStyle[task.priority]} border-0`}
+                        >
+                          {task.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex -space-x-2">
+                          {task.assigned.map((member) => (
+                            <div
+                              key={member}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7A0C2E] text-xs font-bold text-white ring-1 ring-white"
+                            >
+                              {member}
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {task.due}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`${complexityStyle[task.complexity]} border-0`}
+                        >
+                          {task.complexity}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTask(task);
+                              setOpenTaskDialog(true);
+                            }}
+                          >
+                            View
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            Edit
+                          </Button>
+                          <Button variant="destructive" size="sm">
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        <Dialog
+          open={openTaskDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedTask(null);
+            }
+            setOpenTaskDialog(open);
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Task details</DialogTitle>
+              <DialogDescription>
+                {selectedTask
+                  ? selectedTask.name
+                  : "Select a task to view details."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedTask ? (
+              <div className="space-y-3 text-sm text-neutral-600">
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Status
+                  </p>
+                  <Badge
+                    className={`mt-2 border-0 ${statusStyle[selectedTask.status]}`}
+                  >
+                    {selectedTask.status}
+                  </Badge>
+                </div>
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Priority
+                  </p>
+                  <p className="mt-2 font-semibold text-[#231A2E]">
+                    {selectedTask.priority}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Due date
+                  </p>
+                  <p className="mt-2 font-semibold text-[#231A2E]">
+                    {selectedTask.due}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Close</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        )
       </div>
     </AppLayout>
   );

@@ -5,13 +5,18 @@ from app.modules.tasks.schema import TaskCreate, TaskUpdate, TaskResponse
 from app.modules.tasks.services import TaskService
 from uuid import UUID
 from typing import List
+from app.modules.users.services import current_active_user
+from app.modules.users.model import User
 
 # Standardizing on task_router
 task_router = APIRouter()
 
 
 @task_router.get("/", response_model=List[TaskResponse])
-async def get_all_tasks(db: AsyncSession = Depends(get_async_session)):
+async def get_all_tasks(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
     """Fetch all tasks from the database."""
     return await TaskService.get_all_tasks(db)
 

@@ -26,16 +26,18 @@ class Supertask(Base):
         PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     project_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
     )
-    
+
     # Relationships
     project: Mapped["Project"] = relationship(
         "Project",
         back_populates="supertasks",
         foreign_keys=[project_id],
     )
-    
+
     deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

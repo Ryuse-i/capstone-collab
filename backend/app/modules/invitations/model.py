@@ -36,7 +36,13 @@ class ProjectInvitation(Base):
     # the one being invited but used the email
     email: Mapped[str] = mapped_column(String, nullable=False)  # The email invited
     # what role are you being invited to
-    role: Mapped[ProjectRole] = mapped_column(SAEnum(ProjectRole, name="invited_role"))
+    role: Mapped[ProjectRole] = mapped_column(
+        SAEnum(
+            ProjectRole,
+            name="invited_role",
+            values_callable=lambda obj: [e.value for e in obj],
+        )
+    )
     # status of the invitation, this would be reflected for the project leader
     status: Mapped[InviteStatus] = mapped_column(
         SAEnum(InviteStatus, name="invite_status"), default="pending"
