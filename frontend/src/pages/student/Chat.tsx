@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState,} from "react";
 import AppLayout from "@/layouts/Applayout";
+import googlemeetlogo from "@/assets/googlemeetlogo.png";
+import zoomlogo from "@/assets/zoomlogo.png";
 import { Send, Video, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +13,6 @@ import {
   PopoverContent,
   PopoverDescription,
   PopoverHeader,
-  PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
 
@@ -119,24 +120,27 @@ export default function Chat() {
                     <Video className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start">
+                <PopoverContent className="w-40 p-3 mr-15">
                   <PopoverHeader>
-                    <PopoverTitle>Dimensions</PopoverTitle>
-                    <PopoverDescription>
-                      Set the dimensions for the layer.
+                    <PopoverDescription className="flex flex-col gap-2">
+                      <Button
+                        className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
+                        variant="outline"
+                      >
+                        <img src={googlemeetlogo} alt="googlemeetlogo"
+                        className="size-4 shrink-0" />
+                        Gmeet
+                      </Button>
+                      <Button
+                        className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
+                        variant="outline"
+                      >
+                        <img src={zoomlogo} alt="zoomlogo"
+                        className="size-4 shrink-0" />
+                        Zoom
+                      </Button>
                     </PopoverDescription>
                   </PopoverHeader>
-                </PopoverContent>
-              </Popover>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent>
-                  <p>More options</p>
                 </PopoverContent>
               </Popover>
             </div>
