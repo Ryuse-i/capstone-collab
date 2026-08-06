@@ -29,6 +29,7 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.35 0.12 15);
+  --maroon: oklch(0.35 0.12 15);
   --primary-foreground: oklch(100% 0.00011 271.152);
   --secondary: oklch(0.75 0.12 85);
   --secondary-foreground: oklch(0.15 0 0);
@@ -71,7 +72,7 @@
     --text-h: #000000;
     --bg: #16171d;
     --code-bg: #1f2028;
-    --accent: #c084fc;
+    --accent: #cecbd2;
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
@@ -94,6 +95,7 @@
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
+  --maroon: oklch(0.35 0.12 15);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);

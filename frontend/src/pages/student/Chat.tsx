@@ -28,6 +28,8 @@ type Message = {
   senderId: string;
   text: string;
   time: string;
+  callProvider?: "Gmeet" | "Zoom";
+  isJoined?: boolean;
 };
 
 const members: Member[] = [
@@ -115,32 +117,33 @@ export default function Chat() {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        callProvider: provider,
       },
     ]);
   };
 
-  const joinCall = () => {
-    if (!activeCall) return;
+  const joinCall = (provider: "Gmeet" | "Zoom") => {
     setMessages((s) => [
       ...s,
       {
         id: `join_${Date.now()}`,
         senderId: currentUserId,
-        text: `You joined the ${activeCall} call.`,
+        text: `You joined the ${provider} call.`,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        isJoined: true,
       },
     ]);
   };
 
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
-      <Card className="mt-2 pb-1">
-        <CardContent className="p-0">
+      <Card className="mt-2 pb-1 overflow-hidden h-[85vh] flex flex-col">
+        <CardContent className="p-0 flex flex-col flex-1 min-h-0">
           {/* Header */}
-          <div className="flex items-center justify-between border-b px-4 pb-2">
+          <div className="flex items-center justify-between border-b px-4 pb-2 shrink-0">
             <div className="flex items-center gap-3">
               <div className="text-lg font-medium">
                 {currentProject?.name || "Project chat"}
@@ -189,11 +192,11 @@ export default function Chat() {
           </div>
 
           {activeCall ? (
-            <div className="mx-4 mb-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/50 dark:text-blue-100">
+            <div className="mx-4 mt-2 shrink-0 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-900 dark:border-green-900/40 dark:bg-green-950/50 dark:text-green-100">
               {activeCall} call is ongoing.{" "}
               <button
                 type="button"
-                onClick={joinCall}
+                onClick={() => joinCall(activeCall)}
                 className="font-semibold underline"
               >
                 Tap to join
@@ -204,33 +207,61 @@ export default function Chat() {
           {/* Messages area */}
           <div
             ref={scrollRef}
-            className="p-6 h-[70vh] overflow-auto bg-white dark:bg-[#101014] custom-scrollbar"
+            className="p-6 flex-1 min-h-0 overflow-auto bg-white dark:bg-[#101014] custom-scrollbar"
           >
             <div className="flex flex-col gap-4">
               {messages.map((msg) => {
                 const isMe = msg.senderId === currentUserId;
-                const isSystem = msg.senderId === "system";
-                const isCallMessage = isSystem && /call/i.test(msg.text);
+                const isCallMessage = !!msg.callProvider;
+                const isJoinedMessage = !!msg.isJoined;
                 const sender = members.find((m) => m.id === msg.senderId);
+
+                if (isJoinedMessage) {
+                  return (
+                    <div key={msg.id} className="flex justify-center">
+                      <div className="text-xs text-muted-foreground">
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={msg.id}
-                    className={`flex ${isSystem ? "justify-center" : isMe ? "justify-end" : "justify-start"}`}
+                    className={`flex ${isMe ? "justify-end" : "justify-start"}`}
                   >
-                    {!isMe && !isSystem && (
+                    {!isMe && (
                       <div className="mr-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold">
                         {sender?.initials}
                       </div>
                     )}
 
                     <div
-                      onClick={isSystem ? joinCall : undefined}
-                      className={`max-w-[70%] p-3 rounded-lg ${isCallMessage ? "border border-blue-200 bg-blue-50 text-blue-900 shadow-sm dark:border-blue-950/40 dark:bg-blue-950/40 dark:text-blue-100 cursor-pointer" : isSystem ? "bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100 cursor-pointer" : isMe ? "bg-[#800000] text-white dark:bg-[#6a0101]" : "bg-gray-100 dark:bg-[#16161a] text-foreground"}`}
+                      onClick={
+                        isCallMessage
+                          ? () => joinCall(msg.callProvider!)
+                          : undefined
+                      }
+                      className={`max-w-[70%] p-3 rounded-lg ${
+                        isCallMessage
+                          ? "border border-green-200 bg-green-50 text-green-900 shadow-sm dark:border-green-900/40 dark:bg-green-950/50 dark:text-green-100 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/70 transition-colors"
+                          : isMe
+                            ? "bg-[#800000] text-white dark:bg-[#6a0101]"
+                            : "bg-gray-100 dark:bg-[#16161a] text-foreground"
+                      }`}
                     >
                       <div
                         className={`text-sm ${isCallMessage ? "font-semibold" : ""}`}
                       >
-                        {msg.text}
+                        {isCallMessage ? (
+                          <>
+                            {msg.callProvider} call is ongoing.{" "}
+                            <span className="underline">Tap to join</span>
+                          </>
+                        ) : (
+                          msg.text
+                        )}
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-1 text-right">
                         {msg.time}
@@ -248,10 +279,10 @@ export default function Chat() {
             </div>
           </div>
 
-          <Separator />
+          <Separator className="shrink-0" />
 
           {/* Input */}
-          <div className="p-2 flex items-center gap-3">
+          <div className="p-2 flex items-center gap-3 shrink-0">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

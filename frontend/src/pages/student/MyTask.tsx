@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Pin, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -191,16 +191,15 @@ export default function ProjectsList() {
   return (
     <AppLayout breadcrumbs={[{ label: "Projects", href: "/projects" }]}>
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
+      <div className="">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">
+          <div className="flex items-center">
+            <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground mb-2">
               Projects List
             </h1>
-            <Pin className="h-4 w-4 text-muted-foreground rotate-45" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Here is a list of projects that you have created
+            Here is a list of projects that you are asign
           </p>
         </div>
       </div>
