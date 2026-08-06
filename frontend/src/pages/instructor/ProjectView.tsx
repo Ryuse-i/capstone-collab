@@ -56,7 +56,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {format} from "date-fns"
+import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 
 import { Calendar } from "@/components/ui/calendar";
@@ -380,29 +380,86 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="task-deadline">Deadline (required)</Label>
-                  <Input
-                    id="task-deadline"
-                    type="datetime-local"
-                    value={taskForm.deadline}
-                    onChange={(e) =>
-                      handleTaskFieldChange("deadline", e.target.value)
-                    }
-                  />
+                  <Label>Deadline (required)</Label>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !taskForm.deadline && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {taskForm.deadline ? (
+                          format(new Date(taskForm.deadline), "PPP")
+                        ) : (
+                          <span>Pick a deadline</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          taskForm.deadline
+                            ? new Date(taskForm.deadline)
+                            : undefined
+                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            handleTaskFieldChange(
+                              "deadline",
+                              date.toISOString(),
+                            );
+                          }
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </>
           ) : (
             <div className="space-y-2">
               <Label htmlFor="supertask-deadline">Deadline</Label>
-              <Input
-                id="supertask-deadline"
-                type="datetime-local"
-                value={supertaskForm.deadline}
-                onChange={(e) =>
-                  handleSupertaskFieldChange("deadline", e.target.value)
-                }
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !supertaskForm.deadline && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {supertaskForm.deadline ? (
+                      format(new Date(supertaskForm.deadline), "PPP")
+                    ) : (
+                      <span>Pick a deadline</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={
+                      supertaskForm.deadline
+                        ? new Date(supertaskForm.deadline)
+                        : undefined
+                    }
+                    onSelect={(date) => {
+                      handleSupertaskFieldChange(
+                        "deadline",
+                        date ? date.toISOString() : "",
+                      );
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           )}
 
@@ -677,7 +734,7 @@ export default function ProjectView() {
           )}
         </TableCell>
         <TableCell>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 whitespace-nowrap">
             <Button
               variant="outline"
               size="sm"
