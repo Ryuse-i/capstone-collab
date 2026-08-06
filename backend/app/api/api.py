@@ -24,7 +24,7 @@ api_router.include_router(project_router, prefix="/projects", tags=["project"])
 api_router.include_router(
     project_member_router, prefix="/project_members", tags=["project_member"]
 )
-api_router.include_router(task_router, prefix="/tasks", tags=["tags"])
+api_router.include_router(task_router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(supertask_router, prefix="/supertasks", tags=["supertasks"])
 api_router.include_router(
     task_content_router, prefix="/task_contents", tags=["task_contents"]

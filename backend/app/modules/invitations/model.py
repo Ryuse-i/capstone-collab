@@ -40,7 +40,6 @@ class ProjectInvitation(Base):
         SAEnum(
             ProjectRole,
             name="invited_role",
-            values_callable=lambda obj: [e.value for e in obj],
         )
     )
     # status of the invitation, this would be reflected for the project leader

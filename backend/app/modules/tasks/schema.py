@@ -10,10 +10,10 @@ class TaskCreate(BaseModel):
     created_by: UUID
     project_id: UUID
     supertask_id: UUID | None = None
-    status: Status
+    status: Status | None = None
     priority: Priority
-    complexity: Complexity
-    complexity_points: int
+    complexity: Complexity | None = None
+    complexity_points: int | None = None 
     category: Category
     deadline: datetime
     completed_at: datetime | None = None

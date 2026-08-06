@@ -7,7 +7,6 @@ class Status(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     SUBMITTED = "submitted"
     COMPLETED = "completed"
-    NONE = "none"
 
 
 class Priority(str, enum.Enum):
@@ -20,14 +19,12 @@ class Complexity(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
-    NONE = "none"
 
 
 class Category(str, enum.Enum):
     DOCUMENT = "document"
     RESEARCH = "research"
     DEVELOPMENT = "development"
-    NONE = "none"
 
 
 # task relations

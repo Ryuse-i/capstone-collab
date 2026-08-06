@@ -36,6 +36,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
+import { useGetAllTask, useCreateTask, useDeleteTask } from "@/hooks/useTask";
+import { useCurrentUser } from "@/hooks/useAuth";
+import type {
+  CreateTask as CreateTaskPayload,
+  TaskResponse,
+  TaskStatus,
+  TaskPriority,
+  TaskCategory,
+  TaskComplexity,
+} from "@/types/task";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +56,17 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {format} from "date-fns"
+import { CalendarIcon } from "lucide-react";
+
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import { cn } from "@/lib/utils";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
 
@@ -56,45 +77,25 @@ const tabs: { id: ProjectViewTab; label: string; icon: React.ReactNode }[] = [
   { id: "resources", label: "Resources", icon: <Files className="h-4 w-4" /> },
 ];
 
-// ---- Enum mirrors of app/modules/tasks/enums.py ----
-const STATUS_OPTIONS = [
-  { value: "not_started", label: "Not started" },
-  { value: "in_progress", label: "In progress" },
-  { value: "submitted", label: "Submitted" },
-  { value: "completed", label: "Completed" },
-  { value: "none", label: "None" },
-] as const;
-
-const PRIORITY_OPTIONS = [
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
-] as const;
+];
 
-const COMPLEXITY_OPTIONS = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "none", label: "None" },
-] as const;
-
-const CATEGORY_OPTIONS = [
+const CATEGORY_OPTIONS: { value: TaskCategory; label: string }[] = [
   { value: "document", label: "Document" },
   { value: "research", label: "Research" },
   { value: "development", label: "Development" },
-  { value: "none", label: "None" },
-] as const;
+];
 
 type TaskType = "task" | "supertask";
 
 type TaskFormState = {
   name: string;
   description: string;
-  status: string;
-  priority: string;
-  complexity: string;
-  category: string;
-  complexity_points: string;
+  priority: TaskPriority;
+  category: TaskCategory;
   deadline: string;
 };
 
@@ -107,11 +108,8 @@ type SupertaskFormState = {
 const initialTaskForm: TaskFormState = {
   name: "",
   description: "",
-  status: "not_started",
   priority: "medium",
-  complexity: "none",
-  category: "none",
-  complexity_points: "",
+  category: "document",
   deadline: "",
 };
 
@@ -132,8 +130,10 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
   const [taskForm, setTaskForm] = useState<TaskFormState>(initialTaskForm);
   const [supertaskForm, setSupertaskForm] =
     useState<SupertaskFormState>(initialSupertaskForm);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const createTaskMutation = useCreateTask();
+  const { data: user } = useCurrentUser();
 
   const resetForms = () => {
     setTaskForm(initialTaskForm);
@@ -147,7 +147,10 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
     if (!nextOpen) resetForms();
   };
 
-  const handleTaskFieldChange = (field: keyof TaskFormState, value: string) => {
+  const handleTaskFieldChange = <K extends keyof TaskFormState>(
+    field: K,
+    value: TaskFormState[K],
+  ) => {
     setTaskForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -161,10 +164,25 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
   const handleSubmit = async () => {
     setError(null);
 
-    if (taskType === "task" && !taskForm.name.trim()) {
-      setError("Task name is required.");
-      return;
+    if (taskType === "task") {
+      if (!taskForm.name.trim()) {
+        setError("Task name is required.");
+        return;
+      }
+      if (!taskForm.description.trim()) {
+        setError("Description is required.");
+        return;
+      }
+      if (!taskForm.deadline) {
+        setError("Deadline is required.");
+        return;
+      }
+      if (!user?.id) {
+        setError("Could not determine the current user. Please sign in again.");
+        return;
+      }
     }
+
     if (taskType === "supertask") {
       if (!supertaskForm.name.trim()) {
         setError("Supertask name is required.");
@@ -176,28 +194,19 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
       }
     }
 
-    setIsSubmitting(true);
     try {
       if (taskType === "task") {
-        const payload = {
+        const payload: CreateTaskPayload = {
           project_id: projectId,
           name: taskForm.name.trim(),
-          description: taskForm.description.trim() || null,
-          status: taskForm.status,
+          description: taskForm.description.trim(),
+          created_by: user!.id,
           priority: taskForm.priority,
-          complexity: taskForm.complexity,
           category: taskForm.category,
-          complexity_points: taskForm.complexity_points
-            ? Number(taskForm.complexity_points)
-            : 0,
-          deadline: taskForm.deadline
-            ? new Date(taskForm.deadline).toISOString()
-            : null,
+          deadline: new Date(taskForm.deadline).toISOString(),
         };
 
-        // TODO: wire up to your task creation mutation, e.g.
-        // await createTask(payload);
-        console.log("Creating task:", payload);
+        await createTaskMutation.mutateAsync(payload);
       } else {
         const payload = {
           project_id: projectId,
@@ -208,9 +217,7 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
             : null,
         };
 
-        // TODO: wire up to your supertask creation mutation, e.g.
-        // await createSupertask(payload);
-        console.log("Creating supertask:", payload);
+        console.log("creating supertask:", payload);
       }
 
       onCreated?.();
@@ -221,10 +228,10 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
           ? err.message
           : "Something went wrong while creating this item.",
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
+
+  const isSubmitting = createTaskMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -306,15 +313,13 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
             />
           </div>
 
-          {/* Shared: description */}
+          {/* Shared: description (required for both) */}
           <div className="space-y-2">
-            <Label htmlFor="item-description">
-              Description{taskType === "supertask" ? " (required)" : ""}
-            </Label>
+            <Label htmlFor="item-description">Description (required)</Label>
             <Textarea
               id="item-description"
               rows={3}
-              placeholder="What does this involve?"
+              placeholder="What does this involve? Be as descriptive as possible"
               value={
                 taskType === "task"
                   ? taskForm.description
@@ -332,29 +337,12 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={taskForm.status}
-                    onValueChange={(v) => handleTaskFieldChange("status", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label>Priority</Label>
                   <Select
                     value={taskForm.priority}
-                    onValueChange={(v) => handleTaskFieldChange("priority", v)}
+                    onValueChange={(v) =>
+                      handleTaskFieldChange("priority", v as TaskPriority)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select priority" />
@@ -368,33 +356,13 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Complexity</Label>
-                  <Select
-                    value={taskForm.complexity}
-                    onValueChange={(v) =>
-                      handleTaskFieldChange("complexity", v)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select complexity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMPLEXITY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 <div className="space-y-2">
                   <Label>Category</Label>
                   <Select
                     value={taskForm.category}
-                    onValueChange={(v) => handleTaskFieldChange("category", v)}
+                    onValueChange={(v) =>
+                      handleTaskFieldChange("category", v as TaskCategory)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -412,21 +380,7 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="complexity-points">Complexity points</Label>
-                  <Input
-                    id="complexity-points"
-                    type="number"
-                    min={0}
-                    placeholder="0"
-                    value={taskForm.complexity_points}
-                    onChange={(e) =>
-                      handleTaskFieldChange("complexity_points", e.target.value)
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="task-deadline">Deadline</Label>
+                  <Label htmlFor="task-deadline">Deadline (required)</Label>
                   <Input
                     id="task-deadline"
                     type="datetime-local"
@@ -512,6 +466,26 @@ function formatPercentage(value?: number, digits = 1) {
   return formatted === "None" ? "None" : `${formatted}%`;
 }
 
+// Keys match TaskStatus / TaskPriority / TaskComplexity exactly now.
+const statusStyle: Record<TaskStatus, string> = {
+  completed: "bg-green-100 text-green-700",
+  submitted: "bg-yellow-100 text-yellow-700",
+  "in-progress": "bg-blue-100 text-blue-700",
+  not_started: "bg-gray-100 text-gray-500",
+};
+
+const priorityStyle: Record<TaskPriority, string> = {
+  high: "bg-red-100 text-red-600",
+  medium: "bg-yellow-100 text-yellow-600",
+  low: "bg-gray-100 text-gray-500",
+};
+
+const complexityStyle: Record<TaskComplexity, string> = {
+  high: "bg-red-100 text-red-600",
+  medium: "bg-yellow-100 text-yellow-600",
+  low: "bg-gray-100 text-gray-500",
+};
+
 export default function ProjectView() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -524,6 +498,29 @@ export default function ProjectView() {
     isError,
   } = useGetOneProjectWithSpanshot(projectId);
   const snapshot = project?.snapshot;
+
+  // ---- Tasks: live data ----
+  const {
+    data: allTasksData,
+    isLoading: isTasksLoading,
+    isError: isTasksError,
+  } = useGetAllTask();
+
+  // Filter client-side to this project until/unless the API supports
+  // a project_id query param on GET /tasks.
+  const filteredTasks = (allTasksData ?? []).filter(
+    (t) => t.project_id === projectId,
+  );
+
+  const deleteTaskMutation = useDeleteTask();
+
+  const handleDeleteTask = (taskId: string) => {
+    if (!confirm("Delete this task? This can't be undone.")) return;
+    deleteTaskMutation.mutate(taskId);
+  };
+
+  const [selectedTask, setSelectedTask] = useState<TaskResponse | null>(null);
+  const [openTaskDialog, setOpenTaskDialog] = useState(false);
 
   const overviewCards = [
     {
@@ -553,66 +550,6 @@ export default function ProjectView() {
       icon: <BarChart3 className="h-4 w-4 text-[#7A0C2E]" />,
     },
   ];
-
-  const allTasks = [
-    {
-      name: "Implement user authentication system",
-      status: "Completed",
-      priority: "High",
-      complexity: "High",
-      assigned: ["JW"],
-      due: "Apr 20",
-    },
-    {
-      name: "Design dashboard wireframes",
-      status: "Completed",
-      priority: "Medium",
-      complexity: "Low",
-      assigned: ["DM"],
-      due: "Apr 3",
-    },
-    {
-      name: "API endpoint testing",
-      status: "Submitted",
-      priority: "Low",
-      complexity: "Medium",
-      assigned: ["HG"],
-      due: "Mar 13",
-    },
-    {
-      name: "Database migration script",
-      status: "In Progress",
-      priority: "High",
-      complexity: "High",
-      assigned: ["JW", "HG"],
-      due: "Mar 28",
-    },
-  ];
-
-  const statusStyle: Record<string, string> = {
-    Completed: "bg-green-100 text-green-700",
-    Submitted: "bg-yellow-100 text-yellow-700",
-    "In Progress": "bg-blue-100 text-blue-700",
-    "Not Started": "bg-gray-100 text-gray-500",
-  };
-
-  const priorityStyle: Record<string, string> = {
-    High: "bg-red-100 text-red-600",
-    Medium: "bg-yellow-100 text-yellow-600",
-    Low: "bg-gray-100 text-gray-500",
-  };
-
-  const complexityStyle: Record<string, string> = {
-    High: "bg-red-100 text-red-600",
-    Medium: "bg-yellow-100 text-yellow-600",
-    Low: "bg-gray-100 text-gray-500",
-  };
-
-  const [selectedTask, setSelectedTask] = useState<
-    (typeof allTasks)[number] | null
-  >(null);
-  const [openTaskDialog, setOpenTaskDialog] = useState(false);
-  const filteredTasks = allTasks;
 
   if (isLoading) {
     return (
@@ -656,6 +593,123 @@ export default function ProjectView() {
       </AppLayout>
     );
   }
+
+  const renderTaskTableBody = () => {
+    if (isTasksLoading) {
+      return (
+        <TableRow>
+          <TableCell
+            colSpan={7}
+            className="py-8 text-center text-muted-foreground"
+          >
+            Loading tasks...
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (isTasksError) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7} className="py-8 text-center text-rose-600">
+            Failed to load tasks.
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (filteredTasks.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7} className="py-12 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FBF3E7]">
+                <ListTodo className="h-6 w-6 text-[#7A0C2E]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#231A2E]">
+                  No tasks yet
+                </p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Let's start by creating one.
+                </p>
+              </div>
+              <CreateTask projectId={projectId} />
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return filteredTasks.map((task) => (
+      <TableRow key={task.id}>
+        <TableCell className="font-medium text-[#231A2E]">
+          {task.name}
+        </TableCell>
+        <TableCell>
+          <Badge
+            className={`${statusStyle[task.status ?? "not_started"]} border-0`}
+          >
+            {(task.status ?? "not_started").replace(/[-_]/g, " ")}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <Badge className={`${priorityStyle[task.priority]} border-0`}>
+            {task.priority}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          {/* TODO: render assigned member avatars once TaskResponse includes assignees */}
+          <span className="text-xs text-neutral-400">—</span>
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {task.deadline
+            ? new Date(task.deadline).toLocaleDateString()
+            : "No deadline"}
+        </TableCell>
+        <TableCell>
+          {task.complexity ? (
+            <Badge className={`${complexityStyle[task.complexity]} border-0`}>
+              {task.complexity}
+            </Badge>
+          ) : (
+            <span className="text-xs text-neutral-400">—</span>
+          )}
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedTask(task);
+                setOpenTaskDialog(true);
+              }}
+            >
+              View
+            </Button>
+            <Button variant="outline" size="sm">
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={
+                deleteTaskMutation.isPending &&
+                deleteTaskMutation.variables === task.id
+              }
+              onClick={() => handleDeleteTask(task.id)}
+            >
+              {deleteTaskMutation.isPending &&
+              deleteTaskMutation.variables === task.id
+                ? "Deleting..."
+                : "Delete"}
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    ));
+  };
 
   return (
     <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
@@ -841,6 +895,12 @@ export default function ProjectView() {
                     </Card>
                   </div>
 
+                  <div className="flex w-full justify-end">
+                    {filteredTasks.length > 0 && (
+                      <CreateTask projectId={projectId} />
+                    )}
+                  </div>
+
                   <Card className="p-0 border border-neutral-200">
                     <CardContent className="p-0">
                       <Table>
@@ -855,82 +915,7 @@ export default function ProjectView() {
                             <TableHead className="w-40">Action</TableHead>
                           </TableRow>
                         </TableHeader>
-                        <TableBody>
-                          {filteredTasks.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={7}
-                                className="py-8 text-center text-muted-foreground"
-                              >
-                                No tasks found.
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            filteredTasks.map((task) => (
-                              <TableRow key={task.name}>
-                                <TableCell className="font-medium text-[#231A2E]">
-                                  {task.name}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    className={`${statusStyle[task.status]} border-0`}
-                                  >
-                                    {task.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    className={`${priorityStyle[task.priority]} border-0`}
-                                  >
-                                    {task.priority}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex -space-x-2">
-                                    {task.assigned.map((member) => (
-                                      <div
-                                        key={member}
-                                        className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7A0C2E] text-xs font-bold text-white ring-1 ring-white"
-                                      >
-                                        {member}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">
-                                  {task.due}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    className={`${complexityStyle[task.complexity]} border-0`}
-                                  >
-                                    {task.complexity}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedTask(task);
-                                        setOpenTaskDialog(true);
-                                      }}
-                                    >
-                                      View
-                                    </Button>
-                                    <Button variant="outline" size="sm">
-                                      Edit
-                                    </Button>
-                                    <Button variant="destructive" size="sm">
-                                      Delete
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
+                        <TableBody>{renderTaskTableBody()}</TableBody>
                       </Table>
                     </CardContent>
                   </Card>
@@ -962,9 +947,12 @@ export default function ProjectView() {
                             Status
                           </p>
                           <Badge
-                            className={`mt-2 border-0 ${statusStyle[selectedTask.status]}`}
+                            className={`mt-2 border-0 ${statusStyle[selectedTask.status ?? "not_started"]}`}
                           >
-                            {selectedTask.status}
+                            {(selectedTask.status ?? "not_started").replace(
+                              /[-_]/g,
+                              " ",
+                            )}
                           </Badge>
                         </div>
                         <div className="rounded-lg bg-neutral-50 p-3">
@@ -980,7 +968,9 @@ export default function ProjectView() {
                             Due date
                           </p>
                           <p className="mt-2 font-semibold text-[#231A2E]">
-                            {selectedTask.due}
+                            {selectedTask.deadline
+                              ? new Date(selectedTask.deadline).toLocaleString()
+                              : "No deadline"}
                           </p>
                         </div>
                       </div>
@@ -1081,160 +1071,6 @@ export default function ProjectView() {
             )}
           </div>
         </Card>
-        <div className="flex w-full border justify-end">
-          <CreateTask projectId={projectId} />
-        </div>
-        <Card className="p-0 border border-neutral-200">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Assigned</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Complexity</TableHead>
-                  <TableHead className="w-40">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTasks.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      No tasks found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredTasks.map((task) => (
-                    <TableRow key={task.name}>
-                      <TableCell className="font-medium text-[#231A2E]">
-                        {task.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`${statusStyle[task.status]} border-0`}
-                        >
-                          {task.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`${priorityStyle[task.priority]} border-0`}
-                        >
-                          {task.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex -space-x-2">
-                          {task.assigned.map((member) => (
-                            <div
-                              key={member}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7A0C2E] text-xs font-bold text-white ring-1 ring-white"
-                            >
-                              {member}
-                            </div>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {task.due}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`${complexityStyle[task.complexity]} border-0`}
-                        >
-                          {task.complexity}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedTask(task);
-                              setOpenTaskDialog(true);
-                            }}
-                          >
-                            View
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Edit
-                          </Button>
-                          <Button variant="destructive" size="sm">
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <Dialog
-          open={openTaskDialog}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedTask(null);
-            }
-            setOpenTaskDialog(open);
-          }}
-        >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Task details</DialogTitle>
-              <DialogDescription>
-                {selectedTask
-                  ? selectedTask.name
-                  : "Select a task to view details."}
-              </DialogDescription>
-            </DialogHeader>
-
-            {selectedTask ? (
-              <div className="space-y-3 text-sm text-neutral-600">
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    Status
-                  </p>
-                  <Badge
-                    className={`mt-2 border-0 ${statusStyle[selectedTask.status]}`}
-                  >
-                    {selectedTask.status}
-                  </Badge>
-                </div>
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    Priority
-                  </p>
-                  <p className="mt-2 font-semibold text-[#231A2E]">
-                    {selectedTask.priority}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    Due date
-                  </p>
-                  <p className="mt-2 font-semibold text-[#231A2E]">
-                    {selectedTask.due}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Close</Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        )
       </div>
     </AppLayout>
   );

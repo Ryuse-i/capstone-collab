@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
-from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
+from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID, Date
 from sqlalchemy import Enum as SAENUM
 from app.modules.tasks.enums import Priority, Status, Complexity, Category
 from typing import TYPE_CHECKING
@@ -38,32 +38,33 @@ class Task(Base):
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
     )
-    
+
+    started_at: Mapped[date] = mapped_column(Date, default=date.today)
     # Relationships
     project: Mapped["Project"] = relationship(
         "Project",
         back_populates="tasks",
         foreign_keys=[project_id],
     )
-    
+
     comments: Mapped[list["TaskComment"]] = relationship(
         "TaskComment",
         back_populates="task",
         cascade="all, delete-orphan",
     )
-    
+
     submissions: Mapped[list["TaskSubmission"]] = relationship(
         "TaskSubmission",
         back_populates="task",
         cascade="all, delete-orphan",
     )
-    
+
     contents: Mapped[list["TaskContent"]] = relationship(
         "TaskContent",
         back_populates="task",
         cascade="all, delete-orphan",
     )
-    
+
     task_relations: Mapped[list["TaskRelation"]] = relationship(
         "TaskRelation",
         back_populates="task",
@@ -71,7 +72,7 @@ class Task(Base):
         cascade="all, delete-orphan",
         primaryjoin="Task.id == TaskRelation.task_id",
     )
-    
+
     related_tasks: Mapped[list["TaskRelation"]] = relationship(
         "TaskRelation",
         back_populates="related_task",
@@ -79,19 +80,19 @@ class Task(Base):
         cascade="all, delete-orphan",
         primaryjoin="Task.id == TaskRelation.related_to",
     )
-    
+
     tags: Mapped[list["TaskTag"]] = relationship(
         "TaskTag",
         back_populates="task",
         cascade="all, delete-orphan",
     )
-    
+
     assigned_members: Mapped[list["AssignedMember"]] = relationship(
         "AssignedMember",
         back_populates="task",
         cascade="all, delete-orphan",
     )
-    
+
     peer_evaluations: Mapped[list["PeerEvaluation"]] = relationship(
         "PeerEvaluation",
         back_populates="task",

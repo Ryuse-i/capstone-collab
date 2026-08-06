@@ -59,7 +59,7 @@ class ProjectInvitationService:
             notification = CreateNotification(
                 user_id=invited_user.id,
                 title="Project Invitation",
-                body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}.
+                body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role.value}.
                 From: {sender.first_name} {sender.last_name}""",
                 type=NotificationType.PROJECT_INVITATION,
                 invitation_id=invitation_result.id,
@@ -111,7 +111,7 @@ class ProjectInvitationService:
                     # create the noticication
                     notification = CreateNotification(
                         user_id=invited_user.id,
-                        body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role}. 
+                        body=f"""Hello {invited_user.first_name} we would like to invite you to our project as a {invitation.role.value}. 
 
 From: {sender.first_name} {sender.last_name}""",
                         title="Project Invitation",
@@ -178,7 +178,7 @@ From: {sender.first_name} {sender.last_name}""",
                 ProjectMemberCreate(
                     user_id=current_user.id,
                     project_id=invitation.project_id,
-                    project_role=invitation_result.role,
+                    project_role=invitation_result.role.value,
                 ),
             )
 
@@ -200,7 +200,7 @@ From: {sender.first_name} {sender.last_name}""",
                 db,
                 notification=CreateNotification(
                     user_id=invitation.sender_id,
-                    body=f"{current_user.first_name} has accepted to be part of our project as {invitation_result.role}",
+                    body=f"{current_user.first_name} has accepted to be part of our project as {invitation_result.role.value}",
                     title="Project Invite Accept",
                     type=NotificationType.PROJECT_INVITATION,
                     invitation_id=invitation_result.id,
