@@ -488,28 +488,26 @@ function ReviewProjectDetails({
 
   return (
     <div className="w-full flex flex-col gap-2">
-      <h2 className="text-gray-500">
+      <h2>
         Double check everything before submitting
       </h2>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col ">
           <h2>Project Details</h2>
-          <div className="border border-gray-400">
             <div className="mx-5">
-              <h3 className="text-gray-400">
-                Project name:
-                <span className="mx-2 text-black">{formData.name}</span>
-              </h3>
               <div className="flex gap-3">
-                <h3 className="text-gray-400 border">Project description:</h3>
-                <div className="border max-w-xl">
+                <h3 className="text-gray-400">
+                  Project name:
+                </h3>
+                  <p>{formData.name}</p>
+              </div>
+              <div className="flex gap-3">
+                <h3 className="text-gray-400">Project description:</h3>
                   <p className="break-word whitespace-pre-wrap">
                     {formData.description}
                   </p>
-                </div>
               </div>
-            </div>
-          </div>
+            </div> 
         </div>
         <div>
           <h2>Members</h2>
@@ -518,20 +516,20 @@ function ReviewProjectDetails({
               <>
                 {hasInstructor && (
                   <div className="flex gap-1">
-                    <h3>Instructor:</h3>
-                    <div className="text-gray-400">{instructorLabel}</div>
+                    <h3 className="text-gray-400">Instructor:</h3>
+                    <div>{instructorLabel}</div>
                   </div>
                 )}
                 {hasAdvisor && (
                   <div className="flex gap-1">
-                    <h3>Advisor:</h3>
-                    <div className="text-gray-400">{advisorLabel}</div>
+                    <h3 className="text-gray-400">Advisor:</h3>
+                    <div>{advisorLabel}</div>
                   </div>
                 )}
                 {hasMembers && (
                   <div className="flex gap-1">
-                    <h3>Members:</h3>
-                    <div className="text-gray-400">
+                    <h3 className="text-gray-400">Members:</h3>
+                    <div>
                       {members.map((m) => m.email).join(", ")}
                     </div>
                   </div>
@@ -756,14 +754,14 @@ export default function CreateProjectDialog() {
             Create +
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-250 max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-250 max-h-[70vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create your new project</DialogTitle>
             <DialogDescription>
               Setup your project and invite your team.{" "}
             </DialogDescription>
           </DialogHeader>
-          <div className="mx-4 max-h-[50vh] px-4 overflow-y-auto no-scrollbar">
+          <div className="mx-4 max-h-[50vh] px-4 overflow-y-auto custom-scrollbar">
             <Stepper
               value={currentStep}
               onValueChange={setCurrentStep}
