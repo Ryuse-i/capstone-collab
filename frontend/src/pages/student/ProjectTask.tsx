@@ -479,7 +479,7 @@ export default function Task() {
                             setOpenTaskDialog(true);
                           }}
                         >
-                          View Task
+                          View
                         </Button>
                         <Button variant="outline" size="sm">
                           Edit

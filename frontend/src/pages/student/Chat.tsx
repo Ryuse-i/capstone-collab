@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Send, Video, MoreHorizontal } from "lucide-react";
+import googlemeetlogo from "@/assets/googlemeetlogo.png";
+import zoomlogo from "@/assets/zoomlogo.png";
+import { Send, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +13,6 @@ import {
   PopoverContent,
   PopoverDescription,
   PopoverHeader,
-  PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
 
@@ -27,6 +28,8 @@ type Message = {
   senderId: string;
   text: string;
   time: string;
+  callProvider?: "Gmeet" | "Zoom";
+  isJoined?: boolean;
 };
 
 const members: Member[] = [
@@ -75,6 +78,7 @@ export default function Chat() {
   const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
+  const [activeCall, setActiveCall] = useState<"Gmeet" | "Zoom" | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const currentUserId = "JW";
 
@@ -100,12 +104,46 @@ export default function Chat() {
     setInput("");
   };
 
+  const startCall = (provider: "Gmeet" | "Zoom") => {
+    const callText = `${provider} call is ongoing. Tap to join.`;
+    setActiveCall(provider);
+    setMessages((s) => [
+      ...s,
+      {
+        id: `call_${Date.now()}`,
+        senderId: currentUserId,
+        text: callText,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        callProvider: provider,
+      },
+    ]);
+  };
+
+  const joinCall = (provider: "Gmeet" | "Zoom") => {
+    setMessages((s) => [
+      ...s,
+      {
+        id: `join_${Date.now()}`,
+        senderId: currentUserId,
+        text: `You joined the ${provider} call.`,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        isJoined: true,
+      },
+    ]);
+  };
+
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
-      <Card className="mt-2 pb-1">
-        <CardContent className="p-0">
+      <Card className="mt-2 pb-1 overflow-hidden h-[85vh] flex flex-col">
+        <CardContent className="p-0 flex flex-col flex-1 min-h-0">
           {/* Header */}
-          <div className="flex items-center justify-between border-b px-4 pb-2">
+          <div className="flex items-center justify-between border-b px-4 pb-2 shrink-0">
             <div className="flex items-center gap-3">
               <div className="text-lg font-medium">
                 {currentProject?.name || "Project chat"}
@@ -119,38 +157,75 @@ export default function Chat() {
                     <Video className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start">
+                <PopoverContent className="w-40 p-3">
                   <PopoverHeader>
-                    <PopoverTitle>Dimensions</PopoverTitle>
-                    <PopoverDescription>
-                      Set the dimensions for the layer.
+                    <PopoverDescription className="flex flex-col gap-2">
+                      <Button
+                        onClick={() => startCall("Gmeet")}
+                        className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
+                        variant="outline"
+                      >
+                        <img
+                          src={googlemeetlogo}
+                          alt="google meet"
+                          className="h-5 w-5 shrink-0"
+                        />
+                        Gmeet
+                      </Button>
+                      <Button
+                        onClick={() => startCall("Zoom")}
+                        className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
+                        variant="outline"
+                      >
+                        <img
+                          src={zoomlogo}
+                          alt="zoom"
+                          className="h-5 w-5 shrink-0"
+                        />
+                        Zoom
+                      </Button>
                     </PopoverDescription>
                   </PopoverHeader>
-                </PopoverContent>
-              </Popover>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent>
-                  <p>More options</p>
                 </PopoverContent>
               </Popover>
             </div>
           </div>
 
+          {activeCall ? (
+            <div className="mx-4 mt-2 shrink-0 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-900 dark:border-green-900/40 dark:bg-green-950/50 dark:text-green-100">
+              {activeCall} call is ongoing.{" "}
+              <button
+                type="button"
+                onClick={() => joinCall(activeCall)}
+                className="font-semibold underline"
+              >
+                Tap to join
+              </button>
+            </div>
+          ) : null}
+
           {/* Messages area */}
           <div
             ref={scrollRef}
-            className="p-6 h-[70vh] overflow-auto bg-white dark:bg-[#101014] custom-scrollbar"
+            className="p-6 flex-1 min-h-0 overflow-auto bg-white dark:bg-[#101014] custom-scrollbar"
           >
             <div className="flex flex-col gap-4">
               {messages.map((msg) => {
                 const isMe = msg.senderId === currentUserId;
-                const sender = members.find((m) => m.id === msg.senderId)!;
+                const isCallMessage = !!msg.callProvider;
+                const isJoinedMessage = !!msg.isJoined;
+                const sender = members.find((m) => m.id === msg.senderId);
+
+                if (isJoinedMessage) {
+                  return (
+                    <div key={msg.id} className="flex justify-center">
+                      <div className="text-xs text-muted-foreground">
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={msg.id}
@@ -158,14 +233,36 @@ export default function Chat() {
                   >
                     {!isMe && (
                       <div className="mr-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold">
-                        {sender.initials}
+                        {sender?.initials}
                       </div>
                     )}
 
                     <div
-                      className={`max-w-[70%] p-3 rounded-lg ${isMe ? "bg-[#800000] text-white dark:bg-[#6a0101]" : "bg-gray-100 dark:bg-[#16161a] text-foreground"}`}
+                      onClick={
+                        isCallMessage
+                          ? () => joinCall(msg.callProvider!)
+                          : undefined
+                      }
+                      className={`max-w-[70%] p-3 rounded-lg ${
+                        isCallMessage
+                          ? "border border-green-200 bg-green-50 text-green-900 shadow-sm dark:border-green-900/40 dark:bg-green-950/50 dark:text-green-100 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/70 transition-colors"
+                          : isMe
+                            ? "bg-[#800000] text-white dark:bg-[#6a0101]"
+                            : "bg-gray-100 dark:bg-[#16161a] text-foreground"
+                      }`}
                     >
-                      <div className="text-sm">{msg.text}</div>
+                      <div
+                        className={`text-sm ${isCallMessage ? "font-semibold" : ""}`}
+                      >
+                        {isCallMessage ? (
+                          <>
+                            {msg.callProvider} call is ongoing.{" "}
+                            <span className="underline">Tap to join</span>
+                          </>
+                        ) : (
+                          msg.text
+                        )}
+                      </div>
                       <div className="text-[11px] text-muted-foreground mt-1 text-right">
                         {msg.time}
                       </div>
@@ -182,10 +279,10 @@ export default function Chat() {
             </div>
           </div>
 
-          <Separator />
+          <Separator className="shrink-0" />
 
           {/* Input */}
-          <div className="p-2 flex items-center gap-3">
+          <div className="p-2 flex items-center gap-3 shrink-0">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

@@ -201,11 +201,13 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
 export default function Team() {
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
-      <h1 className="text-2xl font-bold text-foreground mb-2">Manage members and monitor activities</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {members.map((member) => (
-          <MemberCard key={member.name} member={member} />
-        ))}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Manage members and monitor activities</h1>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {members.map((member) => (
+            <MemberCard key={member.name} member={member} />
+          ))}
+        </div>
       </div>
     </AppLayout>
   );

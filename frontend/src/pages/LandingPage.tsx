@@ -15,10 +15,7 @@ import {
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────
-interface NavItem {
-  label: string;
-  href: string;
-}
+
 
 interface Feature {
   icon: ReactNode;
@@ -26,19 +23,12 @@ interface Feature {
   desc: string;
 }
 
-interface Testimonial {
-  name: string;
-  role: string;
-  company: string;
-  text: string;
-}
+
+
 
 // ─── Data ────────────────────────────────────────────
-const NAV_ITEMS: NavItem[] = [
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "About", href: "#about" },
-];
+
+
 
 const FEATURES: Feature[] = [
   {
@@ -73,26 +63,7 @@ const FEATURES: Feature[] = [
   },
 ];
 
-const TESTIMONIALS: Testimonial[] = [
-  {
-    name: "Sarah Chen",
-    role: "Engineering Manager",
-    company: "Velotech",
-    text: "Nexus gave us visibility into workload imbalance. The redistribution suggestions alone saved us a full sprint.",
-  },
-  {
-    name: "Marcus Webb",
-    role: "Product Director",
-    company: "Orbis Labs",
-    text: "The contribution scoring system transformed our quarterly reviews. We stopped having subjective arguments.",
-  },
-  {
-    name: "Priya Nair",
-    role: "Scrum Master",
-    company: "Cloudform",
-    text: "Setup was under 10 minutes. The health dashboard surfaced deadline risks we never caught before.",
-  },
-];
+
 
 // ─── Sub-components ───────────────────────────────────
 function Navbar() {
@@ -113,17 +84,7 @@ function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            {NAV_ITEMS.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition"
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
+          
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
@@ -147,16 +108,7 @@ function Navbar() {
         {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden mt-4 pb-4 space-y-3">
-            {NAV_ITEMS.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="block text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400"
-                onClick={() => setMobileOpen(false)}
-              >
-                {item.label}
-              </a>
-            ))}
+            
             <div className="flex gap-2 pt-2">
               <Button variant="ghost" size="sm" className="w-full" asChild>
                 <Link to="/login" onClick={() => setMobileOpen(false)}>
@@ -164,7 +116,7 @@ function Navbar() {
                 </Link>
               </Button>
               <Button size="sm" className="w-full" asChild>
-                <Link to="/register" onClick={() => setMobileOpen(false)}>
+                <Link to="/signup" onClick={() => setMobileOpen(false)}>
                   Get started
                 </Link>
               </Button>
@@ -203,7 +155,7 @@ function HeroSection() {
         <div className="animate-on-scroll" style={{ transitionDelay: "300ms" }}>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild>
-              <Link to="/register">Get started free</Link>
+              <Link to="/signup">Get started free</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a href="#features">Learn more</a>
@@ -263,48 +215,7 @@ function FeatureSection() {
   );
 }
 
-function TestimonialsSection() {
-  return (
-    <section className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12 animate-on-scroll">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Trusted by teams
-          </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            See what others are saying about PSU Collab
-          </p>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((testimonial, index) => (
-            <div
-              key={testimonial.name}
-              className="animate-on-scroll"
-              style={{ transitionDelay: `${index * 150}ms` }}
-            >
-              <Card className="h-full">
-                <CardHeader>
-                  <p className="text-gray-600 dark:text-gray-400 italic mb-4 line-clamp-4">
-                    "{testimonial.text}"
-                  </p>
-                  <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {testimonial.name}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {testimonial.role} at {testimonial.company}
-                    </p>
-                  </div>
-                </CardHeader>
-              </Card>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function CTASection() {
   return (
@@ -334,7 +245,7 @@ function CTASection() {
           <Button
             size="lg"
             variant="outline"
-            className="text-white border-amber-300 hover:bg-white/10"
+            className="text-black border-amber-300 hover:bg-white/10"
             asChild
           >
             <a href="#features">Learn more</a>
@@ -497,7 +408,7 @@ export default function LandingPage() {
       <main>
         <HeroSection />
         <FeatureSection />
-        <TestimonialsSection />
+        
         <CTASection />
       </main>
       <Footer />

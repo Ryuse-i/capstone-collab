@@ -89,8 +89,8 @@ export default function CapstoneSearch() {
       breadcrumbs={[{ label: "Capstone Search", href: "/capstone-search" }]}
     >
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2 dark:text-foreground">
+      <div className="gap-0 flex flex-col">
+        <h1 className="text-2xl font-semibold flex items-center dark:text-foreground mb-2">
           ✦ Capstone Semantic Search
         </h1>
         <p className="text-sm text-muted-foreground">
