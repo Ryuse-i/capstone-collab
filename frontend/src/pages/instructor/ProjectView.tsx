@@ -38,6 +38,7 @@ import {
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { useGetAllTask, useCreateTask, useDeleteTask } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
+import type { Skill } from "@/types/project_member";
 import type {
   CreateTask as CreateTaskPayload,
   TaskResponse,
@@ -89,6 +90,32 @@ const CATEGORY_OPTIONS: { value: TaskCategory; label: string }[] = [
   { value: "development", label: "Development" },
 ];
 
+const SKILL_OPTIONS: { value: Skill; label: string }[] = [
+  { value: "Backend Developoment", label: "Backend Development" },
+  { value: "Frontend Development", label: "Frontend Development" },
+  { value: "Mobile Development", label: "Mobile Development" },
+  { value: "Iot Development", label: "IoT Development" },
+  { value: "Database Design", label: "Database Design" },
+  { value: "System Architecture", label: "System Architecture" },
+  { value: "Ui/Ux Design", label: "UI/UX Design" },
+  { value: "Testing and Quality Assurance", label: "Testing and QA" },
+  { value: "Literature Review", label: "Literature Review" },
+  { value: "Data Collection", label: "Data Collection" },
+  {
+    value: "Survey and Questionnaire Design",
+    label: "Survey/Questionnaire Design",
+  },
+  { value: "Interview and Observation", label: "Interview and Observation" },
+  { value: "Data Analysis", label: "Data Analysis" },
+  { value: "Technical Writing", label: "Technical Writing" },
+  { value: "Documentation", label: "Documentation" },
+  { value: "Diagram and Modeling", label: "Diagram and Modeling" },
+  { value: "Editing and Proofreading", label: "Editing and Proofreading" },
+  { value: "Financial Documentation", label: "Financial Documentation" },
+  { value: "Budget Planning", label: "Budget Planning" },
+  { value: "Resource Management", label: "Resource Management" },
+];
+
 type TaskType = "task" | "supertask";
 
 type TaskFormState = {
@@ -97,6 +124,7 @@ type TaskFormState = {
   priority: TaskPriority;
   category: TaskCategory;
   deadline: string;
+  skill: Skill | "";
 };
 
 type SupertaskFormState = {
@@ -111,6 +139,7 @@ const initialTaskForm: TaskFormState = {
   priority: "medium",
   category: "document",
   deadline: "",
+  skill: "",
 };
 
 const initialSupertaskForm: SupertaskFormState = {
@@ -177,6 +206,10 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
         setError("Deadline is required.");
         return;
       }
+      if (!taskForm.skill) {
+        setError("Skill is required.");
+        return;
+      }
       if (!user?.id) {
         setError("Could not determine the current user. Please sign in again.");
         return;
@@ -204,6 +237,7 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
           priority: taskForm.priority,
           category: taskForm.category,
           deadline: new Date(taskForm.deadline).toISOString(),
+          skill: taskForm.skill as Skill,
         };
 
         await createTaskMutation.mutateAsync(payload);
@@ -376,6 +410,27 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Skill</Label>
+                <Select
+                  value={taskForm.skill}
+                  onValueChange={(v) =>
+                    handleTaskFieldChange("skill", v as Skill)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select skill" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SKILL_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

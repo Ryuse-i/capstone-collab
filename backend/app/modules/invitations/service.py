@@ -120,6 +120,7 @@ From: {sender.first_name} {sender.last_name}""",
                     )
                     # create notification
                     await NotificationService.create_notification(db, notification)
+                    await db.commit()
 
                 results.append(
                     {

@@ -5,6 +5,7 @@ export type TaskStatus =
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskComplexity = "low" | "medium" | "high";
 export type TaskCategory = "document" | "research" | "development";
+import type { Skill } from "./project_member";
 
 export interface TaskBase {
   name: string;
@@ -19,6 +20,7 @@ export interface TaskBase {
   total_time_spent?: number;
   status?: TaskStatus;
   supertask_id?: string;
+  skill: Skill
 }
 
 export type CreateTask = TaskBase;

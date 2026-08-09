@@ -25,6 +25,7 @@ class Category(str, enum.Enum):
     DOCUMENT = "document"
     RESEARCH = "research"
     DEVELOPMENT = "development"
+    FINANCE = "finance"
 
 
 # task relations

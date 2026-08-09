@@ -1,4 +1,31 @@
-export type ProjectRole = "advisor" | "instructor" | "leader" | "member" | "admin";
+export type ProjectRole =
+  | "advisor"
+  | "instructor"
+  | "leader"
+  | "member"
+  | "admin";
+
+export type Skill =
+  | "Backend Developoment"
+  | "Frontend Development"
+  | "Mobile Development"
+  | "Iot Development"
+  | "Database Design"
+  | "System Architecture"
+  | "Ui/Ux Design"
+  | "Testing and Quality Assurance"
+  | "Literature Review"
+  | "Data Collection"
+  | "Survey and Questionnaire Design"
+  | "Interview and Observation"
+  | "Data Analysis"
+  | "Technical Writing"
+  | "Documentation"
+  | "Diagram and Modeling"
+  | "Editing and Proofreading"
+  | "Financial Documentation"
+  | "Budget Planning"
+  | "Resource Management";
 
 export interface MemberBase {
   user_id: string;

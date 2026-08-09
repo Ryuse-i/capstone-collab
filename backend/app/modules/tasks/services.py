@@ -19,6 +19,7 @@ class TaskService:
     async def create_task(db: AsyncSession, task: TaskCreate):
         repo = TaskRepo(db)
         return await repo.create(task)
+        # after create task
 
     @staticmethod
     async def update_task(db: AsyncSession, db_item: TaskUpdate, task: TaskUpdate):

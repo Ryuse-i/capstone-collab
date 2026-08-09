@@ -6,6 +6,7 @@ from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID, Date
 from sqlalchemy import Enum as SAENUM
 from app.modules.tasks.enums import Priority, Status, Complexity, Category
 from typing import TYPE_CHECKING
+from app.modules.project_members.model import Skills
 
 if TYPE_CHECKING:
     from app.modules.task_comments.model import TaskComment
@@ -120,6 +121,15 @@ class Task(Base):
         nullable=True,
     )
     total_time_spent: Mapped[int] = mapped_column(default=0, nullable=True)
+    skills_required: Mapped[Skills] = mapped_column(
+        SAENUM(
+            Skills,
+            name="task_skills",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+    )
+
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
