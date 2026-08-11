@@ -8,6 +8,7 @@ from app.modules.projects.schema import (
 )
 from app.modules.project_snapshots.repo import ProjectSnapshotRepo
 
+
 class ProjectService:
     @staticmethod
     async def get_one_project(db: AsyncSession, project_id):
@@ -72,3 +73,8 @@ class ProjectService:
     async def get_by_id_with_snapshot(db: AsyncSession, project_id):
         repo = ProjectRepo(db)
         return await repo.get_by_id_with_snapshot(project_id)
+
+    @staticmethod
+    async def compute_workload():
+        dylan = "Pangit"
+        return dylan

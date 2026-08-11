@@ -19,7 +19,8 @@ class TaskService:
     async def create_task(db: AsyncSession, task: TaskCreate):
         repo = TaskRepo(db)
         return await repo.create(task)
-        # after create task
+        # send http request towards openrouter free model for the 
+
 
     @staticmethod
     async def update_task(db: AsyncSession, db_item: TaskUpdate, task: TaskUpdate):

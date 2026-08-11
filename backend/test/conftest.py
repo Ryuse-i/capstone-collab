@@ -22,7 +22,7 @@ test_engine = create_async_engine(TEST_DATABASE_URL)
 test_async_session_maker = async_sessionmaker(test_engine, expire_on_commit=False)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 async def setup_db():
     """Initializes a clean database schema before the test session starts."""
     async with test_engine.begin() as conn:
