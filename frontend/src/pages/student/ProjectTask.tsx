@@ -148,6 +148,81 @@ const complexityOptions = [
   { label: "Low", value: "Low", color: "#9ca3af" },
 ];
 
+const boardColumns = [
+  {
+    id: "todo",
+    title: "To Do",
+    cards: [
+      {
+        id: "todo-1",
+        title: "Plan sprint tasks",
+        description: "Prepare the next sprint checklist.",
+      },
+      {
+        id: "todo-2",
+        title: "Review requirements",
+        description: "Confirm the scope with the team.",
+      },
+    ],
+  },
+  {
+    id: "in-progress",
+    title: "In Progress",
+    cards: [
+      {
+        id: "progress-1",
+        title: "Build dashboard UI",
+        description: "Continue the layout and interactions.",
+      },
+      {
+        id: "progress-2",
+        title: "Sync with designers",
+        description: "Share the latest updates and feedback.",
+      },
+    ],
+  },
+  {
+    id: "done",
+    title: "Done",
+    cards: [
+      {
+        id: "done-1",
+        title: "Prototype review",
+        description: "Approved the first version of the prototype.",
+      },
+    ],
+  },
+  {
+    id: "blocked",
+    title: "Blocked",
+    cards: [
+      {
+        id: "blocked-1",
+        title: "Research new technologies",
+        description: "Investigate potential tools for the project.",
+      },
+    ],
+  },
+  {
+    id: "backlog",
+    title: "Backlog",
+    cards: [
+      {
+        id: "backlog-1",
+        title: "Update documentation",
+        description: "Revise the project documentation for clarity.",
+      }
+    ]
+  }
+];
+
+const viewTabs = [
+  { id: "table", label: "Table" },
+  { id: "board", label: "Board" },
+] as const;
+
+type ViewMode = (typeof viewTabs)[number]["id"];
+
 // ---- Reusable faceted filter dropdown (shadcn Popover + Command pattern) ----
 type FacetedOption = { label: string; value: string; color?: string };
 
@@ -271,6 +346,7 @@ export default function Task() {
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [selectedTask, setSelectedTask] = useState<
     (typeof allTasks)[number] | null
   >(null);
@@ -329,285 +405,351 @@ export default function Task() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Project Task", href: "/project-task" }]}>
-      <h1 className="text-2xl font-bold text-foreground mb-2">
-        Distribute and manage tasks
-      </h1>
+      <div className="min-w-0 w-full">
+        <h1 className="text-2xl font-bold text-foreground mb-2">
+          Distribute and manage tasks
+        </h1>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <Card key={i}>
-            <CardContent className="flex flex-col gap-2 p-4">
-              <div className="flex items-center justify-between">
-                {stat.icon}
-                <span className="text-xs text-green-500 font-medium">
-                  {stat.change} ↑
-                </span>
-              </div>
-              <p
-                className={`text-3xl font-bold ${stat.valueColor ?? "text-gray-900 dark:text-gray-100"}`}
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {stats.map((stat, i) => (
+            <Card key={i}>
+              <CardContent className="flex flex-col gap-2 p-4">
+                <div className="flex items-center justify-between">
+                  {stat.icon}
+                  <span className="text-xs text-green-500 font-medium">
+                    {stat.change} ↑
+                  </span>
+                </div>
+                <p
+                  className={`text-3xl font-bold ${stat.valueColor ?? "text-gray-900 dark:text-gray-100"}`}
+                >
+                  {stat.value}
+                </p>
+                <p className="text-xs text-muted-foreground font-medium">
+                  {stat.label}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {viewTabs.map((tab) => (
+              <Button
+                key={tab.id}
+                variant={viewMode === tab.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode(tab.id)}
               >
-                {stat.value}
-              </p>
-              <p className="text-xs text-muted-foreground font-medium">
-                {stat.label}
-              </p>
+                {tab.label}
+              </Button>
+            ))}
+          </div>
+          <div className="items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground/90"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              ADD TASK
+            </Button>
+          </div>
+        </div>
+
+        {viewMode === "table" && (
+          <div className="mt-6 flex sm:items-center sm:justify-between">
+            <div className="flex gap-2 items-center">
+              <FacetedFilter
+                title="Priority"
+                options={priorityOptions}
+                selected={priorityFilter}
+                onChange={setPriorityFilter}
+                styleMap={priorityStyle}
+              />
+              <FacetedFilter
+                title="Status"
+                options={statusOptions}
+                selected={statusFilter}
+                onChange={setStatusFilter}
+                styleMap={statusStyle}
+              />
+              <FacetedFilter
+                title="Complexity"
+                options={complexityOptions}
+                selected={complexityFilter}
+                onChange={setComplexityFilter}
+                styleMap={complexityStyle}
+              />
+            </div>
+
+            <div>
+              <Select
+                value={selectValue}
+                onValueChange={(val) => {
+                  setSelectValue(val);
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Assigned Member" />
+                </SelectTrigger>
+
+                <SelectContent position="popper" align="end" className="w-40">
+                  <SelectItem value="all">All Members</SelectItem>
+                  <SelectItem value="JW">John Wesley</SelectItem>
+                  <SelectItem value="DM">Dylan Mangaoang</SelectItem>
+                  <SelectItem value="HG">Harry Guzman</SelectItem>
+                  <SelectItem value="RM">Rommel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        {viewMode === "table" ? (
+          <Card className="p-0 mt-6">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Assigned</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Complexity</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTasks.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="text-center text-muted-foreground py-8"
+                      >
+                        No tasks found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredTasks.map((task, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-gray-800 dark:text-gray-200 font-medium">
+                          {task.name}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`${statusStyle[task.status]} border-0`}
+                          >
+                            {task.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`${priorityStyle[task.priority]} border-0`}
+                          >
+                            {task.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex -space-x-2">
+                            {task.assigned.map((a, j) => (
+                              <div
+                                key={j}
+                                className="h-8 w-8 rounded-full bg-primary dark:bg-gray-800 dark:border dark:ring-gray-600 text-primary-foreground dark:text-foreground flex items-center justify-center text-xs font-bold ring-1 ring-white"
+                              >
+                                {a}
+                              </div>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {task.due}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`${complexityStyle[task.complexity]} border-0`}
+                          >
+                            {task.complexity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedTask(task);
+                                setOpenTaskDialog(true);
+                              }}
+                            >
+                              View
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              Edit
+                            </Button>
+                            <Button variant="destructive" size="sm">
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
-        ))}
-      </div>
+        ) : (
+          <div className="mt-4 w-full min-w-0 overflow-x-auto pb-2 relative no-scrollbar">
+            <div className="flex w-max gap-4">
+              {boardColumns.map((column) => (
+                <Card
+                  key={column.id}
+                  className="w-[85vw] shrink-0 border-dashed sm:w-70"
+                >
+                  <CardContent className="p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="font-semibold text-foreground">
+                        {column.title}
+                      </h3>
+                      <Badge variant="secondary">{column.cards.length}</Badge>
+                    </div>
 
-      {/* Faceted filter dropdowns */}
-      <div className="mt-6 flex sm:items-center sm:justify-between">
-        <div className="flex gap-2 items-center">
-          <FacetedFilter
-            title="Priority"
-            options={priorityOptions}
-            selected={priorityFilter}
-            onChange={setPriorityFilter}
-            styleMap={priorityStyle}
-          />
-          <FacetedFilter
-            title="Status"
-            options={statusOptions}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-            styleMap={statusStyle}
-          />
-          <FacetedFilter
-            title="Complexity"
-            options={complexityOptions}
-            selected={complexityFilter}
-            onChange={setComplexityFilter}
-            styleMap={complexityStyle}
-          />
-        </div>
-
-        {/* Existing dropdown — left unchanged */}
-        <div>
-          <Select
-            value={selectValue}
-            onValueChange={(val) => {
-              setSelectValue(val);
-            }}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Assigned Member" />
-            </SelectTrigger>
-
-            <SelectContent position="popper" align="end" className="w-40">
-              <SelectItem value="all">All Members</SelectItem>
-              <SelectItem value="JW">John Wesley</SelectItem>
-              <SelectItem value="DM">Dylan Mangaoang</SelectItem>
-              <SelectItem value="HG">Harry Guzman</SelectItem>
-              <SelectItem value="RM">Rommel</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Table */}
-      <Card className="p-0">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Task</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Assigned</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Complexity</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTasks.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="text-center text-muted-foreground py-8"
-                  >
-                    No tasks found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredTasks.map((task, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="text-gray-800 dark:text-gray-200 font-medium">
-                      {task.name}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${statusStyle[task.status]} border-0`}>
-                        {task.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={`${priorityStyle[task.priority]} border-0`}
-                      >
-                        {task.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex -space-x-2">
-                        {task.assigned.map((a, j) => (
-                          <div
-                            key={j}
-                            className="h-8 w-8 rounded-full bg-primary dark:bg-gray-800 dark:border dark:ring-gray-600 text-primary-foreground dark:text-foreground flex items-center justify-center text-xs font-bold ring-1 ring-white"
-                          >
-                            {a}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {task.due}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={`${complexityStyle[task.complexity]} border-0`}
-                      >
-                        {task.complexity}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setOpenTaskDialog(true);
-                          }}
+                    <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto pr-1">
+                      {column.cards.map((card) => (
+                        <div
+                          key={card.id}
+                          className="rounded-lg border bg-background p-3 shadow-sm"
                         >
-                          View
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          Edit
-                        </Button>
-                        <Button variant="destructive" size="sm">
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Dialog
-        open={openTaskDialog}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedTask(null);
-          }
-          setOpenTaskDialog(open);
-        }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className="rounded-xl p-0 overflow-hidden sm:max-w-250 max-h-[75vh] flex flex-col"
-        >
-          <DialogHeader className="border-b px-4 py-3 shrink-0">
-            <DialogTitle>Task Details</DialogTitle>
-            <DialogDescription>
-              {selectedTask
-                ? selectedTask.name
-                : "Select a task to view details."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedTask ? (
-            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">
-                  {selectedTask.name}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Review the task information and current progress below.
-                </p>
-              </div>
-
-              <div className="mt-4 grid gap-3">
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Status
-                  </p>
-                  <Badge
-                    className={`border-0 mt-2 ${statusStyle[selectedTask.status]}`}
-                  >
-                    {selectedTask.status}
-                  </Badge>
-                </div>
-
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Priority
-                  </p>
-                  <Badge
-                    className={`border-0 mt-2 ${priorityStyle[selectedTask.priority]}`}
-                  >
-                    {selectedTask.priority}
-                  </Badge>
-                </div>
-
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Complexity
-                  </p>
-                  <Badge
-                    className={`border-0 mt-2 ${complexityStyle[selectedTask.complexity]}`}
-                  >
-                    {selectedTask.complexity}
-                  </Badge>
-                </div>
-
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Due date
-                  </p>
-                  <p className="mt-2 text-sm text-foreground">
-                    {selectedTask.due}
-                  </p>
-                </div>
-
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Assigned users
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {selectedTask.assigned.map((member) => (
-                      <div
-                        key={member}
-                        className="flex items-center gap-2 rounded-md bg-background/50 px-2 py-2"
-                      >
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                          {member}
+                          <p className="font-medium text-foreground">
+                            {card.title}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {card.description}
+                          </p>
                         </div>
-                        <span className="text-sm text-foreground">
-                          {member}
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Dialog
+          open={openTaskDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedTask(null);
+            }
+            setOpenTaskDialog(open);
+          }}
+        >
+          <DialogContent
+            showCloseButton={false}
+            className="rounded-xl p-0 overflow-hidden sm:max-w-250 max-h-[75vh] flex flex-col"
+          >
+            <DialogHeader className="border-b px-4 py-3 shrink-0">
+              <DialogTitle>Task Details</DialogTitle>
+              <DialogDescription>
+                {selectedTask
+                  ? selectedTask.name
+                  : "Select a task to view details."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedTask ? (
+              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    {selectedTask.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Review the task information and current progress below.
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  <div className="rounded-md border bg-muted/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Status
+                    </p>
+                    <Badge
+                      className={`border-0 mt-2 ${statusStyle[selectedTask.status]}`}
+                    >
+                      {selectedTask.status}
+                    </Badge>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Priority
+                    </p>
+                    <Badge
+                      className={`border-0 mt-2 ${priorityStyle[selectedTask.priority]}`}
+                    >
+                      {selectedTask.priority}
+                    </Badge>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Complexity
+                    </p>
+                    <Badge
+                      className={`border-0 mt-2 ${complexityStyle[selectedTask.complexity]}`}
+                    >
+                      {selectedTask.complexity}
+                    </Badge>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Due date
+                    </p>
+                    <p className="mt-2 text-sm text-foreground">
+                      {selectedTask.due}
+                    </p>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Assigned users
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {selectedTask.assigned.map((member) => (
+                        <div
+                          key={member}
+                          className="flex items-center gap-2 rounded-md bg-background/50 px-2 py-2"
+                        >
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                            {member}
+                          </div>
+                          <span className="text-sm text-foreground">
+                            {member}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          <DialogFooter className="sticky bottom-0 z-10 border-t bg-background/95 px-8 shrink-0">
-            <DialogClose asChild>
-              <Button variant="outline" className="min-w-24">
-                Close
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter className="sticky bottom-0 z-10 border-t bg-background/95 px-8 shrink-0">
+              <DialogClose asChild>
+                <Button variant="outline" className="min-w-24">
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AppLayout>
   );
 }

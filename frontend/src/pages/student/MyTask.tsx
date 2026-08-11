@@ -199,7 +199,7 @@ export default function ProjectsList() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Here is a list of projects that you are asign
+            Here is a list of projects that you are assigned to
           </p>
         </div>
       </div>
@@ -220,10 +220,12 @@ export default function ProjectsList() {
             >
               {tab.label}
               <Badge
-                variant="secondary"
+                variant={activeTab === tab.status ? "secondary" : "default"}
                 className={cn(
                   "px-1.5 py-0 text-xs font-semibold",
-                  activeTab === tab.status && "bg-primary/10 text-primary",
+                  activeTab === tab.status
+                    ? "text-secondary-foreground"
+                    : "text-muted-foreground",
                 )}
               >
                 {countFor(tab.status)}
