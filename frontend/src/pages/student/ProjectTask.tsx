@@ -358,50 +358,52 @@ export default function Task() {
       </div>
 
       {/* Faceted filter dropdowns */}
-      <div className="flex gap-2 flex-wrap items-center">
-        <FacetedFilter
-          title="Priority"
-          options={priorityOptions}
-          selected={priorityFilter}
-          onChange={setPriorityFilter}
-          styleMap={priorityStyle}
-        />
-        <FacetedFilter
-          title="Status"
-          options={statusOptions}
-          selected={statusFilter}
-          onChange={setStatusFilter}
-          styleMap={statusStyle}
-        />
-        <FacetedFilter
-          title="Complexity"
-          options={complexityOptions}
-          selected={complexityFilter}
-          onChange={setComplexityFilter}
-          styleMap={complexityStyle}
-        />
-      </div>
+      <div className="mt-6 flex sm:items-center sm:justify-between">
+        <div className="flex gap-2 items-center">
+          <FacetedFilter
+            title="Priority"
+            options={priorityOptions}
+            selected={priorityFilter}
+            onChange={setPriorityFilter}
+            styleMap={priorityStyle}
+          />
+          <FacetedFilter
+            title="Status"
+            options={statusOptions}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+            styleMap={statusStyle}
+          />
+          <FacetedFilter
+            title="Complexity"
+            options={complexityOptions}
+            selected={complexityFilter}
+            onChange={setComplexityFilter}
+            styleMap={complexityStyle}
+          />
+        </div>
 
-      {/* Existing dropdown — left unchanged */}
-      <div>
-        <Select
-          value={selectValue}
-          onValueChange={(val) => {
-            setSelectValue(val);
-          }}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Assigned Member" />
-          </SelectTrigger>
+        {/* Existing dropdown — left unchanged */}
+        <div>
+          <Select
+            value={selectValue}
+            onValueChange={(val) => {
+              setSelectValue(val);
+            }}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Assigned Member" />
+            </SelectTrigger>
 
-          <SelectContent>
-            <SelectItem value="all">All Members</SelectItem>
-            <SelectItem value="JW">John Wesley</SelectItem>
-            <SelectItem value="DM">Dylan Mangaoang</SelectItem>
-            <SelectItem value="HG">Harry Guzman</SelectItem>
-            <SelectItem value="RM">Rommel</SelectItem>
-          </SelectContent>
-        </Select>
+            <SelectContent position="popper" align="end" className="w-40">
+              <SelectItem value="all">All Members</SelectItem>
+              <SelectItem value="JW">John Wesley</SelectItem>
+              <SelectItem value="DM">Dylan Mangaoang</SelectItem>
+              <SelectItem value="HG">Harry Guzman</SelectItem>
+              <SelectItem value="RM">Rommel</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
