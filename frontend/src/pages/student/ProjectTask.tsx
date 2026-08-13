@@ -50,6 +50,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import AddTaskDialog from "@/components/user/AddTaskDialog";
 
 const allTasks = [
   {
@@ -212,9 +213,9 @@ const boardColumns = [
         id: "backlog-1",
         title: "Update documentation",
         description: "Revise the project documentation for clarity.",
-      }
-    ]
-  }
+      },
+    ],
+  },
 ];
 
 const viewTabs = [
@@ -449,14 +450,18 @@ export default function Task() {
             ))}
           </div>
           <div className="items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground/90"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              ADD TASK
-            </Button>
+            <AddTaskDialog
+              trigger={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground/90"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  ADD TASK
+                </Button>
+              }
+            />
           </div>
         </div>
 
@@ -649,7 +654,6 @@ export default function Task() {
                             >
                               <Eye className="h-4 w-4 text-primary" />
                             </Button>
-                          
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">
                             {card.description}

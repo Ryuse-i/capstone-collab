@@ -7,7 +7,6 @@ import {
   Files,
   FolderKanban,
   Gauge,
-  Layers,
   ListTodo,
   Target,
   Users,
@@ -16,16 +15,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -36,15 +25,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
-import { useGetAllTask, useCreateTask, useDeleteTask } from "@/hooks/useTask";
-import { useCurrentUser } from "@/hooks/useAuth";
-import type { Skill } from "@/types/project_member";
+import { useGetAllTask, useDeleteTask } from "@/hooks/useTask";
 import type {
-  CreateTask as CreateTaskPayload,
   TaskResponse,
   TaskStatus,
   TaskPriority,
-  TaskCategory,
   TaskComplexity,
 } from "@/types/task";
 import {
@@ -53,21 +38,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-import { cn } from "@/lib/utils";
+import AddTaskDialog from "@/components/user/AddTaskDialog";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
 
@@ -78,473 +52,18 @@ const tabs: { id: ProjectViewTab; label: string; icon: React.ReactNode }[] = [
   { id: "resources", label: "Resources", icon: <Files className="h-4 w-4" /> },
 ];
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-];
-
-const CATEGORY_OPTIONS: { value: TaskCategory; label: string }[] = [
-  { value: "document", label: "Document" },
-  { value: "research", label: "Research" },
-  { value: "development", label: "Development" },
-];
-
-const SKILL_OPTIONS: { value: Skill; label: string }[] = [
-  { value: "Backend Developoment", label: "Backend Development" },
-  { value: "Frontend Development", label: "Frontend Development" },
-  { value: "Mobile Development", label: "Mobile Development" },
-  { value: "Iot Development", label: "IoT Development" },
-  { value: "Database Design", label: "Database Design" },
-  { value: "System Architecture", label: "System Architecture" },
-  { value: "Ui/Ux Design", label: "UI/UX Design" },
-  { value: "Testing and Quality Assurance", label: "Testing and QA" },
-  { value: "Literature Review", label: "Literature Review" },
-  { value: "Data Collection", label: "Data Collection" },
-  {
-    value: "Survey and Questionnaire Design",
-    label: "Survey/Questionnaire Design",
-  },
-  { value: "Interview and Observation", label: "Interview and Observation" },
-  { value: "Data Analysis", label: "Data Analysis" },
-  { value: "Technical Writing", label: "Technical Writing" },
-  { value: "Documentation", label: "Documentation" },
-  { value: "Diagram and Modeling", label: "Diagram and Modeling" },
-  { value: "Editing and Proofreading", label: "Editing and Proofreading" },
-  { value: "Financial Documentation", label: "Financial Documentation" },
-  { value: "Budget Planning", label: "Budget Planning" },
-  { value: "Resource Management", label: "Resource Management" },
-];
-
-type TaskType = "task" | "supertask";
-
-type TaskFormState = {
-  name: string;
-  description: string;
-  priority: TaskPriority;
-  category: TaskCategory;
-  deadline: string;
-  skill: Skill | "";
-};
-
-type SupertaskFormState = {
-  name: string;
-  description: string;
-  deadline: string;
-};
-
-const initialTaskForm: TaskFormState = {
-  name: "",
-  description: "",
-  priority: "medium",
-  category: "document",
-  deadline: "",
-  skill: "",
-};
-
-const initialSupertaskForm: SupertaskFormState = {
-  name: "",
-  description: "",
-  deadline: "",
-};
-
 interface CreateTaskProps {
   projectId: string;
   onCreated?: () => void;
 }
 
-const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
-  const [open, setOpen] = useState(false);
-  const [taskType, setTaskType] = useState<TaskType>("task");
-  const [taskForm, setTaskForm] = useState<TaskFormState>(initialTaskForm);
-  const [supertaskForm, setSupertaskForm] =
-    useState<SupertaskFormState>(initialSupertaskForm);
-  const [error, setError] = useState<string | null>(null);
-
-  const createTaskMutation = useCreateTask();
-  const { data: user } = useCurrentUser();
-
-  const resetForms = () => {
-    setTaskForm(initialTaskForm);
-    setSupertaskForm(initialSupertaskForm);
-    setTaskType("task");
-    setError(null);
-  };
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (!nextOpen) resetForms();
-  };
-
-  const handleTaskFieldChange = <K extends keyof TaskFormState>(
-    field: K,
-    value: TaskFormState[K],
-  ) => {
-    setTaskForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSupertaskFieldChange = (
-    field: keyof SupertaskFormState,
-    value: string,
-  ) => {
-    setSupertaskForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = async () => {
-    setError(null);
-
-    if (taskType === "task") {
-      if (!taskForm.name.trim()) {
-        setError("Task name is required.");
-        return;
-      }
-      if (!taskForm.description.trim()) {
-        setError("Description is required.");
-        return;
-      }
-      if (!taskForm.deadline) {
-        setError("Deadline is required.");
-        return;
-      }
-      if (!taskForm.skill) {
-        setError("Skill is required.");
-        return;
-      }
-      if (!user?.id) {
-        setError("Could not determine the current user. Please sign in again.");
-        return;
-      }
-    }
-
-    if (taskType === "supertask") {
-      if (!supertaskForm.name.trim()) {
-        setError("Supertask name is required.");
-        return;
-      }
-      if (!supertaskForm.description.trim()) {
-        setError("Supertask description is required.");
-        return;
-      }
-    }
-
-    try {
-      if (taskType === "task") {
-        const payload: CreateTaskPayload = {
-          project_id: projectId,
-          name: taskForm.name.trim(),
-          description: taskForm.description.trim(),
-          created_by: user!.id,
-          priority: taskForm.priority,
-          category: taskForm.category,
-          deadline: new Date(taskForm.deadline).toISOString(),
-          skill: taskForm.skill as Skill,
-        };
-
-        await createTaskMutation.mutateAsync(payload);
-      } else {
-        const payload = {
-          project_id: projectId,
-          name: supertaskForm.name.trim(),
-          description: supertaskForm.description.trim(),
-          deadline: supertaskForm.deadline
-            ? new Date(supertaskForm.deadline).toISOString()
-            : null,
-        };
-
-        console.log("creating supertask:", payload);
-      }
-
-      onCreated?.();
-      handleOpenChange(false);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong while creating this item.",
-      );
-    }
-  };
-
-  const isSubmitting = createTaskMutation.isPending;
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>+ Add Task</Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Create item for this project</DialogTitle>
-          <DialogDescription>
-            Supertasks are milestones. Tasks are the individual units of work
-            that actually drive project progress.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6 no-scrollbar">
-          {/* Type selector */}
-          <div>
-            <Label className="mb-2 block text-sm font-semibold text-[#231A2E]">
-              What are you creating?
-            </Label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setTaskType("task")}
-                className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
-                  taskType === "task"
-                    ? "border-[#7A0C2E] bg-[#FBF3E7]"
-                    : "border-neutral-200 bg-white hover:border-neutral-300"
-                }`}
-              >
-                <ListTodo className="mt-0.5 h-5 w-5 text-[#7A0C2E]" />
-                <div>
-                  <p className="text-sm font-semibold text-[#231A2E]">Task</p>
-                  <p className="text-xs text-neutral-500">
-                    A concrete, trackable unit of work.
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTaskType("supertask")}
-                className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
-                  taskType === "supertask"
-                    ? "border-[#7A0C2E] bg-[#FBF3E7]"
-                    : "border-neutral-200 bg-white hover:border-neutral-300"
-                }`}
-              >
-                <Layers className="mt-0.5 h-5 w-5 text-[#C9A84C]" />
-                <div>
-                  <p className="text-sm font-semibold text-[#231A2E]">
-                    Supertask
-                  </p>
-                  <p className="text-xs text-neutral-500">
-                    A milestone that groups related tasks.
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Shared: name */}
-          <div className="space-y-2">
-            <Label htmlFor="item-name">Name</Label>
-            <Input
-              id="item-name"
-              placeholder={
-                taskType === "task"
-                  ? "e.g. Set up auth routes"
-                  : "e.g. MVP backend complete"
-              }
-              value={taskType === "task" ? taskForm.name : supertaskForm.name}
-              onChange={(e) =>
-                taskType === "task"
-                  ? handleTaskFieldChange("name", e.target.value)
-                  : handleSupertaskFieldChange("name", e.target.value)
-              }
-            />
-          </div>
-
-          {/* Shared: description (required for both) */}
-          <div className="space-y-2">
-            <Label htmlFor="item-description">Description (required)</Label>
-            <Textarea
-              id="item-description"
-              rows={3}
-              placeholder="What does this involve? Be as descriptive as possible"
-              value={
-                taskType === "task"
-                  ? taskForm.description
-                  : supertaskForm.description
-              }
-              onChange={(e) =>
-                taskType === "task"
-                  ? handleTaskFieldChange("description", e.target.value)
-                  : handleSupertaskFieldChange("description", e.target.value)
-              }
-            />
-          </div>
-
-          {taskType === "task" ? (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Priority</Label>
-                  <Select
-                    value={taskForm.priority}
-                    onValueChange={(v) =>
-                      handleTaskFieldChange("priority", v as TaskPriority)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={taskForm.category}
-                    onValueChange={(v) =>
-                      handleTaskFieldChange("category", v as TaskCategory)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Skill</Label>
-                <Select
-                  value={taskForm.skill}
-                  onValueChange={(v) =>
-                    handleTaskFieldChange("skill", v as Skill)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select skill" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SKILL_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Deadline (required)</Label>
-
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !taskForm.deadline && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {taskForm.deadline ? (
-                          format(new Date(taskForm.deadline), "PPP")
-                        ) : (
-                          <span>Pick a deadline</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={
-                          taskForm.deadline
-                            ? new Date(taskForm.deadline)
-                            : undefined
-                        }
-                        onSelect={(date) => {
-                          if (date) {
-                            handleTaskFieldChange(
-                              "deadline",
-                              date.toISOString(),
-                            );
-                          }
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="supertask-deadline">Deadline</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !supertaskForm.deadline && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {supertaskForm.deadline ? (
-                      format(new Date(supertaskForm.deadline), "PPP")
-                    ) : (
-                      <span>Pick a deadline</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      supertaskForm.deadline
-                        ? new Date(supertaskForm.deadline)
-                        : undefined
-                    }
-                    onSelect={(date) => {
-                      handleSupertaskFieldChange(
-                        "deadline",
-                        date ? date.toISOString() : "",
-                      );
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
-
-          {error && (
-            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {error}
-            </p>
-          )}
-        </div>
-
-        <DialogFooter className="mt-2">
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting
-              ? "Creating..."
-              : taskType === "task"
-                ? "Create task"
-                : "Create supertask"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
+const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => (
+  <AddTaskDialog
+    projectId={projectId}
+    onCreated={onCreated}
+    trigger={<Button>+ Add Task</Button>}
+  />
+);
 
 function getHealthClasses(status?: string) {
   switch (status) {
