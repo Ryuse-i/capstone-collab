@@ -20,6 +20,7 @@ class Settings:
     TEST_DB_PASSWORD = os.getenv("TEST_DB_PASSWORD")
     SECRET_KEY: str = str(os.getenv("SECRET_KEY"))
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 settings = Settings()

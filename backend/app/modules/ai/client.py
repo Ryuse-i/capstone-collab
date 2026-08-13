@@ -1,10 +1,11 @@
 import logging
-
+from enum import Enum
 from openai import (
     APIConnectionError,
     APIStatusError,
     APITimeoutError,
     RateLimitError,
+    AsyncOpenAI,
 )
 from tenacity import (
     retry,
@@ -13,20 +14,36 @@ from tenacity import (
     wait_exponential,
     before_sleep_log,
 )
-
 from app.core.config import settings
-from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
-
-client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=settings.OPEN_ROUTER_API_KEY,
-)
 
 
 class AICallError(Exception):
     """Raised when the AI provider call fails after retries or is non-retryable."""
+
+
+class AIProvider(str, Enum):
+    OPENROUTER = "openrouter"
+    GEMINI = "gemini"
+
+
+_CLIENTS: dict[AIProvider, AsyncOpenAI] = {
+    AIProvider.OPENROUTER: AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.OPEN_ROUTER_API_KEY,
+    ),
+    AIProvider.GEMINI: AsyncOpenAI(
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key=settings.GEMINI_API_KEY,
+    ),
+}
+
+# Sensible default model per provider, used if caller doesn't pass one
+_DEFAULT_MODELS: dict[AIProvider, str] = {
+    AIProvider.OPENROUTER: "google/gemma-4-26b-a4b-it:free",
+    AIProvider.GEMINI: "gemma-4-26b-a4b-it",
+}
 
 
 @retry(
@@ -38,7 +55,8 @@ class AICallError(Exception):
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
-async def _call_openrouter(
+async def _call_provider(
+    client: AsyncOpenAI,
     prompt: str,
     system: str | None,
     model: str,
@@ -48,7 +66,6 @@ async def _call_openrouter(
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-
     return await client.chat.completions.create(
         model=model,
         max_tokens=max_tokens,
@@ -59,29 +76,41 @@ async def _call_openrouter(
 async def call_ai(
     prompt: str,
     system: str | None = None,
-    model: str = "google/gemma-4-26b-a4b-it:free",
+    provider: AIProvider = AIProvider.GEMINI,
+    model: str | None = None,
     max_tokens: int = 1024,
 ) -> str:
+    client = _CLIENTS[provider]
+    resolved_model = model or _DEFAULT_MODELS[provider]
+
     try:
-        response = await _call_openrouter(prompt, system, model, max_tokens)
+        response = await _call_provider(
+            client, prompt, system, resolved_model, max_tokens
+        )
     except RateLimitError as e:
-        logger.error("AI call rate limited after retries: %s", e)
+        logger.error("AI call rate limited after retries (%s): %s", provider.value, e)
         raise AICallError("AI provider rate limit exceeded") from e
     except (APITimeoutError, APIConnectionError) as e:
-        logger.error("AI call failed (network/timeout) after retries: %s", e)
+        logger.error(
+            "AI call failed (network/timeout) after retries (%s): %s", provider.value, e
+        )
         raise AICallError("AI provider unreachable") from e
     except APIStatusError as e:
-        # 4xx (bad request, auth, invalid model) — not retried, fail fast
         logger.error(
-            "AI call failed with status %s: %s", e.status_code, e.response.text
+            "AI call failed with status %s (%s): %s",
+            e.status_code,
+            provider.value,
+            e.response.text,
         )
         raise AICallError(f"AI provider returned error: {e.status_code}") from e
     except Exception as e:
-        logger.exception("Unexpected error calling AI provider")
+        logger.exception("Unexpected error calling AI provider (%s)", provider.value)
         raise AICallError("Unexpected AI provider error") from e
 
     if response.choices is None:
-        logger.error("RAW RESPONSE (no choices): %s", response.model_dump())
+        logger.error(
+            "RAW RESPONSE (no choices, %s): %s", provider.value, response.model_dump()
+        )
         raise AICallError(f"AI call failed: {getattr(response, 'error', response)}")
 
     content = response.choices[0].message.content
