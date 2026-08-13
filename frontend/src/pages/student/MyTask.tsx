@@ -269,7 +269,7 @@ export default function ProjectsList() {
                     <span className="flex items-center gap-2">
                       <span>View Task</span>
                     </span>
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye className="h-4 w-4 text-primary" />
                   </Button>
                 )}
 

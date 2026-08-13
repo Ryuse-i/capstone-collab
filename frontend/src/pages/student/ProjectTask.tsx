@@ -2,6 +2,7 @@ import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import {
   CheckSquare,
+  Eye,
   Clock,
   XSquare,
   BarChart2,
@@ -624,9 +625,32 @@ export default function Task() {
                           key={card.id}
                           className="rounded-lg border bg-background p-3 shadow-sm"
                         >
-                          <p className="font-medium text-foreground">
-                            {card.title}
-                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium text-foreground">
+                              {card.title}
+                            </p>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="p-0 h-6 w-6"
+                              onClick={() => {
+                                setSelectedTask({
+                                  name: card.title,
+                                  status: "Not Started",
+                                  priority: "Low",
+                                  complexity: "Low",
+                                  assigned: [],
+                                  due: "",
+                                });
+                                setOpenTaskDialog(true);
+                              }}
+                              aria-label={`View ${card.title}`}
+                            >
+                              <Eye className="h-4 w-4 text-primary" />
+                            </Button>
+                          
+                          </div>
                           <p className="mt-1 text-sm text-muted-foreground">
                             {card.description}
                           </p>
