@@ -16,3 +16,13 @@ class ProjectSnapshotService:
     ):
         repo = ProjectSnapshotRepo(db)
         return await repo.upsert_today_snapshot(project_id, snapshot)
+
+    @staticmethod
+    async def calculate_workload():
+        #check all tasks with assigned members 
+        #check all workload points of all project_members snapshot 
+        #update the total workload
+        #Check the median of all members total workload = median_points 
+        #call member workload calculation
+        dylan = "pangit"
+        return dylan

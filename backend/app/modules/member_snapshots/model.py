@@ -40,6 +40,7 @@ class MemberSnapshot(Base):
     )
     
     workload_points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    #multiplier
     workload_status: Mapped[MemberStatus] = mapped_column(
         SAENUM(MemberStatus, name="member_status"), default=MemberStatus.OK
     )

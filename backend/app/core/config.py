@@ -1,3 +1,4 @@
+import logging
 from dotenv import load_dotenv
 import os
 
@@ -22,3 +23,13 @@ class Settings:
 
 
 settings = Settings()
+
+
+# add logging in the processes of the website would show up in the console
+def configure_logging() -> None:
+    """Configure root logging. Call once, at app startup."""
+    level = logging.DEBUG if settings.DEBUG else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
