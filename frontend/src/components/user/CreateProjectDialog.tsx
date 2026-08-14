@@ -387,32 +387,22 @@ function AddMember({
   setInstructorEmail,
   instructorLabel,
   setInstructorLabel,
-  advisorLabel,
-  setAdvisorLabel,
-  advisorEmail,
-  setAdvisorEmail,
   memberEmail,
   setMemberEmail,
   members,
   setMembers,
   instructorSearch,
-  advisorSearch,
   memberSearch,
 }: {
   instructorEmail: string;
   setInstructorEmail: Dispatch<React.SetStateAction<string>>;
   instructorLabel: string;
   setInstructorLabel: Dispatch<React.SetStateAction<string>>;
-  advisorLabel: string;
-  setAdvisorLabel: Dispatch<React.SetStateAction<string>>;
-  advisorEmail: string;
-  setAdvisorEmail: Dispatch<React.SetStateAction<string>>;
   memberEmail: string;
   setMemberEmail: Dispatch<React.SetStateAction<string>>;
   members: Member[];
   setMembers: Dispatch<React.SetStateAction<Member[]>>;
   instructorSearch: ReturnType<typeof useMemberSearch>;
-  advisorSearch: ReturnType<typeof useMemberSearch>;
   memberSearch: ReturnType<typeof useMemberSearch>;
 }) {
   return (
@@ -438,27 +428,6 @@ function AddMember({
         }}
       />
 
-      <SearchSelectField
-        id="advisor"
-        label="Advisor"
-        optional
-        placeholder="eg. advisor@gmail.com"
-        email={advisorEmail}
-        setEmail={setAdvisorEmail}
-        results={advisorSearch.results}
-        isLoading={advisorSearch.isLoading}
-        isSearchable={advisorSearch.isSearchable}
-        selectedValue={advisorLabel}
-        onSelect={(user) => {
-          setAdvisorEmail("");
-          setAdvisorLabel(user.email);
-        }}
-        onRemove={() => {
-          setAdvisorEmail("");
-          setAdvisorLabel("");
-        }}
-      />
-
       <MemberSearchField
         members={members}
         setMembers={setMembers}
@@ -474,40 +443,33 @@ function ReviewProjectDetails({
   formData,
   members,
   instructorLabel,
-  advisorLabel,
 }: {
   formData: Data;
   members: Member[];
   instructorLabel: string;
-  advisorLabel: string;
 }) {
   const hasInstructor = instructorLabel.trim().length > 0;
-  const hasAdvisor = advisorLabel.trim().length > 0;
   const hasMembers = members.length > 0;
-  const hasAnyMembers = hasInstructor || hasAdvisor || hasMembers;
+  const hasAnyMembers = hasInstructor || hasMembers;
 
   return (
     <div className="w-full flex flex-col gap-2">
-      <h2>
-        Double check everything before submitting
-      </h2>
+      <h2>Double check everything before submitting</h2>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col ">
           <h2>Project Details</h2>
-            <div className="mx-5">
-              <div className="flex gap-3">
-                <h3 className="text-gray-400">
-                  Project name:
-                </h3>
-                  <p>{formData.name}</p>
-              </div>
-              <div className="flex gap-3">
-                <h3 className="text-gray-400">Project description:</h3>
-                  <p className="break-word whitespace-pre-wrap">
-                    {formData.description}
-                  </p>
-              </div>
-            </div> 
+          <div className="mx-5">
+            <div className="flex gap-3">
+              <h3 className="text-gray-400">Project name:</h3>
+              <p>{formData.name}</p>
+            </div>
+            <div className="flex gap-3">
+              <h3 className="text-gray-400">Project description:</h3>
+              <p className="break-word whitespace-pre-wrap">
+                {formData.description}
+              </p>
+            </div>
+          </div>
         </div>
         <div>
           <h2>Members</h2>
@@ -520,18 +482,10 @@ function ReviewProjectDetails({
                     <div>{instructorLabel}</div>
                   </div>
                 )}
-                {hasAdvisor && (
-                  <div className="flex gap-1">
-                    <h3 className="text-gray-400">Advisor:</h3>
-                    <div>{advisorLabel}</div>
-                  </div>
-                )}
                 {hasMembers && (
                   <div className="flex gap-1">
                     <h3 className="text-gray-400">Members:</h3>
-                    <div>
-                      {members.map((m) => m.email).join(", ")}
-                    </div>
+                    <div>{members.map((m) => m.email).join(", ")}</div>
                   </div>
                 )}
               </>
@@ -561,19 +515,16 @@ const STEPS = [
 ];
 
 export default function CreateProjectDialog() {
-  const [advisorEmail, setAdvisorEmail] = useState<string>("");
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(emptyData());
   const [instructorEmail, setInstructorEmail] = useState<string>("");
   const [instructorLabel, setInstructorLabel] = useState<string>("");
-  const [advisorLabel, setAdvisorLabel] = useState<string>("");
   // Single source of truth for members: id + email kept together so
   // the members payload can never fall out of sync with the chips (emails).
   const [members, setMembers] = useState<Member[]>([]);
   const [memberEmail, setMemberEmail] = useState<string>("");
 
   const instructorSearch = useMemberSearch(instructorEmail, "instructor");
-  const advisorSearch = useMemberSearch(advisorEmail, "instructor");
   const memberSearch = useMemberSearch(memberEmail, "student");
   const [open, setOpen] = useState(false);
 
@@ -592,8 +543,6 @@ export default function CreateProjectDialog() {
     setMemberEmail("");
     setInstructorEmail("");
     setInstructorLabel("");
-    setAdvisorEmail("");
-    setAdvisorLabel("");
     setCurrentStep(1);
   }
 
@@ -620,16 +569,6 @@ export default function CreateProjectDialog() {
         memberMutate(projectLeader, {
           onSuccess: () => {
             const invites: CreateInvite[] = [
-              ...(advisorLabel
-                ? [
-                    {
-                      project_id: newProject.id,
-                      email: advisorLabel,
-                      sender_id: user.id,
-                      role: "advisor",
-                    } as CreateInvite,
-                  ]
-                : []),
               ...(instructorLabel
                 ? [
                     {
@@ -721,16 +660,11 @@ export default function CreateProjectDialog() {
             setInstructorEmail={setInstructorEmail}
             instructorLabel={instructorLabel}
             setInstructorLabel={setInstructorLabel}
-            advisorLabel={advisorLabel}
-            setAdvisorLabel={setAdvisorLabel}
-            advisorEmail={advisorEmail}
-            setAdvisorEmail={setAdvisorEmail}
             memberEmail={memberEmail}
             setMemberEmail={setMemberEmail}
             members={members}
             setMembers={setMembers}
             instructorSearch={instructorSearch}
-            advisorSearch={advisorSearch}
             memberSearch={memberSearch}
           />
         );
@@ -740,7 +674,6 @@ export default function CreateProjectDialog() {
             formData={formData}
             members={members}
             instructorLabel={instructorLabel}
-            advisorLabel={advisorLabel}
           />
         );
     }

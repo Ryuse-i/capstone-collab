@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
 from app.modules.tasks.enums import Status, Priority, Complexity, Category
-
+from app.modules.project_members.model import Skills
 
 class TaskCreate(BaseModel):
     name: str
@@ -14,7 +14,9 @@ class TaskCreate(BaseModel):
     priority: Priority
     complexity: Complexity | None = None
     complexity_points: int | None = None 
-    category: Category
+    category: Category | None = None
+    primary_skills: Skills
+    secondary_skills: list[Skills] | None = None
     deadline: datetime
     completed_at: datetime | None = None
     total_time_spent: int | None = None
@@ -31,6 +33,8 @@ class TaskUpdate(BaseModel):
     complexity: Complexity | None = None
     complexity_points: int | None = None
     category: Category | None = None
+    primary_skills: Skills
+    secondary_skills: list[Skills] | None = None
     deadline: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None
@@ -48,6 +52,8 @@ class TaskResponse(BaseModel):
     complexity: Complexity | None = None
     complexity_points: int | None = None
     category: Category | None = None
+    primary_skills: Skills
+    secondary_skills: list[Skills] | None = None
     deadline: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None

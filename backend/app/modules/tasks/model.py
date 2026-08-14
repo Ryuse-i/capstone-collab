@@ -2,7 +2,7 @@ from datetime import datetime, timezone, date
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
-from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID, Date
+from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID, Date, ARRAY
 from sqlalchemy import Enum as SAENUM
 from app.modules.tasks.enums import Priority, Status, Complexity, Category
 from typing import TYPE_CHECKING
@@ -17,6 +17,12 @@ if TYPE_CHECKING:
     from app.modules.assigned_members.model import AssignedMember
     from app.modules.peer_evaluations.model import PeerEvaluation
     from app.modules.projects.model import Project
+
+task_skills_enum = SAENUM(
+    Skills,
+    name="task_skills",
+    values_callable=lambda obj: [e.value for e in obj],
+)
 
 """
     This is the task model
@@ -41,6 +47,7 @@ class Task(Base):
     )
 
     started_at: Mapped[date] = mapped_column(Date, default=date.today)
+    completed_at: Mapped[date] = mapped_column(Date, default=date.today)
     # Relationships
     project: Mapped["Project"] = relationship(
         "Project",
@@ -121,15 +128,15 @@ class Task(Base):
         nullable=True,
     )
     total_time_spent: Mapped[int] = mapped_column(default=0, nullable=True)
-    skills_required: Mapped[Skills] = mapped_column(
-        SAENUM(
-            Skills,
-            name="task_skills",
-            values_callable=lambda obj: [e.value for e in obj],
-        ),
+    primary_skills: Mapped[Skills] = mapped_column(
+        task_skills_enum,
         nullable=False,
     )
-
+    secondary_skills: Mapped[list[Skills]] = mapped_column(
+        ARRAY(task_skills_enum),
+        nullable=False,
+        default=list,
+    )
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

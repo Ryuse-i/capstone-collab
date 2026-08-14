@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
-from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, Numeric
+from sqlalchemy import Boolean, DateTime, ForeignKey, UUID as PG_UUID, Integer, Numeric
 from sqlalchemy import Enum as SAENUM
 from decimal import Decimal
 import enum
@@ -31,16 +31,25 @@ class MemberSnapshot(Base):
     member_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("project_members.id", ondelete="CASCADE")
     )
-    
+
     # Relationships
     member: Mapped["ProjectMember"] = relationship(
         "ProjectMember",
         back_populates="snapshots",
         foreign_keys=[member_id],
     )
-    
-    workload_points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    #multiplier
+
+    #base points base on the assigned tasks
+    total_workload_points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+
+    #Deadline weighted sum, this is the actual workload of member
+    total_effective_points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    #adjusts personal expected load base on the baseline 
+    capacity_multiplier: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=1.0)
+    #hides overload warning 
+    silence_warning: Mapped[bool] = mapped_column(Boolean, default=False)
+    consecutive_fallback_count: Mapped[int] = mapped_column(Integer)
+    # multiplier
     workload_status: Mapped[MemberStatus] = mapped_column(
         SAENUM(MemberStatus, name="member_status"), default=MemberStatus.OK
     )

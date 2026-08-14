@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UUID as PG_UUID
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -36,6 +36,10 @@ class Project(Base):
     instructor: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
+    #Unit for the deadline effect on the workload calculation
+    base_days_per_point: Mapped[int] = mapped_column(Integer)
+    #
+    escalation_threshold: Mapped[int] = mapped_column(Integer)
 
     snapshot: Mapped[Optional["ProjectSnapshot"]] = relationship(
         "ProjectSnapshot",
