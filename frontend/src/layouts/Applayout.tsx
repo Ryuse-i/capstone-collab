@@ -183,7 +183,7 @@ export default function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         {/* Header Layout */}
         <header className="sticky top-0 z-10 bg-background flex h-12 shrink-0 items-center justify-between border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           {/* Left Side: Sidebar Toggle & Breadcrumbs */}
@@ -515,7 +515,7 @@ export default function AppLayout({
         </Dialog>
 
         {/* Main Content Area */}
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

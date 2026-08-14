@@ -21,7 +21,8 @@ export interface TaskBase {
   total_time_spent?: number;
   status?: TaskStatus;
   supertask_id?: string;
-  skill: Skill;
+   Primaryskill: Skill
+   Secondaryskill: Skill[]
 }
 
 export type CreateTask = TaskBase;
