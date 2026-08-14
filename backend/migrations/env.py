@@ -16,11 +16,18 @@ import fastapi_users_db_sqlalchemy
 # access to the values within the .ini file in use.
 config = context.config
 
+# config.set_main_option(
+#    "sqlalchemy.url",
+#    f"postgresql+psycopg://{settings.DB_USER}:"
+#    f"{settings.DB_PASSWORD}@{settings.DB_HOST}:"
+#    f"{settings.DB_PORT}/{settings.DB_NAME}",
+# )
+
 config.set_main_option(
     "sqlalchemy.url",
-    f"postgresql+psycopg://{settings.DB_USER}:"
-    f"{settings.DB_PASSWORD}@{settings.DB_HOST}:"
-    f"{settings.DB_PORT}/{settings.DB_NAME}",
+    f"postgresql+psycopg://{settings.TEST_DB_USER}:"
+    f"{settings.TEST_DB_PASSWORD}@{settings.TEST_DB_HOST}:"
+    f"{settings.TEST_DB_PORT}/{settings.TEST_DB_NAME}",
 )
 
 # Interpret the config file for Python logging.

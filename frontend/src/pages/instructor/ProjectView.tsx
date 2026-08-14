@@ -391,18 +391,18 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Category</Label>
+                  <Label>Skill</Label>
                   <Select
-                    value={taskForm.category}
+                    value={taskForm.skill}
                     onValueChange={(v) =>
-                      handleTaskFieldChange("category", v as TaskCategory)
+                      handleTaskFieldChange("skill", v as Skill)
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="Select skill" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORY_OPTIONS.map((opt) => (
+                      {SKILL_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>
@@ -410,27 +410,6 @@ const CreateTask = ({ projectId, onCreated }: CreateTaskProps) => {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Skill</Label>
-                <Select
-                  value={taskForm.skill}
-                  onValueChange={(v) =>
-                    handleTaskFieldChange("skill", v as Skill)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select skill" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SKILL_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

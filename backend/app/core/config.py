@@ -16,6 +16,7 @@ class Settings:
     # Test DB
     TEST_DB_HOST = os.getenv("TEST_DB_HOST")
     TEST_DB_PORT = os.getenv("TEST_DB_PORT", "6543")
+    TEST_DB_NAME = os.getenv("TEST_DB_NAME")
     TEST_DB_USER = os.getenv("TEST_DB_USER")
     TEST_DB_PASSWORD = os.getenv("TEST_DB_PASSWORD")
     SECRET_KEY: str = str(os.getenv("SECRET_KEY"))

@@ -1,5 +1,6 @@
 export type TaskStatus =
-  | "not_started" | "in-progress"
+  | "not_started"
+  | "in-progress"
   | "submitted"
   | "completed";
 export type TaskPriority = "low" | "medium" | "high";
@@ -20,7 +21,7 @@ export interface TaskBase {
   total_time_spent?: number;
   status?: TaskStatus;
   supertask_id?: string;
-  skill: Skill
+  skill: Skill;
 }
 
 export type CreateTask = TaskBase;
