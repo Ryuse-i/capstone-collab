@@ -209,7 +209,7 @@ export default function Dashboard() {
             </Card>
 
             {/* ── Project Progress ──────────────────────────────────── */}
-            <Card className="bg-primary-foreground shadow-sm p-4 rounded-lg flex flex-col justify-evenly h-full">
+            <Card className="shadow-sm p-4 rounded-lg flex flex-col justify-evenly h-full">
               <div>
                 <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
                   {currentProject?.name}
@@ -266,7 +266,7 @@ export default function Dashboard() {
             </Card>
 
             {/* ── Bar Chart (static for now) ────────────────────────── */}
-            <Card className="bg-primary-foreground shadow-sm p-4 rounded-lg">
+            <Card className="shadow-sm p-4 rounded-lg">
               <CardHeader>
                 <CardTitle>Bar Chart - Horizontal</CardTitle>
                 <CardDescription>January - June 2024</CardDescription>
@@ -303,7 +303,7 @@ export default function Dashboard() {
             </Card>
 
             {/* ── Recent Activity ───────────────────────────────────── */}
-            <Card className="bg-primary-foreground p-6 rounded-2xl lg:col-span-2 shadow-sm border">
+            <Card className="p-6 rounded-2xl lg:col-span-2 shadow-sm border">
               <div className="flex items-center justify-between mb-1">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-card-foreground">

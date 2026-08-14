@@ -453,7 +453,7 @@ export default function Task() {
             <AddTaskDialog
               trigger={
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground/90"
                 >

@@ -265,7 +265,7 @@ export default function AddTaskDialog({
 
         <div className="space-y-6 no-scrollbar">
           <div>
-            <Label className="mb-2 block text-sm font-semibold text-[#231A2E]">
+            <Label className="mb-2 block text-sm font-semibold text-[#231A2E] dark:text-foreground">
               What are you creating?
             </Label>
             <div className="grid grid-cols-2 gap-3">

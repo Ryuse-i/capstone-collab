@@ -212,7 +212,7 @@ export default function ProjectView() {
             <ArrowLeft size={16} />
             Back to projects
           </button>
-          <Card className="border border-neutral-200 p-6">
+          <Card className="border p-6">
             <h1 className="text-xl font-semibold text-[#231A2E]">
               Project not found
             </h1>
@@ -352,14 +352,14 @@ export default function ProjectView() {
           <ArrowLeft size={16} />
           Back to projects
         </button>
-        <Card className="overflow-hidden border border-neutral-200 shadow-sm">
-          <div className="border-b border-neutral-200 bg-[#FBF3E7] p-6">
+        <Card className="overflow-hidden border shadow-sm">
+          <div className="border-b bg-[#FBF3E7] border-2 dark:bg-card p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#C9A84C]">
                   Project snapshot
                 </p>
-                <h1 className="mt-2 text-2xl font-bold text-[#231A2E]">
+                <h1 className="mt-2 text-2xl font-bold text-foreground">
                   {project.name}
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm text-neutral-600">
