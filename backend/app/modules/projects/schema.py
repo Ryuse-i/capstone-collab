@@ -10,6 +10,8 @@ class ProjectCreate(BaseModel):
     created_by: UUID
     advisor: UUID | None = None
     instructor: UUID | None = None
+    base_day_per_points: int | None = None
+    escalation_threshold: int | None = None
 
 
 class ProjectUpdate(BaseModel):
@@ -18,6 +20,8 @@ class ProjectUpdate(BaseModel):
     created_by: UUID | None = None
     advisor: UUID | None = None
     instructor: UUID | None = None  # Made optional
+    base_day_per_points: int | None = None
+    escalation_threshold: int | None = None
 
 
 class ProjectResponse(BaseModel):
@@ -27,6 +31,8 @@ class ProjectResponse(BaseModel):
     created_by: UUID
     advisor: UUID | None = None
     instructor: UUID | None = None  # Made optional
+    base_day_per_points: int | None = None
+    escalation_threshold: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

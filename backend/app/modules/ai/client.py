@@ -76,9 +76,9 @@ async def _call_provider(
 async def call_ai(
     prompt: str,
     system: str | None = None,
-    provider: AIProvider = AIProvider.GEMINI,
+    provider: AIProvider = AIProvider.OPENROUTER,
     model: str | None = None,
-    max_tokens: int = 1024,
+    max_tokens: int = 4000,
 ) -> str:
     client = _CLIENTS[provider]
     resolved_model = model or _DEFAULT_MODELS[provider]

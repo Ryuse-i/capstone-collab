@@ -4,6 +4,7 @@ from uuid import UUID
 from app.modules.tasks.enums import Status, Priority, Complexity, Category
 from app.modules.project_members.model import Skills
 
+
 class TaskCreate(BaseModel):
     name: str
     description: str
@@ -13,9 +14,9 @@ class TaskCreate(BaseModel):
     status: Status | None = None
     priority: Priority
     complexity: Complexity | None = None
-    complexity_points: int | None = None 
+    complexity_points: int | None = None
     category: Category | None = None
-    primary_skills: Skills
+    primary_skill: Skills
     secondary_skills: list[Skills] | None = None
     deadline: datetime
     completed_at: datetime | None = None
@@ -33,7 +34,7 @@ class TaskUpdate(BaseModel):
     complexity: Complexity | None = None
     complexity_points: int | None = None
     category: Category | None = None
-    primary_skills: Skills
+    primary_skill: Skills
     secondary_skills: list[Skills] | None = None
     deadline: datetime | None = None
     completed_at: datetime | None = None
@@ -52,7 +53,7 @@ class TaskResponse(BaseModel):
     complexity: Complexity | None = None
     complexity_points: int | None = None
     category: Category | None = None
-    primary_skills: Skills
+    primary_skill: Skills
     secondary_skills: list[Skills] | None = None
     deadline: datetime | None = None
     completed_at: datetime | None = None

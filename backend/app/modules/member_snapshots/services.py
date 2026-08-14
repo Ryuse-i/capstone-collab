@@ -16,12 +16,18 @@ class MemberSnapshotService:
         return await repo.get_all()
 
     @staticmethod
-    async def create_member_snapshot(db: AsyncSession, member_snapshot: MemberSnapshotCreate):
+    async def create_member_snapshot(
+        db: AsyncSession, member_snapshot: MemberSnapshotCreate
+    ):
         repo = MemberSnapshotRepo(db)
         return await repo.create(member_snapshot)
 
     @staticmethod
-    async def update_member_snapshot(db: AsyncSession, db_item: MemberSnapshotUpdate, member_snapshot: MemberSnapshotUpdate):
+    async def update_member_snapshot(
+        db: AsyncSession,
+        db_item: MemberSnapshotUpdate,
+        member_snapshot: MemberSnapshotUpdate,
+    ):
         repo = MemberSnapshotRepo(db)
         return await repo.update(db_item, member_snapshot)
 

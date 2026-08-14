@@ -6,7 +6,7 @@ export type ProjectRole =
   | "admin";
 
 export type Skill =
-  | "Backend Developoment"
+  | "Backend Development"
   | "Frontend Development"
   | "Mobile Development"
   | "Iot Development"

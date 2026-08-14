@@ -78,15 +78,18 @@ function getHealthClasses(status?: string) {
   }
 }
 
+// FIXED: previously treated 0 the same as "no data", which rendered a
+// legitimate 0% / 0-count as "None". Now only undefined/NaN map to "None";
+// a real zero renders as "0".
 function formatNumber(value?: number, digits = 1) {
-  if (typeof value !== "number" || Number.isNaN(value) || value === 0) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
     return "None";
   }
   return value.toFixed(digits);
 }
 
 function formatCount(value?: number) {
-  if (typeof value !== "number" || Number.isNaN(value) || value === 0) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
     return "None";
   }
   return `${value}`;
@@ -116,6 +119,21 @@ const complexityStyle: Record<TaskComplexity, string> = {
   medium: "bg-yellow-100 text-yellow-600",
   low: "bg-gray-100 text-gray-500",
 };
+
+// ASSUMPTION: skill category badge styling. Adjust keys/colors to match
+// whatever your four categories actually are named on the backend
+// (Development / Research / Documentation / Finance).
+const skillStyle: Record<string, string> = {
+  development: "bg-indigo-100 text-indigo-700",
+  research: "bg-teal-100 text-teal-700",
+  documentation: "bg-orange-100 text-orange-700",
+  finance: "bg-emerald-100 text-emerald-700",
+};
+
+function getSkillBadgeClass(skill?: string) {
+  if (!skill) return "bg-neutral-100 text-neutral-500";
+  return skillStyle[skill.toLowerCase()] ?? "bg-neutral-100 text-neutral-500";
+}
 
 export default function ProjectView() {
   const navigate = useNavigate();
@@ -230,7 +248,7 @@ export default function ProjectView() {
       return (
         <TableRow>
           <TableCell
-            colSpan={7}
+            colSpan={8}
             className="py-8 text-center text-muted-foreground"
           >
             Loading tasks...
@@ -242,7 +260,7 @@ export default function ProjectView() {
     if (isTasksError) {
       return (
         <TableRow>
-          <TableCell colSpan={7} className="py-8 text-center text-rose-600">
+          <TableCell colSpan={8} className="py-8 text-center text-rose-600">
             Failed to load tasks.
           </TableCell>
         </TableRow>
@@ -252,7 +270,7 @@ export default function ProjectView() {
     if (filteredTasks.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={7} className="py-12 text-center">
+          <TableCell colSpan={8} className="py-12 text-center">
             <div className="flex flex-col items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FBF3E7]">
                 <ListTodo className="h-6 w-6 text-[#7A0C2E]" />
@@ -319,7 +337,9 @@ export default function ProjectView() {
             >
               View
             </Button>
-            <Button variant="outline" size="sm">
+            {/* TODO: not yet wired to an edit flow/dialog. Disabled to avoid
+                implying it works until that's built. */}
+            <Button variant="outline" size="sm" disabled title="Coming soon">
               Edit
             </Button>
             <Button
@@ -594,6 +614,31 @@ export default function ProjectView() {
                             {selectedTask.priority}
                           </p>
                         </div>
+                        {selectedTask.complexity && (
+                          <div className="rounded-lg bg-neutral-50 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              Complexity
+                            </p>
+                            <Badge
+                              className={`mt-2 border-0 ${complexityStyle[selectedTask.complexity]}`}
+                            >
+                              {selectedTask.complexity}
+                            </Badge>
+                          </div>
+                        )}
+                        {/* ASSUMPTION: selectedTask.primary_skill */}
+                        {selectedTask.primary_skill && (
+                          <div className="rounded-lg bg-neutral-50 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              Primary skill
+                            </p>
+                            <Badge
+                              className={`mt-2 border-0 ${getSkillBadgeClass(selectedTask.primary_skill)}`}
+                            >
+                              {selectedTask.primary_skill}
+                            </Badge>
+                          </div>
+                        )}
                         <div className="rounded-lg bg-neutral-50 p-3">
                           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                             Due date
@@ -604,6 +649,17 @@ export default function ProjectView() {
                               : "No deadline"}
                           </p>
                         </div>
+                        {/* ASSUMPTION: selectedTask.description */}
+                        {selectedTask.description && (
+                          <div className="rounded-lg bg-neutral-50 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              Description
+                            </p>
+                            <p className="mt-2 text-[#231A2E]">
+                              {selectedTask.description}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ) : null}
 

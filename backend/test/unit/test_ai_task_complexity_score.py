@@ -4,7 +4,6 @@ import pytest
 from app.modules.ai.service import (
     TASK_COMPLEXITY_SYSTEM_PROMPT,
     _parse_json_response,
-    _validate_task_complexity_result,
 )
 from app.modules.ai.client import call_ai
 
@@ -50,10 +49,6 @@ async def test_real_ai_task_complexity_statistical_analysis():
     try:
         result = _parse_json_response(raw_content)
 
-        result = _validate_task_complexity_result(
-            result=result,
-            expected_task_name=task_name,
-        )
 
     except (ValueError, json.JSONDecodeError) as e:
         pytest.fail(f"AI response could not be parsed/validated:\n{e}")

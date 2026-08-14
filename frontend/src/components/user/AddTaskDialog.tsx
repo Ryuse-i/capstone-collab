@@ -45,8 +45,8 @@ type TaskFormState = {
   priority: TaskPriority;
   category: TaskCategory;
   deadline: string;
-  Primaryskill: Skill | "";
-  Secondaryskill: Skill[];
+  primary_skill: Skill | "";
+  secondary_skill: Skill[];
 };
 
 type SupertaskFormState = {
@@ -62,7 +62,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 ];
 
 const SKILL_OPTIONS: { value: Skill; label: string }[] = [
-  { value: "Backend Developoment", label: "Backend Development" },
+  { value: "Backend Development", label: "Backend Development" },
   { value: "Frontend Development", label: "Frontend Development" },
   { value: "Mobile Development", label: "Mobile Development" },
   { value: "Iot Development", label: "IoT Development" },
@@ -93,8 +93,8 @@ const initialTaskForm: TaskFormState = {
   priority: "medium",
   category: "document",
   deadline: "",
-  Primaryskill: "",
-  Secondaryskill: [],
+  primary_skill: "",
+  secondary_skill: [],
 };
 
 const initialSupertaskForm: SupertaskFormState = {
@@ -146,12 +146,12 @@ export default function AddTaskDialog({
 
   const toggleSecondarySkill = (skill: Skill) => {
     setTaskForm((prev) => {
-      const exists = prev.Secondaryskill.includes(skill);
+      const exists = prev.secondary_skill.includes(skill);
       return {
         ...prev,
-        Secondaryskill: exists
-          ? prev.Secondaryskill.filter((s) => s !== skill)
-          : [...prev.Secondaryskill, skill],
+        secondary_skill: exists
+          ? prev.secondary_skill.filter((s) => s !== skill)
+          : [...prev.secondary_skill, skill],
       };
     });
   };
@@ -184,11 +184,11 @@ export default function AddTaskDialog({
         setError("Deadline is required.");
         return;
       }
-      if (!taskForm.Primaryskill) {
+      if (!taskForm.primary_skill) {
         setError("Primary skill is required.");
         return;
       }
-      if (taskForm.Secondaryskill.length === 0) {
+      if (taskForm.secondary_skill.length === 0) {
         setError("At least one secondary skill is required.");
         return;
       }
@@ -219,8 +219,8 @@ export default function AddTaskDialog({
           priority: taskForm.priority,
           category: taskForm.category,
           deadline: new Date(taskForm.deadline).toISOString(),
-          Primaryskill: taskForm.Primaryskill as Skill,
-          Secondaryskill: taskForm.Secondaryskill,
+          primary_skill: taskForm.primary_skill as Skill,
+          secondary_skill: taskForm.secondary_skill,
         };
 
         await createTaskMutation.mutateAsync(payload);
@@ -372,9 +372,9 @@ export default function AddTaskDialog({
               <div className="space-y-2">
                 <Label>Primary Skill</Label>
                 <Select
-                  value={taskForm.Primaryskill}
+                  value={taskForm.primary_skill}
                   onValueChange={(value) =>
-                    handleTaskFieldChange("Primaryskill", value as Skill)
+                    handleTaskFieldChange("primary_skill", value as Skill)
                   }
                 >
                   <SelectTrigger>
@@ -401,20 +401,20 @@ export default function AddTaskDialog({
                       variant="outline"
                       role="combobox"
                       aria-expanded={secondarySkillOpen}
-                      disabled={!taskForm.Primaryskill}
+                      disabled={!taskForm.primary_skill}
                       className="w-full justify-between text-left font-normal"
                     >
                       <span
                         className={cn(
-                          taskForm.Secondaryskill.length === 0 &&
+                          taskForm.secondary_skill.length === 0 &&
                             "text-muted-foreground",
                         )}
                       >
-                        {!taskForm.Primaryskill
+                        {!taskForm.primary_skill
                           ? "Select a primary skill first"
-                          : taskForm.Secondaryskill.length === 0
+                          : taskForm.secondary_skill.length === 0
                             ? "Select skills"
-                            : `${taskForm.Secondaryskill.length} skill${taskForm.Secondaryskill.length > 1 ? "s" : ""} selected`}
+                            : `${taskForm.secondary_skill.length} skill${taskForm.secondary_skill.length > 1 ? "s" : ""} selected`}
                       </span>
                     </Button>
                   </PopoverTrigger>
@@ -424,9 +424,9 @@ export default function AddTaskDialog({
                       onWheel={(e) => e.stopPropagation()}
                     >
                       {SKILL_OPTIONS.filter(
-                        (option) => option.value !== taskForm.Primaryskill,
+                        (option) => option.value !== taskForm.primary_skill,
                       ).map((option) => {
-                        const selected = taskForm.Secondaryskill.includes(
+                        const selected = taskForm.secondary_skill.includes(
                           option.value,
                         );
                         return (
@@ -446,9 +446,9 @@ export default function AddTaskDialog({
                     </div>
                   </PopoverContent>
                 </Popover>
-                {taskForm.Secondaryskill.length > 0 && (
+                {taskForm.secondary_skill.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {taskForm.Secondaryskill.map((skill) => (
+                    {taskForm.secondary_skill.map((skill) => (
                       <span
                         key={skill}
                         className="flex items-center gap-1 rounded-full bg-[#FBF3E7] border border-[#7A0C2E]/20 px-2 py-0.5 text-xs text-[#231A2E]"

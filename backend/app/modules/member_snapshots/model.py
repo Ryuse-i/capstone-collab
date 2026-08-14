@@ -49,7 +49,6 @@ class MemberSnapshot(Base):
     #hides overload warning 
     silence_warning: Mapped[bool] = mapped_column(Boolean, default=False)
     consecutive_fallback_count: Mapped[int] = mapped_column(Integer)
-    # multiplier
     workload_status: Mapped[MemberStatus] = mapped_column(
         SAENUM(MemberStatus, name="member_status"), default=MemberStatus.OK
     )

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from app.modules.invitations.model import ProjectInvitation
 
 
-
 class Project(Base):
     __tablename__ = "projects"
 
@@ -36,10 +35,10 @@ class Project(Base):
     instructor: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
-    #Unit for the deadline effect on the workload calculation
-    base_days_per_point: Mapped[int] = mapped_column(Integer)
-    #
-    escalation_threshold: Mapped[int] = mapped_column(Integer)
+    # Unit for the deadline effect on the workload calculation
+    base_days_per_point: Mapped[int] = mapped_column(Integer, default=1)
+    # Number of times redistribution mechanics can be triggered before flagging
+    escalation_threshold: Mapped[int] = mapped_column(Integer, default=0)
 
     snapshot: Mapped[Optional["ProjectSnapshot"]] = relationship(
         "ProjectSnapshot",
@@ -74,7 +73,6 @@ class Project(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-
 
     # Timestamps
     created_at: Mapped[datetime | None] = mapped_column(

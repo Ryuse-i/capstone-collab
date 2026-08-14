@@ -19,10 +19,11 @@ export interface TaskBase {
   complexity?: TaskComplexity;
   complexity_points?: number;
   total_time_spent?: number;
+  completed_at?: string;
   status?: TaskStatus;
   supertask_id?: string;
-   Primaryskill: Skill
-   Secondaryskill: Skill[]
+  primary_skill: Skill;
+  secondary_skill?: Skill[];
 }
 
 export type CreateTask = TaskBase;

@@ -128,7 +128,7 @@ class Task(Base):
         nullable=True,
     )
     total_time_spent: Mapped[int] = mapped_column(default=0, nullable=True)
-    primary_skills: Mapped[Skills] = mapped_column(
+    primary_skill: Mapped[Skills] = mapped_column(
         task_skills_enum,
         nullable=False,
     )

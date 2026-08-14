@@ -1,7 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.modules.tasks.model import Task
+from app.modules.tasks.model import Task, Category, Complexity
 from app.modules.tasks.repo import TaskRepo
 from app.modules.tasks.schema import TaskCreate, TaskUpdate
+from app.modules.project_members.model import Skills
+from app.modules.ai.service import score_task_complexity
+
+_VERDICT_TO_COMPLEXITY: dict[int, Complexity] = {
+    1: Complexity.LOW,
+    2: Complexity.MEDIUM,
+    3: Complexity.HIGH,
+}
 
 
 class TaskService:
@@ -18,9 +26,17 @@ class TaskService:
     @staticmethod
     async def create_task(db: AsyncSession, task: TaskCreate):
         repo = TaskRepo(db)
-        return await repo.create(task)
-        # send http request towards openrouter free model for the 
 
+        ai_result = await score_task_complexity(task.name, task.description)
+        category = TaskService._determine_task_category(task.primary_skill)
+        complexity = _VERDICT_TO_COMPLEXITY[ai_result.verdict]
+
+        task_item = task.model_copy(
+            update={"category": category, "complexity": complexity}
+        )
+
+        return await repo.create(task_item)
+        # send http request towards openrouter free model for the
 
     @staticmethod
     async def update_task(db: AsyncSession, db_item: TaskUpdate, task: TaskUpdate):
@@ -31,3 +47,42 @@ class TaskService:
     async def delete_task(db: AsyncSession, db_item: Task):
         repo = TaskRepo(db)
         return await repo.delete(db_item)
+
+    @staticmethod
+    def _determine_task_category(primary_skill: Skills) -> Category:
+        category_map: dict[Category, list[Skills]] = {
+            Category.DEVELOPMENT: [
+                Skills.BACKEND_DEVELOPMENT,
+                Skills.FRONTEND_DEVELOPMENT,
+                Skills.MOBILE_DEVELOPMENT,
+                Skills.IOT_DEVELOPMENT,
+                Skills.DATABASE_DESIGN,
+                Skills.SYSTEM_ARCHITECTURE,
+                Skills.UI_UX_DESIGN,
+                Skills.TESTING_AND_QUALITY_ASSURANCE,
+            ],
+            Category.RESEARCH: [
+                Skills.LITERATURE_REVIEW,
+                Skills.DATA_COLLECTION,
+                Skills.SURVEY_AND_QUESTIONNAIRE_DESIGN,
+                Skills.INTERVIEW_AND_OBSERVATION,
+                Skills.DATA_ANALYSIS,
+            ],
+            Category.DOCUMENT: [
+                Skills.TECHNICAL_WRITING,
+                Skills.DOCUMENTATION,
+                Skills.DIAGRAM_AND_MODELING,
+                Skills.EDITING_AND_PROOFREADING,
+            ],
+            Category.FINANCE: [
+                Skills.FINANCIAL_DOCUMENTATION,
+                Skills.BUDGET_PLANNING,
+                Skills.RESOURCE_MANAGEMENT,
+            ],
+        }
+
+        for category, skills in category_map.items():
+            if primary_skill in skills:
+                return category
+
+        raise ValueError(f"No category found for skill: {primary_skill}")

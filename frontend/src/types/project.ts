@@ -5,6 +5,8 @@ export interface ProjectBase {
   name: string;
   description: string;
   created_by: string; // UUID
+  base_days_per_point?: number | null;
+  escalation_threshold?: number | null;
   advisor: string | null; // UUID
   instructor: string | null; // UUID
 }
