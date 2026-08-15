@@ -15,7 +15,9 @@ class ProjectMemberRepo(BaseRepo):
     async def get_by_user_id(self, user_id: UUID):
         query = (
             select(ProjectMember)
-            .options(selectinload(ProjectMember.project), selectinload(ProjectMember.user))
+            .options(
+                selectinload(ProjectMember.project), selectinload(ProjectMember.user)
+            )
             .where(ProjectMember.user_id == user_id)
         )
         result = await self.db.execute(query)
@@ -32,7 +34,9 @@ class ProjectMemberRepo(BaseRepo):
     async def get_all_members_by_project(self, project_id: UUID):
         query = (
             select(ProjectMember)
-            .options(selectinload(ProjectMember.project), selectinload(ProjectMember.user))
+            .options(
+                selectinload(ProjectMember.project), selectinload(ProjectMember.user)
+            )
             .where(ProjectMember.project_id == project_id)
         )
         result = await self.db.execute(query)
@@ -41,7 +45,9 @@ class ProjectMemberRepo(BaseRepo):
     async def get_all_projects_by_member(self, member_id: UUID):
         query = (
             select(ProjectMember)
-            .options(selectinload(ProjectMember.project), selectinload(ProjectMember.user))
+            .options(
+                selectinload(ProjectMember.project), selectinload(ProjectMember.user)
+            )
             .where(ProjectMember.user_id == member_id)
         )
         result = await self.db.execute(query)

@@ -4,6 +4,8 @@ from app.modules.tasks.repo import TaskRepo
 from app.modules.tasks.schema import TaskCreate, TaskUpdate
 from app.modules.project_members.model import Skills
 from app.modules.ai.service import score_task_complexity
+from app.modules.project_snapshots.services import ProjectSnapshotService
+from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
 
 _VERDICT_TO_COMPLEXITY: dict[int, Complexity] = {
     1: Complexity.LOW,
@@ -33,6 +35,13 @@ class TaskService:
 
         task_item = task.model_copy(
             update={"category": category, "complexity": complexity}
+        )
+
+        # update the project_snapshot to have +1 unassigned_tasks
+        update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=1)
+        # update the snapshot
+        await ProjectSnapshotService.upsert_today_snapshot(
+            db, task_item.project_id, update_snapshot
         )
 
         return await repo.create(task_item)

@@ -17,6 +17,7 @@ class ProjectSnapshotUpsert(BaseModel):
     imbalance_severity: Severity | None = None
     health_score: Decimal | None = None
     health_status: Status | None = None
+    unassigned_tasks: int | None = None
 
 
 class ProjectSnapshotResponse(BaseModel):
@@ -33,4 +34,5 @@ class ProjectSnapshotResponse(BaseModel):
     imbalance_severity: Severity
     health_score: Decimal
     health_status: Status
+    unassigned_tasks: int
     snapshot_date: date

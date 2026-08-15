@@ -11,7 +11,7 @@ from app.modules.users.model import User
 
 from .model import ProjectMember
 from .repo import ProjectMemberRepo
-from .schema import ProjectMemberCreate, ProjectMemberResponse, ProjectMemberUpdate
+from .schema import ProjectMemberCreate, ProjectMemberUpdate
 
 
 class ProjectMemberService:
@@ -45,18 +45,19 @@ class ProjectMemberService:
         repo = ProjectMemberRepo(db)
 
         if project_member.user_id is None or project_member.project_id is None:
-            raise HTTPException(status_code=400, detail="user_id and project_id are required")
+            raise HTTPException(
+                status_code=400, detail="user_id and project_id are required"
+            )
 
         existing_member = await repo.get_by_user_and_project(
             project_member.user_id, project_member.project_id
         )
         if existing_member:
-            raise HTTPException(
-                status_code=409, detail="Project member already exists"
-            )
+            raise HTTPException(status_code=409, detail="Project member already exists")
 
+        # conflict of python in fastapiusers User.id fields type matching
         user_result = await db.execute(
-            select(User).where(User.id == project_member.user_id)
+            select(User).where(User.id == project_member.user_id)  # pyright: ignore[reportArgumentType]
         )
         if not user_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="User not found")

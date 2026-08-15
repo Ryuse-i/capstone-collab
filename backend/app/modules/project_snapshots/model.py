@@ -1,5 +1,5 @@
 from decimal import Decimal
-from sqlalchemy import ForeignKey, Numeric, Date
+from sqlalchemy import ForeignKey, Integer, Numeric, Date
 from app.core.db import Base
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from uuid import UUID
@@ -51,10 +51,12 @@ class ProjectSnapshot(Base):
         SAENUM(Status, name="health_status", create_type=True),
         default=Status.GOOD,
     )
+    unassigned_tasks: Mapped[int] = mapped_column(Integer, default=0)
     snapshot_date: Mapped[date] = mapped_column(Date, default=date.today)
 
-    project: Mapped["Project"] = relationship("Project", back_populates="snapshot")
+    project: Mapped["Project"] = relationship("Project", back_populates="snapshots")
 
+    # unique constraints that would determine whether to insert or update
     __table_args__ = (
         UniqueConstraint(
             "project_id", "snapshot_date", name="uq_project_snapshot_date"

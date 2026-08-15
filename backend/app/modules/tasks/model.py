@@ -46,8 +46,9 @@ class Task(Base):
         PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
     )
 
-    started_at: Mapped[date] = mapped_column(Date, default=date.today)
-    completed_at: Mapped[date] = mapped_column(Date, default=date.today)
+    started_at: Mapped[date] = mapped_column(Date, nullable=True)
+    completed_at: Mapped[date] = mapped_column(Date, nullable=True)
+
     # Relationships
     project: Mapped["Project"] = relationship(
         "Project",
@@ -111,7 +112,11 @@ class Task(Base):
     #    PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), default=None, nullable=True
     # )
     status: Mapped[Status] = mapped_column(
-        SAENUM(Status, name="status"), default=None, nullable=True
+        SAENUM(
+            Status, name="status", values_callable=lambda obj: [e.value for e in obj]
+        ),
+        default=Status.NOT_STARTED,
+        nullable=True,
     )
     complexity: Mapped[Complexity] = mapped_column(
         SAENUM(Complexity, name="complexity"), default=None, nullable=True
@@ -144,7 +149,6 @@ class Task(Base):
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=True,
     )

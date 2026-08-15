@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, ForeignKey, Integer, String, UUID as PG_UUID
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.modules.project_snapshots.model import ProjectSnapshot
@@ -40,10 +40,9 @@ class Project(Base):
     # Number of times redistribution mechanics can be triggered before flagging
     escalation_threshold: Mapped[int] = mapped_column(Integer, default=0)
 
-    snapshot: Mapped[Optional["ProjectSnapshot"]] = relationship(
+    snapshots: Mapped[list["ProjectSnapshot"]] = relationship(
         "ProjectSnapshot",
         back_populates="project",
-        uselist=False,  # Tells SQLAlchemy this is a single object, not a list []
         cascade="all, delete-orphan",
     )
 
