@@ -2,7 +2,7 @@ from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
-from app.modules.projects.schema import ProjectResponseSnapshot
+from app.modules.projects.schema import ProjectResponse
 from app.modules.users.schema import UserResponse
 from .model import ProjectRole
 
@@ -44,7 +44,7 @@ class ProjectMemberDetailResponse(BaseModel):
 
 
 class ProjectMember_Project_Response(ProjectMemberDetailResponse):
-    projects: ProjectResponseSnapshot
+    projects: ProjectResponse
 
 
 class ProjectMember_User_Response(ProjectMemberDetailResponse):

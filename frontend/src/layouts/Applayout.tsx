@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
@@ -82,7 +83,7 @@ import {
   useAcceptInvite,
   useDeclineInvite,
 } from "@/hooks/useProjectInvite";
-import { useGetOneProject } from "@/hooks/useProject";
+import { projectKeys, useGetOneProject } from "@/hooks/useProject";
 import type { NotificationResponse } from "@/types/notification";
 import { useCurrentUser } from "@/hooks/useAuth";
 
@@ -123,6 +124,7 @@ export default function AppLayout({
     isLoading: projectLoading,
     isFetching: projectFetching,
   } = useGetOneProject(invite?.project_id ?? "");
+  const quertClient = useQueryClient();
 
   function markRead(id: string) {
     readMutate(id, {
@@ -148,6 +150,9 @@ export default function AppLayout({
     acceptInvite(selectedNotification.invitation_id, {
       onSuccess: () => {
         setSelectedNotification(null);
+        quertClient.invalidateQueries({
+          queryKey: projectKeys.listUser(user!.id),
+        });
       },
       onError: (error) => {
         console.error("Failed to accept invite", error);
@@ -515,7 +520,9 @@ export default function AppLayout({
         </Dialog>
 
         {/* Main Content Area */}
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0">{children}</div>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

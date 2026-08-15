@@ -19,6 +19,7 @@ export interface TaskBase {
   complexity?: TaskComplexity;
   complexity_points?: number;
   total_time_spent?: number;
+  started_at?: string;
   completed_at?: string;
   status?: TaskStatus;
   supertask_id?: string;

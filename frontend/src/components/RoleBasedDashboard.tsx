@@ -7,7 +7,6 @@ import type { UserRole } from "@/services/api";
 import StudentDashboard from "@/pages/student/Dashboard";
 import InstructorDashboard from "@/pages/instructor/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
-import AdvisorDashboard from "@/pages/advisor/Dashboard"
 
 export default function RoleBasedDashboard() {
   const { data: user, isLoading, isError } = useCurrentUser();
@@ -27,8 +26,6 @@ export default function RoleBasedDashboard() {
       return <AdminDashboard />;
     case ROLES.INSTRUCTOR as UserRole:
       return <InstructorDashboard />;
-    case ROLES.ADVISOR as UserRole:
-      return <AdvisorDashboard />
     case ROLES.STUDENT as UserRole:
     default:
       return <StudentDashboard />;

@@ -6,8 +6,6 @@ import RoleBasedDashboard from "@/components/RoleBasedDashboard";
 import { StudentRoutes } from "@/routes/StudentRoutes";
 import { InstructorRoutes } from "@/routes/InstructorRoutes";
 import { AdminRoutes } from "@/routes/AdminRoutes";
-import { AdvisorRoutes } from "./routes/AdvisorRoutes";
-import RoleRoute from "./components/RoleRoute";
 
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -32,15 +30,11 @@ export default function App() {
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/" element={<LandingPage />} />
 
-      {/* instructor and advisor shared route */}
-      <Route element={<RoleRoute role={["instructor", "advisor"]} />}></Route>
-
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<RoleBasedDashboard />} />
         <Route path="/settings" element={<Settings />} />
         {StudentRoutes}
         {InstructorRoutes}
-        {AdvisorRoutes}
         {AdminRoutes}
       </Route>
 

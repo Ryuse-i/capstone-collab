@@ -4,9 +4,13 @@ from app.modules.projects.model import Project
 from app.modules.projects.repo import ProjectRepo
 from app.modules.projects.schema import (
     ProjectCreate,
+    ProjectResponseSnapshot,
     ProjectUpdate,
+    ProjectResponse,
 )
 from app.modules.project_snapshots.repo import ProjectSnapshotRepo
+from app.modules.project_snapshots.services import ProjectSnapshotService
+from app.modules.project_snapshots.schema import ProjectSnapshotResponse
 
 
 class ProjectService:
@@ -70,6 +74,27 @@ class ProjectService:
         return await repo.get_projects_for_user_with_snapshot(user_id)
 
     @staticmethod
-    async def get_by_id_with_snapshot(db: AsyncSession, project_id):
+    async def get_by_id_with_snapshot(
+        db: AsyncSession, project_id
+    ) -> ProjectResponseSnapshot | None:
         repo = ProjectRepo(db)
-        return await repo.get_by_id_with_snapshot(project_id)
+        project = await repo.get_by_id(project_id)
+        if project is None:
+            return None
+
+        latest_snapshot = await ProjectSnapshotService.get_latest_snapshot(
+            db, project_id
+        )
+
+        return ProjectResponseSnapshot(
+            **ProjectResponse.model_validate(
+                project, from_attributes=True
+            ).model_dump(),
+            snapshot=(
+                ProjectSnapshotResponse.model_validate(
+                    latest_snapshot, from_attributes=True
+                )
+                if latest_snapshot is not None
+                else None
+            ),
+        )

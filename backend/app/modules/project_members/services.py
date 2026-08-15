@@ -6,7 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.projects.model import Project
-from app.modules.projects.repo import ProjectRepo
+from app.modules.projects.schema import ProjectResponseSnapshot
+from app.modules.projects.services import ProjectService
 from app.modules.users.model import User
 
 from .model import ProjectMember
@@ -87,14 +88,13 @@ class ProjectMemberService:
     @staticmethod
     async def get_project_for_member_with_snapshot(
         db: AsyncSession, user_id: UUID, project_id: UUID
-    ) -> Project | None:
+    ) -> ProjectResponseSnapshot | None:
         member_repo = ProjectMemberRepo(db)
         member = await member_repo.get_by_user_and_project(user_id, project_id)
         if not member:
             return None
 
-        project_repo = ProjectRepo(db)
-        return await project_repo.get_by_id_with_snapshot(project_id)
+        return await ProjectService.get_by_id_with_snapshot(db, project_id)
 
     @staticmethod
     async def delete_member(db: AsyncSession, db_item: ProjectMember):

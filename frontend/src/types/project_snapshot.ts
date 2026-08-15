@@ -15,6 +15,7 @@ export interface ProjectSnapshotBase {
   imbalance_severity: Severity;
   health_score: number; // Decimal
   health_status: Status;
+  unassigned_tasks: number;
 }
 
 export interface ProjectSnapshotResponse extends ProjectSnapshotBase {

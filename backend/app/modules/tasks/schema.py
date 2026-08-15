@@ -19,6 +19,7 @@ class TaskCreate(BaseModel):
     primary_skill: Skills
     secondary_skills: list[Skills] | None = None
     deadline: datetime
+    started_at: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None
 
@@ -37,6 +38,7 @@ class TaskUpdate(BaseModel):
     primary_skill: Skills
     secondary_skills: list[Skills] | None = None
     deadline: datetime | None = None
+    started_at: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None
 
@@ -56,6 +58,7 @@ class TaskResponse(BaseModel):
     primary_skill: Skills
     secondary_skills: list[Skills] | None = None
     deadline: datetime | None = None
+    started_at: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None
     created_at: datetime | None = None
