@@ -43,7 +43,7 @@ function ProjectCard({
   const projectRouteId = project.id ?? slug;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border bg-card dark:bg-(--semi-card) p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-[#F3EFE6] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A0C2E]">
@@ -208,7 +208,7 @@ export default function ProjectsPage() {
               </span>
             </div>
 
-            <div className="space-y-3 p-5">
+            <div className="space-y-3 p-5 ">
               {filteredProjects.length > 0 ? (
                 filteredProjects.map(({ project, role }) => (
                   <ProjectCard key={`${role}-${project.id}`} project={project} role={role} />

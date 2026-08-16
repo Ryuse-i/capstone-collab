@@ -88,6 +88,7 @@
 .dark {
   /* Shadcn tokens — dark */
   --background: #18191a;
+  --semi-background: #1d1d1d;
   --foreground: #F5F5F7;
   --semi-foreground: #888888;
   --card: #242526;

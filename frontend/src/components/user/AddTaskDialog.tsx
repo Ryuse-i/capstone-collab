@@ -120,6 +120,7 @@ export default function AddTaskDialog({
   const [supertaskForm, setSupertaskForm] =
     useState<SupertaskFormState>(initialSupertaskForm);
   const [error, setError] = useState<string | null>(null);
+  const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
 
   const createTaskMutation = useCreateTask();
@@ -142,6 +143,16 @@ export default function AddTaskDialog({
     value: TaskFormState[K],
   ) => {
     setTaskForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // When the primary skill changes, strip it out of any existing
+  // secondary skill selection so state never holds the same skill twice.
+  const handlePrimarySkillChange = (value: Skill) => {
+    setTaskForm((prev) => ({
+      ...prev,
+      Primaryskill: value,
+      Secondaryskill: prev.Secondaryskill.filter((s) => s !== value),
+    }));
   };
 
   const toggleSecondarySkill = (skill: Skill) => {
@@ -371,23 +382,58 @@ export default function AddTaskDialog({
 
               <div className="space-y-2">
                 <Label>Primary Skill</Label>
-                <Select
-                  value={taskForm.Primaryskill}
-                  onValueChange={(value) =>
-                    handleTaskFieldChange("Primaryskill", value as Skill)
-                  }
+                <Popover
+                  open={primarySkillOpen}
+                  onOpenChange={setPrimarySkillOpen}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select skill" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SKILL_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={primarySkillOpen}
+                      className="w-full justify-between text-left font-normal"
+                    >
+                      <span
+                        className={cn(
+                          !taskForm.Primaryskill && "text-muted-foreground",
+                        )}
+                      >
+                        {taskForm.Primaryskill
+                          ? SKILL_OPTIONS.find(
+                              (o) => o.value === taskForm.Primaryskill,
+                            )?.label
+                          : "Select skill"}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {SKILL_OPTIONS.map((option) => {
+                        const selected =
+                          option.value === taskForm.Primaryskill;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              handlePrimarySkillChange(option.value);
+                              setPrimarySkillOpen(false);
+                            }}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-(--semi-card)"
+                          >
+                            <span>{option.label}</span>
+                            {selected && (
+                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">
@@ -434,7 +480,7 @@ export default function AddTaskDialog({
                             key={option.value}
                             type="button"
                             onClick={() => toggleSecondarySkill(option.value)}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-(--semi-card)"
                           >
                             <span>{option.label}</span>
                             {selected && (

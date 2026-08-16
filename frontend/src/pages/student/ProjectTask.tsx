@@ -608,7 +608,7 @@ export default function Task() {
               </Table>
             </CardContent>
           </Card>
-        ) : (
+        ) : (                                   //Board View
           <div className="mt-4 w-full min-w-0 overflow-x-auto pb-2 relative no-scrollbar">
             <div className="flex w-max gap-4">
               {boardColumns.map((column) => (
@@ -628,7 +628,7 @@ export default function Task() {
                       {column.cards.map((card) => (
                         <div
                           key={card.id}
-                          className="rounded-lg border bg-background p-3 shadow-sm"
+                          className="rounded-lg border bg-(--semi-background) p-3 shadow-sm"
                         >
                           <div className="flex items-center justify-between">
                             <p className="font-medium text-foreground">
