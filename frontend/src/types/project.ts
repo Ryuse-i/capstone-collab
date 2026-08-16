@@ -1,4 +1,4 @@
-import type { ProjectSnapshotBase } from "./project_snapshot";
+import type { ProjectSnapshotResponse } from "./project_snapshot";
 
 export interface ProjectBase {
   id?: string;
@@ -31,5 +31,5 @@ export type CreateProject = Pick<
 export type UpdateProject = Partial<ProjectBase>;
 
 export interface ProjectWithSnapshot extends ProjectBase {
-  snapshot: ProjectSnapshotBase;
+  snapshot: ProjectSnapshotResponse;
 }

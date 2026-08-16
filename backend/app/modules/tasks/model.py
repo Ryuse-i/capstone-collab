@@ -42,7 +42,7 @@ class Task(Base):
     created_by: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id")
     )
-    project_id: Mapped[UUID | None] = mapped_column(
+    project_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
     )
 

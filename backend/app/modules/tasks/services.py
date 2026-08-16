@@ -32,13 +32,22 @@ class TaskService:
         ai_result = await score_task_complexity(task.name, task.description)
         category = TaskService._determine_task_category(task.primary_skill)
         complexity = _VERDICT_TO_COMPLEXITY[ai_result.verdict]
+        complexity_points = ai_result.verdict
 
         task_item = task.model_copy(
-            update={"category": category, "complexity": complexity}
+            update={
+                "category": category,
+                "complexity": complexity,
+                "complexity_points": complexity_points,
+            }
         )
 
         # update the project_snapshot to have +1 unassigned_tasks
-        update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=1)
+        snapshot = await ProjectSnapshotService.get_latest_snapshot(
+            db, task_item.project_id
+        )
+        u_tasks = snapshot.unassigned_tasks + 1
+        update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=u_tasks)
         # update the snapshot
         await ProjectSnapshotService.upsert_today_snapshot(
             db, task_item.project_id, update_snapshot
@@ -55,6 +64,20 @@ class TaskService:
     @staticmethod
     async def delete_task(db: AsyncSession, db_item: Task):
         repo = TaskRepo(db)
+
+        if not db_item.assigned_members:
+            snapshot = await ProjectSnapshotService.get_latest_snapshot(
+                db, db_item.project_id
+            )
+            u_tasks = 0
+            if snapshot.unassigned_tasks > 0:
+                u_tasks = snapshot.unassigned_tasks - 1
+
+            update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=u_tasks)
+            # update the snapshot
+            await ProjectSnapshotService.upsert_today_snapshot(
+                db, db_item.project_id, update_snapshot
+            )
         return await repo.delete(db_item)
 
     @staticmethod
