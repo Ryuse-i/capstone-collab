@@ -6,6 +6,7 @@ import RoleBasedDashboard from "@/components/RoleBasedDashboard";
 import { StudentRoutes } from "@/routes/StudentRoutes";
 import { InstructorRoutes } from "@/routes/InstructorRoutes";
 import { AdminRoutes } from "@/routes/AdminRoutes";
+import { useQueryClient } from "@tanstack/react-query";
 
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -16,12 +17,16 @@ import Settings from "@/pages/shared/Settings";
 
 export default function App() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    const handler = () => navigate("/login");
+    const handler = () => {
+      queryClient.clear()
+      navigate("/login");
+    };
     window.addEventListener("auth:expired", handler);
     return () => window.removeEventListener("auth:expired", handler);
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   return (
     <Routes>
