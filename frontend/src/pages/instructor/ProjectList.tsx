@@ -135,11 +135,11 @@ export default function ProjectsPage() {
 
   const isLoading = isUserLoading || isProjectsLoading;
 
-  const instructorProjects =
-    projects?.filter((p) => p.instructor === user?.id) ?? [];
-  const advisorProjects = projects?.filter((p) => p.advisor === user?.id) ?? [];
-
   const filteredProjects = useMemo(() => {
+    const instructorProjects =
+      projects?.filter((p) => p.instructor === user?.id) ?? [];
+    const advisorProjects =
+      projects?.filter((p) => p.advisor === user?.id) ?? [];
     if (roleFilter === "instructor") {
       return instructorProjects.map((project) => ({
         project,
@@ -162,14 +162,14 @@ export default function ProjectsPage() {
         role: "advisor" as const,
       })),
     ];
-  }, [roleFilter, instructorProjects, advisorProjects]);
+  }, [roleFilter, projects, user?.id]);
 
   const emptyMessage =
     roleFilter === "instructor"
       ? "You are not assigned as an instructor on any project yet."
       : roleFilter === "advisor"
-      ? "You are not assigned as an advisor on any project yet."
-      : "You are not assigned to any project yet.";
+        ? "You are not assigned as an advisor on any project yet."
+        : "You are not assigned to any project yet.";
 
   return (
     <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
@@ -211,7 +211,11 @@ export default function ProjectsPage() {
             <div className="space-y-3 p-5">
               {filteredProjects.length > 0 ? (
                 filteredProjects.map(({ project, role }) => (
-                  <ProjectCard key={`${role}-${project.id}`} project={project} role={role} />
+                  <ProjectCard
+                    key={`${role}-${project.id}`}
+                    project={project}
+                    role={role}
+                  />
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
@@ -225,3 +229,4 @@ export default function ProjectsPage() {
     </AppLayout>
   );
 }
+

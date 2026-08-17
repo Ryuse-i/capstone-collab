@@ -24,6 +24,16 @@ const api = {
     }
   },
 
+  getAllProjectTask: async (project_id: string): Promise<TaskResponse[]> => {
+    try {
+      const response = await apiClient.get(`${url}/projects/${project_id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get project tasks", error);
+      throw error;
+    }
+  },
+
   createTask: async (task: CreateTask): Promise<TaskResponse> => {
     try {
       const response = await apiClient.post<TaskResponse>(url, task);
@@ -60,6 +70,8 @@ const api = {
 export const taskKeys = {
   all: ["tasks"] as const,
   list: () => [...taskKeys.all, "list"] as const,
+  listProject: (project_id: string) =>
+    [...taskKeys.list(), "listProject", project_id] as const,
   details: () => [...taskKeys.all, "details"] as const,
   detail: (id: string) => [...taskKeys.details(), id] as const,
 };
@@ -75,6 +87,13 @@ export function useGetAllTask() {
   return useQuery({
     queryKey: taskKeys.list(),
     queryFn: api.getAllTask,
+  });
+}
+
+export function useGetAllProjectTask(project_id: string) {
+  return useQuery({
+    queryKey: taskKeys.listProject(project_id),
+    queryFn: () => api.getAllProjectTask(project_id),
   });
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import {
+  AlertTriangle,
   CheckSquare,
   Eye,
   Clock,
@@ -51,168 +52,127 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import AddTaskDialog from "@/components/user/AddTaskDialog";
+import type {
+  TaskComplexity,
+  TaskPriority,
+  TaskStatus,
+  TaskResponse,
+} from "@/types/task";
+import { useGetAllProjectTask } from "@/hooks/useTask";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetCurrentProject } from "@/hooks/useProject";
+import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 
-const allTasks = [
-  {
-    name: "Implement user authentication system",
-    status: "Completed",
-    priority: "High",
-    complexity: "High",
-    assigned: ["JW"],
-    due: "Apr 20",
-  },
-  {
-    name: "Design dashboard wireframes",
-    status: "Completed",
-    priority: "Medium",
-    complexity: "Low",
-    assigned: ["DM"],
-    due: "Apr 3",
-  },
-  {
-    name: "API endpoint testing",
-    status: "Submitted",
-    priority: "Low",
-    complexity: "Medium",
-    assigned: ["HG"],
-    due: "Mar 13",
-  },
-  {
-    name: "Database migration script",
-    status: "In Progress",
-    priority: "High",
-    complexity: "High",
-    assigned: ["JW", "HG"],
-    due: "Mar 28",
-  },
-  {
-    name: "Deploy CI/CD pipeline",
-    status: "Not Started",
-    priority: "High",
-    complexity: "Medium",
-    assigned: ["RM"],
-    due: "Apr 17",
-  },
-  {
-    name: "Write unit tests",
-    status: "In Progress",
-    priority: "Medium",
-    complexity: "Low",
-    assigned: ["DM"],
-    due: "Apr 25",
-  },
-  {
-    name: "Fix login bug",
-    status: "Completed",
-    priority: "High",
-    complexity: "Low",
-    assigned: ["JW"],
-    due: "Mar 10",
-  },
-];
-
-const statusStyle: Record<string, string> = {
-  Completed: "bg-green-100 text-green-700",
-  Submitted: "bg-yellow-100 text-yellow-700",
-  "In Progress": "bg-blue-100 text-blue-700",
-  "Not Started": "bg-gray-100 text-gray-500",
+const statusStyle: Record<TaskStatus, string> = {
+  completed: "bg-green-100 text-green-700",
+  submitted: "bg-yellow-100 text-yellow-700",
+  "in-progress": "bg-blue-100 text-blue-700",
+  not_started: "bg-gray-100 text-gray-500",
 };
 
-const priorityStyle: Record<string, string> = {
-  High: "bg-red-100 text-red-600",
-  Medium: "bg-yellow-100 text-yellow-600",
-  Low: "bg-gray-100 text-gray-500",
+const priorityStyle: Record<TaskPriority, string> = {
+  high: "bg-red-100 text-red-600",
+  medium: "bg-yellow-100 text-yellow-600",
+  low: "bg-gray-100 text-gray-500",
 };
 
-const complexityStyle: Record<string, string> = {
-  High: "bg-red-100 text-red-600",
-  Medium: "bg-yellow-100 text-yellow-600",
-  Low: "bg-gray-100 text-gray-500",
+const complexityStyle: Record<TaskComplexity, string> = {
+  high: "bg-red-100 text-red-600",
+  medium: "bg-yellow-100 text-yellow-600",
+  low: "bg-gray-100 text-gray-500",
 };
 
 // Option lists for the faceted filters (dot color mirrors the badge palette)
+
 const statusOptions = [
-  { label: "Completed", value: "Completed", color: "#22c55e" },
-  { label: "Submitted", value: "Submitted", color: "#eab308" },
-  { label: "In Progress", value: "In Progress", color: "#3b82f6" },
-  { label: "Not Started", value: "Not Started", color: "#9ca3af" },
+  { label: "Completed", value: "completed", color: "#22c55e" },
+  { label: "Submitted", value: "submitted", color: "#eab308" },
+  { label: "In Progress", value: "in-progress", color: "#3b82f6" },
+  { label: "Not Started", value: "not_started", color: "#9ca3af" },
 ];
 
 const priorityOptions = [
-  { label: "High", value: "High", color: "#ef4444" },
-  { label: "Medium", value: "Medium", color: "#eab308" },
-  { label: "Low", value: "Low", color: "#9ca3af" },
+  { label: "High", value: "high", color: "#ef4444" },
+  { label: "Medium", value: "medium", color: "#eab308" },
+  { label: "Low", value: "low", color: "#9ca3af" },
 ];
 
 const complexityOptions = [
-  { label: "High", value: "High", color: "#ef4444" },
-  { label: "Medium", value: "Medium", color: "#eab308" },
-  { label: "Low", value: "Low", color: "#9ca3af" },
+  { label: "High", value: "high", color: "#ef4444" },
+  { label: "Medium", value: "medium", color: "#eab308" },
+  { label: "Low", value: "low", color: "#9ca3af" },
 ];
 
-const boardColumns = [
+// ---- Board view: Supertask -> Task grouping (MOCK DATA ONLY, not wired to backend) ----
+type BoardTask = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+type BoardSupertask = {
+  id: string;
+  title: string;
+  tasks: BoardTask[];
+};
+
+const boardSupertasks: BoardSupertask[] = [
   {
-    id: "todo",
-    title: "To Do",
-    cards: [
+    id: "supertask-auth",
+    title: "User Authentication",
+    tasks: [
       {
-        id: "todo-1",
-        title: "Plan sprint tasks",
-        description: "Prepare the next sprint checklist.",
+        id: "task-1",
+        title: "Implement login flow",
+        description: "Build the login form, validation, and session handling.",
       },
       {
-        id: "todo-2",
-        title: "Review requirements",
-        description: "Confirm the scope with the team.",
+        id: "task-2",
+        title: "Implement signup flow",
+        description: "Build the signup form and email verification.",
       },
     ],
   },
   {
-    id: "in-progress",
-    title: "In Progress",
-    cards: [
+    id: "supertask-dashboard",
+    title: "Dashboard",
+    tasks: [
       {
-        id: "progress-1",
+        id: "task-3",
+        title: "Design dashboard wireframes",
+        description: "Sketch out the layout and core widgets.",
+      },
+      {
+        id: "task-4",
         title: "Build dashboard UI",
-        description: "Continue the layout and interactions.",
-      },
-      {
-        id: "progress-2",
-        title: "Sync with designers",
-        description: "Share the latest updates and feedback.",
+        description: "Implement the layout and interactions.",
       },
     ],
   },
   {
-    id: "done",
-    title: "Done",
-    cards: [
+    id: "supertask-api",
+    title: "API Layer",
+    tasks: [
       {
-        id: "done-1",
-        title: "Prototype review",
-        description: "Approved the first version of the prototype.",
+        id: "task-5",
+        title: "API endpoint testing",
+        description: "Write integration tests for core endpoints.",
       },
     ],
   },
   {
-    id: "blocked",
-    title: "Blocked",
-    cards: [
+    id: "supertask-infra",
+    title: "Infrastructure",
+    tasks: [
       {
-        id: "blocked-1",
-        title: "Research new technologies",
-        description: "Investigate potential tools for the project.",
+        id: "task-6",
+        title: "Deploy CI/CD pipeline",
+        description: "Set up automated build and deploy on push.",
       },
-    ],
-  },
-  {
-    id: "backlog",
-    title: "Backlog",
-    cards: [
       {
-        id: "backlog-1",
-        title: "Update documentation",
-        description: "Revise the project documentation for clarity.",
+        id: "task-7",
+        title: "Database migration script",
+        description: "Write and test the migration for the new schema.",
       },
     ],
   },
@@ -349,51 +309,70 @@ export default function Task() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-  const [selectedTask, setSelectedTask] = useState<
-    (typeof allTasks)[number] | null
-  >(null);
+
+  // Real task selected from the table (View button)
+  const [selectedTask, setSelectedTask] = useState<TaskResponse | null>(null);
+  // Mock board card selected from the Board view (separate shape, not a real Task)
+  const [selectedBoardCard, setSelectedBoardCard] = useState<BoardTask | null>(
+    null,
+  );
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
 
-  // Filter logic
-  const filteredTasks = allTasks.filter((task) => {
+  const { data: user } = useCurrentUser();
+  const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
+  const projectId = currentProject?.id ?? "";
+
+  const {
+    data: allProjectTasks,
+    isLoading: isTasksLoading,
+    isError: isTasksError,
+  } = useGetAllProjectTask(projectId);
+  const { data: project } = useGetOneProjectWithSpanshot(projectId);
+  const snapshot = project?.snapshot;
+
+  const filteredTasks = (allProjectTasks ?? []).filter((task) => {
     if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) {
       return false;
     }
-    if (statusFilter.length > 0 && !statusFilter.includes(task.status)) {
+    if (
+      statusFilter.length > 0 &&
+      !statusFilter.includes(task.status ?? "not_started")
+    ) {
       return false;
     }
     if (
       complexityFilter.length > 0 &&
+      task.complexity &&
       !complexityFilter.includes(task.complexity)
     ) {
       return false;
     }
-    // ASSIGNED MEMBER FILTER
-    if (selectValue !== "all" && !task.assigned.includes(selectValue)) {
-      return false;
-    }
-
+    // NOTE: assigned-member filter (selectValue) is disabled here —
+    // TaskResponse doesn't include an assignees list yet, same TODO as ProjectView.tsx.
     return true;
   });
 
-  // Stats derived from allTasks
+  // Stats derived from real fetched tasks
   const stats = [
     {
       icon: <CheckSquare className="h-6 w-6 text-green-500" />,
       change: "+3%",
-      value: allTasks.filter((t) => t.status === "Completed").length,
+      value: (allProjectTasks ?? []).filter((t) => t.status === "completed")
+        .length,
       label: "TASKS COMPLETED",
     },
     {
       icon: <Clock className="h-6 w-6 text-yellow-500" />,
       change: "+22%",
-      value: allTasks.filter((t) => t.status === "In Progress").length,
+      value: (allProjectTasks ?? []).filter((t) => t.status === "in-progress")
+        .length,
       label: "IN PROGRESS",
     },
     {
       icon: <XSquare className="h-6 w-6 text-red-500" />,
       change: "+28%",
-      value: allTasks.filter((t) => t.status === "Not Started").length,
+      value: (allProjectTasks ?? []).filter((t) => t.status === "not_started")
+        .length,
       label: "STUCK",
       valueColor: "text-red-500",
     },
@@ -435,6 +414,19 @@ export default function Task() {
             </Card>
           ))}
         </div>
+        {typeof snapshot?.unassigned_tasks === "number" &&
+          snapshot.unassigned_tasks > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                {snapshot.unassigned_tasks} task
+                {snapshot.unassigned_tasks > 1 ? "s" : ""} unassigned
+                {" — "}
+                assign {snapshot.unassigned_tasks > 1 ? "them" : "it"} to keep
+                workload balance accurate.
+              </span>
+            </div>
+          )}
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -530,7 +522,25 @@ export default function Task() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTasks.length === 0 ? (
+                  {isTasksLoading ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="text-center text-muted-foreground py-8"
+                      >
+                        Loading tasks...
+                      </TableCell>
+                    </TableRow>
+                  ) : isTasksError ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="text-center text-rose-600 py-8"
+                      >
+                        Failed to load tasks.
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredTasks.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={7}
@@ -540,16 +550,19 @@ export default function Task() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTasks.map((task, i) => (
-                      <TableRow key={i}>
+                    filteredTasks.map((task) => (
+                      <TableRow key={task.id}>
                         <TableCell className="text-gray-800 dark:text-gray-200 font-medium">
                           {task.name}
                         </TableCell>
                         <TableCell>
                           <Badge
-                            className={`${statusStyle[task.status]} border-0`}
+                            className={`${statusStyle[task.status ?? "not_started"]} border-0`}
                           >
-                            {task.status}
+                            {(task.status ?? "not_started").replace(
+                              /[-_]/g,
+                              " ",
+                            )}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -560,26 +573,24 @@ export default function Task() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex -space-x-2">
-                            {task.assigned.map((a, j) => (
-                              <div
-                                key={j}
-                                className="h-8 w-8 rounded-full bg-primary dark:bg-gray-800 dark:border dark:ring-gray-600 text-primary-foreground dark:text-foreground flex items-center justify-center text-xs font-bold ring-1 ring-white"
-                              >
-                                {a}
-                              </div>
-                            ))}
-                          </div>
+                          {/* TODO: real assignee avatars once TaskResponse includes assignees */}
+                          <span className="text-xs text-neutral-400">—</span>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {task.due}
+                          {task.deadline
+                            ? new Date(task.deadline).toLocaleDateString()
+                            : "No deadline"}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            className={`${complexityStyle[task.complexity]} border-0`}
-                          >
-                            {task.complexity}
-                          </Badge>
+                          {task.complexity ? (
+                            <Badge
+                              className={`${complexityStyle[task.complexity]} border-0`}
+                            >
+                              {task.complexity}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-neutral-400">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-2">
@@ -609,30 +620,33 @@ export default function Task() {
             </CardContent>
           </Card>
         ) : (
+          // ---- Board view: Supertask columns, Task cards inside (MOCK DATA) ----
           <div className="mt-4 w-full min-w-0 overflow-x-auto pb-2 relative no-scrollbar">
             <div className="flex w-max gap-4">
-              {boardColumns.map((column) => (
+              {boardSupertasks.map((supertask) => (
                 <Card
-                  key={column.id}
+                  key={supertask.id}
                   className="w-[85vw] shrink-0 border-dashed sm:w-70"
                 >
                   <CardContent className="p-4">
                     <div className="mb-3 flex items-center justify-between">
                       <h3 className="font-semibold text-foreground">
-                        {column.title}
+                        {supertask.title}
                       </h3>
-                      <Badge variant="secondary">{column.cards.length}</Badge>
+                      <Badge variant="secondary">
+                        {supertask.tasks.length}
+                      </Badge>
                     </div>
 
                     <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto pr-1">
-                      {column.cards.map((card) => (
+                      {supertask.tasks.map((task) => (
                         <div
-                          key={card.id}
+                          key={task.id}
                           className="rounded-lg border bg-background p-3 shadow-sm"
                         >
                           <div className="flex items-center justify-between">
                             <p className="font-medium text-foreground">
-                              {card.title}
+                              {task.title}
                             </p>
 
                             <Button
@@ -640,23 +654,16 @@ export default function Task() {
                               size="sm"
                               className="p-0 h-6 w-6"
                               onClick={() => {
-                                setSelectedTask({
-                                  name: card.title,
-                                  status: "Not Started",
-                                  priority: "Low",
-                                  complexity: "Low",
-                                  assigned: [],
-                                  due: "",
-                                });
+                                setSelectedBoardCard(task);
                                 setOpenTaskDialog(true);
                               }}
-                              aria-label={`View ${card.title}`}
+                              aria-label={`View ${task.title}`}
                             >
                               <Eye className="h-4 w-4 text-primary" />
                             </Button>
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            {card.description}
+                            {task.description}
                           </p>
                         </div>
                       ))}
@@ -673,6 +680,7 @@ export default function Task() {
           onOpenChange={(open) => {
             if (!open) {
               setSelectedTask(null);
+              setSelectedBoardCard(null);
             }
             setOpenTaskDialog(open);
           }}
@@ -684,9 +692,9 @@ export default function Task() {
             <DialogHeader className="border-b px-4 py-3 shrink-0">
               <DialogTitle>Task Details</DialogTitle>
               <DialogDescription>
-                {selectedTask
-                  ? selectedTask.name
-                  : "Select a task to view details."}
+                {selectedTask?.name ??
+                  selectedBoardCard?.title ??
+                  "Select a task to view details."}
               </DialogDescription>
             </DialogHeader>
 
@@ -707,9 +715,12 @@ export default function Task() {
                       Status
                     </p>
                     <Badge
-                      className={`border-0 mt-2 ${statusStyle[selectedTask.status]}`}
+                      className={`border-0 mt-2 ${statusStyle[selectedTask.status ?? "not_started"]}`}
                     >
-                      {selectedTask.status}
+                      {(selectedTask.status ?? "not_started").replace(
+                        /[-_]/g,
+                        " ",
+                      )}
                     </Badge>
                   </div>
 
@@ -724,46 +735,53 @@ export default function Task() {
                     </Badge>
                   </div>
 
-                  <div className="rounded-md border bg-muted/50 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Complexity
-                    </p>
-                    <Badge
-                      className={`border-0 mt-2 ${complexityStyle[selectedTask.complexity]}`}
-                    >
-                      {selectedTask.complexity}
-                    </Badge>
-                  </div>
+                  {selectedTask.complexity && (
+                    <div className="rounded-md border bg-muted/50 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Complexity
+                      </p>
+                      <Badge
+                        className={`border-0 mt-2 ${complexityStyle[selectedTask.complexity]}`}
+                      >
+                        {selectedTask.complexity}
+                      </Badge>
+                    </div>
+                  )}
 
                   <div className="rounded-md border bg-muted/50 p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Due date
                     </p>
                     <p className="mt-2 text-sm text-foreground">
-                      {selectedTask.due}
+                      {selectedTask.deadline
+                        ? new Date(selectedTask.deadline).toLocaleString()
+                        : "No deadline"}
                     </p>
                   </div>
 
-                  <div className="rounded-md border bg-muted/50 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Assigned users
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {selectedTask.assigned.map((member) => (
-                        <div
-                          key={member}
-                          className="flex items-center gap-2 rounded-md bg-background/50 px-2 py-2"
-                        >
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                            {member}
-                          </div>
-                          <span className="text-sm text-foreground">
-                            {member}
-                          </span>
-                        </div>
-                      ))}
+                  {selectedTask.description && (
+                    <div className="rounded-md border bg-muted/50 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Description
+                      </p>
+                      <p className="mt-2 text-sm text-foreground">
+                        {selectedTask.description}
+                      </p>
                     </div>
-                  </div>
+                  )}
+
+                  {/* TODO: real assigned-users list once TaskResponse includes assignees */}
+                </div>
+              </div>
+            ) : selectedBoardCard ? (
+              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    {selectedBoardCard.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedBoardCard.description}
+                  </p>
                 </div>
               </div>
             ) : null}

@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import UUID
 from app.modules.tasks.enums import Status, Priority, Complexity, Category
 from app.modules.project_members.model import Skills
+from app.modules.assigned_members.schema import AssignedMemberResponse
 
 
 class TaskCreate(BaseModel):
@@ -63,6 +64,10 @@ class TaskResponse(BaseModel):
     total_time_spent: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+class TaskResponseWithMembers(TaskResponse):
+    assigned_members: list[AssignedMemberResponse]
 
     class ConfigDict:
         from_attributes = True

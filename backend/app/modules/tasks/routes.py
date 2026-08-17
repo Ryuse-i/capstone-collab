@@ -21,6 +21,15 @@ async def get_all_tasks(
     return await TaskService.get_all_tasks(db)
 
 
+@task_router.get("/projects/{project_id}", response_model=list[TaskResponse])
+async def get_all_project_tasks(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await TaskService.get_all_project_tasks(db, project_id)
+
+
 @task_router.get("/{task_id}", response_model=TaskResponse)
 async def get_one_task(task_id: UUID, db: AsyncSession = Depends(get_async_session)):
     """Fetch a single task by its UUID."""

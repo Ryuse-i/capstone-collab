@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { projectKeys, useGetOneProjectWithSpanshot } from "@/hooks/useProject";
-import { useGetAllTask, useDeleteTask } from "@/hooks/useTask";
+import { useGetAllProjectTask, useDeleteTask } from "@/hooks/useTask";
 import type {
   TaskResponse,
   TaskStatus,
@@ -152,16 +152,13 @@ export default function ProjectView() {
 
   // ---- Tasks: live data ----
   const {
-    data: allTasksData,
+    data: allProjectTasks,
     isLoading: isTasksLoading,
     isError: isTasksError,
-  } = useGetAllTask();
+  } = useGetAllProjectTask(projectId);
 
   // Filter client-side to this project until/unless the API supports
   // a project_id query param on GET /tasks.
-  const filteredTasks = (allTasksData ?? []).filter(
-    (t) => t.project_id === projectId,
-  );
 
   const deleteTaskMutation = useDeleteTask();
   const queryClient = useQueryClient();
@@ -276,7 +273,7 @@ export default function ProjectView() {
       );
     }
 
-    if (filteredTasks.length === 0) {
+    if (allProjectTasks?.length === 0) {
       return (
         <TableRow>
           <TableCell colSpan={8} className="py-12 text-center">
@@ -299,7 +296,7 @@ export default function ProjectView() {
       );
     }
 
-    return filteredTasks.map((task) => (
+    return allProjectTasks?.map((task) => (
       <TableRow key={task.id}>
         <TableCell className="font-medium text-[#231A2E]">
           {task.name}
@@ -572,7 +569,7 @@ export default function ProjectView() {
                     )}
 
                   <div className="flex w-full justify-end">
-                    {filteredTasks.length > 0 && (
+                    {(allProjectTasks?.length ?? 0) > 0 && (
                       <CreateTask projectId={projectId} />
                     )}
                   </div>

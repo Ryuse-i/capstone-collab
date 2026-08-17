@@ -21,6 +21,11 @@ class TaskService:
         return await repo.get_by_id(task_id)
 
     @staticmethod
+    async def get_all_project_tasks(db: AsyncSession, project_id):
+        repo = TaskRepo(db)
+        return await repo.get_all_project_tasks(project_id)
+
+    @staticmethod
     async def get_all_tasks(db: AsyncSession):
         repo = TaskRepo(db)
         return await repo.get_all()
@@ -65,7 +70,9 @@ class TaskService:
     async def delete_task(db: AsyncSession, db_item: Task):
         repo = TaskRepo(db)
 
-        if not db_item.assigned_members:
+        task = await repo.get_assigned_members(db_item.id)
+
+        if not task.assigned_members:
             snapshot = await ProjectSnapshotService.get_latest_snapshot(
                 db, db_item.project_id
             )
