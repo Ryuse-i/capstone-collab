@@ -52,6 +52,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import AddTaskDialog from "@/components/user/AddTaskDialog";
+import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
+import EditTaskDialog from "@/components/user/EditTaskDialog";
+import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 import type {
   TaskComplexity,
   TaskPriority,
@@ -303,6 +306,42 @@ function FacetedFilter({
   );
 }
 
+// ---- Lightweight dialog for the mock Board view cards (BoardTask shape, not TaskResponse) ----
+function BoardCardDialog({
+  open,
+  onOpenChange,
+  card,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  card: BoardTask | null;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-xl sm:max-w-125">
+        <DialogHeader>
+          <DialogTitle>{card?.title ?? "Task"}</DialogTitle>
+          <DialogDescription>
+            Board view card — mock data, not yet wired to the backend.
+          </DialogDescription>
+        </DialogHeader>
+        {card && (
+          <p className="text-sm text-foreground leading-relaxed">
+            {card.description}
+          </p>
+        )}
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" className="min-w-24">
+              Close
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Task() {
   const [selectValue, setSelectValue] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
@@ -310,13 +349,15 @@ export default function Task() {
   const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  // Real task selected from the table (View button)
+  // Real task selected from the table (View button) — its own dialog state
   const [selectedTask, setSelectedTask] = useState<TaskResponse | null>(null);
-  // Mock board card selected from the Board view (separate shape, not a real Task)
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+
+  // Mock board card selected from the Board view (separate shape, separate dialog state)
   const [selectedBoardCard, setSelectedBoardCard] = useState<BoardTask | null>(
     null,
   );
-  const [openTaskDialog, setOpenTaskDialog] = useState(false);
+  const [boardDialogOpen, setBoardDialogOpen] = useState(false);
 
   const { data: user } = useCurrentUser();
   const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
@@ -327,6 +368,7 @@ export default function Task() {
     isLoading: isTasksLoading,
     isError: isTasksError,
   } = useGetAllProjectTask(projectId);
+
   const { data: project } = useGetOneProjectWithSpanshot(projectId);
   const snapshot = project?.snapshot;
 
@@ -599,17 +641,21 @@ export default function Task() {
                               size="sm"
                               onClick={() => {
                                 setSelectedTask(task);
-                                setOpenTaskDialog(true);
+                                setTaskDialogOpen(true);
                               }}
                             >
                               View
                             </Button>
-                            <Button variant="outline" size="sm">
-                              Edit
-                            </Button>
-                            <Button variant="destructive" size="sm">
-                              Delete
-                            </Button>
+                            <EditTaskDialog
+                              task={task}
+                              projectId={projectId}
+                              trigger={
+                                <Button variant="outline" size="sm">
+                                  Edit
+                                </Button>
+                              }
+                            />
+                          <DeleteTaskDialog task={task} projectId={projectId} />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -655,7 +701,7 @@ export default function Task() {
                               className="p-0 h-6 w-6"
                               onClick={() => {
                                 setSelectedBoardCard(task);
-                                setOpenTaskDialog(true);
+                                setBoardDialogOpen(true);
                               }}
                               aria-label={`View ${task.title}`}
                             >
@@ -674,128 +720,27 @@ export default function Task() {
             </div>
           </div>
         )}
-
-        <Dialog
-          open={openTaskDialog}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedTask(null);
-              setSelectedBoardCard(null);
-            }
-            setOpenTaskDialog(open);
-          }}
-        >
-          <DialogContent
-            showCloseButton={false}
-            className="rounded-xl p-0 overflow-hidden sm:max-w-250 max-h-[75vh] flex flex-col"
-          >
-            <DialogHeader className="border-b px-4 py-3 shrink-0">
-              <DialogTitle>Task Details</DialogTitle>
-              <DialogDescription>
-                {selectedTask?.name ??
-                  selectedBoardCard?.title ??
-                  "Select a task to view details."}
-              </DialogDescription>
-            </DialogHeader>
-
-            {selectedTask ? (
-              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-foreground">
-                    {selectedTask.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Review the task information and current progress below.
-                  </p>
-                </div>
-
-                <div className="mt-4 grid gap-3">
-                  <div className="rounded-md border bg-muted/50 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Status
-                    </p>
-                    <Badge
-                      className={`border-0 mt-2 ${statusStyle[selectedTask.status ?? "not_started"]}`}
-                    >
-                      {(selectedTask.status ?? "not_started").replace(
-                        /[-_]/g,
-                        " ",
-                      )}
-                    </Badge>
-                  </div>
-
-                  <div className="rounded-md border bg-muted/50 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Priority
-                    </p>
-                    <Badge
-                      className={`border-0 mt-2 ${priorityStyle[selectedTask.priority]}`}
-                    >
-                      {selectedTask.priority}
-                    </Badge>
-                  </div>
-
-                  {selectedTask.complexity && (
-                    <div className="rounded-md border bg-muted/50 p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Complexity
-                      </p>
-                      <Badge
-                        className={`border-0 mt-2 ${complexityStyle[selectedTask.complexity]}`}
-                      >
-                        {selectedTask.complexity}
-                      </Badge>
-                    </div>
-                  )}
-
-                  <div className="rounded-md border bg-muted/50 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Due date
-                    </p>
-                    <p className="mt-2 text-sm text-foreground">
-                      {selectedTask.deadline
-                        ? new Date(selectedTask.deadline).toLocaleString()
-                        : "No deadline"}
-                    </p>
-                  </div>
-
-                  {selectedTask.description && (
-                    <div className="rounded-md border bg-muted/50 p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Description
-                      </p>
-                      <p className="mt-2 text-sm text-foreground">
-                        {selectedTask.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* TODO: real assigned-users list once TaskResponse includes assignees */}
-                </div>
-              </div>
-            ) : selectedBoardCard ? (
-              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-foreground">
-                    {selectedBoardCard.title}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedBoardCard.description}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            <DialogFooter className="sticky bottom-0 z-10 border-t bg-background/95 px-8 shrink-0">
-              <DialogClose asChild>
-                <Button variant="outline" className="min-w-24">
-                  Close
-                </Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* Real task detail dialog — driven by table View button */}
+      <ViewTaskDialog
+        task={selectedTask}
+        open={taskDialogOpen}
+        onOpenChange={(open) => {
+          setTaskDialogOpen(open);
+          if (!open) setSelectedTask(null);
+        }}
+      />
+
+      {/* Mock board card dialog — driven by Board view Eye button */}
+      <BoardCardDialog
+        card={selectedBoardCard}
+        open={boardDialogOpen}
+        onOpenChange={(open) => {
+          setBoardDialogOpen(open);
+          if (!open) setSelectedBoardCard(null);
+        }}
+      />
     </AppLayout>
   );
 }
