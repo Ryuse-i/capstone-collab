@@ -111,7 +111,7 @@ export interface AddTaskDialogProps {
   trigger?: ReactNode;
 }
 
-export default function AddTaskDialog({
+export function AddTaskDialog({
   projectId,
   trigger,
   onCreated,
