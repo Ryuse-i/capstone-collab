@@ -1,4 +1,12 @@
-import { Calendar, CircleCheck, Clock, Gauge, Tag, X } from "lucide-react";
+import {
+  Calendar,
+  CircleCheck,
+  Clock,
+  Gauge,
+  Tag,
+  Users,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,10 +16,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type {
-  TaskResponse,
   TaskStatus,
   TaskComplexity,
   TaskPriority,
+  TaskResponseMembers,
 } from "@/types/task";
 
 // Soft pill badges (outline-tinted, like the reference "In Research" / "Low" pills)
@@ -45,7 +53,7 @@ const complexityPillStyle: Record<TaskComplexity, string> = {
 interface ViewTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task: TaskResponse | null;
+  task: TaskResponseMembers | null;
 }
 
 function MetaRow({
@@ -63,6 +71,7 @@ function MetaRow({
         {icon}
         <span>{label}</span>
       </div>
+
       <div className="flex flex-1 flex-wrap items-center gap-1.5">
         {children}
       </div>
@@ -110,37 +119,51 @@ export function ViewTaskDialog({
                 <p className="text-sm font-semibold text-foreground mb-1.5">
                   Description
                 </p>
+
                 <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                   {task.description}
                 </p>
               </div>
             )}
+
             {/* Meta rows */}
             <div className="divide-y divide-border/60">
+              {/* Status */}
               <MetaRow icon={<CircleCheck className="size-4" />} label="Status">
                 <Badge
-                  className={`border-0 gap-1.5 font-medium ${statusPillStyle[task.status ?? "not_started"]}`}
+                  className={`border-0 gap-1.5 font-medium ${
+                    statusPillStyle[task.status ?? "not_started"]
+                  }`}
                 >
                   <span
-                    className={`size-1.5 rounded-full ${statusDotStyle[task.status ?? "not_started"]}`}
+                    className={`size-1.5 rounded-full ${
+                      statusDotStyle[task.status ?? "not_started"]
+                    }`}
                   />
+
                   {(task.status ?? "not_started").replace(/[-_]/g, " ")}
                 </Badge>
               </MetaRow>
 
+              {/* Priority */}
               <MetaRow icon={<Gauge className="size-4" />} label="Priority">
                 <Badge
-                  className={`border-0 font-medium ${priorityPillStyle[task.priority]}`}
+                  className={`border-0 font-medium ${
+                    priorityPillStyle[task.priority]
+                  }`}
                 >
                   {task.priority.charAt(0).toUpperCase() +
                     task.priority.slice(1)}
                 </Badge>
               </MetaRow>
 
+              {/* Complexity */}
               {task.complexity && (
                 <MetaRow icon={<Gauge className="size-4" />} label="Complexity">
                   <Badge
-                    className={`border-0 font-medium ${complexityPillStyle[task.complexity]}`}
+                    className={`border-0 font-medium ${
+                      complexityPillStyle[task.complexity]
+                    }`}
                   >
                     {task.complexity.charAt(0).toUpperCase() +
                       task.complexity.slice(1)}
@@ -148,6 +171,7 @@ export function ViewTaskDialog({
                 </MetaRow>
               )}
 
+              {/* Due Date */}
               <MetaRow icon={<Calendar className="size-4" />} label="Due Date">
                 <span className="text-sm text-foreground">
                   {task.deadline
@@ -162,6 +186,7 @@ export function ViewTaskDialog({
                 </span>
               </MetaRow>
 
+              {/* Primary Skill */}
               {task.primary_skill && (
                 <MetaRow
                   icon={<Tag className="size-4" />}
@@ -176,6 +201,7 @@ export function ViewTaskDialog({
                 </MetaRow>
               )}
 
+              {/* Secondary Skills */}
               {task.secondary_skills && task.secondary_skills.length > 0 && (
                 <MetaRow
                   icon={<Tag className="size-4" />}
@@ -193,8 +219,25 @@ export function ViewTaskDialog({
                 </MetaRow>
               )}
 
-              {/* TODO: real assignee avatars once TaskResponse includes assignees,
-                  styled as an overlapping avatar stack like the reference */}
+              {/* Assigned Members */}
+              <MetaRow icon={<Users className="size-4" />} label="Assigned To">
+                {task.assigned_members && task.assigned_members.length > 0 ? (
+                  task.assigned_members.map((member) => (
+                    <Badge
+                      key={member.id}
+                      variant="secondary"
+                      className="font-normal bg-muted text-foreground"
+                    >
+                      {member.first_name} {member.last_name}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    No assigned members. Please choose a member to perform the
+                    task.
+                  </span>
+                )}
+              </MetaRow>
             </div>
 
             {/* TODO: Activity / Comments tabs once the backend exposes a
@@ -209,6 +252,7 @@ export function ViewTaskDialog({
           </div>
         )}
 
+        {/* Footer */}
         <div className="border-t px-6 py-3 shrink-0 flex justify-end">
           <DialogClose asChild>
             <Button variant="outline" className="min-w-24">

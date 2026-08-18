@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
-from app.modules.tasks.schema import TaskCreate, TaskUpdate, TaskResponse
+from app.modules.tasks.schema import (
+    TaskCreate,
+    TaskResponseWithMembers,
+    TaskUpdate,
+    TaskResponse,
+)
 from app.modules.tasks.services import TaskService
 from uuid import UUID
 from typing import List
@@ -10,6 +15,17 @@ from app.modules.users.model import User
 
 # Standardizing on task_router
 task_router = APIRouter()
+
+
+@task_router.get(
+    "/assigned-members/{project_id}", response_model=list[TaskResponseWithMembers]
+)
+async def get_assigned_members(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await TaskService.get_assigned_members(db, project_id)
 
 
 @task_router.get("/", response_model=List[TaskResponse])

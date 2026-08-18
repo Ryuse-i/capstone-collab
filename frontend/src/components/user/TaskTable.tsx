@@ -43,7 +43,7 @@ import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 import type {
   TaskComplexity,
   TaskPriority,
-  TaskResponse,
+  TaskResponseMembers,
   TaskStatus,
 } from "@/types/task";
 
@@ -264,7 +264,7 @@ function FacetedFilter({
 }
 
 interface TaskTableProps {
-  tasks: TaskResponse[];
+  tasks: TaskResponseMembers[];
   projectId: string;
   isLoading: boolean;
   isError: boolean;
@@ -281,7 +281,9 @@ export function TaskTable({
   const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
   const [selectValue, setSelectValue] = useState("all");
 
-  const [selectedTask, setSelectedTask] = useState<TaskResponse | null>(null);
+  const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(
+    null,
+  );
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   const filteredTasks = tasks.filter((task) => {
@@ -312,7 +314,7 @@ export function TaskTable({
     return true;
   });
 
-  const handleViewTask = (task: TaskResponse) => {
+  const handleViewTask = (task: TaskResponseMembers) => {
     setSelectedTask(task);
     setViewDialogOpen(true);
   };

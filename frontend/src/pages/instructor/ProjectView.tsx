@@ -18,7 +18,7 @@ import { Card } from "@/components/ui/card";
 import { TaskTable } from "@/components/user/TaskTable";
 
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
-import { useGetAllProjectTask } from "@/hooks/useTask";
+import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
 
@@ -108,7 +108,7 @@ export default function ProjectView() {
     data: allProjectTasks,
     isLoading: isTasksLoading,
     isError: isTasksError,
-  } = useGetAllProjectTask(projectId);
+  } = useGetAllTaskAssignedMembers(projectId);
 
   const overviewCards = [
     {

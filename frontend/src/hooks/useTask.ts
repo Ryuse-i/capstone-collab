@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/services/apiClient";
-import type { CreateTask, UpdateTask, TaskResponse } from "@/types/task";
+import type {
+  CreateTask,
+  UpdateTask,
+  TaskResponse,
+  TaskResponseMembers,
+} from "@/types/task";
+
 const url = "/tasks";
 
 const api = {
@@ -62,6 +68,20 @@ const api = {
       await apiClient.delete(`${url}/${id}`);
     } catch (error) {
       console.error("Failed to delete task", error);
+      throw error;
+    }
+  },
+
+  getAllTaskAssignedMembers: async (
+    id: string,
+  ): Promise<TaskResponseMembers[]> => {
+    try {
+      const response = await apiClient.get<TaskResponseMembers[]>(
+        `${url}/assigned-members/${id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get tasks", error);
       throw error;
     }
   },
@@ -129,5 +149,12 @@ export function useDeleteTask() {
       queryClient.invalidateQueries({ queryKey: taskKeys.list() });
       queryClient.removeQueries({ queryKey: taskKeys.detail(id) });
     },
+  });
+}
+
+export function useGetAllTaskAssignedMembers(id: string) {
+  return useQuery({
+    queryKey: taskKeys.list(),
+    queryFn: () => api.getAllTaskAssignedMembers(id),
   });
 }

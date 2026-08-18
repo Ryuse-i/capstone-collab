@@ -3,12 +3,11 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
-from app.modules.tasks.enums import Role
-from sqlalchemy import Enum as SAENUM
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.modules.tasks.model import Task
+    from app.modules.users.model import User
 
 
 """
@@ -28,17 +27,6 @@ class AssignedMember(Base):
     task_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE")
     )
-    
-    # Relationships
-    task: Mapped["Task"] = relationship(
-        "Task",
-        back_populates="assigned_members",
-        foreign_keys=[task_id],
-    )
-    
-    role: Mapped[Role] = mapped_column(
-        SAENUM(Role, name="role"), default=None, nullable=True
-    )
     effort_share: Mapped[float] = mapped_column(default=0.0, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -50,4 +38,16 @@ class AssignedMember(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=True,
+    )
+
+    # Relationships
+    task: Mapped["Task"] = relationship(
+        "Task",
+        back_populates="assigned_members",
+        foreign_keys=[task_id],
+    )
+    users: Mapped["User"] = relationship(
+        "User",
+        back_populates="assigned_members",
+        foreign_keys=[user_id],
     )

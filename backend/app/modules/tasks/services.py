@@ -1,11 +1,16 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.tasks.model import Task, Category, Complexity
 from app.modules.tasks.repo import TaskRepo
-from app.modules.tasks.schema import TaskCreate, TaskUpdate
+from app.modules.tasks.schema import (
+    TaskCreate,
+    TaskResponseWithMembers,
+    TaskUpdate,
+)
 from app.modules.project_members.model import Skills
 from app.modules.ai.service import score_task_complexity
 from app.modules.project_snapshots.services import ProjectSnapshotService
 from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
+from uuid import UUID
 
 _VERDICT_TO_COMPLEXITY: dict[int, Complexity] = {
     1: Complexity.LOW,
@@ -70,7 +75,7 @@ class TaskService:
     async def delete_task(db: AsyncSession, db_item: Task):
         repo = TaskRepo(db)
 
-        task = await repo.get_assigned_members(db_item.id)
+        task = await repo.get_assigned_member(db_item.id)
 
         if not task.assigned_members:
             snapshot = await ProjectSnapshotService.get_latest_snapshot(
@@ -125,3 +130,22 @@ class TaskService:
                 return category
 
         raise ValueError(f"No category found for skill: {primary_skill}")
+
+    @staticmethod
+    async def get_assigned_members(db: AsyncSession, project_id: UUID):
+        repo = TaskRepo(db)
+        tasks = await repo.get_assigned_members(project_id)
+
+        return [
+            TaskResponseWithMembers.model_validate(
+                task,
+                from_attributes=True,
+            ).model_copy(
+                update={
+                    "assigned_members": [
+                        member.user for member in task.assigned_members
+                    ]
+                }
+            )
+            for task in tasks
+        ]

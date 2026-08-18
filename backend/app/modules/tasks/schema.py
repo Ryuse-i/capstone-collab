@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from uuid import UUID
 from app.modules.tasks.enums import Status, Priority, Complexity, Category
 from app.modules.project_members.model import Skills
-from app.modules.assigned_members.schema import AssignedMemberResponse
+from app.modules.users.schema import UserResponse
 
 
 class TaskCreate(BaseModel):
@@ -67,7 +67,6 @@ class TaskResponse(BaseModel):
 
 
 class TaskResponseWithMembers(TaskResponse):
-    assigned_members: list[AssignedMemberResponse]
+    assigned_members: list[UserResponse]
 
-    class ConfigDict:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

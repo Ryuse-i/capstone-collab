@@ -2,6 +2,7 @@ import uuid
 from fastapi_users import schemas
 from .model import UserRole
 from uuid import UUID
+from pydantic import ConfigDict
 
 
 class UserResponse(schemas.BaseUser[uuid.UUID]):
@@ -9,6 +10,9 @@ class UserResponse(schemas.BaseUser[uuid.UUID]):
     first_name: str
     last_name: str
     role: UserRole
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserCreate(schemas.BaseUserCreate):
     first_name: str

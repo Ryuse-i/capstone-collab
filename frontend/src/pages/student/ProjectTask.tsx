@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useGetAllProjectTask } from "@/hooks/useTask";
+import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
@@ -164,7 +164,7 @@ export default function Task() {
     data: allProjectTasks,
     isLoading: isTasksLoading,
     isError: isTasksError,
-  } = useGetAllProjectTask(projectId);
+  } = useGetAllTaskAssignedMembers(projectId);
 
   const { data: project } = useGetOneProjectWithSpanshot(projectId);
 
