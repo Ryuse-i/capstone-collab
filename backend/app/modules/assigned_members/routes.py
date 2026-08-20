@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.functions import current_user
+from starlette.status import HTTP_201_CREATED
 from app.core.db import get_async_session
 from app.modules.assigned_members.schema import (
     AssignedMemberCreate,
@@ -11,7 +11,6 @@ from app.modules.assigned_members.services import AssignedMemberService
 from app.modules.users.schema import UserResponse
 from app.modules.users.model import User
 from app.modules.users.services import current_active_user
-from app.modules.users.schema import UserResponse
 from uuid import UUID
 from typing import List
 
@@ -101,3 +100,14 @@ async def delete_assigned_member(
 
     await AssignedMemberService.delete_assigned_member(db, db_item)
     return None
+
+
+@assigned_member_router.post(
+    "/batch", response_model=list[UserResponse], status_code=HTTP_201_CREATED
+)
+async def batch_create_members(
+    members: list[AssignedMemberCreate],
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return AssignedMemberService.batch_create_members(db, members)

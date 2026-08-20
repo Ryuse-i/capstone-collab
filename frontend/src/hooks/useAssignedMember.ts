@@ -46,6 +46,19 @@ const api = {
     }
   },
 
+  batchCreate: async (members: CreateAssignedMember): Promise<UserBase[]> => {
+    try {
+      const response = await apiClient.post<UserBase[]>(
+        `${url}/batch`,
+        members,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to assign member", error);
+      throw error;
+    }
+  },
+
   update: async (
     id: string,
     member: UpdateAssignedMember,
@@ -118,6 +131,16 @@ export function useCreateAssignedMember() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assignedMemberKeys.list() });
+    },
+  });
+}
+
+export function useBatchCreateMembers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.batchCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assignedMemberKeys.list() });
     },

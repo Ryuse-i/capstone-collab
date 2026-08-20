@@ -3,17 +3,18 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_200_OK
 
 from app.core.db import get_async_session
 from app.modules.projects.schema import ProjectResponseSnapshot
 
 from .schema import (
+    ProjectMember_User_Response,
     ProjectMemberCreate,
     ProjectMemberDetailResponse,
     ProjectMemberResponse,
     ProjectMemberUpdate,
     ProjectMember_Project_Response,
-    ProjectMember_User_Response,
 )
 from .services import ProjectMemberService
 
@@ -50,7 +51,9 @@ async def get_one_project_member(
     return member
 
 
-@project_member_router.get("/detail/{user_id}", response_model=ProjectMemberDetailResponse)
+@project_member_router.get(
+    "/detail/{user_id}", response_model=ProjectMemberDetailResponse
+)
 async def get_one_project_member_detail(
     user_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
@@ -71,7 +74,7 @@ async def get_all_projects_by_member(
 
 
 @project_member_router.get(
-    "/users/{project_id}", response_model=list[ProjectMember_User_Response]
+    "/users/{project_id}", response_model=list[ProjectMember_User_Response], status_code=HTTP_200_OK
 )
 async def get_all_members_by_project(
     project_id: UUID, db: AsyncSession = Depends(get_async_session)

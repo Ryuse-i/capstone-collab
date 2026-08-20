@@ -17,12 +17,18 @@ class AssignedMemberService:
         return await repo.get_all()
 
     @staticmethod
-    async def create_assigned_member(db: AsyncSession, assigned_member: AssignedMemberCreate):
+    async def create_assigned_member(
+        db: AsyncSession, assigned_member: AssignedMemberCreate
+    ):
         repo = AssignedMemberRepo(db)
         return await repo.create(assigned_member)
 
     @staticmethod
-    async def update_assigned_member(db: AsyncSession, db_item: AssignedMemberUpdate, assigned_member: AssignedMemberUpdate):
+    async def update_assigned_member(
+        db: AsyncSession,
+        db_item: AssignedMemberUpdate,
+        assigned_member: AssignedMemberUpdate,
+    ):
         repo = AssignedMemberRepo(db)
         return await repo.update(db_item, assigned_member)
 
@@ -39,4 +45,18 @@ class AssignedMemberService:
 
         users = [result.users for result in results]
         return users
+
+    @staticmethod
+    async def batch_create_members(
+        db: AsyncSession, members: list[AssignedMemberCreate]
+    ):
+        repo = AssignedMemberRepo(db)
+
+        for member in members:
+            response = await repo.create(member)
+
+            result = []
+            result.append(response.users)
+            return result
+
 

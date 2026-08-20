@@ -1,9 +1,14 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarIcon, Check, Layers, ListTodo, Users, X } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useCreateTask } from "@/hooks/useTask";
+import { useGetMemberWithUserInfo } from "@/hooks/useProjectMember";
+import {
+  useCreateAssignedMember,
+  assignedMemberKeys,
+} from "@/hooks/useAssignedMember";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +37,6 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Skill } from "@/types/project_member";
-import type { UserBase } from "@/types/user";
 import type {
   CreateTask as CreateTaskPayload,
   TaskCategory,
@@ -42,6 +46,21 @@ import { projectKeys } from "@/hooks/useProject";
 
 type TaskType = "task" | "supertask";
 
+/**
+ * Local shape used for the "Assigned Members" picker.
+ *
+ * `id` here is the project member's `user_id` (NOT the project_member row id),
+ * since that's what you'll eventually want to persist against the task.
+ * Swap this out for your real `CreateAssignedMember` type once that hook exists —
+ * at that point just map `assigned_members.map(m => m.id)` into the payload
+ * you actually send to the API.
+ */
+type AssignableMember = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
+
 type TaskFormState = {
   name: string;
   description: string;
@@ -50,7 +69,7 @@ type TaskFormState = {
   deadline: string;
   primary_skill: Skill | "";
   secondary_skills: Skill[];
-  assigned_members: UserBase[];
+  assigned_members: AssignableMember[];
 };
 
 type SupertaskFormState = {
@@ -91,34 +110,6 @@ const SKILL_OPTIONS: { value: Skill; label: string }[] = [
   { value: "Resource Management", label: "Resource Management" },
 ];
 
-/*
- * Temporary mock members.
- *
- * Replace this later with your project-members hook.
- */
-const MOCK_MEMBERS: UserBase[] = [
-  {
-    id: "member-1",
-    first_name: "John",
-    last_name: "Montes",
-  } as UserBase,
-  {
-    id: "member-2",
-    first_name: "Clarisa",
-    last_name: "Paule",
-  } as UserBase,
-  {
-    id: "member-3",
-    first_name: "Rommel",
-    last_name: "Magsino",
-  } as UserBase,
-  {
-    id: "member-4",
-    first_name: "Dylan",
-    last_name: "Mangaoang",
-  } as UserBase,
-];
-
 const initialTaskForm: TaskFormState = {
   name: "",
   description: "",
@@ -157,8 +148,29 @@ export function AddTaskDialog({
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
 
   const createTaskMutation = useCreateTask();
+  const createAssignedMemberMutation = useCreateAssignedMember();
   const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
+
+  // Only fetch once we actually have a project to scope the members to,
+  // and only while the dialog is open (no point fetching in the background).
+  const {
+    data: projectMembersData,
+    isLoading: membersLoading,
+    isError: membersError,
+  } = useGetMemberWithUserInfo(projectId ?? "");
+
+  // Only show project members whose role is exactly "member" — leaders,
+  // advisors, instructors, and admins are excluded from assignment.
+  const assignableMembers: AssignableMember[] = useMemo(() => {
+    return (projectMembersData ?? [])
+      .filter((projectMember) => projectMember.project_role === "member")
+      .map((projectMember) => ({
+        id: projectMember.user_id,
+        first_name: projectMember.user.first_name,
+        last_name: projectMember.user.last_name,
+      }));
+  }, [projectMembersData]);
 
   const resetForms = () => {
     setTaskForm(initialTaskForm);
@@ -197,7 +209,7 @@ export function AddTaskDialog({
     });
   };
 
-  const toggleAssignedMember = (member: UserBase) => {
+  const toggleAssignedMember = (member: AssignableMember) => {
     setTaskForm((prev) => {
       const exists = prev.assigned_members.some(
         (assigned) => assigned.id === member.id,
@@ -287,26 +299,38 @@ export function AddTaskDialog({
           secondary_skills: taskForm.secondary_skills,
         };
 
-        await createTaskMutation.mutateAsync(payload);
+        const createdTask = await createTaskMutation.mutateAsync(payload);
 
         queryClient.invalidateQueries({
           queryKey: projectKeys.detailSnapshot(projectId),
         });
 
-        /*
-         * Assigned members are intentionally NOT sent yet.
-         *
-         * Later, when you create the separate assigned-member hook,
-         * you can use:
-         *
-         * taskForm.assigned_members.map((member) => member.id)
-         *
-         * to create the rows in the task_assigned_members table.
-         */
-        console.log(
-          "Selected assigned members:",
-          taskForm.assigned_members.map((member) => member.id),
-        );
+        if (taskForm.assigned_members.length > 0) {
+          try {
+            await Promise.all(
+              taskForm.assigned_members.map((member) =>
+                createAssignedMemberMutation.mutateAsync({
+                  user_id: member.id,
+                  task_id: createdTask.id,
+                }),
+              ),
+            );
+
+            queryClient.invalidateQueries({
+              queryKey: assignedMemberKeys.task_list(createdTask.id),
+            });
+          } catch (assignErr) {
+            // The task itself was created successfully — don't roll that
+            // back, just surface that assignment partially/fully failed.
+            console.error("Failed to assign one or more members", assignErr);
+            setError(
+              "Task was created, but assigning some members failed. You can add them from the task detail page.",
+            );
+            onCreated?.();
+            handleOpenChange(false);
+            return;
+          }
+        }
       } else {
         console.log("creating supertask:", {
           project_id: projectId.trim(),
@@ -329,7 +353,8 @@ export function AddTaskDialog({
     }
   };
 
-  const isSubmitting = createTaskMutation.isPending;
+  const isSubmitting =
+    createTaskMutation.isPending || createAssignedMemberMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -586,6 +611,7 @@ export function AddTaskDialog({
                       variant="outline"
                       role="combobox"
                       aria-expanded={assignedMembersOpen}
+                      disabled={!projectId || membersLoading}
                       className="w-full justify-between text-left font-normal"
                     >
                       <span
@@ -594,11 +620,13 @@ export function AddTaskDialog({
                             "text-muted-foreground",
                         )}
                       >
-                        {taskForm.assigned_members.length === 0
-                          ? "Select members"
-                          : `${taskForm.assigned_members.length} member${
-                              taskForm.assigned_members.length > 1 ? "s" : ""
-                            } selected`}
+                        {membersLoading
+                          ? "Loading members..."
+                          : taskForm.assigned_members.length === 0
+                            ? "Select members"
+                            : `${taskForm.assigned_members.length} member${
+                                taskForm.assigned_members.length > 1 ? "s" : ""
+                              } selected`}
                       </span>
                     </Button>
                   </PopoverTrigger>
@@ -608,7 +636,21 @@ export function AddTaskDialog({
                       className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
                       onWheel={(e) => e.stopPropagation()}
                     >
-                      {MOCK_MEMBERS.map((member) => {
+                      {membersError && (
+                        <p className="px-2 py-2 text-sm text-rose-600">
+                          Couldn't load members.
+                        </p>
+                      )}
+
+                      {!membersError &&
+                        !membersLoading &&
+                        assignableMembers.length === 0 && (
+                          <p className="px-2 py-2 text-sm text-neutral-500">
+                            No members with the "member" role on this project.
+                          </p>
+                        )}
+
+                      {assignableMembers.map((member) => {
                         const selected = taskForm.assigned_members.some(
                           (assigned) => assigned.id === member.id,
                         );

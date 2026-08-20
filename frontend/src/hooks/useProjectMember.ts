@@ -3,6 +3,7 @@ import type {
   MemberBase,
   CreateProjectMember,
   UpdateProjectMember,
+  ProjectMemberUserResponse,
 } from "@/types/project_member";
 import apiClient from "@/services/apiClient";
 
@@ -25,6 +26,20 @@ const api = {
       return response.data;
     } catch (error) {
       console.error("Failed to fetch member", error);
+      throw error;
+    }
+  },
+
+  getMemberWithUserInfo: async (
+    project_id: string,
+  ): Promise<ProjectMemberUserResponse[]> => {
+    try {
+      const response = await apiClient.get<ProjectMemberUserResponse[]>(
+        `${url}/users/${project_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get members", error);
       throw error;
     }
   },
@@ -115,5 +130,12 @@ export function useDeleteMember() {
       queryClient.removeQueries({ queryKey: memberKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: memberKeys.list() });
     },
+  });
+}
+
+export function useGetMemberWithUserInfo(project_id: string) {
+  return useQuery({
+    queryKey: memberKeys.list(),
+    queryFn: () => api.getMemberWithUserInfo(project_id),
   });
 }

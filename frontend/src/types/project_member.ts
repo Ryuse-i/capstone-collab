@@ -1,3 +1,5 @@
+import type { UserBase } from "./user";
+
 export type ProjectRole =
   | "advisor"
   | "instructor"
@@ -42,3 +44,7 @@ export interface ProjectMemberResponse extends MemberBase {
 export type CreateProjectMember = MemberBase;
 
 export type UpdateProjectMember = Partial<MemberBase>;
+
+export interface ProjectMemberUserResponse extends ProjectMemberResponse {
+  user: UserBase;
+}
