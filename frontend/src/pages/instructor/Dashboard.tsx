@@ -367,15 +367,17 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <Card className="border border-neutral-200 p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-semibold text-[#231A2E]">
+    <Card className="border p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
         <span className={`rounded-full p-1.5 ${accent}`}>{icon}</span>
         {label}
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-[#231A2E]">
+      <p className="mt-3 text-2xl font-bold tabular-nums text-foreground">
         {value}
       </p>
-      <p className="mt-1 text-sm text-neutral-500">{caption}</p>
+      <p className="mt-1 text-sm text-neutral-500">
+        {caption}
+      </p>
     </Card>
   );
 }
@@ -388,7 +390,7 @@ function AttentionDetailRow({
   project: MockProject & { stage: Stage; isPrimary: boolean };
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200 p-4">
+    <div className="rounded-xl border p-4 bg-card">
       <div className="flex flex-wrap items-center gap-2">
         <RoleBadge role={project.role} />
         <HealthBadge health={project.health} />
@@ -396,7 +398,7 @@ function AttentionDetailRow({
           {project.stage.label}
         </span>
       </div>
-      <h3 className="mt-2 text-base font-semibold text-[#231A2E]">
+      <h3 className="mt-2 text-base font-semibold text-foreground">
         {project.name}
       </h3>
       <p className="mt-1 text-sm text-neutral-500">
@@ -425,7 +427,7 @@ function DeadlineDetailRow({
   const urgency = urgencyOf(deadline.daysFromNow);
   const style = URGENCY_STYLES[urgency];
   return (
-    <div className="rounded-xl border border-neutral-200 p-4">
+    <div className="rounded-xl border p-4 bg-card">
       <div className="flex flex-wrap items-center gap-2">
         <RoleBadge role={deadline.role} />
         <span
@@ -440,7 +442,7 @@ function DeadlineDetailRow({
           </span>
         )}
       </div>
-      <h3 className="mt-2 text-base font-semibold text-[#231A2E]">
+      <h3 className="mt-2 text-base font-semibold text-foreground">
         {deadline.title}
       </h3>
       <p className="mt-1 text-sm font-medium text-neutral-600">
@@ -515,8 +517,8 @@ export default function InstructorDashboard() {
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
       <div className="min-h-screen w-full px-4 py-6 font-sans antialiased">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#231A2E]">Your projects</h1>
-          <p className="mt-2 text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-foreground">Your projects</h1>
+          <p className="mt-2 text-sm text-neutral-500 dark:text-semiforeground">
             A portfolio view across everything you're instructing or advising.
           </p>
         </div>
@@ -555,22 +557,22 @@ export default function InstructorDashboard() {
 
         {/* Needs your attention + deadline timeline, side by side */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-stretch">
-          <Card className="flex h-full flex-col border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+          <Card className="flex h-full flex-col shadow-sm border">
+            <div className="flex items-center justify-between border-b border-neutral px-5 py-4">
               <div className="flex items-center gap-2">
                 <div className="rounded-full bg-rose-50 p-2 text-rose-600">
                   <AlertTriangle size={16} />
                 </div>
-                <h2 className="text-lg font-semibold text-[#231A2E]">
+                <h2 className="text-lg font-semibold text-foreground">
                   Needs your attention
                 </h2>
               </div>
-              <span className="text-sm text-neutral-500">
+              <span className="text-sm text-neutral-500 dark:text-semiforeground">
                 Sorted by health, then pending items
               </span>
             </div>
 
-            <div className="flex-1 divide-y divide-neutral-100">
+            <div className="flex-1 divide-y">
               {needsAttention.map((p) => (
                 <div
                   key={p.id}
@@ -584,7 +586,7 @@ export default function InstructorDashboard() {
                         {p.stage.label}
                       </span>
                     </div>
-                    <h3 className="mt-1.5 text-base font-semibold leading-snug text-[#231A2E]">
+                    <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
                       {p.name}
                     </h3>
                     <p className="mt-0.5 text-sm text-neutral-500">
@@ -592,7 +594,7 @@ export default function InstructorDashboard() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 sm:flex-shrink-0">
+                  <div className="flex items-center gap-2 sm:shrink-0">
                     {p.pendingSubmissions > 0 && (
                       <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
                         {p.pendingSubmissions} pending
@@ -614,11 +616,11 @@ export default function InstructorDashboard() {
             </div>
 
             {hasMoreAttention && (
-              <div className="border-t border-neutral-200 px-5 py-3">
+              <div className="border-t px-5 py-3">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-center gap-1.5 text-[#7A0C2E] hover:text-[#7A0C2E]"
+                  className="w-full justify-center gap-1.5  text-[#7A0C2E] hover:text-[#7A0C2E] dark:text-[#c82659] dark:hover:text-[#7A0C2E]"
                   onClick={() => setAttentionDialogOpen(true)}
                 >
                   View all {needsAttentionAll.length}
@@ -629,13 +631,13 @@ export default function InstructorDashboard() {
           </Card>
 
           {/* Deadline timeline, filterable by role */}
-          <Card className="flex h-full flex-col border border-neutral-200 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4">
+          <Card className="flex h-full flex-col border  shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
               <div className="flex items-center gap-2">
                 <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
                   <CalendarClock size={16} />
                 </div>
-                <h2 className="text-lg font-semibold text-[#231A2E]">
+                <h2 className="text-lg font-semibold text-foreground">
                   Upcoming deadlines
                 </h2>
               </div>
@@ -673,7 +675,7 @@ export default function InstructorDashboard() {
                     {/* date badge + connecting line */}
                     <div className="flex flex-col items-center">
                       <div
-                        className={`flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-xl text-xs font-semibold tabular-nums ${style.dateClass}`}
+                        className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl text-xs font-semibold tabular-nums ${style.dateClass}`}
                       >
                         {formatDeadlineDate(d.daysFromNow)}
                       </div>
@@ -698,7 +700,7 @@ export default function InstructorDashboard() {
                           )}
                         </div>
 
-                        <h3 className="mt-1.5 text-base font-semibold leading-snug text-[#231A2E]">
+                        <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
                           {d.title}
                         </h3>
                         <p className="mt-0.5 text-sm font-medium text-neutral-600">
@@ -717,7 +719,7 @@ export default function InstructorDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-shrink-0 gap-1.5"
+                        className="shrink-0 gap-1.5"
                       >
                         View project
                         <ChevronRight size={14} />
@@ -735,11 +737,11 @@ export default function InstructorDashboard() {
             </div>
 
             {hasMoreDeadlines && (
-              <div className="border-t border-neutral-200 px-5 py-3">
+              <div className="border-t px-5 py-3">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-center gap-1.5 text-[#7A0C2E] hover:text-[#7A0C2E]"
+                  className="w-full justify-center gap-1.5 text-[#7A0C2E] hover:text-[#7A0C2E] dark:text-[#c82659] dark:hover:text-[#7A0C2E]"
                   onClick={() => setDeadlineDialogOpen(true)}
                 >
                   View all {filteredDeadlines.length}
@@ -752,14 +754,14 @@ export default function InstructorDashboard() {
 
         {/* Stage distribution + activity feed, side by side */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <Card className="border border-neutral-200 p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+          <Card className="p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <ListChecks size={18} className="text-[#7A0C2E]" />
               Projects by stage
             </div>
             <ChartContainer
               config={{ count: { label: "Projects", color: "#7A0C2E" } }}
-              className="mt-4 h-[260px] w-full"
+              className="mt-4 h-65 w-full"
             >
               <BarChart
                 data={stageChartData}
@@ -786,8 +788,8 @@ export default function InstructorDashboard() {
             </ChartContainer>
           </Card>
 
-          <Card className="border border-neutral-200 p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+          <Card className="border p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Activity size={18} className="text-[#C9A84C]" />
               Recent activity
             </div>
@@ -802,7 +804,7 @@ export default function InstructorDashboard() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[#231A2E]">
+                    <p className="truncate text-sm font-medium text-foreground">
                       {p.name}
                     </p>
                     <p className="mt-0.5 text-xs text-neutral-500">
@@ -815,8 +817,8 @@ export default function InstructorDashboard() {
           </Card>
         </div>
 
-        <div className="mt-6 flex items-start gap-2 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-500">
-          <Users size={14} className="mt-0.5 flex-shrink-0" />
+        <div className="mt-6 flex items-start gap-2 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-accent p-4 text-xs text-neutral-500">
+          <Users size={14} className="mt-0.5 shrink-0" />
           <p>
             Same dashboard for instructors and advisors. "Your call this stage"
             marks projects where you're the primary reviewer given the current
@@ -829,7 +831,7 @@ export default function InstructorDashboard() {
       {/* Full "needs your attention" list, only reachable when there are
           more items than the inline card shows */}
       <Dialog open={attentionDialogOpen} onOpenChange={setAttentionDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl custom-scrollbar">
           <DialogHeader>
             <DialogTitle>Needs your attention</DialogTitle>
             <DialogDescription>
@@ -849,7 +851,7 @@ export default function InstructorDashboard() {
       {/* Full deadlines list, respects the current instructor/advisor filter
           and only reachable when there are more than the inline card shows */}
       <Dialog open={deadlineDialogOpen} onOpenChange={setDeadlineDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl custom-scrollbar">
           <DialogHeader>
             <DialogTitle>Upcoming deadlines</DialogTitle>
             <DialogDescription>

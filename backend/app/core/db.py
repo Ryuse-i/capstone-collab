@@ -6,18 +6,17 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
-
-# DATABASE_URL = (
-#    f"postgresql+psycopg://{settings.DB_USER}:"
-#    f"{settings.DB_PASSWORD}@{settings.DB_HOST}:"
-#    f"{settings.DB_PORT}/{settings.DB_NAME}?sslmode=require"
-# )
-
 DATABASE_URL = (
-    f"postgresql+psycopg://{settings.TEST_DB_USER}:"
-    f"{settings.TEST_DB_PASSWORD}@{settings.TEST_DB_HOST}:"
-    f"{settings.TEST_DB_PORT}/{settings.TEST_DB_NAME}?sslmode=require"
+    f"postgresql+psycopg://{settings.DB_USER}:"
+    f"{settings.DB_PASSWORD}@{settings.DB_HOST}:"
+   f"{settings.DB_PORT}/{settings.DB_NAME}?sslmode=require"
 )
+
+#DATABASE_URL = (
+    #f"postgresql+psycopg://{settings.TEST_DB_USER}:"
+   # f"{settings.TEST_DB_PASSWORD}@{settings.TEST_DB_HOST}:"
+    #f"{settings.TEST_DB_PORT}/{settings.TEST_DB_NAME}?sslmode=require"
+#)
 
 
 class Base(DeclarativeBase):

@@ -88,9 +88,11 @@
 .dark {
   /* Shadcn tokens — dark */
   --background: #18191a;
+  --semi-background: #1d1d1d;
   --foreground: #F5F5F7;
   --semi-foreground: #888888;
   --card: #242526;
+  --semi-card: #2f3031;
   --card-foreground: #e4e6eb;
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);

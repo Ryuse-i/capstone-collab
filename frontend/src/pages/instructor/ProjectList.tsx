@@ -43,7 +43,7 @@ function ProjectCard({
   const projectRouteId = project.id ?? slug;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border bg-card dark:bg-(--semi-card) p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-[#F3EFE6] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A0C2E]">
@@ -51,7 +51,7 @@ function ProjectCard({
           </span>
           <span className="text-xs text-neutral-400">{project.created_by}</span>
         </div>
-        <h3 className="mt-2 text-base font-semibold text-[#231A2E]">
+        <h3 className="mt-2 text-base font-semibold text-foregrond">
           {project.name}
         </h3>
         <p className="mt-1 text-sm text-neutral-500">{project.description}</p>
@@ -176,7 +176,7 @@ export default function ProjectsPage() {
       <div className="min-h-screen w-full px-4">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#231A2E]">Projects</h1>
+            <h1 className="text-2xl font-bold text-foreground">Projects</h1>
             <p className="mt-2 text-sm text-neutral-500">
               Projects connected to your instructor and advisor profile.
             </p>
@@ -193,13 +193,13 @@ export default function ProjectsPage() {
             We could not load your projects right now.
           </Card>
         ) : (
-          <Card className="border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+          <Card className="border shadow-sm">
+            <div className="flex items-center justify-between border-b px-5 py-4">
               <div className="flex items-center gap-2">
                 <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
                   <GraduationCap size={16} />
                 </div>
-                <h2 className="text-lg font-semibold text-[#231A2E]">
+                <h2 className="text-lg font-semibold text-foreground">
                   Projects
                 </h2>
               </div>
@@ -208,7 +208,7 @@ export default function ProjectsPage() {
               </span>
             </div>
 
-            <div className="space-y-3 p-5">
+            <div className="space-y-3 p-5 ">
               {filteredProjects.length > 0 ? (
                 filteredProjects.map(({ project, role }) => (
                   <ProjectCard

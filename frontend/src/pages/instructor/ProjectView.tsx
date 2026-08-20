@@ -52,16 +52,13 @@ const tabs: {
 function getHealthClasses(status?: string) {
   switch (status) {
     case "healthy":
-      return "bg-emerald-100 text-emerald-700";
-
+      return "bg-emerald-100 text-emerald-700 dark:text-emerald-100";
     case "at_risk":
-      return "bg-amber-100 text-amber-700";
-
+      return "bg-amber-100 text-amber-700 dark:text-amber-100";
     case "critical":
-      return "bg-rose-100 text-rose-700";
-
+      return "bg-rose-100 text-rose-700 dark:text-rose-100";
     default:
-      return "bg-neutral-100 text-neutral-700";
+      return "bg-neutral-100 text-neutral-700 dark:text-neutral-100";
   }
 }
 
@@ -120,7 +117,7 @@ export default function ProjectView() {
     {
       label: "Health",
       value: snapshot?.health_status
-        ? snapshot.health_status.replace(/_/g, " ")
+        ? snapshot.health_status.replace(/_/, " ")
         : "Unknown",
       caption: `Score ${formatNumber(snapshot?.health_score)}`,
       icon: <Activity className="h-4 w-4 text-[#C9A84C]" />,
@@ -212,16 +209,13 @@ export default function ProjectView() {
 
               <div className="flex flex-wrap gap-2">
                 <span
-                  className={`rounded-full px-3 py-1 text-sm font-semibold ${getHealthClasses(
-                    snapshot?.health_status,
-                  )}`}
+                  className={`rounded-full px-3 py-1 text-sm font-semibold bg-card dark:ring-1 ring-foreground/10${getHealthClasses(snapshot?.health_status)}`}
                 >
                   {snapshot?.health_status
                     ? snapshot.health_status.replace(/_/g, " ")
                     : "Unknown"}
                 </span>
-
-                <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-[#7A0C2E] shadow-sm">
+                <span className="rounded-full bg-white dark:bg-card dark:ring-1 ring-foreground/10 px-3 py-1 text-sm font-semibold text-[#7A0C2E] shadow-sm">
                   {formatPercentage(snapshot?.progress_percentage)} progress
                 </span>
               </div>
@@ -252,17 +246,15 @@ export default function ProjectView() {
                   {overviewCards.map((card) => (
                     <div
                       key={card.label}
-                      className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
+                      className="rounded-2xl border bg-card p-4"
                     >
-                      <div className="flex items-center gap-2 text-sm font-semibold text-[#231A2E]">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         {card.icon}
                         {card.label}
                       </div>
-
-                      <p className="mt-3 text-2xl font-bold text-[#231A2E]">
+                      <p className="mt-3 text-2xl font-bold text-foreground">
                         {card.value}
                       </p>
-
                       <p className="mt-1 text-sm text-neutral-500">
                         {card.caption}
                       </p>
@@ -271,67 +263,58 @@ export default function ProjectView() {
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {/* Details */}
-                  <Card className="border border-neutral-200 p-4">
-                    <h2 className="text-lg font-semibold text-[#231A2E]">
+                  <Card className="border p-4">
+                    <h2 className="text-lg font-semibold text-foreground">
                       Details
                     </h2>
-
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                      <div className="flex justify-between gap-3">
+                      <div className="flex justify-between gap-3 text-foreground">
                         <span>Expected score</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.expected_score)}
                         </span>
                       </div>
-
-                      <div className="flex justify-between gap-3">
+                      <div className="flex justify-between gap-3 text-foreground">
                         <span>Workload points</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.total_workload_points, 0)}
                         </span>
                       </div>
-
-                      <div className="flex justify-between gap-3">
+                      <div className="flex justify-between gap-3 text-foreground">
                         <span>Average workload</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.avg_workload)}
                         </span>
                       </div>
-
-                      <div className="flex justify-between gap-3">
+                      <div className="flex justify-between gap-3 text-foreground">
                         <span>Schedule variance</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.schedule_variance)}
                         </span>
                       </div>
                     </div>
                   </Card>
 
-                  {/* Contacts */}
-                  <Card className="border border-neutral-200 p-4">
-                    <h2 className="text-lg font-semibold text-[#231A2E]">
+                  <Card className="border p-4">
+                    <h2 className="text-lg font-semibold text-foreground">
                       Project contacts
                     </h2>
-
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
                         <span>Project owner</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {project.created_by}
                         </span>
                       </div>
-
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
                         <span>Instructor</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {project.instructor ?? "Not assigned"}
                         </span>
                       </div>
-
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
                         <span>Advisor</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {project.advisor ?? "Not assigned"}
                         </span>
                       </div>
@@ -344,50 +327,45 @@ export default function ProjectView() {
             {/* Tasks */}
             {activeTab === "tasks" && (
               <div className="mt-6 space-y-6">
-                {/* Task overview cards */}
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <Card className="border border-neutral-200 p-4">
-                    <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                  <Card className="border p-4">
+                    <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                       <Target className="h-5 w-5 text-[#7A0C2E]" />
                       Task progress
                     </div>
-
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2 text-foreground">
                         <span>Completed tasks</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {formatCount(snapshot?.completed_tasks)}
                         </span>
                       </div>
-
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2 text-foreground">
                         <span>Expected score</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.expected_score)}
                         </span>
                       </div>
-
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2 text-foreground">
                         <span>Schedule variance</span>
-                        <span className="font-semibold text-[#231A2E]">
+                        <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.schedule_variance)}
                         </span>
                       </div>
                     </div>
                   </Card>
 
-                  <Card className="border border-neutral-200 p-4">
-                    <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                  <Card className="border p-4">
+                    <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                       <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
                       Timeline insight
                     </div>
-
-                    <p className="mt-4 text-sm text-neutral-600">
-                      This project is tracking{" "}
-                      {formatPercentage(snapshot?.progress_percentage)} of its
-                      expected progress and is currently marked as{" "}
-                      {snapshot?.health_status ?? "unknown"}.
-                    </p>
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                      <span>Expected score</span>
+                      <span className="font-semibold text-[#231A2E]">
+                        {formatNumber(snapshot?.expected_score)}
+                      </span>
+                    </div>
                   </Card>
                 </div>
 
@@ -404,42 +382,38 @@ export default function ProjectView() {
             {/* Members */}
             {activeTab === "members" && (
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <Card className="border border-neutral-200 p-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                <Card className="border  p-4">
+                  <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                     <Users className="h-5 w-5 text-[#3F3350]" />
                     Assigned members
                   </div>
-
                   <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
                       <span>Owner</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {project.created_by}
                       </span>
                     </div>
-
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
                       <span>Instructor</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {project.instructor ?? "Not assigned"}
                       </span>
                     </div>
-
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
                       <span>Advisor</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {project.advisor ?? "Not assigned"}
                       </span>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="border border-neutral-200 p-4">
-                  <h2 className="text-lg font-semibold text-[#231A2E]">
+                <Card className="border p-4">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Team status
                   </h2>
-
-                  <p className="mt-4 text-sm text-neutral-600">
+                  <p className="mt-4 text-sm text-(--semi-foreground)">
                     Member details can be expanded here as the project grows.
                     For now, the view highlights the assigned instructor,
                     advisor, and project owner from the project record.
@@ -451,42 +425,38 @@ export default function ProjectView() {
             {/* Resources */}
             {activeTab === "resources" && (
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <Card className="border border-neutral-200 p-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold text-[#231A2E]">
+                <Card className="border p-4">
+                  <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                     <Files className="h-5 w-5 text-[#7A0C2E]" />
                     Project resources
                   </div>
-
                   <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                    <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-4 text-center">
+                    <div className="rounded-lg border border-dashed border-neutral-200 dark:border-(--semi-foreground) bg-neutral-50 dark:bg-card p-4 text-center">
                       No project resources have been added yet.
                     </div>
                   </div>
                 </Card>
 
-                <Card className="border border-neutral-200 p-4">
-                  <h2 className="text-lg font-semibold text-[#231A2E]">
+                <Card className="border p-4">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Snapshot summary
                   </h2>
-
-                  <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                  <div className="mt-4 space-y-3 text-sm text-foreground">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
                       <span>Average workload</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {formatNumber(snapshot?.avg_workload)}
                       </span>
                     </div>
-
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
                       <span>Workload balance</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {formatPercentage(snapshot?.workload_balance)}
                       </span>
                     </div>
-
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
                       <span>Severity</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {snapshot?.imbalance_severity ?? "Not set"}
                       </span>
                     </div>
