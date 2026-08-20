@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.assigned_members.model import AssignedMember
 from app.modules.assigned_members.repo import AssignedMemberRepo
-from app.modules.assigned_members.schema import AssignedMemberCreate, AssignedMemberUpdate
+from .schema import AssignedMemberCreate, AssignedMemberUpdate
+from uuid import UUID
 
 
 class AssignedMemberService:
@@ -29,3 +30,16 @@ class AssignedMemberService:
     async def delete_assigned_member(db: AsyncSession, db_item: AssignedMember):
         repo = AssignedMemberRepo(db)
         return await repo.delete(db_item)
+
+    @staticmethod
+    async def get_task_members(db, task_id: UUID):
+        repo = AssignedMemberRepo(db)
+
+        results = await repo.get_task_members(task_id)
+
+        users = [result.users for result in results]
+        return users
+
+    @staticmethod 
+    async def batch_create_assigned_member(db: AsyncSession, members: list[AssignedMemberCreate]):
+        

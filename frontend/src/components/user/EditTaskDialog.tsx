@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Check, Gauge, Users, X } from "lucide-react";
+import { CalendarIcon, Check, Users, X } from "lucide-react";
 import { format } from "date-fns";
+
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Select,
   SelectContent,
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import {
   Dialog,
   DialogContent,
@@ -24,31 +26,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 import { Calendar } from "@/components/ui/calendar";
+
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
 import { cn } from "@/lib/utils";
+
 import type { Skill } from "@/types/project_member";
+
 import type {
   TaskResponseMembers,
   TaskCategory,
   TaskPriority,
-  TaskComplexity,
   UpdateTask,
 } from "@/types/task";
-import type { UserBase } from "@/types/user";
-// NOTE: complexity is intentionally NOT part of the editable payload.
-// It is AI-scored on the backend.
 
-type AssignedMember = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-};
+import type { UserBase } from "@/types/user";
 
 type TaskFormState = {
   name: string;
@@ -61,13 +59,19 @@ type TaskFormState = {
   assigned_members: UserBase[];
 };
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+const PRIORITY_OPTIONS: {
+  value: TaskPriority;
+  label: string;
+}[] = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
 ];
 
-const SKILL_OPTIONS: { value: Skill; label: string }[] = [
+const SKILL_OPTIONS: {
+  value: Skill;
+  label: string;
+}[] = [
   { value: "Backend Development", label: "Backend Development" },
   { value: "Frontend Development", label: "Frontend Development" },
   { value: "Mobile Development", label: "Mobile Development" },
@@ -75,29 +79,61 @@ const SKILL_OPTIONS: { value: Skill; label: string }[] = [
   { value: "Database Design", label: "Database Design" },
   { value: "System Architecture", label: "System Architecture" },
   { value: "Ui/Ux Design", label: "UI/UX Design" },
-  { value: "Testing and Quality Assurance", label: "Testing and QA" },
+  {
+    value: "Testing and Quality Assurance",
+    label: "Testing and QA",
+  },
   { value: "Literature Review", label: "Literature Review" },
   { value: "Data Collection", label: "Data Collection" },
   {
     value: "Survey and Questionnaire Design",
     label: "Survey/Questionnaire Design",
   },
-  { value: "Interview and Observation", label: "Interview and Observation" },
+  {
+    value: "Interview and Observation",
+    label: "Interview and Observation",
+  },
   { value: "Data Analysis", label: "Data Analysis" },
   { value: "Technical Writing", label: "Technical Writing" },
   { value: "Documentation", label: "Documentation" },
   { value: "Diagram and Modeling", label: "Diagram and Modeling" },
-  { value: "Editing and Proofreading", label: "Editing and Proofreading" },
-  { value: "Financial Documentation", label: "Financial Documentation" },
+  {
+    value: "Editing and Proofreading",
+    label: "Editing and Proofreading",
+  },
+  {
+    value: "Financial Documentation",
+    label: "Financial Documentation",
+  },
   { value: "Budget Planning", label: "Budget Planning" },
   { value: "Resource Management", label: "Resource Management" },
 ];
 
-const complexityPillStyle: Record<TaskComplexity, string> = {
-  high: "bg-red-50 text-red-600",
-  medium: "bg-yellow-50 text-yellow-600",
-  low: "bg-indigo-50 text-indigo-600",
-};
+/*
+ * Replace this with your actual project-members query.
+ */
+const MOCK_MEMBERS: UserBase[] = [
+  {
+    id: "member-1",
+    first_name: "John",
+    last_name: "Montes",
+  } as UserBase,
+  {
+    id: "member-2",
+    first_name: "Clarisa",
+    last_name: "Paule",
+  } as UserBase,
+  {
+    id: "member-3",
+    first_name: "Rommel",
+    last_name: "Magsino",
+  } as UserBase,
+  {
+    id: "member-4",
+    first_name: "Dylan",
+    last_name: "Mangaoang",
+  } as UserBase,
+];
 
 function formStateFromTask(task: TaskResponseMembers): TaskFormState {
   return {
@@ -126,28 +162,24 @@ export default function EditTaskDialog({
   onUpdated,
 }: EditTaskDialogProps) {
   const [open, setOpen] = useState(false);
+
   const [taskForm, setTaskForm] = useState<TaskFormState>(() =>
     formStateFromTask(task),
   );
+
   const [error, setError] = useState<string | null>(null);
+
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
+
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
 
   const updateTaskMutation = useUpdateTask();
   const queryClient = useQueryClient();
 
   /*
-   * Replace this with however you currently retrieve the members
-   * of the project.
-   *
-   * Example:
-   *
-   * const { data: projectMembers = [] } = useGetProjectMembers(projectId);
-   *
-   * For now this assumes you have a `projectMembers` array available.
+   * Replace MOCK_MEMBERS with your project-members hook.
    */
-
-  const projectMembers: AssignedMember[] = [];
+  const projectMembers = MOCK_MEMBERS;
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -163,7 +195,10 @@ export default function EditTaskDialog({
     field: K,
     value: TaskFormState[K],
   ) => {
-    setTaskForm((prev) => ({ ...prev, [field]: value }));
+    setTaskForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const toggleSecondarySkill = (skill: Skill) => {
@@ -255,6 +290,7 @@ export default function EditTaskDialog({
       });
 
       onUpdated?.();
+
       handleOpenChange(false);
     } catch (err) {
       setError(
@@ -280,10 +316,7 @@ export default function EditTaskDialog({
         <DialogHeader>
           <DialogTitle>Edit task</DialogTitle>
 
-          <DialogDescription>
-            Update the details below. Complexity is scored automatically and
-            can't be edited directly.
-          </DialogDescription>
+          <DialogDescription>Update the details below.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 no-scrollbar">
@@ -316,6 +349,7 @@ export default function EditTaskDialog({
             />
           </div>
 
+          {/* Same grid structure as AddTaskDialog */}
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Priority */}
             <div className="space-y-2">
@@ -339,36 +373,6 @@ export default function EditTaskDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Complexity */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-muted-foreground">
-                <Gauge className="h-3.5 w-3.5" />
-                Complexity
-              </Label>
-
-              <div className="flex h-9 items-center rounded-md border border-neutral-200 bg-neutral-50 px-3">
-                {task.complexity ? (
-                  <Badge
-                    className={`border-0 font-medium ${
-                      complexityPillStyle[task.complexity]
-                    }`}
-                  >
-                    {task.complexity.charAt(0).toUpperCase() +
-                      task.complexity.slice(1)}
-                  </Badge>
-                ) : (
-                  <span className="text-sm text-neutral-400">
-                    Not yet scored
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                Complexity is scored automatically and updates when skills or
-                description change.
-              </p>
             </div>
 
             {/* Primary Skill */}
@@ -395,7 +399,7 @@ export default function EditTaskDialog({
               </Select>
             </div>
 
-            {/* Secondary Skills */}
+            {/* Secondary Skill */}
             <div className="space-y-2">
               <Label>Secondary Skill</Label>
 
@@ -464,7 +468,7 @@ export default function EditTaskDialog({
                   {taskForm.secondary_skills.map((skill) => (
                     <span
                       key={skill}
-                      className="flex items-center gap-1 rounded-full bg-[#FBF3E7] border border-[#7A0C2E]/20 px-2 py-0.5 text-xs text-[#231A2E]"
+                      className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                     >
                       {SKILL_OPTIONS.find((o) => o.value === skill)?.label}
 
@@ -472,6 +476,7 @@ export default function EditTaskDialog({
                         type="button"
                         onClick={() => toggleSecondarySkill(skill)}
                         className="rounded-full hover:bg-[#7A0C2E]/10"
+                        aria-label={`Remove ${skill}`}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -479,6 +484,103 @@ export default function EditTaskDialog({
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Assigned Members */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" />
+                Assigned Members
+              </Label>
+
+              <Popover
+                open={assignedMembersOpen}
+                onOpenChange={setAssignedMembersOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={assignedMembersOpen}
+                    className="w-full justify-between text-left font-normal"
+                  >
+                    <span
+                      className={cn(
+                        taskForm.assigned_members.length === 0 &&
+                          "text-muted-foreground",
+                      )}
+                    >
+                      {taskForm.assigned_members.length === 0
+                        ? "Select members"
+                        : `${taskForm.assigned_members.length} member${
+                            taskForm.assigned_members.length > 1 ? "s" : ""
+                          } selected`}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <div
+                    className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    {projectMembers.map((member) => {
+                      const selected = taskForm.assigned_members.some(
+                        (assigned) => assigned.id === member.id,
+                      );
+
+                      return (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => toggleAssignedMember(member)}
+                          className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
+                              {member.first_name?.charAt(0)}
+                              {member.last_name?.charAt(0)}
+                            </div>
+
+                            <span>
+                              {member.first_name} {member.last_name}
+                            </span>
+                          </div>
+
+                          {selected && (
+                            <Check className="h-4 w-4 text-[#7A0C2E]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {taskForm.assigned_members.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {taskForm.assigned_members.map((member) => (
+                    <span
+                      key={member.id}
+                      className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
+                    >
+                      {member.first_name} {member.last_name}
+                      <button
+                        type="button"
+                        onClick={() => toggleAssignedMember(member)}
+                        className="rounded-full hover:bg-[#7A0C2E]/10"
+                        aria-label={`Remove ${member.first_name} ${member.last_name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Select the members who will be assigned to this task.
+              </p>
             </div>
 
             {/* Deadline */}
@@ -519,98 +621,6 @@ export default function EditTaskDialog({
                   />
                 </PopoverContent>
               </Popover>
-            </div>
-
-            {/* Assigned Members */}
-            <div className="space-y-2 sm:col-span-2">
-              <Label className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                Assigned Members
-              </Label>
-
-              <Popover
-                open={assignedMembersOpen}
-                onOpenChange={setAssignedMembersOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={assignedMembersOpen}
-                    className="w-full justify-between text-left font-normal"
-                  >
-                    <span
-                      className={cn(
-                        taskForm.assigned_members.length === 0 &&
-                          "text-muted-foreground",
-                      )}
-                    >
-                      {taskForm.assigned_members.length === 0
-                        ? "Select members"
-                        : `${taskForm.assigned_members.length} member${
-                            taskForm.assigned_members.length > 1 ? "s" : ""
-                          } selected`}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                  <div
-                    className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                    onWheel={(e) => e.stopPropagation()}
-                  >
-                    {projectMembers.length === 0 ? (
-                      <p className="px-2 py-3 text-sm text-muted-foreground">
-                        No project members available.
-                      </p>
-                    ) : (
-                      projectMembers.map((member) => {
-                        const selected = taskForm.assigned_members.some(
-                          (assigned) => assigned.id === member.id,
-                        );
-
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() => toggleAssignedMember(member)}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
-                          >
-                            <span>
-                              {member.first_name + " " + member.last_name}
-                            </span>
-
-                            {selected && (
-                              <Check className="h-4 w-4 text-[#7A0C2E]" />
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {taskForm.assigned_members.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {taskForm.assigned_members.map((member) => (
-                    <span
-                      key={member.id}
-                      className="flex items-center gap-1 rounded-full bg-[#FBF3E7] border border-[#7A0C2E]/20 px-2 py-0.5 text-xs text-[#231A2E]"
-                    >
-                      {member.first_name + " " + member.last_name}
-
-                      <button
-                        type="button"
-                        onClick={() => toggleAssignedMember(member)}
-                        className="rounded-full hover:bg-[#7A0C2E]/10"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 

@@ -21,7 +21,7 @@ export default function App() {
 
   useEffect(() => {
     const handler = () => {
-      queryClient.clear()
+      queryClient.clear();
       navigate("/login");
     };
     window.addEventListener("auth:expired", handler);

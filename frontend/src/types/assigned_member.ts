@@ -6,6 +6,9 @@ export interface AssignedMemberBase {
   effort_share?: number;
 }
 
+export type CreateAssignedMember = AssignedMemberBase;
+export type UpdateAssignedMember = Partial<AssignedMemberBase>;
+
 export interface AssignedMemberResponse extends AssignedMemberBase {
   id: string;
   created_at: string;
@@ -13,5 +16,5 @@ export interface AssignedMemberResponse extends AssignedMemberBase {
 }
 
 export interface AssigneMemberWithUser extends AssignedMemberResponse {
-  users: UserBase[]
+  users: UserBase[];
 }

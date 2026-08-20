@@ -195,11 +195,11 @@ export default function ProjectsList() {
         <div>
           <div className="flex items-center">
             <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground mb-2">
-              Projects List
+              Task List
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Here is a list of projects that you are assigned to
+            Here is a list of tasks that you are assigned to
           </p>
         </div>
       </div>
