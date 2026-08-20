@@ -46,8 +46,6 @@ const api = {
     }
   },
 
-  batchCreate()
-
   update: async (
     id: string,
     member: UpdateAssignedMember,

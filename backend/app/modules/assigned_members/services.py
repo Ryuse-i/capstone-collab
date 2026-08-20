@@ -40,6 +40,3 @@ class AssignedMemberService:
         users = [result.users for result in results]
         return users
 
-    @staticmethod 
-    async def batch_create_assigned_member(db: AsyncSession, members: list[AssignedMemberCreate]):
-        

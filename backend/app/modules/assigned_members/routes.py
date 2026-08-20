@@ -101,7 +101,3 @@ async def delete_assigned_member(
 
     await AssignedMemberService.delete_assigned_member(db, db_item)
     return None
-
-@assigned_member_router.post("/batch", response_model=list[UserResponse], status_code=HTTP_201_CREATED)
-async def batch_create_assigned_member(members: list[AssignedMemberCreate], db: AsyncSession = Depends(get_async_session), current_user: User = Depends(current_active_user)):
-    return AssignedMemberService
