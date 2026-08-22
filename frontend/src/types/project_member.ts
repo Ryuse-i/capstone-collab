@@ -46,5 +46,5 @@ export type CreateProjectMember = MemberBase;
 export type UpdateProjectMember = Partial<MemberBase>;
 
 export interface ProjectMemberUserResponse extends ProjectMemberResponse {
-  user: UserBase;
+  users: UserBase;
 }

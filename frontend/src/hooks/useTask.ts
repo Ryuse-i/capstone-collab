@@ -92,6 +92,7 @@ export const taskKeys = {
   list: () => [...taskKeys.all, "list"] as const,
   listProject: (project_id: string) =>
     [...taskKeys.list(), "listProject", project_id] as const,
+  byProject: (id: string) => [...taskKeys.all, id, "project"] as const,
   details: () => [...taskKeys.all, "details"] as const,
   detail: (id: string) => [...taskKeys.details(), id] as const,
 };
@@ -154,7 +155,8 @@ export function useDeleteTask() {
 
 export function useGetAllTaskAssignedMembers(id: string) {
   return useQuery({
-    queryKey: taskKeys.list(),
+    queryKey: taskKeys.byProject(id),
     queryFn: () => api.getAllTaskAssignedMembers(id),
+    enabled: !!id,
   });
 }

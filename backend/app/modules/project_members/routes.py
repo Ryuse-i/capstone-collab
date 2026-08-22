@@ -17,7 +17,8 @@ from .schema import (
     ProjectMember_Project_Response,
 )
 from .services import ProjectMemberService
-
+from app.modules.users.model import User
+from app.modules.users.services import current_active_user
 
 project_member_router = APIRouter()
 
@@ -39,6 +40,19 @@ async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
 # =====================================================================
 # 2. DYNAMIC / PARAMETERIZED PATHS LAST
 # =====================================================================
+
+
+@project_member_router.get(
+    "/current/{member_id}",
+    response_model=ProjectMemberResponse,
+    status_code=HTTP_200_OK,
+)
+async def get_current_member(
+    member_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await ProjectMemberService.get_current_member(db, member_id)
 
 
 @project_member_router.get("/{member_id}", response_model=ProjectMemberResponse)
@@ -74,7 +88,9 @@ async def get_all_projects_by_member(
 
 
 @project_member_router.get(
-    "/users/{project_id}", response_model=list[ProjectMember_User_Response], status_code=HTTP_200_OK
+    "/users/{project_id}",
+    response_model=list[ProjectMember_User_Response],
+    status_code=HTTP_200_OK,
 )
 async def get_all_members_by_project(
     project_id: UUID, db: AsyncSession = Depends(get_async_session)

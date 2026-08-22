@@ -16,6 +16,11 @@ from .schema import ProjectMemberCreate, ProjectMemberUpdate
 
 
 class ProjectMemberService:
+
+    @staticmethod
+    async def get_current_member(db:AsyncSession, member_id: UUID):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_current_member(member_id)
     @staticmethod
     async def get_one_member(db: AsyncSession, project_member_id):
         repo = ProjectMemberRepo(db)

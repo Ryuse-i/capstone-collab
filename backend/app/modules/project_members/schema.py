@@ -11,16 +11,12 @@ class ProjectMemberCreate(BaseModel):
     user_id: UUID
     project_id: UUID
     project_role: ProjectRole
-    workload_points: float | None = None
-    contribution_points: float | None = None
 
 
 class ProjectMemberUpdate(BaseModel):
     user_id: UUID | None = None
     project_id: UUID | None = None
     project_role: ProjectRole | None = None
-    workload_points: float | None = None
-    contribution_points: float | None = None
 
 
 class ProjectMemberResponse(BaseModel):
@@ -29,6 +25,7 @@ class ProjectMemberResponse(BaseModel):
     id: UUID
     user_id: UUID
     project_id: UUID
+    project_role: ProjectRole
 
 
 class ProjectMemberDetailResponse(BaseModel):

@@ -4,6 +4,7 @@ import type {
   CreateProjectMember,
   UpdateProjectMember,
   ProjectMemberUserResponse,
+  ProjectMemberResponse,
 } from "@/types/project_member";
 import apiClient from "@/services/apiClient";
 
@@ -40,6 +41,20 @@ const api = {
       return response.data;
     } catch (error) {
       console.error("Failed to get members", error);
+      throw error;
+    }
+  },
+
+  getCurrentMember: async (
+    member_id: string,
+  ): Promise<ProjectMemberResponse> => {
+    try {
+      const response = await apiClient.get<ProjectMemberResponse>(
+        `${url}/current/${member_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get member", error);
       throw error;
     }
   },
@@ -81,6 +96,8 @@ export const memberKeys = {
   list: () => [...memberKeys.all, "list"] as const,
   details: () => [...memberKeys.all, "detail"] as const,
   detail: (id: string) => [...memberKeys.details(), id] as const,
+  userDetail: (id: string) => [...memberKeys.details(), id, "user"] as const,
+  byProject: (id: string) => [...memberKeys.all, id, "project"] as const,
 };
 
 export function useGetMembers() {
@@ -135,7 +152,15 @@ export function useDeleteMember() {
 
 export function useGetMemberWithUserInfo(project_id: string) {
   return useQuery({
-    queryKey: memberKeys.list(),
+    queryKey: memberKeys.byProject(project_id),
     queryFn: () => api.getMemberWithUserInfo(project_id),
+    enabled: !!project_id,
+  });
+}
+
+export function useGetCurrentMember(member_id: string) {
+  return useQuery({
+    queryKey: memberKeys.userDetail(member_id),
+    queryFn: () => api.getCurrentMember(member_id),
   });
 }

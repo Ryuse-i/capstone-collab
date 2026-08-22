@@ -9,6 +9,7 @@ import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentProject } from "@/hooks/useProject";
+import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import {
   Sidebar,
   SidebarContent,
@@ -55,34 +56,52 @@ const capstoneSearchNavItem = {
   icon: <BookOpenIcon />,
 };
 
-const studentNavMain = [
+const projectTaskNavItem = {
+  title: "Project Task",
+  url: "/project-task",
+  icon: <FileText />,
+};
+
+const myTaskNavItem = {
+  title: "My Task",
+  url: "/mytask",
+  icon: <ClipboardCheck />,
+};
+
+const workloadNavItem = {
+  title: "Workload",
+  url: "/workload",
+  icon: <LucideLayers />,
+};
+
+const teamNavItem = {
+  title: "Team",
+  url: "/team",
+  icon: <Users />,
+};
+
+const chatNavItem = {
+  title: "Chat",
+  url: "/chat",
+  icon: <MessageCircleMore />,
+};
+
+// Full nav for a student who is the project leader
+const studentLeaderNavMain = [
   ...commonNavMain,
-  
-  {
-    title: "Project Task",
-    url: "/project-task",
-    icon: <FileText />,
-  },
-  {
-    title: "My Task",
-    url: "/mytask",
-    icon: <ClipboardCheck />,
-  },
-  {
-    title: "Workload",
-    url: "/workload",
-    icon: <LucideLayers />,
-  },
-  {
-    title: "Team",
-    url: "/team",
-    icon: <Users />,
-  },
-  {
-    title: "Chat",
-    url: "/chat",
-    icon: <MessageCircleMore />,
-  },
+  projectTaskNavItem,
+  myTaskNavItem,
+  workloadNavItem,
+  teamNavItem,
+  chatNavItem,
+  capstoneSearchNavItem,
+];
+
+// Reduced nav for a student who is just a project member
+const studentMemberNavMain = [
+  ...commonNavMain,
+  myTaskNavItem,
+  chatNavItem,
   capstoneSearchNavItem,
 ];
 
@@ -101,20 +120,40 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
   const { data: currentProject, isLoading: isProjectLoading } =
     useGetCurrentProject(user?.id ?? "");
+  const { data: member, isLoading: isMemberLoading } = useGetCurrentMember(
+    user?.id ?? "",
+  );
   const role = user?.role?.toLowerCase();
   const hasProject = Boolean(currentProject);
   const shouldShowProjectNav = !isProjectLoading && hasProject;
 
-  const navMain =
-    role === ROLES.STUDENT
-      ? shouldShowProjectNav
-        ? studentNavMain
-        : studentNoProjectNavMain
-      : role === ROLES.ADMIN ||
-          role === ROLES.INSTRUCTOR ||
-          role === ROLES.ADVISOR
-        ? instructorNavMain
-        : commonNavMain;
+  // normalize the member's project role for comparison
+  const memberRole = member?.project_role?.toLowerCase();
+  const isLeaderOrAbove =
+    memberRole === "leader" ||
+    memberRole === "advisor" ||
+    memberRole === "instructor" ||
+    memberRole === "admin";
+
+  let navMain;
+  if (role === ROLES.STUDENT) {
+    if (!shouldShowProjectNav) {
+      navMain = studentNoProjectNavMain;
+    } else if (isMemberLoading) {
+      // avoid a flash of the wrong nav while member role is still loading
+      navMain = studentMemberNavMain;
+    } else {
+      navMain = isLeaderOrAbove ? studentLeaderNavMain : studentMemberNavMain;
+    }
+  } else if (
+    role === ROLES.ADMIN ||
+    role === ROLES.INSTRUCTOR ||
+    role === ROLES.ADVISOR
+  ) {
+    navMain = instructorNavMain;
+  } else {
+    navMain = commonNavMain;
+  }
 
   const sidebarUser = {
     name:
@@ -130,10 +169,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="hover:bg-transparent hover:text-current active:bg-transparent group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:w-8! group-data-[collapsible=icon]:h-8! group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center"
-            >
+            <SidebarMenuButton asChild className="...">
               <a
                 href="/dashboard"
                 className="flex items-center gap-2 overflow-hidden"
@@ -153,13 +189,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
       <SidebarContent>
         <NavMain items={navMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
+
       <SidebarFooter>
         <NavUser user={sidebarUser} />
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   );

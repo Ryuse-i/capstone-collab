@@ -12,15 +12,22 @@ class ProjectMemberRepo(BaseRepo):
     def __init__(self, db):
         super().__init__(db, ProjectMember)
 
+    async def get_current_member(self, member_id: UUID):
+        stmt = (
+            select(ProjectMember)
+            .where(ProjectMember.user_id == member_id)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
     async def get_by_user_id(self, user_id: UUID):
-        query = (
+        stmt = (
             select(ProjectMember)
             .options(
                 selectinload(ProjectMember.project), selectinload(ProjectMember.user)
             )
             .where(ProjectMember.user_id == user_id)
         )
-        result = await self.db.execute(query)
+        result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_by_user_and_project(self, user_id: UUID, project_id: UUID):

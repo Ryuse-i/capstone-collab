@@ -164,14 +164,16 @@ export function AddTaskDialog({
   // advisors, instructors, and admins are excluded from assignment.
   const assignableMembers: AssignableMember[] = useMemo(() => {
     return (projectMembersData ?? [])
-      .filter((projectMember) => projectMember.project_role === "member")
+      .filter(
+        (projectMember) =>
+          projectMember.project_role === "member" && projectMember.users,
+      )
       .map((projectMember) => ({
         id: projectMember.user_id,
-        first_name: projectMember.user.first_name,
-        last_name: projectMember.user.last_name,
+        first_name: projectMember.users.first_name,
+        last_name: projectMember.users.last_name,
       }));
   }, [projectMembersData]);
-
   const resetForms = () => {
     setTaskForm(initialTaskForm);
     setSupertaskForm(initialSupertaskForm);

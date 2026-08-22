@@ -17,17 +17,6 @@ from app.modules.users.model import User
 task_router = APIRouter()
 
 
-@task_router.get(
-    "/assigned-members/{project_id}", response_model=list[TaskResponseWithMembers]
-)
-async def get_assigned_members(
-    project_id: UUID,
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(current_active_user),
-):
-    return await TaskService.get_assigned_members(db, project_id)
-
-
 @task_router.get("/", response_model=List[TaskResponse])
 async def get_all_tasks(
     db: AsyncSession = Depends(get_async_session),
@@ -97,3 +86,14 @@ async def delete_task(
     # 3. Perform the delete and AWAIT the service call
     await TaskService.delete_task(db, db_item)
     return None
+
+
+@task_router.get(
+    "/assigned-members/{project_id}", response_model=list[TaskResponseWithMembers]
+)
+async def get_assigned_members(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await TaskService.get_assigned_members(db, project_id)
