@@ -4,6 +4,7 @@ import { NavSecondary } from "@/components/nav-secondary";
 import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
+import { NavMain as NavShortcut } from "@/components/nav-shortcut";
 import { NavUser } from "@/components/nav-user";
 import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
@@ -57,7 +58,7 @@ const capstoneSearchNavItem = {
 
 const studentNavMain = [
   ...commonNavMain,
-  
+
   {
     title: "Project Task",
     url: "/project-task",
@@ -94,6 +95,28 @@ const instructorNavMain = [
     title: "Projects",
     url: "/project-list",
     icon: <FileText />,
+  },
+];
+
+const navShortcuts = [
+  {
+    title: "View project",
+    url: "#",
+    isActive: true,
+    items: [
+      {
+        title: "History",
+        url: "#",
+      },
+      {
+        title: "Starred",
+        url: "#",
+      },
+      {
+        title: "Settings",
+        url: "#",
+      },
+    ],
   },
 ];
 
@@ -155,6 +178,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
+        {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
+          <NavShortcut items={navShortcuts} />
+        )}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

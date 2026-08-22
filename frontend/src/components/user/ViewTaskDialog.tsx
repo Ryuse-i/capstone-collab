@@ -253,7 +253,7 @@ export function ViewTaskDialog({
         )}
 
         {/* Footer */}
-        <div className="border-t px-6 py-3 shrink-0 flex justify-end">
+        <div className="border-t px-6 py-3 shrink-0 flex justify-end bg-muted/50">
           <DialogClose asChild>
             <Button variant="outline" className="min-w-24">
               Close

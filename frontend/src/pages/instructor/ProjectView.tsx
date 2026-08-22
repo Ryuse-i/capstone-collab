@@ -193,12 +193,12 @@ export default function ProjectView() {
           Back to projects
         </button>
 
-        <Card className="overflow-hidden border border-neutral-200 shadow-sm">
+        <Card className="overflow-hidden border shadow-sm">
           {/* Project Header */}
-          <div className="border-b border-neutral-200 bg-[#FBF3E7] p-6">
+          <div className="border-4 radius-lg border-neutral-200 p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="mt-2 text-2xl font-bold text-[#231A2E]">
+                <h1 className="mt-2 text-2xl font-bold text-foreground">
                   {project.name}
                 </h1>
 

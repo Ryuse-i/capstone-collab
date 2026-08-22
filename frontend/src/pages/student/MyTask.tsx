@@ -5,15 +5,14 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
+import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
+import type { Skill } from "@/types/project_member";
+import type { UserBase } from "@/types/user";
+import type {
+  TaskPriority,
+  TaskResponseMembers,
+  TaskStatus,
+} from "@/types/task";
 
 // ---------------------------------------------------------------------------
 // remove the unused imports and variables if you don't need them. I kept them here for reference in case you want to use them later, input what wesley said in the cards information
@@ -158,13 +157,6 @@ const priorityStyle: Record<ProjectPriority, string> = {
   Low: "bg-gray-100 text-gray-500",
 };
 
-const statusStyle: Record<ProjectStatus, string> = {
-  "Not Started": "bg-gray-100 text-gray-500",
-  "In Progress": "bg-blue-100 text-blue-700",
-  Submitted: "bg-yellow-100 text-yellow-700",
-  Completed: "bg-green-100 text-green-700",
-};
-
 const tabs: { label: string; status: ProjectFilterStatus }[] = [
   { label: "All", status: "All" },
   { label: "Not Started", status: "Not Started" },
@@ -173,10 +165,50 @@ const tabs: { label: string; status: ProjectFilterStatus }[] = [
   { label: "Completed", status: "Completed" },
 ];
 
+const projectStatusToTaskStatus: Record<ProjectStatus, TaskStatus> = {
+  "Not Started": "not_started",
+  "In Progress": "in-progress",
+  Submitted: "submitted",
+  Completed: "completed",
+};
+
+const projectPriorityToTaskPriority: Record<
+  ProjectPriority,
+  TaskPriority
+> = {
+  High: "high",
+  Medium: "medium",
+  Low: "low",
+};
+
+const projectToTask = (project: Project): TaskResponseMembers => ({
+  id: project.id,
+  name: project.title,
+  description: project.description,
+  created_by: "mock-user",
+  project_id: "mock-project",
+  priority: projectPriorityToTaskPriority[project.priority],
+  category: "document",
+  deadline: new Date(project.due).toISOString(),
+  primary_skill: "Documentation" as Skill,
+  status: projectStatusToTaskStatus[project.status],
+  assigned_members: project.assigned.map(
+    (member) =>
+      ({
+        id: member,
+        first_name: member,
+        last_name: "",
+      }) as UserBase,
+  ),
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+});
+
 export default function ProjectsList() {
   const [activeTab, setActiveTab] = useState<ProjectFilterStatus>("All");
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedTask, setSelectedTask] =
+    useState<TaskResponseMembers | null>(null);
 
   const filteredProjects =
     activeTab === "All"
@@ -262,7 +294,7 @@ export default function ProjectsList() {
                     variant="outline"
                     className="w-full h-11 justify-between rounded-md border bg-muted/30 px-3 text-sm font-medium hover:bg-muted/50"
                     onClick={() => {
-                      setSelectedProject(project);
+                      setSelectedTask(projectToTask(project));
                       setOpenTaskDialog(true);
                     }}
                   >
@@ -289,110 +321,16 @@ export default function ProjectsList() {
         )}
       </div>
 
-      <Dialog
+      <ViewTaskDialog
         open={openTaskDialog}
         onOpenChange={(open) => {
           if (!open) {
-            setSelectedProject(null);
+            setSelectedTask(null);
           }
           setOpenTaskDialog(open);
         }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className="rounded-xl p-0 overflow-hidden sm:max-w-250 max-h-[75vh] flex flex-col"
-        >
-          <DialogHeader className="border-b px-4 py-3 shrink-0">
-            <DialogTitle>Task Details</DialogTitle>
-            <DialogDescription>
-              {selectedProject
-                ? selectedProject.title
-                : "Select a project to view details."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedProject ? (
-            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar overflow-hidden px-4 py-4">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">
-                  {selectedProject.title}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedProject.description}
-                </p>
-              </div>
-
-              <div className="grid gap-3">
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Status
-                  </p>
-                  <Badge
-                    className={cn(
-                      "border-0 mt-2",
-                      statusStyle[selectedProject.status],
-                    )}
-                  >
-                    {selectedProject.status}
-                  </Badge>
-                </div>
-
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Priority
-                  </p>
-                  <Badge
-                    className={cn(
-                      "border-0 mt-2",
-                      priorityStyle[selectedProject.priority],
-                    )}
-                  >
-                    {selectedProject.priority}
-                  </Badge>
-                </div>
-
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Due date
-                  </p>
-                  <p className="mt-2 text-sm text-foreground">
-                    {selectedProject.due}
-                  </p>
-                </div>
-
-                <div className="rounded-md border bg-muted/50 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Assigned users
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {selectedProject.assigned.map((member) => (
-                      <div
-                        key={member}
-                        className="flex items-center gap-2 rounded-md bg-background/50 px-2 py-2"
-                      >
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                          {member}
-                        </div>
-                        <span className="text-sm text-foreground">
-                          {member}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <DialogFooter className="sticky bottom-0 z-10 bg-background/95 px-8 py-2 shrink-0">
-            <DialogClose asChild>
-              <Button variant="outline" className="min-w-24">
-                Close
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        task={selectedTask}
+      />
     </AppLayout>
   );
 }
