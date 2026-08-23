@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   ArrowLeft,
@@ -19,6 +19,7 @@ import { TaskTable } from "@/components/user/TaskTable";
 
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
+import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
 
@@ -91,6 +92,15 @@ export default function ProjectView() {
   const [activeTab, setActiveTab] = useState<ProjectViewTab>("overview");
 
   const projectId = id ?? "";
+
+  // Remember this project's view page so the sidebar's "Projects" item
+  // returns here after visiting other pages, instead of resetting to
+  // the project list.
+  useEffect(() => {
+    if (projectId) {
+      rememberLastVisitedProjects(`/view-project/${projectId}`);
+    }
+  }, [projectId]);
 
   const {
     data: project,

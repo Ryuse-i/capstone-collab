@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Eye, GraduationCap, ChevronsUpDown, Check } from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import {
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetInstructorProjects } from "@/hooks/useProject";
 import type { ProjectWithSnapshot } from "@/types/project";
+import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
 
 type RoleFilter = "all" | "instructor" | "advisor";
 
@@ -124,6 +125,7 @@ function RoleFilterDropdown({
 }
 
 export default function ProjectsPage() {
+  const location = useLocation();
   const { data: user, isLoading: isUserLoading } = useCurrentUser();
   const {
     data: projects,
@@ -132,6 +134,12 @@ export default function ProjectsPage() {
   } = useGetInstructorProjects(user?.id ?? "");
 
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+
+  // Remember this path so the sidebar's "Projects" item can return here
+  // after visiting other pages.
+  useEffect(() => {
+    rememberLastVisitedProjects(location.pathname + location.search);
+  }, [location.pathname, location.search]);
 
   const isLoading = isUserLoading || isProjectsLoading;
 
@@ -229,4 +237,3 @@ export default function ProjectsPage() {
     </AppLayout>
   );
 }
-

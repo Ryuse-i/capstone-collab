@@ -10,6 +10,8 @@ import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentProject } from "@/hooks/useProject";
+import { getLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
+import { getLastVisitedProjects } from "@/lib/lastVisitedProjects";
 import {
   Sidebar,
   SidebarContent,
@@ -54,6 +56,13 @@ const capstoneSearchNavItem = {
   title: "Capstone Search",
   url: "/capstone-search",
   icon: <BookOpenIcon />,
+  // CapstoneView (/capstone-view/:id) has no sidebar entry of its own —
+  // it's only reachable by clicking into a result from Capstone Search —
+  // so treat it as part of the same section for active-state highlighting.
+  matchPrefixes: ["/capstone-view"],
+  // Clicking this item returns to whichever capstone-search/capstone-view
+  // path the user last visited, instead of always resetting to the list.
+  getLastVisited: getLastVisitedCapstone,
 };
 
 const studentNavMain = [
@@ -95,6 +104,13 @@ const instructorNavMain = [
     title: "Projects",
     url: "/project-list",
     icon: <FileText />,
+    // ProjectView (/view-project/:id) has no sidebar entry of its own —
+    // it's only reachable by clicking "View" from the Projects list —
+    // so treat it as part of the same section for active-state highlighting.
+    matchPrefixes: ["/view-project"],
+    // Clicking this item returns to whichever project-list/view-project
+    // path the user last visited, instead of always resetting to the list.
+    getLastVisited: getLastVisitedProjects,
   },
 ];
 

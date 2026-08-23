@@ -8,6 +8,7 @@ import Team from "@/pages/student/Team";
 import CapstoneSearch from "@/pages/student/CapstoneSearch";
 import Chat from "@/pages/student/Chat";
 import MyTask from "@/pages/student/MyTask";
+import CapstoneView from "@/pages/student/CapstoneView";
 
 export const StudentRoutes = (
   <Route element={<RoleRoute role={ROLES.STUDENT} />}>
@@ -17,5 +18,6 @@ export const StudentRoutes = (
     <Route path="/team" element={<Team />} />
     <Route path="/capstone-search" element={<CapstoneSearch />} />
     <Route path="/chat" element={<Chat />} />
+    <Route path="/capstone-view/:id" element={<CapstoneView />} />
   </Route>
 );
