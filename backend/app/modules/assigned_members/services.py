@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.assigned_members.model import AssignedMember
 from app.modules.assigned_members.repo import AssignedMemberRepo
-from .schema import AssignedMemberCreate, AssignedMemberUpdate
+from .schema import AssignedMemberCreate, AssignedMemberResponse, AssignedMemberUpdate
 from uuid import UUID
 
 
@@ -59,4 +59,9 @@ class AssignedMemberService:
             result.append(response.users)
             return result
 
-
+    @staticmethod
+    async def get_members(
+        db: AsyncSession, member_id: UUID
+    ) -> list[AssignedMemberResponse]:
+        repo = AssignedMemberRepo(db)
+        return await repo.get_members(member_id)

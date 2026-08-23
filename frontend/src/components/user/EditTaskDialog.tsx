@@ -1,9 +1,17 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarIcon, Check, Users, X } from "lucide-react";
 import { format } from "date-fns";
 
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
+import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
+import {
+  useGetTaskMembers,
+  useGetAllAssignedMembers,
+  useCreateAssignedMember,
+  useDeleteAssignedMember,
+  assignedMemberKeys,
+} from "@/hooks/useAssignedMember";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +54,11 @@ import type {
   UpdateTask,
 } from "@/types/task";
 
-import type { UserBase } from "@/types/user";
+type AssignableMember = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
 
 type TaskFormState = {
   name: string;
@@ -56,7 +68,7 @@ type TaskFormState = {
   deadline: string;
   primary_skill: Skill | "";
   secondary_skills: Skill[];
-  assigned_members: UserBase[];
+  assigned_members: AssignableMember[];
 };
 
 const PRIORITY_OPTIONS: {
@@ -109,33 +121,10 @@ const SKILL_OPTIONS: {
   { value: "Resource Management", label: "Resource Management" },
 ];
 
-/*
- * Replace this with your actual project-members query.
- */
-const MOCK_MEMBERS: UserBase[] = [
-  {
-    id: "member-1",
-    first_name: "John",
-    last_name: "Montes",
-  } as UserBase,
-  {
-    id: "member-2",
-    first_name: "Clarisa",
-    last_name: "Paule",
-  } as UserBase,
-  {
-    id: "member-3",
-    first_name: "Rommel",
-    last_name: "Magsino",
-  } as UserBase,
-  {
-    id: "member-4",
-    first_name: "Dylan",
-    last_name: "Mangaoang",
-  } as UserBase,
-];
-
-function formStateFromTask(task: TaskResponseMembers): TaskFormState {
+function formStateFromTask(
+  task: TaskResponseMembers,
+  assignedMembers?: AssignableMember[],
+): TaskFormState {
   return {
     name: task.name ?? "",
     description: task.description ?? "",
@@ -144,7 +133,13 @@ function formStateFromTask(task: TaskResponseMembers): TaskFormState {
     deadline: task.deadline ?? "",
     primary_skill: (task.primary_skill as Skill) ?? "",
     secondary_skills: (task.secondary_skills as Skill[]) ?? [],
-    assigned_members: task.assigned_members ?? [],
+    assigned_members:
+      assignedMembers ??
+      (task.assigned_members ?? []).map((member) => ({
+        id: member.id,
+        first_name: member.first_name,
+        last_name: member.last_name,
+      })),
   };
 }
 
@@ -168,27 +163,71 @@ export default function EditTaskDialog({
   );
 
   const [error, setError] = useState<string | null>(null);
-
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
-
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
 
   const updateTaskMutation = useUpdateTask();
+  const createAssignedMemberMutation = useCreateAssignedMember();
+  const deleteAssignedMemberMutation = useDeleteAssignedMember();
   const queryClient = useQueryClient();
 
-  /*
-   * Replace MOCK_MEMBERS with your project-members hook.
-   */
-  const projectMembers = MOCK_MEMBERS;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data: currentAssignedMembers, isLoading: currentMembersLoading } =
+    useGetTaskMembers(open ? task.id : "");
+
+  const { data: allAssignedMembers } = useGetAllAssignedMembers();
+
+  const taskAssignmentRows = useMemo(
+    () => (allAssignedMembers ?? []).filter((row) => row.task_id === task.id),
+    [allAssignedMembers, task.id],
+  );
+
+  const {
+    data: projectMembersData,
+    isLoading: membersLoading,
+    isError: membersError,
+  } = useGetMembersWithUserInfo(projectId ?? "");
+
+  const assignableMembers: AssignableMember[] = useMemo(() => {
+    return (projectMembersData ?? [])
+      .filter(
+        (projectMember) =>
+          projectMember.project_role === "member" && projectMember.users,
+      )
+      .map((projectMember) => ({
+        id: projectMember.user_id,
+        first_name: projectMember.users.first_name,
+        last_name: projectMember.users.last_name,
+      }));
+  }, [projectMembersData]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
+    setError(null);
 
     if (nextOpen) {
-      setTaskForm(formStateFromTask(task));
-    }
+      const liveMembers =
+        currentAssignedMembers?.map((member) => ({
+          id: member.id,
+          first_name: member.first_name,
+          last_name: member.last_name,
+        })) ?? [];
 
-    setError(null);
+      setTaskForm(
+        formStateFromTask(
+          task,
+          liveMembers.length > 0
+            ? liveMembers
+            : (task.assigned_members ?? []).map((member) => ({
+                id: member.id,
+                first_name: member.first_name,
+                last_name: member.last_name,
+              })),
+        ),
+      );
+    }
   };
 
   const handleTaskFieldChange = <K extends keyof TaskFormState>(
@@ -214,7 +253,7 @@ export default function EditTaskDialog({
     });
   };
 
-  const toggleAssignedMember = (member: UserBase) => {
+  const toggleAssignedMember = (member: AssignableMember) => {
     setTaskForm((prev) => {
       const exists = prev.assigned_members.some(
         (assigned) => assigned.id === member.id,
@@ -285,12 +324,65 @@ export default function EditTaskDialog({
         task: payload,
       });
 
+      const originalUserIds = new Set(
+        taskAssignmentRows.map((row) => row.user_id),
+      );
+
+      const currentUserIds = new Set(
+        taskForm.assigned_members.map((member) => member.id),
+      );
+
+      const toAdd = taskForm.assigned_members.filter(
+        (member) => !originalUserIds.has(member.id),
+      );
+
+      const toRemove = taskAssignmentRows.filter(
+        (row) => !currentUserIds.has(row.user_id),
+      );
+
+      if (toAdd.length > 0 || toRemove.length > 0) {
+        try {
+          await Promise.all([
+            ...toAdd.map((member) =>
+              createAssignedMemberMutation.mutateAsync({
+                user_id: member.id,
+                task_id: task.id,
+              }),
+            ),
+            ...toRemove.map((row) =>
+              deleteAssignedMemberMutation.mutateAsync(row.id),
+            ),
+          ]);
+
+          queryClient.invalidateQueries({
+            queryKey: assignedMemberKeys.task_list(task.id),
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: assignedMemberKeys.list(),
+          });
+        } catch (assignErr) {
+          console.error("Failed to sync assigned members", assignErr);
+
+          setError(
+            "Task was updated, but syncing assigned members failed. You can adjust them from the task detail page.",
+          );
+
+          queryClient.invalidateQueries({
+            queryKey: taskKeys.listProject(projectId),
+          });
+
+          onUpdated?.();
+          handleOpenChange(false);
+          return;
+        }
+      }
+
       queryClient.invalidateQueries({
         queryKey: taskKeys.listProject(projectId),
       });
 
       onUpdated?.();
-
       handleOpenChange(false);
     } catch (err) {
       setError(
@@ -301,7 +393,10 @@ export default function EditTaskDialog({
     }
   };
 
-  const isSubmitting = updateTaskMutation.isPending;
+  const isSubmitting =
+    updateTaskMutation.isPending ||
+    createAssignedMemberMutation.isPending ||
+    deleteAssignedMemberMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -315,7 +410,6 @@ export default function EditTaskDialog({
       >
         <DialogHeader>
           <DialogTitle>Edit task</DialogTitle>
-
           <DialogDescription>Update the details below.</DialogDescription>
         </DialogHeader>
 
@@ -349,7 +443,6 @@ export default function EditTaskDialog({
             />
           </div>
 
-          {/* Same grid structure as AddTaskDialog */}
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Priority */}
             <div className="space-y-2">
@@ -502,6 +595,9 @@ export default function EditTaskDialog({
                     variant="outline"
                     role="combobox"
                     aria-expanded={assignedMembersOpen}
+                    disabled={
+                      !projectId || membersLoading || currentMembersLoading
+                    }
                     className="w-full justify-between text-left font-normal"
                   >
                     <span
@@ -510,11 +606,13 @@ export default function EditTaskDialog({
                           "text-muted-foreground",
                       )}
                     >
-                      {taskForm.assigned_members.length === 0
-                        ? "Select members"
-                        : `${taskForm.assigned_members.length} member${
-                            taskForm.assigned_members.length > 1 ? "s" : ""
-                          } selected`}
+                      {membersLoading || currentMembersLoading
+                        ? "Loading members..."
+                        : taskForm.assigned_members.length === 0
+                          ? "Select members"
+                          : `${taskForm.assigned_members.length} member${
+                              taskForm.assigned_members.length > 1 ? "s" : ""
+                            } selected`}
                     </span>
                   </Button>
                 </PopoverTrigger>
@@ -524,7 +622,21 @@ export default function EditTaskDialog({
                     className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
                     onWheel={(e) => e.stopPropagation()}
                   >
-                    {projectMembers.map((member) => {
+                    {membersError && (
+                      <p className="px-2 py-2 text-sm text-rose-600">
+                        Couldn't load members.
+                      </p>
+                    )}
+
+                    {!membersError &&
+                      !membersLoading &&
+                      assignableMembers.length === 0 && (
+                        <p className="px-2 py-2 text-sm text-neutral-500">
+                          No members with the "member" role on this project.
+                        </p>
+                      )}
+
+                    {assignableMembers.map((member) => {
                       const selected = taskForm.assigned_members.some(
                         (assigned) => assigned.id === member.id,
                       );
@@ -618,6 +730,7 @@ export default function EditTaskDialog({
                         date ? date.toISOString() : "",
                       );
                     }}
+                    disabled={{ before: today }}
                   />
                 </PopoverContent>
               </Popover>

@@ -5,20 +5,10 @@ from .model import MemberStatus
 from decimal import Decimal
 
 
-class MemberSnapshotCreate(BaseModel):
-    member_id: UUID
-    workload_status: MemberStatus
-    total_workload_points: int
-    total_effective_points: Decimal
-    capacity_multiplier: Decimal
-    silence_warning: bool
-    consecutive_fallback_count: int
 
-
-class MemberSnapshotUpdate(BaseModel):
+class MemberSnapshotUpsert(BaseModel):
     member_id: UUID | None = None
     workload_status: MemberStatus | None = None
-    total_workload_points: int | None = None
     total_effective_points: Decimal | None = None
     capacity_multiplier: Decimal | None = None
     silence_warning: bool | None = None
@@ -30,7 +20,6 @@ class MemberSnapshotResponse(BaseModel):
     id: int
     member_id: UUID
     workload_status: MemberStatus
-    total_workload_points: int
     total_effective_points: Decimal
     capacity_multiplier: Decimal
     silence_warning: bool

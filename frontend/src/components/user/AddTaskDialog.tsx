@@ -4,7 +4,7 @@ import { CalendarIcon, Check, Layers, ListTodo, Users, X } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useCreateTask } from "@/hooks/useTask";
-import { useGetMemberWithUserInfo } from "@/hooks/useProjectMember";
+import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 import {
   useCreateAssignedMember,
   assignedMemberKeys,
@@ -42,7 +42,7 @@ import type {
   TaskCategory,
   TaskPriority,
 } from "@/types/task";
-import { projectKeys } from "@/hooks/useProject";
+import { taskKeys } from "@/hooks/useTask";
 
 type TaskType = "task" | "supertask";
 
@@ -151,6 +151,8 @@ export function AddTaskDialog({
   const createAssignedMemberMutation = useCreateAssignedMember();
   const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   // Only fetch once we actually have a project to scope the members to,
   // and only while the dialog is open (no point fetching in the background).
@@ -158,7 +160,7 @@ export function AddTaskDialog({
     data: projectMembersData,
     isLoading: membersLoading,
     isError: membersError,
-  } = useGetMemberWithUserInfo(projectId ?? "");
+  } = useGetMembersWithUserInfo(projectId ?? "");
 
   // Only show project members whose role is exactly "member" — leaders,
   // advisors, instructors, and admins are excluded from assignment.
@@ -304,7 +306,7 @@ export function AddTaskDialog({
         const createdTask = await createTaskMutation.mutateAsync(payload);
 
         queryClient.invalidateQueries({
-          queryKey: projectKeys.detailSnapshot(projectId),
+          queryKey: taskKeys.byProject(projectId),
         });
 
         if (taskForm.assigned_members.length > 0) {
@@ -345,6 +347,7 @@ export function AddTaskDialog({
       }
 
       onCreated?.();
+
       handleOpenChange(false);
     } catch (err) {
       setError(
@@ -745,6 +748,7 @@ export function AddTaskDialog({
                           date ? date.toISOString() : "",
                         );
                       }}
+                      disabled={{ before: today }}
                     />
                   </PopoverContent>
                 </Popover>
@@ -785,6 +789,7 @@ export function AddTaskDialog({
                         date ? date.toISOString() : "",
                       );
                     }}
+                    disabled={{ before: today }}
                   />
                 </PopoverContent>
               </Popover>

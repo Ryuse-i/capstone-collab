@@ -128,8 +128,8 @@ class Task(Base):
     category: Mapped[Category] = mapped_column(
         SAENUM(Category, name="category"), default=None, nullable=True
     )
-    deadline: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
+    deadline: Mapped[date | None] = mapped_column(
+        Date,
         nullable=True,
     )
     total_time_spent: Mapped[int] = mapped_column(default=0, nullable=True)

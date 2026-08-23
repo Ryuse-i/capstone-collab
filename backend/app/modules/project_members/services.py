@@ -5,10 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.member_snapshots.services import MemberSnapshotService
 from app.modules.projects.model import Project
 from app.modules.projects.schema import ProjectResponseSnapshot
 from app.modules.projects.services import ProjectService
 from app.modules.users.model import User
+from app.modules.member_snapshots.schema import MemberSnapshotUpsert
 
 from .model import ProjectMember
 from .repo import ProjectMemberRepo
@@ -16,11 +18,11 @@ from .schema import ProjectMemberCreate, ProjectMemberUpdate
 
 
 class ProjectMemberService:
-
     @staticmethod
-    async def get_current_member(db:AsyncSession, member_id: UUID):
+    async def get_current_member(db: AsyncSession, member_id: UUID):
         repo = ProjectMemberRepo(db)
         return await repo.get_current_member(member_id)
+
     @staticmethod
     async def get_one_member(db: AsyncSession, project_member_id):
         repo = ProjectMemberRepo(db)
@@ -75,7 +77,16 @@ class ProjectMemberService:
             raise HTTPException(status_code=404, detail="Project not found")
 
         try:
-            return await repo.create(project_member)
+            result = await repo.create(project_member)
+
+            # create member_snapshot
+            await MemberSnapshotService.upsert_today_member_snapshot(
+                db, result.id, MemberSnapshotUpsert()
+            )
+
+            return result
+
+            # create the project member snapshot here
         except IntegrityError as exc:
             raise HTTPException(
                 status_code=409, detail="Unable to create project member"

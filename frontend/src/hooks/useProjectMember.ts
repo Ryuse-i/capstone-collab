@@ -150,7 +150,7 @@ export function useDeleteMember() {
   });
 }
 
-export function useGetMemberWithUserInfo(project_id: string) {
+export function useGetMembersWithUserInfo(project_id: string) {
   return useQuery({
     queryKey: memberKeys.byProject(project_id),
     queryFn: () => api.getMemberWithUserInfo(project_id),

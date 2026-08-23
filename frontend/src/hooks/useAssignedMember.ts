@@ -36,7 +36,7 @@ const api = {
   ): Promise<AssignedMemberResponse> => {
     try {
       const response = await apiClient.post<AssignedMemberResponse>(
-        url,
+        `${url}/`,
         member,
       );
       return response.data;
@@ -124,6 +124,7 @@ export function useGetTaskMembers(id: string) {
   return useQuery({
     queryKey: assignedMemberKeys.task_list(id),
     queryFn: () => api.getTaskMembers(id),
+    enabled: !!id,
   });
 }
 

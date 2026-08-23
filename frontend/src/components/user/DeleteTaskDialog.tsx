@@ -63,7 +63,7 @@ export default function DeleteTaskDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger>
+      <AlertDialogTrigger asChild>
         {trigger ?? (
           <Button variant="destructive" size="sm">
             Delete

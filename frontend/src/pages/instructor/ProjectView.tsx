@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   ArrowLeft,
@@ -19,6 +19,7 @@ import { TaskTable } from "@/components/user/TaskTable";
 
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
+import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
 
@@ -107,6 +108,53 @@ export default function ProjectView() {
     isError: isTasksError,
   } = useGetAllTaskAssignedMembers(projectId);
 
+  // ---- Members: leader / advisor / instructor ----
+  const {
+    data: projectMembersData,
+    isLoading: isMembersLoading,
+    isError: isMembersError,
+  } = useGetMembersWithUserInfo(projectId);
+
+  const getMemberName = (role: string) => {
+    const member = projectMembersData?.find(
+      (projectMember) =>
+        projectMember.project_role === role && projectMember.users,
+    );
+
+    if (!member || !member.users) return "None";
+
+    const fullName = `${member.users.first_name ?? ""} ${
+      member.users.last_name ?? ""
+    }`.trim();
+
+    return fullName || "None";
+  };
+
+  const { leaderName, advisorName, instructorName } = useMemo(() => {
+    if (isMembersLoading) {
+      return {
+        leaderName: "Loading...",
+        advisorName: "Loading...",
+        instructorName: "Loading...",
+      };
+    }
+
+    if (isMembersError || !projectMembersData) {
+      return {
+        leaderName: "None",
+        advisorName: "None",
+        instructorName: "None",
+      };
+    }
+
+    return {
+      leaderName: getMemberName("leader"),
+      advisorName: getMemberName("advisor"),
+      instructorName: getMemberName("instructor"),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectMembersData, isMembersLoading, isMembersError]);
+
   const overviewCards = [
     {
       label: "Progress",
@@ -183,7 +231,12 @@ export default function ProjectView() {
   }
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
+    <AppLayout
+      breadcrumbs={[
+        { label: "Projects", href: "/project-list" },
+        { label: project?.name },
+      ]}
+    >
       <div className="min-h-screen w-full px-4 py-6">
         <button
           onClick={() => navigate("/project-list")}
@@ -301,21 +354,21 @@ export default function ProjectView() {
                     </h2>
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
                       <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
-                        <span>Project owner</span>
+                        <span>Project leader</span>
                         <span className="font-semibold text-(--semi-foreground)">
-                          {project.created_by}
+                          {leaderName}
                         </span>
                       </div>
                       <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
                         <span>Instructor</span>
                         <span className="font-semibold text-(--semi-foreground)">
-                          {project.instructor ?? "Not assigned"}
+                          {instructorName}
                         </span>
                       </div>
                       <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
                         <span>Advisor</span>
                         <span className="font-semibold text-(--semi-foreground)">
-                          {project.advisor ?? "Not assigned"}
+                          {advisorName}
                         </span>
                       </div>
                     </div>
@@ -389,24 +442,29 @@ export default function ProjectView() {
                   </div>
                   <div className="mt-4 space-y-3 text-sm text-neutral-600">
                     <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
-                      <span>Owner</span>
+                      <span>Project leader</span>
                       <span className="font-semibold text-(--semi-foreground)">
-                        {project.created_by}
+                        {leaderName}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
                       <span>Instructor</span>
                       <span className="font-semibold text-(--semi-foreground)">
-                        {project.instructor ?? "Not assigned"}
+                        {instructorName}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
                       <span>Advisor</span>
                       <span className="font-semibold text-(--semi-foreground)">
-                        {project.advisor ?? "Not assigned"}
+                        {advisorName}
                       </span>
                     </div>
                   </div>
+                  {isMembersError && (
+                    <p className="mt-3 text-xs text-rose-600">
+                      Couldn't load project members.
+                    </p>
+                  )}
                 </Card>
 
                 <Card className="border p-4">
@@ -416,7 +474,7 @@ export default function ProjectView() {
                   <p className="mt-4 text-sm text-(--semi-foreground)">
                     Member details can be expanded here as the project grows.
                     For now, the view highlights the assigned instructor,
-                    advisor, and project owner from the project record.
+                    advisor, and project leader from the project's member list.
                   </p>
                 </Card>
               </div>

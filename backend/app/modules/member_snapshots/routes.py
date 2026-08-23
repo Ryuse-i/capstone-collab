@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
-from .schema import MemberSnapshotCreate, MemberSnapshotUpdate, MemberSnapshotResponse
+from .schema import MemberSnapshotResponse
 from .services import MemberSnapshotService
 from typing import List
+from uuid import UUID
 
 member_snapshot_route = APIRouter()
 
@@ -31,35 +32,25 @@ async def get_one_member_snapshot(
     return db_item
 
 
-@member_snapshot_route.post(
-    "/", response_model=MemberSnapshotResponse, status_code=status.HTTP_201_CREATED
-)
-async def create_member_snapshot(
-    member_snapshot: MemberSnapshotCreate, db: AsyncSession = Depends(get_async_session)
+@member_snapshot_route.get("/latest")
+async def get_latest_member_snapshot(
+    member_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
-    """Create a new assigned member. Returns 201 Created on success."""
-    return await MemberSnapshotService.create_member_snapshot(db, member_snapshot)
+    return await MemberSnapshotService.get_latest_snapshot(db, member_id)
 
 
-@member_snapshot_route.patch(
-    "/{member_snapshot_id}", response_model=MemberSnapshotResponse
-)
-async def update_member_snapshot(
-    member_snapshot_id: int,
-    member_snapshot: MemberSnapshotUpdate,
-    db: AsyncSession = Depends(get_async_session),
+@member_snapshot_route.post("/{member_id}/upsert")
+async def upsert_today_snapshot(
+    member_id, snapshot, db: AsyncSession = Depends(get_async_session)
 ):
-    """Partially update an existing assigned member."""
-    db_item = await MemberSnapshotService.get_one_member_snapshot(
-        db, member_snapshot_id
+    snapshot = await MemberSnapshotService.upsert_today_member_snapshot(
+        db, member_id, snapshot
     )
-    if not db_item:
+    if not snapshot:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Assigned member not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Member snapshot not found"
         )
-    return await MemberSnapshotService.update_member_snapshot(
-        db, db_item, member_snapshot
-    )
+    return snapshot
 
 
 @member_snapshot_route.delete(

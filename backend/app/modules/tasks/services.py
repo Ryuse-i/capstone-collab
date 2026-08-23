@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.tasks.model import Task, Category, Complexity
 from app.modules.tasks.repo import TaskRepo
@@ -135,17 +137,21 @@ class TaskService:
     async def get_assigned_members(db: AsyncSession, project_id: UUID):
         repo = TaskRepo(db)
         tasks = await repo.get_assigned_members(project_id)
-
         return [
             TaskResponseWithMembers.model_validate(
-                task,
-                from_attributes=True,
-            ).model_copy(
-                update={
+                {
+                    **{
+                        col: getattr(task, col) for col in task.__table__.columns.keys()
+                    },
                     "assigned_members": [
-                        member.user for member in task.assigned_members
-                    ]
+                        member.users for member in task.assigned_members
+                    ],
                 }
             )
             for task in tasks
         ]
+
+    @staticmethod
+    async def batch_get_task(db: AsyncSession, ids: Sequence[UUID]):
+        repo = TaskRepo(db)
+        return await repo.batch_get_task(ids)

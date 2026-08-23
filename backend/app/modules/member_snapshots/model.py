@@ -1,8 +1,16 @@
-from datetime import datetime, timezone
+from datetime import date
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
-from sqlalchemy import Boolean, DateTime, ForeignKey, UUID as PG_UUID, Integer, Numeric
+from sqlalchemy import (
+    Boolean,
+    Date,
+    ForeignKey,
+    UUID as PG_UUID,
+    Integer,
+    Numeric,
+    UniqueConstraint,
+)
 from sqlalchemy import Enum as SAENUM
 from decimal import Decimal
 import enum
@@ -19,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class MemberStatus(str, enum.Enum):
-    OK = "ok"
+    NORMAL = "normal"
     UNDERUTILIZED = "underutilized"
     OVERLOADED = "overloaded"
 
@@ -39,21 +47,19 @@ class MemberSnapshot(Base):
         foreign_keys=[member_id],
     )
 
-    #base points base on the assigned tasks
-    total_workload_points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-
-    #Deadline weighted sum, this is the actual workload of member
-    total_effective_points: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    #adjusts personal expected load base on the baseline 
+    # Deadline weighted sum, this is the actual workload of member
+    total_effective_points: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
+    # adjusts personal expected load base on the baseline
     capacity_multiplier: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=1.0)
-    #hides overload warning 
+    # hides overload warning
     silence_warning: Mapped[bool] = mapped_column(Boolean, default=False)
-    consecutive_fallback_count: Mapped[int] = mapped_column(Integer)
+    consecutive_fallback_count: Mapped[int] = mapped_column(Integer, default=0)
     workload_status: Mapped[MemberStatus] = mapped_column(
-        SAENUM(MemberStatus, name="member_status"), default=MemberStatus.OK
+        SAENUM(MemberStatus, name="member_status"), default=MemberStatus.NORMAL
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+    snapshot_date: Mapped[date] = mapped_column(Date, default=date.today)
+
+    __table_args__ = (
+        UniqueConstraint("member_id", "snapshot_date", name="uq_member_snapshot_date"),
     )

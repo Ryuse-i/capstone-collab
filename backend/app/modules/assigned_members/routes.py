@@ -18,15 +18,6 @@ from typing import List
 assigned_member_router = APIRouter()
 
 
-@assigned_member_router.get("/task/{task_id}", response_model=list[UserResponse])
-async def get_task_members(
-    task_id: UUID,
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(current_active_user),
-):
-    return await AssignedMemberService.get_task_members(db, task_id)
-
-
 @assigned_member_router.get("/", response_model=List[AssignedMemberResponse])
 async def get_all_assigned_members(db: AsyncSession = Depends(get_async_session)):
     """Fetch all assigned members from the database."""
@@ -111,3 +102,12 @@ async def batch_create_members(
     current_user: User = Depends(current_active_user),
 ):
     return AssignedMemberService.batch_create_members(db, members)
+
+
+@assigned_member_router.get("/task/{task_id}", response_model=list[UserResponse])
+async def get_task_members(
+    task_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await AssignedMemberService.get_task_members(db, task_id)

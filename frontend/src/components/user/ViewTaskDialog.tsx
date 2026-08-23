@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useGetTaskMembers } from "@/hooks/useAssignedMember";
 import type {
   TaskStatus,
   TaskComplexity,
@@ -84,6 +85,17 @@ export function ViewTaskDialog({
   onOpenChange,
   task,
 }: ViewTaskDialogProps) {
+  // Fetch the live assigned-members list for this task rather than trusting
+  // whatever `task.assigned_members` snapshot was passed in as a prop —
+  // only fetch while the dialog is open and a task is actually selected.
+  const {
+    data: assignedMembers,
+    isLoading: membersLoading,
+    isError: membersError,
+  } = useGetTaskMembers(task?.id ?? "");
+
+  const shouldFetchMembers = open && !!task?.id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -221,15 +233,26 @@ export function ViewTaskDialog({
 
               {/* Assigned Members */}
               <MetaRow icon={<Users className="size-4" />} label="Assigned To">
-                {task.assigned_members && task.assigned_members.length > 0 ? (
-                  task.assigned_members.map((member) => (
-                    <Badge
+                {!shouldFetchMembers ? null : membersLoading ? (
+                  <span className="text-sm text-muted-foreground">
+                    Loading assigned members...
+                  </span>
+                ) : membersError ? (
+                  <span className="text-sm text-rose-600">
+                    Couldn't load assigned members.
+                  </span>
+                ) : assignedMembers && assignedMembers.length > 0 ? (
+                  assignedMembers.map((member) => (
+                    <span
                       key={member.id}
-                      variant="secondary"
-                      className="font-normal bg-muted text-foreground"
+                      className="flex items-center gap-1.5 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-1 text-xs text-[#231A2E]"
                     >
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-medium text-[#7A0C2E]">
+                        {member.first_name?.charAt(0)}
+                        {member.last_name?.charAt(0)}
+                      </span>
                       {member.first_name} {member.last_name}
-                    </Badge>
+                    </span>
                   ))
                 ) : (
                   <span className="text-sm text-muted-foreground">

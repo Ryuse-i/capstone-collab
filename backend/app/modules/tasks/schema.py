@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from datetime import datetime, date
 from uuid import UUID
 from app.modules.tasks.enums import Status, Priority, Complexity, Category
 from app.modules.project_members.model import Skills
@@ -19,7 +19,7 @@ class TaskCreate(BaseModel):
     category: Category | None = None
     primary_skill: Skills
     secondary_skills: list[Skills] | None = None
-    deadline: datetime
+    deadline: date
     started_at: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None
@@ -38,7 +38,7 @@ class TaskUpdate(BaseModel):
     category: Category | None = None
     primary_skill: Skills
     secondary_skills: list[Skills] | None = None
-    deadline: datetime | None = None
+    deadline: date | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None
@@ -58,7 +58,7 @@ class TaskResponse(BaseModel):
     category: Category | None = None
     primary_skill: Skills
     secondary_skills: list[Skills] | None = None
-    deadline: datetime | None = None
+    deadline: date | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
     total_time_spent: int | None = None
