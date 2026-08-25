@@ -3,6 +3,7 @@ from app.modules.assigned_members.model import AssignedMember
 from app.modules.assigned_members.repo import AssignedMemberRepo
 from .schema import AssignedMemberCreate, AssignedMemberResponse, AssignedMemberUpdate
 from uuid import UUID
+from typing import Sequence
 
 
 class AssignedMemberService:
@@ -65,3 +66,9 @@ class AssignedMemberService:
     ) -> list[AssignedMemberResponse]:
         repo = AssignedMemberRepo(db)
         return await repo.get_members(member_id)
+
+    @staticmethod
+    async def get_members_with_task(db: AsyncSession, member_ids: Sequence[UUID]):
+        repo = AssignedMemberRepo(db)
+
+        return await repo.get_members_with_task(member_ids)

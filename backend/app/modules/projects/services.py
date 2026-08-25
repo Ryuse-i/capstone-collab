@@ -98,3 +98,8 @@ class ProjectService:
                 else None
             ),
         )
+
+    @staticmethod
+    async def get_project_with_latest_snapshot(db, project_id):
+        repo = ProjectRepo(db)
+        return await repo.get_project_with_latest_snapshot(project_id)

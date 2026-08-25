@@ -39,7 +39,7 @@ class ProjectResponse(BaseModel):
 
 class ProjectResponseSnapshot(ProjectResponse):
     # relationship ProjectSnapshost
-    snapshot: ProjectSnapshotResponse | None = None
+    snapshot: ProjectSnapshotResponse | None
 
     class ConfigDict:
         from_attributes = True

@@ -3,6 +3,7 @@ from .model import AssignedMember
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from uuid import UUID
+from typing import Sequence
 
 
 class AssignedMemberRepo(BaseRepo):
@@ -26,3 +27,17 @@ class AssignedMemberRepo(BaseRepo):
 
         result = await self.db.execute(stmt)
         return result.scalars().all()
+
+    #returns all assigned members with task 
+    async def get_members_with_task(self, member_ids: Sequence[UUID]):
+        if not id:
+            return []
+
+        stmt = (
+            select(AssignedMember)
+            .where(AssignedMember.user_id.in_(member_ids))
+            .options(selectinload(AssignedMember.task))
+        )
+
+        results = await self.db.execute(stmt)
+        return results.scalars().all()

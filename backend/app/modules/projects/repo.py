@@ -6,6 +6,7 @@ from sqlalchemy.orm import contains_eager
 from app.core.base_repo import BaseRepo
 from app.modules.projects.model import Project
 from app.modules.project_snapshots.model import ProjectSnapshot
+from app.modules.projects.schema import  ProjectResponseSnapshot
 
 
 class ProjectRepo(BaseRepo):
@@ -39,7 +40,6 @@ class ProjectRepo(BaseRepo):
         result = await self.db.execute(query.execution_options(populate_existing=True))
         return result.unique().scalar_one_or_none()
 
-
     async def get_projects_for_instructor(self, user_id: UUID) -> list[Project]:
         query = select(Project).where(
             (Project.instructor == user_id) | (Project.advisor == user_id)
@@ -55,3 +55,25 @@ class ProjectRepo(BaseRepo):
         )
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def get_project_with_latest_snapshot(self, project_id: UUID) -> ProjectResponseSnapshot:
+        latest_date_subq = (
+            select(func.max(ProjectSnapshot.snapshot_date))
+            .where(ProjectSnapshot.project_id == Project.id)
+            .correlate(Project)
+            .scalar_subquery()
+        )
+
+        stmt = (
+            select(Project)
+            .outerjoin(
+                ProjectSnapshot,
+                (ProjectSnapshot.project_id == Project.id)
+                & (ProjectSnapshot.snapshot_date == latest_date_subq),
+            )
+            .where(Project.id == project_id)
+            .options(contains_eager(Project.snapshots))
+            .limit(1)
+        )
+        result = await self.db.execute(stmt.execution_options(populate_existing=True))
+        return result.unique().scalar_one_or_none()

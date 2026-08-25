@@ -117,3 +117,10 @@ class ProjectMemberService:
         repo = ProjectMemberRepo(db)
         await repo.delete(db_item)
         return None
+
+    @staticmethod
+    async def get_members_by_project_with_member_snapshot(
+        db: AsyncSession, project_id: UUID
+    ):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_members_by_project_with_member_snapshot(project_id)
