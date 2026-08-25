@@ -113,26 +113,27 @@ function ProjectDetails({
   setFormData: React.Dispatch<React.SetStateAction<Data>>;
 }) {
   return (
-    <div className="w-full flex flex-col gap-2">
+    <div className="w-full flex flex-col gap-5">
       <Field>
-        <FieldLabel htmlFor="project-name">Project Name</FieldLabel>
+        <FieldLabel htmlFor="project-name">Project name</FieldLabel>
         <Input
           id="project-name"
           type="text"
-          placeholder="eg. Capstone Collab"
-          size={90}
+          placeholder="e.g. Capstone Collab"
           required
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="bg-muted/20"
         />
       </Field>
       <Field>
         <FieldLabel htmlFor="project-description">
-          Project Description
+          Project description
         </FieldLabel>
         <Textarea
           id="project-description"
-          placeholder="eg. A project Management for PSU Lubao"
+          placeholder="e.g. A project management system for PSU Lubao"
+          className="min-h-24 resize-none bg-muted/20"
           value={formData.description}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
@@ -187,11 +188,13 @@ function SearchSelectField({
     <Field>
       <FieldLabel htmlFor={id}>
         {label}
-        {optional && <span className="text-muted-foreground"> (Optional)</span>}
+        {optional && (
+          <span className="text-muted-foreground font-normal"> (Optional)</span>
+        )}
       </FieldLabel>
       {selectedValue ? (
-        <div className="flex items-center justify-between rounded-md border px-3 py-2">
-          <span>{selectedValue}</span>
+        <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
+          <span className="text-sm">{selectedValue}</span>
           <button
             type="button"
             onClick={onRemove}
@@ -212,7 +215,6 @@ function SearchSelectField({
               onChange={(e) => setEmail(e.target.value)}
               onFocus={() => setInputActive(true)}
               onBlur={() => setInputActive(false)}
-              size={90}
             />
           </PopoverAnchor>
           <PopoverContent
@@ -220,17 +222,17 @@ function SearchSelectField({
             onCloseAutoFocus={(e) => e.preventDefault()}
             align="start"
             sideOffset={4}
-            className="w-[--radix-popover-trigger-width] p-0"
+            className="w-[--radix-popover-trigger-width] p-0 shadow-md"
           >
             <Command shouldFilter={false}>
               <CommandList className="max-h-48 overflow-y-auto">
                 {isLoading ? (
-                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground">
                     <LoaderCircleIcon className="size-3.5 animate-spin" />
                     Searching...
                   </div>
                 ) : results.length === 0 ? (
-                  <CommandEmpty className="px-3 py-2 text-sm text-muted-foreground">
+                  <CommandEmpty className="px-3 py-2.5 text-sm text-muted-foreground">
                     No user found
                   </CommandEmpty>
                 ) : (
@@ -302,19 +304,19 @@ function MemberSearchField({
   return (
     <Field>
       <FieldLabel htmlFor="members">
-        Members <span className="text-muted-foreground"> (Optional)</span>
+        Members{" "}
+        <span className="text-muted-foreground font-normal">(Optional)</span>
       </FieldLabel>
       <Popover open={showPopover}>
         <PopoverAnchor asChild>
           <Input
             id="members"
             type="text"
-            placeholder="eg. member@gmail.com"
+            placeholder="e.g. member@gmail.com"
             value={memberEmail}
             onChange={(e) => setMemberEmail(e.target.value)}
             onFocus={() => setInputActive(true)}
             onBlur={() => setInputActive(false)}
-            size={90}
           />
         </PopoverAnchor>
         <PopoverContent
@@ -322,17 +324,17 @@ function MemberSearchField({
           onCloseAutoFocus={(e) => e.preventDefault()}
           align="start"
           sideOffset={4}
-          className="w-[--radix-popover-trigger-width] p-0"
+          className="w-[--radix-popover-trigger-width] p-0 shadow-md"
         >
           <Command shouldFilter={false}>
             <CommandList className="max-h-48 overflow-y-auto">
               {memberSearch.isLoading ? (
-                <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground">
                   <LoaderCircleIcon className="size-3.5 animate-spin" />
                   Searching...
                 </div>
               ) : availableMemberResults.length === 0 ? (
-                <CommandEmpty className="px-3 py-2 text-sm text-muted-foreground">
+                <CommandEmpty className="px-3 py-2.5 text-sm text-muted-foreground">
                   No user found
                 </CommandEmpty>
               ) : (
@@ -356,11 +358,11 @@ function MemberSearchField({
       </Popover>
 
       {members.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex flex-wrap gap-1.5 pt-1">
           {members.map((member) => (
             <div
               key={member.id}
-              className="flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
+              className="flex items-center gap-1.5 rounded-full border bg-muted/40 pl-3 pr-2 py-1 text-xs font-medium"
             >
               <span>{member.email}</span>
               <button
@@ -372,7 +374,7 @@ function MemberSearchField({
                 onClick={() => removeMember(member.email)}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                <X className="size-3.5" />
+                <X className="size-3" />
               </button>
             </div>
           ))}
@@ -406,12 +408,12 @@ function AddMember({
   memberSearch: ReturnType<typeof useMemberSearch>;
 }) {
   return (
-    <div className="w-full flex flex-col gap-2">
+    <div className="w-full flex flex-col gap-5">
       <SearchSelectField
         id="instructor"
         label="Instructor"
         optional
-        placeholder="eg. instructor@gmail.com"
+        placeholder="e.g. instructor@gmail.com"
         email={instructorEmail}
         setEmail={setInstructorEmail}
         results={instructorSearch.results}
@@ -439,6 +441,17 @@ function AddMember({
   );
 }
 
+function ReviewRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[112px_1fr] gap-3 py-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground break-words whitespace-pre-wrap">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function ReviewProjectDetails({
   formData,
   members,
@@ -453,46 +466,47 @@ function ReviewProjectDetails({
   const hasAnyMembers = hasInstructor || hasMembers;
 
   return (
-    <div className="w-full flex flex-col gap-2">
-      <h2>Double check everything before submitting</h2>
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col ">
-          <h2>Project Details</h2>
-          <div className="mx-5">
-            <div className="flex gap-3">
-              <h3 className="text-gray-400">Project name:</h3>
-              <p>{formData.name}</p>
-            </div>
-            <div className="flex gap-3">
-              <h3 className="text-gray-400">Project description:</h3>
-              <p className="break-word whitespace-pre-wrap">
-                {formData.description}
-              </p>
-            </div>
-          </div>
+    <div className="w-full flex flex-col gap-4">
+      <p className="text-sm text-foreground">
+        Double check everything before submitting.
+      </p>
+
+      <div className="rounded-lg border">
+        <div className="px-4 py-2.5 border-b bg-muted/30">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">
+            Project details
+          </h3>
         </div>
-        <div>
-          <h2>Members</h2>
-          <div className="flex flex-col mx-5">
-            {hasAnyMembers ? (
-              <>
-                {hasInstructor && (
-                  <div className="flex gap-1">
-                    <h3 className="text-gray-400">Instructor:</h3>
-                    <div>{instructorLabel}</div>
-                  </div>
-                )}
-                {hasMembers && (
-                  <div className="flex gap-1">
-                    <h3 className="text-gray-400">Members:</h3>
-                    <div>{members.map((m) => m.email).join(", ")}</div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-gray-400">No members added</div>
-            )}
-          </div>
+        <div className="px-4 py-1 divide-y">
+          <ReviewRow label="Name" value={formData.name} />
+          <ReviewRow label="Description" value={formData.description} />
+        </div>
+      </div>
+
+      <div className="rounded-lg border">
+        <div className="px-4 py-2.5 border-b bg-muted/30">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">
+            Members
+          </h3>
+        </div>
+        <div className="px-4 py-1">
+          {hasAnyMembers ? (
+            <div className="divide-y">
+              {hasInstructor && (
+                <ReviewRow label="Instructor" value={instructorLabel} />
+              )}
+              {hasMembers && (
+                <ReviewRow
+                  label="Members"
+                  value={members.map((m) => m.email).join(", ")}
+                />
+              )}
+            </div>
+          ) : (
+            <p className="py-3 text-sm text-muted-foreground">
+              No members added
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -687,80 +701,72 @@ export default function CreateProjectDialog() {
             Create +
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-250 max-h-[70vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-175 h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
             <DialogTitle>Create your new project</DialogTitle>
             <DialogDescription>
-              Setup your project and invite your team.{" "}
+              Set up your project and invite your team.
             </DialogDescription>
           </DialogHeader>
-          <div className="mx-4 max-h-[50vh] px-4 overflow-y-auto custom-scrollbar">
-            <Stepper
-              value={currentStep}
-              onValueChange={setCurrentStep}
-              indicators={{
-                completed: <CheckIcon className="size-3.5" />,
-                loading: <LoaderCircleIcon className="size-3.5 animate-spin" />,
-              }}
-              className=" w-full  space-y-8"
-            >
-              <StepperNav className="gap-3">
-                {STEPS.map((step, index) => (
-                  <StepperItem
-                    key={index}
-                    step={index + 1}
-                    className="relative flex "
-                  >
-                    <StepperTrigger
-                      className="flex grow flex-col items-start  borerjustify-center gap-2.5"
-                      asChild
-                    >
-                      <StepperIndicator className="data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground data-[state=completed]:bg-success size-8 border-2 data-[state=completed]:text-white data-[state=inactive]:bg-transparent">
-                        {step.icon}
-                      </StepperIndicator>
-                      <div className="flex flex-col items-start gap-1">
-                        <div className="text-muted-foreground text-[10px] font-semibold uppercase">
-                          Step {index + 1}
-                        </div>
-                        <StepperTitle className="group-data-[state=inactive]/step:text-muted-foreground text-start text-base font-semibold">
-                          {step.title}
-                        </StepperTitle>
-                      </div>
-                    </StepperTrigger>
-                    {STEPS.length > index + 1 && (
-                      <StepperSeparator className="group-data-[state=completed]/step:bg-success absolute inset-x-0 inset-s-9 top-4 m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none" />
-                    )}
-                  </StepperItem>
-                ))}
-              </StepperNav>
 
+          <Stepper
+            value={currentStep}
+            onValueChange={setCurrentStep}
+            indicators={{
+              completed: <CheckIcon className="size-3.5" />,
+              loading: <LoaderCircleIcon className="size-3.5 animate-spin" />,
+            }}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            <StepperNav className="gap-3 px-6 pt-5 pb-2">
+              {STEPS.map((step, index) => (
+                <StepperItem key={index} step={index + 1} className="relative flex">
+                  <StepperTrigger
+                    className="flex grow flex-col items-start justify-center gap-2.5"
+                    asChild
+                  >
+                    <StepperIndicator className="data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-muted-foreground data-[state=completed]:bg-primary data-[state=completed]:border-primary size-8 border-2 data-[state=completed]:text-primary-foreground data-[state=inactive]:bg-transparent transition-colors">
+                      {step.icon}
+                    </StepperIndicator>
+                    <div className="flex flex-col items-start gap-0.5">
+                      <div className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+                        Step {index + 1}
+                      </div>
+                      <StepperTitle className="group-data-[state=inactive]/step:text-muted-foreground text-start text-sm font-semibold">
+                        {step.title}
+                      </StepperTitle>
+                    </div>
+                  </StepperTrigger>
+                  {STEPS.length > index + 1 && (
+                    <StepperSeparator className="group-data-[state=completed]/step:bg-primary absolute inset-x-0 inset-s-9 top-4 m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none" />
+                  )}
+                </StepperItem>
+              ))}
+            </StepperNav>
+
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-5">
               <StepperPanel className="text-sm">
                 {STEPS.map((_step, index) => (
-                  <StepperContent
-                    key={index}
-                    value={index + 1}
-                    className="flex items-center justify-center"
-                  >
+                  <StepperContent key={index} value={index + 1}>
                     {renderStep(index + 1)}
                   </StepperContent>
                 ))}
               </StepperPanel>
+            </div>
+          </Stepper>
 
-              <div className=" flex items-center justify-between w-full"></div>
-            </Stepper>
-          </div>
-          <DialogFooter>
-            <div className="w-full flex justify-between">
+          <DialogFooter className="px-6 py-2 border-t">
+            <div className="w-full flex justify-between mb-4">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => setCurrentStep((prev) => prev - 1)}
                 disabled={currentStep === 1}
+
               >
                 Previous
               </Button>
               {currentStep === STEPS.length ? (
                 <Button
-                  variant="outline"
                   onClick={handleSubmit}
                   disabled={
                     isProjectPending || isInvitePending || isMemberPending
@@ -772,7 +778,6 @@ export default function CreateProjectDialog() {
                 </Button>
               ) : (
                 <Button
-                  variant="outline"
                   onClick={() => setCurrentStep((prev) => prev + 1)}
                   disabled={!isStepValid(currentStep)}
                 >

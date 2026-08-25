@@ -9,7 +9,10 @@ import { NavUser } from "@/components/nav-user";
 import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetCurrentProject } from "@/hooks/useProject";
+import {
+  useGetCurrentProject,
+  useGetInstructorProjects,
+} from "@/hooks/useProject";
 import { getLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
 import { getLastVisitedProjects } from "@/lib/lastVisitedProjects";
 import {
@@ -31,6 +34,7 @@ import {
   Users,
   ClipboardCheck,
   LucideLayers,
+  FolderKanban,
 } from "lucide-react";
 
 const data = {
@@ -114,35 +118,40 @@ const instructorNavMain = [
   },
 ];
 
-const navShortcuts = [
-  {
-    title: "View project",
-    url: "#",
-    isActive: true,
-    items: [
-      {
-        title: "History",
-        url: "#",
-      },
-      {
-        title: "Starred",
-        url: "#",
-      },
-      {
-        title: "Settings",
-        url: "#",
-      },
-    ],
-  },
-];
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
   const { data: currentProject, isLoading: isProjectLoading } =
     useGetCurrentProject(user?.id ?? "");
+  const { data: projects } = useGetInstructorProjects(user?.id ?? "");
   const role = user?.role?.toLowerCase();
   const hasProject = Boolean(currentProject);
   const shouldShowProjectNav = !isProjectLoading && hasProject;
+  const recentProjects =
+    projects
+      ?.filter(
+        (project) =>
+          project.instructor === user?.id || project.advisor === user?.id,
+      )
+      .filter((project, index, allProjects) =>
+        project.id
+          ? allProjects.findIndex((item) => item.id === project.id) === index
+          : true,
+      )
+      .filter((project) => project.id)
+      .map((project) => ({
+        title: project.name,
+        url: `/view-project/${project.id}`,
+      })) ?? [];
+
+  const navShortcuts = [
+    {
+      title: "Projects",
+      url: "/project-list",
+      icon: FolderKanban,
+      isActive: true,
+      items: recentProjects,
+    },
+  ];
 
   const navMain =
     role === ROLES.STUDENT

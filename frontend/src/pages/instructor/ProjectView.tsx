@@ -205,7 +205,7 @@ export default function ProjectView() {
 
         <Card className="overflow-hidden border shadow-sm">
           {/* Project Header */}
-          <div className="border-4 radius-lg border-neutral-200 p-6">
+          <div className="border-4 rounded-lg border-neutral-200 p-6 m-2">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="mt-2 text-2xl font-bold text-foreground">
@@ -370,9 +370,9 @@ export default function ProjectView() {
                       <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
                       Timeline insight
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
                       <span>Expected score</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {formatNumber(snapshot?.expected_score)}
                       </span>
                     </div>
