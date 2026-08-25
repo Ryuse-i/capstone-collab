@@ -27,7 +27,7 @@ class TaskRepo(BaseRepo):
             select(Task)
             .where(Task.project_id == project_id)
             .options(
-                selectinload(Task.assigned_members).selectinload(AssignedMember.users)
+                selectinload(Task.assigned_members).selectinload(AssignedMember.members)
             )
         )
         result = await self.db.execute(stmt)

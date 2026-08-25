@@ -15,7 +15,7 @@ class AssignedMemberRepo(BaseRepo):
         stmt = (
             select(AssignedMember)
             .where(AssignedMember.task_id == task_id)
-            .options(selectinload(AssignedMember.users))
+            .options(selectinload(AssignedMember.members))
         )
 
         result = await self.db.execute(stmt)
@@ -23,7 +23,7 @@ class AssignedMemberRepo(BaseRepo):
 
     # get all assigned rows base on member id
     async def get_members(self, member_id: UUID):
-        stmt = select(AssignedMember).where(AssignedMember.user_id == member_id)
+        stmt = select(AssignedMember).where(AssignedMember.member_id == member_id)
 
         result = await self.db.execute(stmt)
         return result.scalars().all()
@@ -35,7 +35,7 @@ class AssignedMemberRepo(BaseRepo):
 
         stmt = (
             select(AssignedMember)
-            .where(AssignedMember.user_id.in_(member_ids))
+            .where(AssignedMember.member_id.in_(member_ids))
             .options(selectinload(AssignedMember.task))
         )
 

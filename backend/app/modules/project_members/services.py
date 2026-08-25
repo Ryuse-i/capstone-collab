@@ -5,10 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.member_snapshots.services import MemberSnapshotService
 from app.modules.projects.model import Project
 from app.modules.projects.schema import ProjectResponseSnapshot
-from app.modules.projects.services import ProjectService
 from app.modules.users.model import User
 from app.modules.member_snapshots.schema import MemberSnapshotUpsert
 
@@ -79,6 +77,8 @@ class ProjectMemberService:
         try:
             result = await repo.create(project_member)
 
+            from app.modules.member_snapshots.services import MemberSnapshotService
+
             # create member_snapshot
             await MemberSnapshotService.upsert_today_member_snapshot(
                 db, result.id, MemberSnapshotUpsert()
@@ -109,6 +109,8 @@ class ProjectMemberService:
         member = await member_repo.get_by_user_and_project(user_id, project_id)
         if not member:
             return None
+
+        from app.modules.projects.services import ProjectService
 
         return await ProjectService.get_by_id_with_snapshot(db, project_id)
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.modules.tasks.model import Task
-    from app.modules.users.model import User
+    from app.modules.project_members.model import ProjectMember
 
 
 """
@@ -21,8 +21,8 @@ class AssignedMember(Base):
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid4
     )
-    user_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id")
+    member_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("project_members.id")
     )
     task_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE")
@@ -46,8 +46,8 @@ class AssignedMember(Base):
         back_populates="assigned_members",
         foreign_keys=[task_id],
     )
-    users: Mapped["User"] = relationship(
-        "User",
+    members: Mapped["ProjectMember"] = relationship(
+        "ProjectMember",
         back_populates="assigned_members",
-        foreign_keys=[user_id],
+        foreign_keys=[member_id],
     )

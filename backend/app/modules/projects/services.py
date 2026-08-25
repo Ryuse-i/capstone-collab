@@ -9,7 +9,6 @@ from app.modules.projects.schema import (
     ProjectResponse,
 )
 from app.modules.project_snapshots.repo import ProjectSnapshotRepo
-from app.modules.project_snapshots.services import ProjectSnapshotService
 from app.modules.project_snapshots.schema import ProjectSnapshotResponse
 
 
@@ -81,6 +80,8 @@ class ProjectService:
         project = await repo.get_by_id(project_id)
         if project is None:
             return None
+
+        from app.modules.project_snapshots.services import ProjectSnapshotService
 
         latest_snapshot = await ProjectSnapshotService.get_latest_snapshot(
             db, project_id

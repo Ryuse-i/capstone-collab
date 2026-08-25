@@ -22,6 +22,10 @@ class AssignedMemberService:
         db: AsyncSession, assigned_member: AssignedMemberCreate
     ):
         repo = AssignedMemberRepo(db)
+
+        #get task
+
+        #calculate the member workload
         return await repo.create(assigned_member)
 
     @staticmethod

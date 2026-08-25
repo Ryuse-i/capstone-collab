@@ -5,13 +5,13 @@ from app.modules.users.schema import UserResponse
 
 
 class AssignedMemberCreate(BaseModel):
-    user_id: UUID
+    member_id: UUID
     task_id: UUID
     effort_share: float | None = None
 
 
 class AssignedMemberUpdate(BaseModel):
-    user_id: UUID | None = None
+    member_id: UUID | None = None
     task_id: UUID | None = None
     effort_share: float | None = None
 
@@ -19,7 +19,7 @@ class AssignedMemberUpdate(BaseModel):
 class AssignedMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
-    user_id: UUID
+    member_id: UUID
     task_id: UUID
     effort_share: float
     created_at: datetime | None = None

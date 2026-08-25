@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.modules.projects.model import Project
     from app.modules.member_activities.model import MemberActivity
     from app.modules.users.model import User
+    from app.modules.assigned_members.model import AssignedMember
 
 
 class ProjectRole(str, enum.Enum):
@@ -120,5 +121,11 @@ class ProjectMember(Base):
     activities: Mapped[list["MemberActivity"]] = relationship(
         "MemberActivity",
         back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    assigned_members: Mapped[list["AssignedMember"]] = relationship(
+        "AssignedMember",
+        back_populates="members",
         cascade="all, delete-orphan",
     )

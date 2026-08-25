@@ -11,7 +11,6 @@ from app.modules.projects.schema import ProjectResponseSnapshot
 from .schema import (
     ProjectMember_User_Response,
     ProjectMemberCreate,
-    ProjectMemberDetailResponse,
     ProjectMemberResponse,
     ProjectMemberUpdate,
     ProjectMember_Project_Response,
@@ -32,7 +31,7 @@ async def get_all_members(db: AsyncSession = Depends(get_async_session)):
     return await ProjectMemberService.get_all_members(db)
 
 
-@project_member_router.get("/detail", response_model=List[ProjectMemberDetailResponse])
+@project_member_router.get("/detail", response_model=List[ProjectMemberResponse])
 async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
     return await ProjectMemberService.get_all_members(db)
 
@@ -66,7 +65,7 @@ async def get_one_project_member(
 
 
 @project_member_router.get(
-    "/detail/{user_id}", response_model=ProjectMemberDetailResponse
+    "/detail/{user_id}", response_model=ProjectMemberResponse
 )
 async def get_one_project_member_detail(
     user_id: UUID, db: AsyncSession = Depends(get_async_session)

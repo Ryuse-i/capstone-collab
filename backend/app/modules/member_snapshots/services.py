@@ -1,21 +1,25 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from statistics import median
 
-from app.modules.project_members.services import ProjectMemberService
 from app.modules.project_snapshots.schema import (
     ProjectSnapshotUpsert,
 )
-from app.modules.project_snapshots.services import ProjectSnapshotService
-from app.modules.projects.services import ProjectService
 from .model import MemberSnapshot, MemberStatus
 from .repo import MemberSnapshotRepo
 from uuid import UUID
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from .schema import MemberSnapshotUpsert
-from app.modules.assigned_members.services import AssignedMemberService
-from app.modules.tasks.services import TaskService
 from app.modules.tasks.enums import Status
+from typing import TYPE_CHECKING
+from app.modules.projects.services import ProjectService
+
+if TYPE_CHECKING:
+    from app.modules.project_members.services import ProjectMemberService
+    from app.modules.project_snapshots.services import ProjectSnapshotService
+    from app.modules.projects.services import ProjectService
+    from app.modules.assigned_members.services import AssignedMemberService
+    from app.modules.tasks.services import TaskService
 
 
 def round_half_up_int(value):
@@ -58,9 +62,16 @@ class MemberSnapshotService:
 
         member_snapshot = await repo.get_latest_member_snapshot(member_id)
         member = await ProjectMemberService.get_member_by_user_id(db, member_id)
+
+        if member is None:
+            return None
+
         project = await ProjectService.get_project_with_latest_snapshot(
             db, member.project_id
         )
+
+        if project is None:
+            return None
 
         # total number of project members
         project_members = (
@@ -68,14 +79,24 @@ class MemberSnapshotService:
                 db, project.id
             )
         )
+
+        if project_members is None:
+            return None
+
         member_points = [
-            member.snapshot.total_effective_points for member in project_members
+            member.snapshot.total_effective_points
+            for member in project_members
+            if member.snapshot is not None
         ]
+
+        capacity_multiplier = (
+            member_snapshot.capacity_multiplier if member_snapshot is not None else 1.0
+        )
 
         # normalize baseline for every member
         normal_baseline = median(member_points)
-        member_baseline = normal_baseline * member_snapshot.capacity_multiplier
-        lower_baseline = member_baseline / 2.00
+        member_baseline = normal_baseline * Decimal(str(capacity_multiplier))
+        lower_baseline = member_baseline / Decimal(str(2.00))
 
         # Conditional for the workload status of the member
         status = MemberStatus.NORMAL
@@ -92,10 +113,12 @@ class MemberSnapshotService:
         assigned_members = await AssignedMemberService.get_members(db, member_id)
         task_ids = [member.task_id for member in assigned_members]
         all_tasks = await TaskService.batch_get_task(db, task_ids)
-        project_id = all_tasks[0].project_id
+        project = await ProjectService.get_project_by_user(db, member_id)
 
-        if all_tasks is None:
-            all_tasks = []
+        if project is None:
+            return None
+
+        project_id = project.id
 
         # filter tasks to only in-progress and not-started
         filtered_task = [
@@ -123,11 +146,7 @@ class MemberSnapshotService:
                     else:
                         urgency_multiplier = 0.75
 
-            complexity_points = 0
-            if task.complexity_points is None:
-                complexity_points = 0
-            else:
-                complexity_points = task.complexity_points
+            complexity_points = task.complexity_points or 0
 
             total_points += complexity_points * Decimal(str(urgency_multiplier))
 
@@ -139,17 +158,30 @@ class MemberSnapshotService:
         # get project total workload
         project = await ProjectService.get_project_with_latest_snapshot(db, project_id)
 
-        update_points = 0
-        if project.snapshot is not None:
-            update_points = (
-                project.snapshot.total_workload_points + total_effective_points
-            )
-        update_points = round_half_up_int(update_points)
+        member_snapshot = await MemberSnapshotService.get_latest_snapshot(db, member_id)
+
+        previous_member_points = (
+            member_snapshot.total_effective_points
+            if member_snapshot is not None
+            else Decimal("0")
+        )
+
+        # get change in this member's workload
+        difference = total_effective_points - previous_member_points
+
+        # guard: project may not have a snapshot yet (first run for this project)
+        previous_project_total = (
+            project.snapshot.total_workload_points
+            if project.snapshot is not None
+            else Decimal("0")
+        )
+        project_workload_points = previous_project_total + difference
+        project_workload_points = round_half_up_int(project_workload_points)
         # update total_workload of project return updated project workload
         project_snapshot = await ProjectSnapshotService.upsert_today_snapshot(
             db,
             project_id,
-            ProjectSnapshotUpsert(total_workload_points=update_points),
+            ProjectSnapshotUpsert(total_workload_points=project_workload_points),
         )
 
         if project_snapshot is None:

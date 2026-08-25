@@ -1,5 +1,4 @@
 from uuid import UUID
-from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.projects.schema import ProjectResponse
