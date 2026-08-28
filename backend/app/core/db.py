@@ -15,9 +15,9 @@ from app.core.config import settings
 DATABASE_URL = (
     f"postgresql+psycopg://{settings.TEST_DB_USER}:"
     f"{settings.TEST_DB_PASSWORD}@{settings.TEST_DB_HOST}:"
-    f"{settings.TEST_DB_PORT}/{settings.TEST_DB_NAME}?sslmode=require"
+    f"{settings.TEST_DB_PORT}/{settings.TEST_DB_NAME}"
 )
-
+# add ?sslmode=require later
 
 class Base(DeclarativeBase):
     pass

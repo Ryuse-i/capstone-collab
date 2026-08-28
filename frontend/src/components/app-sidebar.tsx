@@ -114,6 +114,7 @@ const instructorNavMain = [
     url: "/project-list",
     icon: <FileText />,
   },
+  capstoneSearchNavItem,
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -128,7 +129,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const shouldShowProjectNav = !isProjectLoading && hasProject;
 
   // normalize the member's project role for comparison
-  const memberRole = member?.project_role?.toLowerCase();
+
+  const memberRole = member?.project_role.toLocaleLowerCase();
+  console.log(role, memberRole);
+
   const isLeaderOrAbove =
     memberRole === "leader" ||
     memberRole === "advisor" ||

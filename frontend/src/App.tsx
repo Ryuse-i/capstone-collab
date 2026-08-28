@@ -3,17 +3,20 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import PrivateRoute from "@/components/PrivateRoute";
 import RoleBasedDashboard from "@/components/RoleBasedDashboard";
+import RoleRoute from "./components/RoleRoute";
 import { StudentRoutes } from "@/routes/StudentRoutes";
 import { InstructorRoutes } from "@/routes/InstructorRoutes";
 import { AdminRoutes } from "@/routes/AdminRoutes";
+import { ROLES } from "./constants/roles";
 import { useQueryClient } from "@tanstack/react-query";
-
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
+import CapstoneSearch from "./pages/student/CapstoneSearch";
 import Settings from "@/pages/shared/Settings";
+import Chat from "./pages/shared/Chat";
 
 export default function App() {
   const navigate = useNavigate();
@@ -38,6 +41,10 @@ export default function App() {
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<RoleBasedDashboard />} />
         <Route path="/settings" element={<Settings />} />
+        <Route element={<RoleRoute role={[ROLES.INSTRUCTOR, ROLES.STUDENT]} />}>
+          <Route path="/capstone-search" element={<CapstoneSearch />} />
+          <Route path="/chat" element={<Chat />} />
+        </Route>
         {StudentRoutes}
         {InstructorRoutes}
         {AdminRoutes}

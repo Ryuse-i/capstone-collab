@@ -1,6 +1,5 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_200_OK
@@ -41,9 +40,10 @@ async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
 # =====================================================================
 
 
+# returns None
 @project_member_router.get(
     "/current/{member_id}",
-    response_model=ProjectMemberResponse,
+    response_model=Optional[ProjectMemberResponse],
     status_code=HTTP_200_OK,
 )
 async def get_current_member(
@@ -64,9 +64,7 @@ async def get_one_project_member(
     return member
 
 
-@project_member_router.get(
-    "/detail/{user_id}", response_model=ProjectMemberResponse
-)
+@project_member_router.get("/detail/{user_id}", response_model=ProjectMemberResponse)
 async def get_one_project_member_detail(
     user_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
