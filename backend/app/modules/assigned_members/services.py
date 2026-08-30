@@ -23,10 +23,14 @@ class AssignedMemberService:
     ):
         repo = AssignedMemberRepo(db)
 
-        #get task
+        # get task
+        member = await repo.create(assigned_member)
+        # calculate the member workload
+        from app.modules.member_snapshots.services import MemberSnapshotService
 
-        #calculate the member workload
-        return await repo.create(assigned_member)
+        await MemberSnapshotService.calculate_member_workload(db, member.member_id)
+
+        return member
 
     @staticmethod
     async def update_assigned_member(

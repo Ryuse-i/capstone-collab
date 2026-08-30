@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload, contains_eager
 
 from app.core.base_repo import BaseRepo
 from app.modules.project_members.schema import ProjectMemberWithSnapshot
+from app.modules.member_snapshots.model import MemberSnapshot
 
 from .model import ProjectMember
 
@@ -68,3 +69,29 @@ class ProjectMemberRepo(BaseRepo):
 
         results = await self.db.execute(stmt)
         return results.scalars().all()
+
+    async def get_members_with_user_and_snapshot(self, project_id: UUID):
+        # chain for the latest member_snapshot
+        latest_date_subq = (
+            select(func.max(MemberSnapshot.snapshot_date))
+            .where(MemberSnapshot.member_id == ProjectMember.id)
+            .correlate(ProjectMember)
+            .scalar_subquery()
+        )
+
+        # get all members of the project and load with user and snapshot information
+        stmt = (
+            select(ProjectMember)
+            .outerjoin(
+                MemberSnapshot,
+                (MemberSnapshot.member_id == ProjectMember.id)
+                & (MemberSnapshot.snapshot_date == latest_date_subq),
+            )
+            .where(ProjectMember.project_id == project_id)
+            .options(
+                contains_eager(ProjectMember.snapshots),
+                selectinload(ProjectMember.user),
+            )
+        )
+        result = await self.db.execute(stmt.execution_options(populate_existing=True))
+        return result.unique().scalars().all()

@@ -1,4 +1,5 @@
 import type { UserBase } from "./user";
+import type { MemberSnapshotResponse } from "./member_snapshot";
 
 export type ProjectRole =
   | "advisor"
@@ -47,4 +48,9 @@ export type UpdateProjectMember = Partial<MemberBase>;
 
 export interface ProjectMemberUserResponse extends ProjectMemberResponse {
   users: UserBase;
+}
+
+export interface ProjectMemberUserSnapshot extends ProjectMemberResponse {
+  user: UserBase;
+  snapshots: MemberSnapshotResponse[];
 }

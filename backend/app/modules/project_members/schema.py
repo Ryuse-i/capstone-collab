@@ -38,3 +38,8 @@ class ProjectMember_User_Response(ProjectMemberResponse):
 
 class ProjectMemberWithSnapshot(ProjectMemberResponse):
     snapshot: MemberSnapshotResponse
+
+
+class ProjectMember_User_Snapshot(ProjectMemberResponse):
+    user: UserResponse
+    snapshots: list[MemberSnapshotResponse]

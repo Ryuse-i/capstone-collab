@@ -9,6 +9,7 @@ from app.modules.projects.schema import ProjectResponseSnapshot
 
 from .schema import (
     ProjectMember_User_Response,
+    ProjectMember_User_Snapshot,
     ProjectMemberCreate,
     ProjectMemberResponse,
     ProjectMemberUpdate,
@@ -38,6 +39,18 @@ async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
 # =====================================================================
 # 2. DYNAMIC / PARAMETERIZED PATHS LAST
 # =====================================================================
+
+
+@project_member_router.get(
+    "/with-user-snapshot/{project_id}",
+    response_model=list[ProjectMember_User_Snapshot],
+    status_code=HTTP_200_OK,
+)
+async def get_member_with_user_snapshot(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+):
+    return await ProjectMemberService.get_members_with_user_and_snapshot(db, project_id)
 
 
 # returns None

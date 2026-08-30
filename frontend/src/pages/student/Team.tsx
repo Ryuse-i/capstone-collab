@@ -1,197 +1,200 @@
 import AppLayout from "@/layouts/Applayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Clock, Circle, TrendingUp, AlertCircle } from "lucide-react";
+import {
+  Mail,
+  AlertTriangle,
+  Gauge,
+  Repeat,
+  CalendarClock,
+  ShieldAlert,
+} from "lucide-react";
+import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
+import { useGetCurrentProject } from "@/hooks/useProject";
+import { useCurrentUser } from "@/hooks/useAuth";
+import type {
+  ProjectMemberUserSnapshot,
+  ProjectRole,
+} from "@/types/project_member";
+import type { MemberStatus } from "@/types/member_snapshot";
 
-const members = [
-  {
-    initials: "JW",
-    name: "John Wesley Montes",
-    role: "Project Leader",
-    status: "Active",
-    statusColor: "bg-green-500",
-    badge: "OVERLOADED",
-    badgeColor: "border-red-400 text-red-500 bg-white dark:bg-card-foreground/5",
-    currentTask: "User Authentication Module",
-    completed: 4,
-    inProgress: 1,
-    total: 5,
-    workload: 45,
-    onTimeRate: 85,
-    avgCompletion: "4.5d",
-    strengths: ["Consistent Delivery", "High quality output"],
-    improvements: ["Task estimation accuracy"],
-  },
-  {
-    initials: "DM",
-    name: "Dylan Mangaoang",
-    role: "Frontend Developer",
-    status: "Idle",
-    statusColor: "bg-green-500",
-    badge: null,
-    badgeColor: "",
-    currentTask: "Item Input Forms",
-    completed: 2,
-    inProgress: 1,
-    total: 3,
-    workload: 20,
-    onTimeRate: 90,
-    avgCompletion: "5d",
-    strengths: ["Fast Completion", "Meets Deadline"],
-    improvements: ["Late Starts"],
-  },
-  {
-    initials: "HG",
-    name: "Harry Guzman",
-    role: "UI Designer",
-    status: "Active",
-    statusColor: "bg-green-500",
-    badge: null,
-    badgeColor: "",
-    currentTask: "Dashboard Redesign",
-    completed: 3,
-    inProgress: 2,
-    total: 5,
-    workload: 35,
-    onTimeRate: 78,
-    avgCompletion: "3.8d",
-    strengths: ["Creative Output", "Fast Prototyping"],
-    improvements: ["Documentation"],
-  },
-  {
-    initials: "RM",
-    name: "Rommel Magsino",
-    role: "Lead Researcher",
-    status: "Active",
-    statusColor: "bg-green-500",
-    badge: "UNDERUTILIZED",
-    badgeColor: "border-yellow-400 text-yellow-600 bg-yellow-50",
-    currentTask: "Market Analysis Report",
-    completed: 1,
-    inProgress: 1,
-    total: 2,
-    workload: 15,
-    onTimeRate: 95,
-    avgCompletion: "6d",
-    strengths: ["Thorough Research", "On-Time Delivery"],
-    improvements: ["Task Ownership"],
-  },
-];
+const roleStyles: Record<ProjectRole, string> = {
+  admin: "border-purple-400 text-purple-600 bg-purple-50 dark:bg-purple-950/20",
+  advisor: "border-blue-400 text-blue-600 bg-blue-50 dark:bg-blue-950/20",
+  instructor:
+    "border-indigo-400 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20",
+  leader:
+    "border-orange-400 text-orange-600 bg-orange-50 dark:bg-orange-950/20",
+  member: "border-gray-400 text-gray-600 bg-gray-50 dark:bg-gray-800/40",
+};
 
-function MemberCard({ member }: { member: (typeof members)[0] }) {
+const workloadStyles: Record<
+  MemberStatus,
+  { label: string; badge: string; bar: string }
+> = {
+  overloaded: {
+    label: "Overloaded",
+    badge: "border-red-400 text-red-500 bg-red-50 dark:bg-red-950/20",
+    bar: "bg-red-500",
+  },
+  underutilized: {
+    label: "Underutilized",
+    badge:
+      "border-yellow-400 text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20",
+    bar: "bg-yellow-400",
+  },
+  normal: {
+    label: "Normal",
+    badge: "border-green-400 text-green-600 bg-green-50 dark:bg-green-950/20",
+    bar: "bg-green-500",
+  },
+};
+
+function getInitials(first: string, last: string) {
+  return `${first?.trim()?.[0] ?? ""}${last?.trim()?.[0] ?? ""}`.toUpperCase();
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function capacityPercent(multiplier: number) {
+  // capacity_multiplier is expressed relative to 1.0 (baseline capacity).
+  // Clamp to a 0–200% visual range so bars stay readable.
+  return Math.min(Math.max(multiplier * 100, 0), 200) / 2;
+}
+
+function MemberCard({ member }: { member: ProjectMemberUserSnapshot }) {
+  const { user, project_role } = member;
+  const snapshot = member.snapshots[0];
+
+  // total_effective_points / capacity_multiplier come back from the API as
+  // strings (Decimal serialization), so parse before doing any math/formatting.
+  const points =
+    snapshot !== undefined
+      ? parseFloat(snapshot.total_effective_points)
+      : undefined;
+  const capacity =
+    snapshot !== undefined
+      ? parseFloat(snapshot.capacity_multiplier)
+      : undefined;
+
+  const workload = workloadStyles[snapshot?.workload_status ?? "normal"];
+  const initials = getInitials(user.first_name, user.last_name);
+
   return (
     <Card className="shadow-sm border rounded-xl">
       <CardContent className="p-5 flex flex-col gap-4">
         {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center bg-primary dark:bg-gray-800 dark:border-gray-600">
-                <span className="text-sm font-bold text-primary-foreground dark:text-foreground">
-                  {member.initials}
-                </span>
-              </div>
-              <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${member.statusColor}`} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 shrink-0 rounded-full border-2 border-gray-300 flex items-center justify-center bg-primary dark:bg-gray-800 dark:border-gray-600">
+              <span className="text-sm font-bold text-primary-foreground dark:text-foreground">
+                {initials}
+              </span>
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="font-semibold text-card-foreground text-sm">{member.name}</span>
-              <span className="text-xs text-card-foreground dark:text-gray-400">{member.role}</span>
-              <span className="text-xs border border-gray-600 text-green-600 rounded-full px-2 py-0.5 w-fit">
-                {member.status}
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="font-semibold text-card-foreground text-sm truncate">
+                {user.first_name.trim()} {user.last_name.trim()}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 truncate">
+                <Mail className="w-3 h-3 shrink-0" />
+                {user.email}
+              </span>
+              <span
+                className={`text-xs border rounded-full px-2 py-0.5 w-fit capitalize ${roleStyles[project_role]}`}
+              >
+                {project_role}
               </span>
             </div>
           </div>
-          {member.badge && (
-            <span className={`text-xs font-bold border rounded px-2 py-1 ${member.badgeColor}`}>
-              {member.badge}
+
+          {snapshot?.silence_warning && (
+            <span
+              title="No recent activity reported"
+              className="flex items-center gap-1 text-xs font-semibold border border-red-400 text-red-500 bg-white dark:bg-red-950/10 rounded px-2 py-1 shrink-0"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              Silent
             </span>
           )}
         </div>
 
-        {/* Currently Working On */}
-        <div className="bg-gray-50 rounded-lg px-4 py-3 dark:bg-card-foreground/5">
-          <p className="text-xs text-gray-400 dark:text-card-foreground">Currently working on</p>
-          <p className="text-sm font-semibold text-gray-800 dark:text-card-foreground mt-0.5">{member.currentTask}</p>
+        {/* Workload status */}
+        <div className="bg-gray-50 dark:bg-card-foreground/5 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-400 dark:text-card-foreground">
+              Workload status
+            </p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-card-foreground mt-0.5">
+              {workload.label}
+            </p>
+          </div>
+          <span
+            className={`text-xs font-bold border rounded px-2 py-1 ${workload.badge}`}
+          >
+            {workload.label.toUpperCase()}
+          </span>
         </div>
 
-        {/* Task Stats */}
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-2 border-b pb-4">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1 text-green-500">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span className="text-xs text-gray-400">Completed</span>
+            <div className="flex items-center gap-1 text-blue-500">
+              <Gauge className="w-3.5 h-3.5" />
+              <span className="text-xs text-gray-400">Points</span>
             </div>
-            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">{member.completed}</span>
+            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
+              {points !== undefined ? points : "—"}
+            </span>
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1 text-yellow-500">
-              <Clock className="w-3.5 h-3.5" />
-              <span className="text-xs text-gray-400">In Progress</span>
+              <Repeat className="w-3.5 h-3.5" />
+              <span className="text-xs text-gray-400">Fallbacks</span>
             </div>
-            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">{member.inProgress}</span>
+            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
+              {snapshot ? snapshot.consecutive_fallback_count : "—"}
+            </span>
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1 text-gray-400">
-              <Circle className="w-3.5 h-3.5" />
-              <span className="text-xs text-gray-400">Total</span>
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span className="text-xs text-gray-400">Capacity</span>
             </div>
-            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">{member.total}</span>
+            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
+              {capacity !== undefined ? `${capacity.toFixed(1)}x` : "—"}
+            </span>
           </div>
         </div>
 
-        {/* Progress Bars */}
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
-              <span>Workload</span>
-              <span>{member.workload}%</span>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${member.workload}%` }} />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
-              <span>On-Time Rate</span>
-              <span>{member.onTimeRate}%</span>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${member.onTimeRate}%` }} />
-            </div>
-          </div>
+        {/* Capacity bar */}
+        <div className="flex flex-col gap-1">
           <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
-            <span>Avg. Completion</span>
-            <span className="font-medium text-gray-700 dark:text-card-foreground">{member.avgCompletion}</span>
+            <span>Capacity multiplier</span>
+            <span>
+              {capacity !== undefined ? `${capacity.toFixed(2)}x` : "No data"}
+            </span>
+          </div>
+          <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${workload.bar}`}
+              style={{
+                width: `${capacity !== undefined ? capacityPercent(capacity) : 0}%`,
+              }}
+            />
           </div>
         </div>
 
-        {/* Strengths */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-card-foreground font-medium">
-            <TrendingUp className="w-3.5 h-3.5 text-green-500" />
-            Strengths
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {member.strengths.map((s) => (
-              <span key={s} className="text-xs border border-green-400 text-green-700 rounded-full px-2 py-0.5">
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Areas for Improvement */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-card-foreground font-medium">
-            <AlertCircle className="w-3.5 h-3.5 text-yellow-500" />
-            Areas for improvement
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {member.improvements.map((s) => (
-              <span key={s} className="text-xs border border-yellow-400 text-yellow-700 rounded-full px-2 py-0.5">
-                {s}
-              </span>
-            ))}
-          </div>
+        {/* Footer */}
+        <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+          <CalendarClock className="w-3.5 h-3.5" />
+          {snapshot
+            ? `Last snapshot: ${formatDate(snapshot.snapshot_date)}`
+            : "No snapshot data yet"}
         </div>
       </CardContent>
     </Card>
@@ -199,16 +202,66 @@ function MemberCard({ member }: { member: (typeof members)[0] }) {
 }
 
 export default function Team() {
+  const { data: user } = useCurrentUser();
+
+  const { data: project } = useGetCurrentProject(user?.id ?? "");
+  const {
+    data: members,
+    isLoading,
+    isError,
+  } = useGetMembersWithUserSnapshot(project?.id ?? "");
+
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Manage members and monitor activities</h1>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {members.map((member) => (
-            <MemberCard key={member.name} member={member} />
-          ))}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-2xl font-bold text-foreground">
+            Manage members and monitor activities
+          </h1>
+          {members && (
+            <span className="text-sm text-gray-400 dark:text-gray-500">
+              {members.length} member{members.length !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
+
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="rounded-xl">
+                <CardContent className="p-5">
+                  <div className="animate-pulse flex flex-col gap-4">
+                    <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-800" />
+                    <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
+                    <div className="h-20 w-full bg-gray-100 dark:bg-gray-900 rounded" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {isError && (
+          <p className="text-sm text-red-500">
+            Failed to load team members. Please try again.
+          </p>
+        )}
+
+        {!isLoading && !isError && members?.length === 0 && (
+          <p className="text-sm text-gray-400">
+            No members found for this project.
+          </p>
+        )}
+
+        {!isLoading && !isError && members && members.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {members.map((member) => (
+              <MemberCard key={member.id} member={member} />
+            ))}
+          </div>
+        )}
       </div>
     </AppLayout>
   );
 }
+

@@ -5,6 +5,7 @@ import type {
   UpdateProjectMember,
   ProjectMemberUserResponse,
   ProjectMemberResponse,
+  ProjectMemberUserSnapshot,
 } from "@/types/project_member";
 import apiClient from "@/services/apiClient";
 
@@ -89,6 +90,20 @@ const api = {
       throw error;
     }
   },
+
+  getMemberWithUserSnapshot: async (
+    project_id: string,
+  ): Promise<ProjectMemberUserSnapshot[]> => {
+    try {
+      const response = await apiClient.get<ProjectMemberUserSnapshot[]>(
+        `${url}/with-user-snapshot/${project_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get project members", error);
+      throw error;
+    }
+  },
 };
 
 export const memberKeys = {
@@ -162,5 +177,13 @@ export function useGetCurrentMember(member_id: string) {
   return useQuery({
     queryKey: memberKeys.userDetail(member_id),
     queryFn: () => api.getCurrentMember(member_id),
+  });
+}
+
+export function useGetMembersWithUserSnapshot(project_id: string) {
+  return useQuery({
+    queryKey: memberKeys.list(),
+    queryFn: () => api.getMemberWithUserSnapshot(project_id),
+    enabled: !!project_id,
   });
 }

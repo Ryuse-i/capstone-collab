@@ -32,7 +32,7 @@ async def get_one_member_snapshot(
     return db_item
 
 
-@member_snapshot_route.get("/latest")
+@member_snapshot_route.get("/{member_id}/latest")
 async def get_latest_member_snapshot(
     member_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):

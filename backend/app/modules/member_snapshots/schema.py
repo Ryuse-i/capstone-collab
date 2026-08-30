@@ -1,9 +1,8 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from datetime import date
 from uuid import UUID
 from .model import MemberStatus
 from decimal import Decimal
-
 
 
 class MemberSnapshotUpsert(BaseModel):
@@ -24,4 +23,4 @@ class MemberSnapshotResponse(BaseModel):
     capacity_multiplier: Decimal
     silence_warning: bool
     consecutive_fallback_count: int
-    created_at: datetime
+    snapshot_date: date
