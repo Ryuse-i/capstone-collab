@@ -4,12 +4,18 @@ import { NavSecondary } from "@/components/nav-secondary";
 import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
+import { NavMain as NavShortcut } from "@/components/nav-shortcut";
 import { NavUser } from "@/components/nav-user";
 import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetCurrentProject } from "@/hooks/useProject";
 import { useGetCurrentMember } from "@/hooks/useProjectMember";
+import {
+  useGetCurrentProject,
+  useGetInstructorProjects,
+} from "@/hooks/useProject";
+import { getLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
+import { getLastVisitedProjects } from "@/lib/lastVisitedProjects";
 import {
   Sidebar,
   SidebarContent,
@@ -29,6 +35,7 @@ import {
   Users,
   ClipboardCheck,
   LucideLayers,
+  FolderKanban,
 } from "lucide-react";
 
 const data = {
@@ -54,6 +61,13 @@ const capstoneSearchNavItem = {
   title: "Capstone Search",
   url: "/capstone-search",
   icon: <BookOpenIcon />,
+  // CapstoneView (/capstone-view/:id) has no sidebar entry of its own —
+  // it's only reachable by clicking into a result from Capstone Search —
+  // so treat it as part of the same section for active-state highlighting.
+  matchPrefixes: ["/capstone-view"],
+  // Clicking this item returns to whichever capstone-search/capstone-view
+  // path the user last visited, instead of always resetting to the list.
+  getLastVisited: getLastVisitedCapstone,
 };
 
 const projectTaskNavItem = {
@@ -86,6 +100,8 @@ const chatNavItem = {
   icon: <MessageCircleMore />,
 };
 
+const studentNoProjectNavMain = [...commonNavMain, capstoneSearchNavItem];
+
 // Full nav for a student who is the project leader
 const studentLeaderNavMain = [
   ...commonNavMain,
@@ -105,14 +121,19 @@ const studentMemberNavMain = [
   capstoneSearchNavItem,
 ];
 
-const studentNoProjectNavMain = [...commonNavMain, capstoneSearchNavItem];
-
 const instructorNavMain = [
   ...commonNavMain,
   {
     title: "Projects",
     url: "/project-list",
     icon: <FileText />,
+    // ProjectView (/view-project/:id) has no sidebar entry of its own —
+    // it's only reachable by clicking "View" from the Projects list —
+    // so treat it as part of the same section for active-state highlighting.
+    matchPrefixes: ["/view-project"],
+    // Clicking this item returns to whichever project-list/view-project
+    // path the user last visited, instead of always resetting to the list.
+    getLastVisited: getLastVisitedProjects,
   },
   capstoneSearchNavItem,
 ];
@@ -124,9 +145,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: member, isLoading: isMemberLoading } = useGetCurrentMember(
     user?.id ?? "",
   );
+  const { data: projects } = useGetInstructorProjects(user?.id ?? "");
   const role = user?.role?.toLowerCase();
   const hasProject = Boolean(currentProject);
   const shouldShowProjectNav = !isProjectLoading && hasProject;
+  const recentProjects =
+    projects
+      ?.filter(
+        (project) =>
+          project.instructor === user?.id || project.advisor === user?.id,
+      )
+      .filter((project, index, allProjects) =>
+        project.id
+          ? allProjects.findIndex((item) => item.id === project.id) === index
+          : true,
+      )
+      .filter((project) => project.id)
+      .map((project) => ({
+        title: project.name,
+        url: `/view-project/${project.id}`,
+      })) ?? [];
+
+  const navShortcuts = [
+    {
+      title: "Projects",
+      url: "/project-list",
+      icon: FolderKanban,
+      isActive: true,
+      items: recentProjects,
+    },
+  ];
 
   // normalize the member's project role for comparison
 
@@ -196,6 +244,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain items={navMain} />
+        {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
+          <NavShortcut items={navShortcuts} />
+        )}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
 

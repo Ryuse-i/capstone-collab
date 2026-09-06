@@ -1,9 +1,18 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, BookOpen, TrendingUp, Users, LucideCalendarDays} from "lucide-react";
+import {
+  Search,
+  BookOpen,
+  TrendingUp,
+  Users,
+  LucideCalendarDays,
+} from "lucide-react";
+import { results } from "@/types/capstoneresults";
+import { rememberLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
 
 const categories = [
   "All Categories",
@@ -26,49 +35,39 @@ const examples = [
   "sentiment analysis social media",
 ];
 
-const results = [
-  {
-    title: "AI-Based Early Detection of Diabetes Using Machine Learning",
-    description:
-      "Developing a machine learning model to predict diabetes onset using patient health data and lifestyle factors.",
-    tags: [
-      "Artificial Intelligence",
-      "Machine Learning",
-      "Healthcare",
-      "Predictive Analysis",
-    ],
-    year: "2025",
-    authors: "Sarah Johnson, Michael Chen",
-  },
-  {
-    title: "Blockchain-Based Supply Chain Transparency System",
-    description:
-      "A decentralized system for tracking and verifying supply chain transactions using blockchain technology.",
-    tags: ["Blockchain", "Supply Chain", "Decentralized"],
-    year: "2025",
-    authors: "Mark Rivera, Anna Cruz",
-  },
-  {
-    title: "Natural Language Processing for Sentiment Analysis in Social Media",
-    description:
-      "Using NLP techniques to analyze public sentiment from social media posts in real time.",
-    tags: ["Natural Language Processing", "Sentiment Analysis", "Social Media"],
-    year: "2024",
-    authors: "Luis Reyes, Carla Mendes",
-  },
-  {
-    title: "Computer Vision for Autonomous Vehicle Navigation",
-    description:
-      "Implementing object detection and lane recognition for self-driving car systems.",
-    tags: ["Computer Vision", "Autonomous", "Deep Learning"],
-    year: "2024",
-    authors: "James Park, Elena Gomez",
-  },
-];
+const DEFAULT_CATEGORY = "All Categories";
 
 export default function CapstoneSearch() {
-  const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All Categorist");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const query = searchParams.get("query") ?? "";
+  const rawCategory = searchParams.get("category");
+  const activeCategory = categories.includes(rawCategory ?? "")
+    ? (rawCategory as string)
+    : DEFAULT_CATEGORY;
+
+  // Remember this exact path (incl. query/category) so the sidebar's
+  // "Capstone Search" item can return here after visiting other pages.
+  useEffect(() => {
+    rememberLastVisitedCapstone(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+
+  const updateParam = (key: string, value: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (!value || value === DEFAULT_CATEGORY) {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+      return next;
+    });
+  };
+
+  const handleQueryChange = (value: string) => updateParam("query", value);
+  const handleCategoryChange = (value: string) => updateParam("category", value);
 
   const filteredResults = results.filter((r) => {
     const matchesQuery =
@@ -78,7 +77,7 @@ export default function CapstoneSearch() {
       r.tags.some((t) => t.toLowerCase().includes(query.toLowerCase()));
 
     const matchesCategory =
-      activeCategory === "All Categorist" ||
+      activeCategory === DEFAULT_CATEGORY ||
       r.tags.some((t) => t === activeCategory);
 
     return matchesQuery && matchesCategory;
@@ -107,7 +106,7 @@ export default function CapstoneSearch() {
             placeholder="Enter search query eg.( 'machine learning for disease prediction' )"
             className="pl-9"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleQueryChange(e.target.value)}
           />
         </div>
       </div>
@@ -120,7 +119,7 @@ export default function CapstoneSearch() {
         {examples.map((ex) => (
           <button
             key={ex}
-            onClick={() => setQuery(ex)}
+            onClick={() => handleQueryChange(ex)}
             className="text-xs text-primary underline-offset-4 hover:underline"
           >
             {ex}
@@ -139,7 +138,7 @@ export default function CapstoneSearch() {
               key={cat}
               size="sm"
               variant={activeCategory === cat ? "default" : "outline"}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => handleCategoryChange(cat)}
             >
               {cat}
             </Button>
@@ -160,10 +159,12 @@ export default function CapstoneSearch() {
             No results found for your search.
           </div>
         ) : (
-          filteredResults.map((result, i) => (
-            <div
-              key={i}
-              className="bg-card border border-border rounded-lg p-4 flex flex-col gap-2"
+          filteredResults.map((result) => (
+            <button
+              key={result.id}
+              type="button"
+              onClick={() => navigate(`/capstone-view/${result.id}`)}
+              className="text-left bg-card border border-border rounded-lg p-4 flex flex-col gap-2 transition-colors hover:border-primary/50 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="flex items-start gap-2">
                 <BookOpen className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
@@ -189,7 +190,7 @@ export default function CapstoneSearch() {
                   <Users className="h-3 w-3" /> {result.authors}
                 </span>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>

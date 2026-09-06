@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect} from "react";
 import {
   Activity,
   ArrowLeft,
@@ -20,6 +20,7 @@ import { TaskTable } from "@/components/user/TaskTable";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
+import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
 
 type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
 
@@ -92,6 +93,15 @@ export default function ProjectView() {
   const [activeTab, setActiveTab] = useState<ProjectViewTab>("overview");
 
   const projectId = id ?? "";
+
+  // Remember this project's view page so the sidebar's "Projects" item
+  // returns here after visiting other pages, instead of resetting to
+  // the project list.
+  useEffect(() => {
+    if (projectId) {
+      rememberLastVisitedProjects(`/view-project/${projectId}`);
+    }
+  }, [projectId]);
 
   const {
     data: project,
@@ -246,12 +256,12 @@ export default function ProjectView() {
           Back to projects
         </button>
 
-        <Card className="overflow-hidden border border-neutral-200 shadow-sm">
+        <Card className="overflow-hidden border shadow-sm">
           {/* Project Header */}
-          <div className="border-b border-neutral-200 bg-[#FBF3E7] p-6">
+          <div className="border-4 rounded-lg border-neutral-200 p-6 m-2">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="mt-2 text-2xl font-bold text-[#231A2E]">
+                <h1 className="mt-2 text-2xl font-bold text-foreground">
                   {project.name}
                 </h1>
 
@@ -413,9 +423,9 @@ export default function ProjectView() {
                       <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
                       Timeline insight
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
                       <span>Expected score</span>
-                      <span className="font-semibold text-[#231A2E]">
+                      <span className="font-semibold text-(--semi-foreground)">
                         {formatNumber(snapshot?.expected_score)}
                       </span>
                     </div>

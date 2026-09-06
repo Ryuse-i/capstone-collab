@@ -259,6 +259,19 @@ export default function EditTaskDialog({
     }));
   };
 
+  const handlePrimarySkillChange = (value: Skill) => {
+    setTaskForm((prev) => ({
+      ...prev,
+      primary_skill: value,
+      // If the newly picked primary skill was already chosen as a
+      // secondary skill, drop it from secondary skills so a skill
+      // can't be both primary and secondary at the same time.
+      secondary_skills: prev.secondary_skills.filter(
+        (skill) => skill !== value,
+      ),
+    }));
+  };
+
   const toggleSecondarySkill = (skill: Skill) => {
     setTaskForm((prev) => {
       const exists = prev.secondary_skills.includes(skill);
@@ -437,345 +450,356 @@ export default function EditTaskDialog({
 
       <DialogContent
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="max-h-[80vh] overflow-y-auto custom-scrollbar sm:max-w-2xl p-4"
+        className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
       >
-        <DialogHeader>
+        {/* Header */}
+        <DialogHeader className="shrink-0 border-b px-6 py-5">
           <DialogTitle>Edit task</DialogTitle>
           <DialogDescription>Update the details below.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 no-scrollbar">
-          {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-task-name">Name</Label>
-
-            <Input
-              id="edit-task-name"
-              placeholder="e.g. Set up auth routes"
-              value={taskForm.name}
-              onChange={(e) => handleTaskFieldChange("name", e.target.value)}
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-task-description">
-              Description (required)
-            </Label>
-
-            <Textarea
-              id="edit-task-description"
-              rows={3}
-              placeholder="What does this involve? Be as descriptive as possible"
-              value={taskForm.description}
-              onChange={(e) =>
-                handleTaskFieldChange("description", e.target.value)
-              }
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* Priority */}
+        {/* Scrollable body */}
+        <div className="custom-scrollbar overflow-y-auto px-6 py-6">
+          <div className="space-y-6">
+            {/* Name */}
             <div className="space-y-2">
-              <Label>Priority</Label>
+              <Label htmlFor="edit-task-name">Name</Label>
 
-              <Select
-                value={taskForm.priority}
-                onValueChange={(value) =>
-                  handleTaskFieldChange("priority", value as TaskPriority)
+              <Input
+                id="edit-task-name"
+                placeholder="e.g. Set up auth routes"
+                value={taskForm.name}
+                onChange={(e) =>
+                  handleTaskFieldChange("name", e.target.value)
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
 
-            {/* Primary Skill */}
+            {/* Description */}
             <div className="space-y-2">
-              <Label>Primary Skill</Label>
-
-              <Select
-                value={taskForm.primary_skill}
-                onValueChange={(value) =>
-                  handleTaskFieldChange("primary_skill", value as Skill)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select skill" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {SKILL_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Secondary Skill */}
-            <div className="space-y-2">
-              <Label>Secondary Skill</Label>
-
-              <Popover
-                open={secondarySkillOpen}
-                onOpenChange={setSecondarySkillOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={secondarySkillOpen}
-                    disabled={!taskForm.primary_skill}
-                    className="w-full justify-between text-left font-normal"
-                  >
-                    <span
-                      className={cn(
-                        taskForm.secondary_skills.length === 0 &&
-                          "text-muted-foreground",
-                      )}
-                    >
-                      {!taskForm.primary_skill
-                        ? "Select a primary skill first"
-                        : taskForm.secondary_skills.length === 0
-                          ? "Select skills"
-                          : `${taskForm.secondary_skills.length} skill${
-                              taskForm.secondary_skills.length > 1 ? "s" : ""
-                            } selected`}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                  <div
-                    className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                    onWheel={(e) => e.stopPropagation()}
-                  >
-                    {SKILL_OPTIONS.filter(
-                      (option) => option.value !== taskForm.primary_skill,
-                    ).map((option) => {
-                      const selected = taskForm.secondary_skills.includes(
-                        option.value,
-                      );
-
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => toggleSecondarySkill(option.value)}
-                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
-                        >
-                          <span>{option.label}</span>
-
-                          {selected && (
-                            <Check className="h-4 w-4 text-[#7A0C2E]" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {taskForm.secondary_skills.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {taskForm.secondary_skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
-                    >
-                      {SKILL_OPTIONS.find((o) => o.value === skill)?.label}
-
-                      <button
-                        type="button"
-                        onClick={() => toggleSecondarySkill(skill)}
-                        className="rounded-full hover:bg-[#7A0C2E]/10"
-                        aria-label={`Remove ${skill}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Assigned Members */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                Assigned Members
+              <Label htmlFor="edit-task-description">
+                Description (required)
               </Label>
 
-              <Popover
-                open={assignedMembersOpen}
-                onOpenChange={setAssignedMembersOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={assignedMembersOpen}
-                    disabled={
-                      !projectId || membersLoading || currentMembersLoading
-                    }
-                    className="w-full justify-between text-left font-normal"
-                  >
-                    <span
-                      className={cn(
-                        taskForm.assigned_members.length === 0 &&
-                          "text-muted-foreground",
-                      )}
+              <Textarea
+                id="edit-task-description"
+                rows={3}
+                placeholder="What does this involve? Be as descriptive as possible"
+                value={taskForm.description}
+                onChange={(e) =>
+                  handleTaskFieldChange("description", e.target.value)
+                }
+              />
+            </div>
+
+            {/* Same grid structure as AddTaskDialog */}
+            <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+              {/* Priority */}
+              <div className="space-y-2">
+                <Label>Priority</Label>
+
+                <Select
+                  value={taskForm.priority}
+                  onValueChange={(value) =>
+                    handleTaskFieldChange("priority", value as TaskPriority)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Primary Skill */}
+              <div className="space-y-2">
+                <Label>Primary Skill</Label>
+
+                <Select
+                  value={taskForm.primary_skill}
+                  onValueChange={(value) =>
+                    handlePrimarySkillChange(value as Skill)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select skill" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {SKILL_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Secondary Skill */}
+              <div className="space-y-2">
+                <Label>Secondary Skill</Label>
+
+                <Popover
+                  open={secondarySkillOpen}
+                  onOpenChange={setSecondarySkillOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={secondarySkillOpen}
+                      disabled={!taskForm.primary_skill}
+                      className="w-full justify-between text-left font-normal"
                     >
-                      {membersLoading || currentMembersLoading
-                        ? "Loading members..."
-                        : taskForm.assigned_members.length === 0
-                          ? "Select members"
-                          : `${taskForm.assigned_members.length} member${
-                              taskForm.assigned_members.length > 1 ? "s" : ""
-                            } selected`}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
+                      <span
+                        className={cn(
+                          taskForm.secondary_skills.length === 0 &&
+                            "text-muted-foreground",
+                        )}
+                      >
+                        {!taskForm.primary_skill
+                          ? "Select a primary skill first"
+                          : taskForm.secondary_skills.length === 0
+                            ? "Select skills"
+                            : `${taskForm.secondary_skills.length} skill${
+                                taskForm.secondary_skills.length > 1 ? "s" : ""
+                              } selected`}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
 
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                  <div
-                    className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                    onWheel={(e) => e.stopPropagation()}
-                  >
-                    {membersError && (
-                      <p className="px-2 py-2 text-sm text-rose-600">
-                        Couldn't load members.
-                      </p>
-                    )}
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {SKILL_OPTIONS.filter(
+                        (option) => option.value !== taskForm.primary_skill,
+                      ).map((option) => {
+                        const selected = taskForm.secondary_skills.includes(
+                          option.value,
+                        );
 
-                    {!membersError &&
-                      !membersLoading &&
-                      assignableMembers.length === 0 && (
-                        <p className="px-2 py-2 text-sm text-neutral-500">
-                          No members with the "member" role on this project.
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => toggleSecondarySkill(option.value)}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                          >
+                            <span>{option.label}</span>
+
+                            {selected && (
+                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {taskForm.secondary_skills.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {taskForm.secondary_skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
+                      >
+                        {SKILL_OPTIONS.find((o) => o.value === skill)?.label}
+
+                        <button
+                          type="button"
+                          onClick={() => toggleSecondarySkill(skill)}
+                          className="rounded-full hover:bg-[#7A0C2E]/10"
+                          aria-label={`Remove ${skill}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Assigned Members */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Assigned Members
+                </Label>
+
+                <Popover
+                  open={assignedMembersOpen}
+                  onOpenChange={setAssignedMembersOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={assignedMembersOpen}
+                      disabled={
+                        !projectId || membersLoading || currentMembersLoading
+                      }
+                      className="w-full justify-between text-left font-normal"
+                    >
+                      <span
+                        className={cn(
+                          taskForm.assigned_members.length === 0 &&
+                            "text-muted-foreground",
+                        )}
+                      >
+                        {membersLoading || currentMembersLoading
+                          ? "Loading members..."
+                          : taskForm.assigned_members.length === 0
+                            ? "Select members"
+                            : `${taskForm.assigned_members.length} member${
+                                taskForm.assigned_members.length > 1
+                                  ? "s"
+                                  : ""
+                              } selected`}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {membersError && (
+                        <p className="px-2 py-2 text-sm text-rose-600">
+                          Couldn't load members.
                         </p>
                       )}
 
-                    {assignableMembers.map((member) => {
-                      const selected = taskForm.assigned_members.some(
-                        (assigned) => assigned.member_id === member.member_id,
-                      );
+                      {!membersError &&
+                        !membersLoading &&
+                        assignableMembers.length === 0 && (
+                          <p className="px-2 py-2 text-sm text-neutral-500">
+                            No members with the "member" role on this project.
+                          </p>
+                        )}
 
-                      return (
-                        <button
-                          key={member.member_id}
-                          type="button"
-                          onClick={() => toggleAssignedMember(member)}
-                          className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
-                              {member.first_name?.charAt(0)}
-                              {member.last_name?.charAt(0)}
+                      {assignableMembers.map((member) => {
+                        const selected = taskForm.assigned_members.some(
+                          (assigned) =>
+                            assigned.member_id === member.member_id,
+                        );
+
+                        return (
+                          <button
+                            key={member.member_id}
+                            type="button"
+                            onClick={() => toggleAssignedMember(member)}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
+                                {member.first_name?.charAt(0)}
+                                {member.last_name?.charAt(0)}
+                              </div>
+
+                              <span>
+                                {member.first_name} {member.last_name}
+                              </span>
                             </div>
 
-                            <span>
-                              {member.first_name} {member.last_name}
-                            </span>
-                          </div>
+                            {selected && (
+                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-                          {selected && (
-                            <Check className="h-4 w-4 text-[#7A0C2E]" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {taskForm.assigned_members.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {taskForm.assigned_members.map((member) => (
-                    <span
-                      key={member.member_id}
-                      className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
-                    >
-                      {member.first_name} {member.last_name}
-                      <button
-                        type="button"
-                        onClick={() => toggleAssignedMember(member)}
-                        className="rounded-full hover:bg-[#7A0C2E]/10"
-                        aria-label={`Remove ${member.first_name} ${member.last_name}`}
+                {taskForm.assigned_members.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {taskForm.assigned_members.map((member) => (
+                      <span
+                        key={member.member_id}
+                        className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
+                        {member.first_name} {member.last_name}
+                        <button
+                          type="button"
+                          onClick={() => toggleAssignedMember(member)}
+                          className="rounded-full hover:bg-[#7A0C2E]/10"
+                          aria-label={`Remove ${member.first_name} ${member.last_name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
 
-              <p className="text-xs text-muted-foreground">
-                Select the members who will be assigned to this task.
+                <p className="text-xs text-muted-foreground">
+                  Select the members who will be assigned to this task.
+                </p>
+              </div>
+
+              {/* Deadline */}
+              <div className="space-y-2">
+                <Label>Deadline (required)</Label>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !taskForm.deadline && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+
+                      {taskForm.deadline
+                        ? format(new Date(taskForm.deadline), "PPP")
+                        : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        taskForm.deadline
+                          ? new Date(taskForm.deadline)
+                          : undefined
+                      }
+                      onSelect={(date) => {
+                        handleTaskFieldChange(
+                          "deadline",
+                          date ? date.toISOString() : "",
+                        );
+                      }}
+                      disabled={{ before: today }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {error && (
+              <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {error}
               </p>
-            </div>
-
-            {/* Deadline */}
-            <div className="space-y-2">
-              <Label>Deadline (required)</Label>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !taskForm.deadline && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-
-                    {taskForm.deadline
-                      ? format(new Date(taskForm.deadline), "PPP")
-                      : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      taskForm.deadline
-                        ? new Date(taskForm.deadline)
-                        : undefined
-                    }
-                    onSelect={(date) => {
-                      handleTaskFieldChange(
-                        "deadline",
-                        date ? date.toISOString() : "",
-                      );
-                    }}
-                    disabled={{ before: today }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            )}
           </div>
-
-          {error && (
-            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {error}
-            </p>
-          )}
         </div>
 
-        <DialogFooter className="mt-2">
+        {/* Footer */}
+        <DialogFooter className="shrink-0 gap-2 border-t bg-muted/40 px-6 py-2 pb-6">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
