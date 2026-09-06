@@ -56,6 +56,31 @@ class TestTaskEndpoints:
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
+    async def test_get_assigned_members_includes_unassigned_tasks(
+        self, ac: AsyncClient, test_user: dict, test_project: dict
+    ):
+        """Unassigned tasks should be valid project-view response data."""
+        payload = await self._task_payload(
+            test_user,
+            test_project,
+            "Unassigned Task",
+            "Has no assigned member",
+            {"primary_skill": "Backend Development"},
+        )
+        create_res = await ac.post(f"{self.base_url}/", json=payload)
+        assert create_res.status_code == 201, f"Setup failed: {create_res.text}"
+
+        response = await ac.get(
+            f"{self.base_url}/assigned-members/{test_project['id']}"
+        )
+
+        assert response.status_code == 200, response.text
+        task = next(
+            task for task in response.json() if task["name"] == "Unassigned Task"
+        )
+        assert task["member_id"] is None
+        assert task["assigned_members"] == []
+
     async def test_get_one_task(
         self, ac: AsyncClient, test_user: dict, test_project: dict
     ):

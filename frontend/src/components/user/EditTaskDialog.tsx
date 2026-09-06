@@ -346,7 +346,7 @@ export default function EditTaskDialog({
         description: taskForm.description.trim(),
         priority: taskForm.priority,
         category: taskForm.category,
-        deadline: new Date(taskForm.deadline).toISOString(),
+        deadline: taskForm.deadline,
         primary_skill: taskForm.primary_skill as Skill,
         secondary_skills: taskForm.secondary_skills,
       };
@@ -469,9 +469,7 @@ export default function EditTaskDialog({
                 id="edit-task-name"
                 placeholder="e.g. Set up auth routes"
                 value={taskForm.name}
-                onChange={(e) =>
-                  handleTaskFieldChange("name", e.target.value)
-                }
+                onChange={(e) => handleTaskFieldChange("name", e.target.value)}
               />
             </div>
 
@@ -661,9 +659,7 @@ export default function EditTaskDialog({
                           : taskForm.assigned_members.length === 0
                             ? "Select members"
                             : `${taskForm.assigned_members.length} member${
-                                taskForm.assigned_members.length > 1
-                                  ? "s"
-                                  : ""
+                                taskForm.assigned_members.length > 1 ? "s" : ""
                               } selected`}
                       </span>
                     </Button>
@@ -690,8 +686,7 @@ export default function EditTaskDialog({
 
                       {assignableMembers.map((member) => {
                         const selected = taskForm.assigned_members.some(
-                          (assigned) =>
-                            assigned.member_id === member.member_id,
+                          (assigned) => assigned.member_id === member.member_id,
                         );
 
                         return (
@@ -780,7 +775,7 @@ export default function EditTaskDialog({
                       onSelect={(date) => {
                         handleTaskFieldChange(
                           "deadline",
-                          date ? date.toISOString() : "",
+                          date ? format(date, "yyyy-MM-dd") : "",
                         );
                       }}
                       disabled={{ before: today }}

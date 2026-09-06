@@ -21,7 +21,7 @@ class TaskRepo(BaseRepo):
             .options(selectinload(Task.assigned_members))
         )
         result = await self.db.execute(stmt)
-        return result.scalars().all()
+        return result.scalars().first()
 
     async def get_assigned_members(self, project_id: UUID):
         stmt = (

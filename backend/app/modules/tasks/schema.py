@@ -67,7 +67,7 @@ class TaskResponse(BaseModel):
 
 
 class TaskResponseWithMembers(TaskResponse):
-    member_id: UUID
+    member_id: UUID | None = None
     assigned_members: list[UserResponse]
 
     model_config = ConfigDict(from_attributes=True)

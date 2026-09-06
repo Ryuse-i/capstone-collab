@@ -331,7 +331,7 @@ export function AddTaskDialog({
           created_by: user!.id,
           priority: taskForm.priority,
           category: taskForm.category,
-          deadline: new Date(taskForm.deadline).toISOString(),
+          deadline: taskForm.deadline,
           primary_skill: taskForm.primary_skill as Skill,
           secondary_skills: taskForm.secondary_skills,
         };
@@ -432,9 +432,7 @@ export function AddTaskDialog({
                   <ListTodo className="mt-0.5 h-5 w-5 text-[#7A0C2E]" />
 
                   <div>
-                    <p className="text-sm font-semibold text-[#231A2E]">
-                      Task
-                    </p>
+                    <p className="text-sm font-semibold text-[#231A2E]">Task</p>
 
                     <p className="text-xs text-neutral-500">
                       A concrete, trackable unit of work.
@@ -476,9 +474,7 @@ export function AddTaskDialog({
                     ? "e.g. Set up auth routes"
                     : "e.g. MVP backend complete"
                 }
-                value={
-                  taskType === "task" ? taskForm.name : supertaskForm.name
-                }
+                value={taskType === "task" ? taskForm.name : supertaskForm.name}
                 onChange={(e) =>
                   taskType === "task"
                     ? handleTaskFieldChange("name", e.target.value)
@@ -502,10 +498,7 @@ export function AddTaskDialog({
                 onChange={(e) =>
                   taskType === "task"
                     ? handleTaskFieldChange("description", e.target.value)
-                    : handleSupertaskFieldChange(
-                        "description",
-                        e.target.value,
-                      )
+                    : handleSupertaskFieldChange("description", e.target.value)
                 }
               />
             </div>
@@ -675,9 +668,7 @@ export function AddTaskDialog({
                             <button
                               key={option.value}
                               type="button"
-                              onClick={() =>
-                                toggleSecondarySkill(option.value)
-                              }
+                              onClick={() => toggleSecondarySkill(option.value)}
                               className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
                             >
                               <span>{option.label}</span>
@@ -862,7 +853,7 @@ export function AddTaskDialog({
                         onSelect={(date) => {
                           handleTaskFieldChange(
                             "deadline",
-                            date ? date.toISOString() : "",
+                            date ? format(date, "yyy-MM-dd") : "",
                           );
                         }}
                       />
