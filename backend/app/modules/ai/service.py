@@ -174,6 +174,7 @@ async def score_task_complexity(
             prompt=user_prompt,
             system=system_prompt,
             max_tokens=1024,
+            reasoning_effort="minimal"
         )
 
         try:

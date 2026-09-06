@@ -52,7 +52,7 @@ class AssignedMemberService:
 
         results = await repo.get_task_members(task_id)
 
-        users = [result.users for result in results]
+        users = [result.members.user for result in results]
         return users
 
     @staticmethod

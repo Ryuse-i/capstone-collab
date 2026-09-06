@@ -30,6 +30,7 @@
     "react": "^19.2.5",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.5",
+    "react-modern-gantt": "^0.9.0",
     "react-router-dom": "^7.14.2",
     "recharts": "^3.8.1",
     "shadcn": "^4.6.0",

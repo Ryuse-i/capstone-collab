@@ -11,15 +11,6 @@ from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from .schema import MemberSnapshotUpsert
 from app.modules.tasks.enums import Status
-from typing import TYPE_CHECKING
-from app.modules.projects.services import ProjectService
-
-if TYPE_CHECKING:
-    from app.modules.project_members.services import ProjectMemberService
-    from app.modules.project_snapshots.services import ProjectSnapshotService
-    from app.modules.projects.services import ProjectService
-    from app.modules.assigned_members.services import AssignedMemberService
-    from app.modules.tasks.services import TaskService
 
 
 def round_half_up_int(value):
@@ -58,6 +49,9 @@ class MemberSnapshotService:
     async def check_workload_status(
         db: AsyncSession, member_id: UUID, member_workload_points: Decimal
     ):
+        from app.modules.project_members.services import ProjectMemberService
+        from app.modules.projects.services import ProjectService
+
         repo = MemberSnapshotRepo(db)
 
         member_snapshot = await repo.get_latest_member_snapshot(member_id)
@@ -110,6 +104,10 @@ class MemberSnapshotService:
     @staticmethod
     async def calculate_member_workload(db: AsyncSession, member_id: UUID):
         # get all row in the joint table of member and task
+        from app.modules.assigned_members.services import AssignedMemberService
+        from app.modules.tasks.services import TaskService
+        from app.modules.projects.services import ProjectService
+
         assigned_members = await AssignedMemberService.get_members(db, member_id)
         task_ids = [member.task_id for member in assigned_members]
         all_tasks = await TaskService.batch_get_task(db, task_ids)
@@ -178,6 +176,8 @@ class MemberSnapshotService:
         project_workload_points = previous_project_total + difference
         project_workload_points = round_half_up_int(project_workload_points)
         # update total_workload of project return updated project workload
+        from app.modules.project_snapshots.services import ProjectSnapshotService
+
         project_snapshot = await ProjectSnapshotService.upsert_today_snapshot(
             db,
             project_id,

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from uuid import UUID
 from typing import Sequence
+from app.modules.project_members.model import ProjectMember
 
 
 class AssignedMemberRepo(BaseRepo):
@@ -12,10 +13,13 @@ class AssignedMemberRepo(BaseRepo):
 
     # get all members base on task id
     async def get_task_members(self, task_id: UUID):
+        # get task members then get user information in the project member relationship
         stmt = (
             select(AssignedMember)
             .where(AssignedMember.task_id == task_id)
-            .options(selectinload(AssignedMember.members))
+            .options(
+                selectinload(AssignedMember.members).selectinload(ProjectMember.user)
+            )
         )
 
         result = await self.db.execute(stmt)
@@ -28,7 +32,7 @@ class AssignedMemberRepo(BaseRepo):
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
-    #returns all assigned members with task 
+    # returns all assigned members with task
     async def get_members_with_task(self, member_ids: Sequence[UUID]):
         if not id:
             return []

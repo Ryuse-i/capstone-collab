@@ -20,11 +20,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { TaskTable } from "@/components/user/TaskTable";
+import { TaskGanttView } from "@/components/user/TaskGantt";
+import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
+import type { TaskResponseMembers } from "@/types/task";
 
 type BoardTask = {
   id: string;
@@ -102,6 +112,7 @@ const boardSupertasks: BoardSupertask[] = [
 
 const viewTabs = [
   { id: "table", label: "Table" },
+  { id: "timeline", label: "Timeline" },
   { id: "board", label: "Board" },
 ] as const;
 
@@ -151,6 +162,9 @@ export default function Task() {
   const [selectedBoardCard, setSelectedBoardCard] = useState<BoardTask | null>(
     null,
   );
+  const [selectedTimelineTask, setSelectedTimelineTask] =
+    useState<TaskResponseMembers | null>(null);
+  const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
 
   const [boardDialogOpen, setBoardDialogOpen] = useState(false);
 
@@ -264,17 +278,22 @@ export default function Task() {
           )}
 
         {/* View switcher */}
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          {viewTabs.map((tab) => (
-            <Button
-              key={tab.id}
-              variant={viewMode === tab.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode(tab.id)}
-            >
-              {tab.label}
-            </Button>
-          ))}
+        <div className="mt-6">
+          <Select
+            value={viewMode}
+            onValueChange={(value) => setViewMode(value as ViewMode)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Select view" />
+            </SelectTrigger>
+            <SelectContent>
+              {viewTabs.map((tab) => (
+                <SelectItem key={tab.id} value={tab.id}>
+                  {tab.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Table / Board */}
@@ -282,6 +301,12 @@ export default function Task() {
           <TaskTable
             tasks={allProjectTasks ?? []}
             projectId={projectId}
+            isLoading={isTasksLoading}
+            isError={isTasksError}
+          />
+        ) : viewMode === "timeline" ? (
+          <TaskGanttView
+            tasks={allProjectTasks ?? []}
             isLoading={isTasksLoading}
             isError={isTasksError}
           />
@@ -352,6 +377,17 @@ export default function Task() {
 
           if (!open) {
             setSelectedBoardCard(null);
+          }
+        }}
+      />
+
+      <ViewTaskDialog
+        task={selectedTimelineTask}
+        open={timelineDialogOpen}
+        onOpenChange={(open) => {
+          setTimelineDialogOpen(open);
+          if (!open) {
+            setSelectedTimelineTask(null);
           }
         }}
       />

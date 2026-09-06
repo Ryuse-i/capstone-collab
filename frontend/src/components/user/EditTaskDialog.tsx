@@ -54,7 +54,15 @@ import type {
   UpdateTask,
 } from "@/types/task";
 
+/**
+ * Mirrors AddTaskDialog's AssignableMember shape — member_id is the
+ * project_members row id, which is what actually gets persisted /
+ * FK-checked on the backend. `id` (the user id) is kept only for
+ * display/avatar-initial purposes — do NOT use it for equality checks
+ * against assigned members.
+ */
 type AssignableMember = {
+  member_id: string;
   id: string;
   first_name: string;
   last_name: string;
@@ -121,6 +129,13 @@ const SKILL_OPTIONS: {
   { value: "Resource Management", label: "Resource Management" },
 ];
 
+// NOTE: `member.member_id` below assumes useGetTaskMembers's return type
+// exposes a `member_id` field (the project_members row id) alongside
+// `id`/`first_name`/`last_name`, matching AddTaskDialog's convention.
+// I haven't seen that hook's actual return type — if it doesn't have
+// member_id (e.g. it's nested under a joined `project_member` object,
+// or absent entirely), this mapping and the `assigned_members` fallback
+// below both need adjusting to match its real shape.
 function formStateFromTask(
   task: TaskResponseMembers,
   assignedMembers?: AssignableMember[],
@@ -136,6 +151,7 @@ function formStateFromTask(
     assigned_members:
       assignedMembers ??
       (task.assigned_members ?? []).map((member) => ({
+        member_id: (member as { member_id?: string }).member_id ?? "",
         id: member.id,
         first_name: member.first_name,
         last_name: member.last_name,
@@ -197,6 +213,7 @@ export default function EditTaskDialog({
           projectMember.project_role === "member" && projectMember.users,
       )
       .map((projectMember) => ({
+        member_id: projectMember.id.toString(),
         id: projectMember.user_id,
         first_name: projectMember.users.first_name,
         last_name: projectMember.users.last_name,
@@ -210,6 +227,7 @@ export default function EditTaskDialog({
     if (nextOpen) {
       const liveMembers =
         currentAssignedMembers?.map((member) => ({
+          member_id: (member as { member_id?: string }).member_id ?? "",
           id: member.id,
           first_name: member.first_name,
           last_name: member.last_name,
@@ -221,6 +239,7 @@ export default function EditTaskDialog({
           liveMembers.length > 0
             ? liveMembers
             : (task.assigned_members ?? []).map((member) => ({
+                member_id: (member as { member_id?: string }).member_id ?? "",
                 id: member.id,
                 first_name: member.first_name,
                 last_name: member.last_name,
@@ -256,14 +275,14 @@ export default function EditTaskDialog({
   const toggleAssignedMember = (member: AssignableMember) => {
     setTaskForm((prev) => {
       const exists = prev.assigned_members.some(
-        (assigned) => assigned.id === member.id,
+        (assigned) => assigned.member_id === member.member_id,
       );
 
       return {
         ...prev,
         assigned_members: exists
           ? prev.assigned_members.filter(
-              (assigned) => assigned.id !== member.id,
+              (assigned) => assigned.member_id !== member.member_id,
             )
           : [...prev.assigned_members, member],
       };
@@ -324,20 +343,20 @@ export default function EditTaskDialog({
         task: payload,
       });
 
-      const originalUserIds = new Set(
-        taskAssignmentRows.map((row) => row.user_id),
+      const originalMemberIds = new Set(
+        taskAssignmentRows.map((row) => row.member_id),
       );
 
-      const currentUserIds = new Set(
-        taskForm.assigned_members.map((member) => member.id),
+      const currentMemberIds = new Set(
+        taskForm.assigned_members.map((member) => member.member_id),
       );
 
       const toAdd = taskForm.assigned_members.filter(
-        (member) => !originalUserIds.has(member.id),
+        (member) => !originalMemberIds.has(member.member_id),
       );
 
       const toRemove = taskAssignmentRows.filter(
-        (row) => !currentUserIds.has(row.user_id),
+        (row) => !currentMemberIds.has(row.member_id),
       );
 
       if (toAdd.length > 0 || toRemove.length > 0) {
@@ -345,7 +364,7 @@ export default function EditTaskDialog({
           await Promise.all([
             ...toAdd.map((member) =>
               createAssignedMemberMutation.mutateAsync({
-                user_id: member.id,
+                member_id: member.member_id,
                 task_id: task.id,
               }),
             ),
@@ -368,8 +387,20 @@ export default function EditTaskDialog({
             "Task was updated, but syncing assigned members failed. You can adjust them from the task detail page.",
           );
 
+          // Some adds/removes in the Promise.all may have already
+          // succeeded before the failure — refresh assignment-related
+          // caches too, not just the task list, so anything that did
+          // go through isn't left stale.
           queryClient.invalidateQueries({
-            queryKey: taskKeys.listProject(projectId),
+            queryKey: assignedMemberKeys.task_list(task.id),
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: assignedMemberKeys.list(),
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: taskKeys.byProject(projectId),
           });
 
           onUpdated?.();
@@ -379,7 +410,7 @@ export default function EditTaskDialog({
       }
 
       queryClient.invalidateQueries({
-        queryKey: taskKeys.listProject(projectId),
+        queryKey: taskKeys.byProject(projectId),
       });
 
       onUpdated?.();
@@ -638,12 +669,12 @@ export default function EditTaskDialog({
 
                     {assignableMembers.map((member) => {
                       const selected = taskForm.assigned_members.some(
-                        (assigned) => assigned.id === member.id,
+                        (assigned) => assigned.member_id === member.member_id,
                       );
 
                       return (
                         <button
-                          key={member.id}
+                          key={member.member_id}
                           type="button"
                           onClick={() => toggleAssignedMember(member)}
                           className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
@@ -673,7 +704,7 @@ export default function EditTaskDialog({
                 <div className="flex flex-wrap gap-1.5">
                   {taskForm.assigned_members.map((member) => (
                     <span
-                      key={member.id}
+                      key={member.member_id}
                       className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                     >
                       {member.first_name} {member.last_name}

@@ -143,8 +143,11 @@ class TaskService:
                     **{
                         col: getattr(task, col) for col in task.__table__.columns.keys()
                     },
+                    "member_id": task.assigned_members[0].members.id
+                    if task.assigned_members
+                    else None,
                     "assigned_members": [
-                        member.users for member in task.assigned_members
+                        member.members.user for member in task.assigned_members
                     ],
                 }
             )

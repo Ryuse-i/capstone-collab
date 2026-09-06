@@ -49,13 +49,16 @@ type TaskType = "task" | "supertask";
 /**
  * Local shape used for the "Assigned Members" picker.
  *
- * `id` here is the project member's `user_id` (NOT the project_member row id),
- * since that's what you'll eventually want to persist against the task.
- * Swap this out for your real `CreateAssignedMember` type once that hook exists —
- * at that point just map `assigned_members.map(m => m.id)` into the payload
- * you actually send to the API.
+ * `member_id` is the project_member row id — this is what actually gets
+ * sent to the API when creating an AssignedMember, and it's the field
+ * FK-checked against project_members.id on the backend.
+ *
+ * `id` is the underlying user's id — kept around for display/key purposes
+ * only. Do NOT use `id` for equality checks against assigned members;
+ * always compare on `member_id`.
  */
 type AssignableMember = {
+  member_id: string;
   id: string;
   first_name: string;
   last_name: string;
@@ -171,11 +174,13 @@ export function AddTaskDialog({
           projectMember.project_role === "member" && projectMember.users,
       )
       .map((projectMember) => ({
+        member_id: projectMember.id.toString(),
         id: projectMember.user_id,
         first_name: projectMember.users.first_name,
         last_name: projectMember.users.last_name,
       }));
   }, [projectMembersData]);
+
   const resetForms = () => {
     setTaskForm(initialTaskForm);
     setSupertaskForm(initialSupertaskForm);
@@ -213,17 +218,21 @@ export function AddTaskDialog({
     });
   };
 
+  // FIX: previously compared `assigned.id === member.member_id` for the
+  // existence check but `assigned.id !== member.id` for the removal filter —
+  // two different fields, so add/remove could desync. Now both consistently
+  // key off `member_id`, which is the field that actually gets persisted.
   const toggleAssignedMember = (member: AssignableMember) => {
     setTaskForm((prev) => {
       const exists = prev.assigned_members.some(
-        (assigned) => assigned.id === member.id,
+        (assigned) => assigned.member_id === member.member_id,
       );
 
       return {
         ...prev,
         assigned_members: exists
           ? prev.assigned_members.filter(
-              (assigned) => assigned.id !== member.id,
+              (assigned) => assigned.member_id !== member.member_id,
             )
           : [...prev.assigned_members, member],
       };
@@ -314,7 +323,7 @@ export function AddTaskDialog({
             await Promise.all(
               taskForm.assigned_members.map((member) =>
                 createAssignedMemberMutation.mutateAsync({
-                  user_id: member.id,
+                  member_id: member.member_id,
                   task_id: createdTask.id,
                 }),
               ),
@@ -657,12 +666,12 @@ export function AddTaskDialog({
 
                       {assignableMembers.map((member) => {
                         const selected = taskForm.assigned_members.some(
-                          (assigned) => assigned.id === member.id,
+                          (assigned) => assigned.member_id === member.member_id,
                         );
 
                         return (
                           <button
-                            key={member.id}
+                            key={member.member_id}
                             type="button"
                             onClick={() => toggleAssignedMember(member)}
                             className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
@@ -692,7 +701,7 @@ export function AddTaskDialog({
                   <div className="flex flex-wrap gap-1.5">
                     {taskForm.assigned_members.map((member) => (
                       <span
-                        key={member.id}
+                        key={member.member_id}
                         className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                       >
                         {member.first_name} {member.last_name}
@@ -745,7 +754,7 @@ export function AddTaskDialog({
                       onSelect={(date) => {
                         handleTaskFieldChange(
                           "deadline",
-                          date ? date.toISOString() : "",
+                          date ? format(date, "yyy-MM-dd") : "",
                         );
                       }}
                       disabled={{ before: today }}
@@ -786,7 +795,7 @@ export function AddTaskDialog({
                     onSelect={(date) => {
                       handleSupertaskFieldChange(
                         "deadline",
-                        date ? date.toISOString() : "",
+                        date ? format(date, "yyy-MM-dd") : "",
                       );
                     }}
                     disabled={{ before: today }}

@@ -39,10 +39,9 @@ _CLIENTS: dict[AIProvider, AsyncOpenAI] = {
     ),
 }
 
-# Sensible default model per provider, used if caller doesn't pass one
 _DEFAULT_MODELS: dict[AIProvider, str] = {
     AIProvider.OPENROUTER: "google/gemma-4-26b-a4b-it:free",
-    AIProvider.GEMINI: "gemma-4-26b-a4b-it",
+    AIProvider.GEMINI: "gemini-3.5-flash-lite",
 }
 
 
@@ -61,15 +60,26 @@ async def _call_provider(
     system: str | None,
     model: str,
     max_tokens: int,
+    reasoning_effort: str | None = None,
+    provider: AIProvider | None = None,
 ):
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
+
+    kwargs = {}
+    # reasoning_effort is a Gemini-specific OpenAI-compat extension.
+    # Sending it to other providers (e.g. OpenRouter) can 400 or be
+    # silently ignored depending on the model, so only forward it here.
+    if reasoning_effort is not None and provider == AIProvider.GEMINI:
+        kwargs["reasoning_effort"] = reasoning_effort
+
     return await client.chat.completions.create(
         model=model,
         max_tokens=max_tokens,
         messages=messages,
+        **kwargs,
     )
 
 
@@ -79,13 +89,19 @@ async def call_ai(
     provider: AIProvider = AIProvider.GEMINI,
     model: str | None = None,
     max_tokens: int = 4000,
+    reasoning_effort: str | None = None,
 ) -> str:
     client = _CLIENTS[provider]
     resolved_model = model or _DEFAULT_MODELS[provider]
-
     try:
         response = await _call_provider(
-            client, prompt, system, resolved_model, max_tokens
+            client,
+            prompt,
+            system,
+            resolved_model,
+            max_tokens,
+            reasoning_effort=reasoning_effort,
+            provider=provider,
         )
     except RateLimitError as e:
         logger.error("AI call rate limited after retries (%s): %s", provider.value, e)
@@ -106,15 +122,12 @@ async def call_ai(
     except Exception as e:
         logger.exception("Unexpected error calling AI provider (%s)", provider.value)
         raise AICallError("Unexpected AI provider error") from e
-
     if response.choices is None:
         logger.error(
             "RAW RESPONSE (no choices, %s): %s", provider.value, response.model_dump()
         )
         raise AICallError(f"AI call failed: {getattr(response, 'error', response)}")
-
     content = response.choices[0].message.content
     if content is None:
         raise AICallError("AI provider returned empty content")
-
     return content

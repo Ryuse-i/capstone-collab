@@ -1,7 +1,7 @@
 import type { UserBase } from "./user";
 
 export interface AssignedMemberBase {
-  user_id: string;
+  member_id: string;
   task_id: string;
   effort_share?: number;
 }
