@@ -28,8 +28,8 @@
   --card-foreground: oklch(0.15 0.02 20);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.35 0.12 15);
-  --maroon: oklch(0.35 0.12 15);
+  --primary: #6b1426;
+  --maroon: #6b1426;
   --primary-foreground: oklch(100% 0.00011 271.152);
   --secondary: oklch(0.75 0.12 85);
   --secondary-foreground: oklch(0.15 0 0);

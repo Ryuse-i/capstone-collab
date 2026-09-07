@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import GanttChart, {
   type Task as GanttTask,
   type TaskGroup,
+  ViewMode,
 } from "react-modern-gantt";
 import "react-modern-gantt/dist/index.css";
 
@@ -295,6 +296,14 @@ interface TaskGanttViewProps {
 
   isLoading?: boolean;
   isError?: boolean;
+
+  /**
+   * Overall size of the whole Gantt chart container.
+   * Accepts any valid CSS size (px, %, rem, vh, etc).
+   * Defaults to full width and a capped height with internal scrolling.
+   */
+  width?: CSSProperties["width"];
+  height?: CSSProperties["height"];
 }
 
 const UNGROUPED_KEY = "ungrouped";
@@ -313,14 +322,16 @@ const GANTT_CSS_VARS: CSSProperties = {
 
   ["--rmg-border-color" as string]: "#e5e7eb",
 
-  ["--rmg-row-height" as string]: "60px",
+  ["--rmg-row-height" as string]: "84px",
 
   ["--rmg-task-height" as string]: "36px",
 
   // Subtle rounding instead of a full pill.
   ["--rmg-border-radius" as string]: "6px",
 
-  ["--rmg-marker-color" as string]: "#2563eb",
+  ["--rmg-marker-color" as string]: "var(--primary)",
+
+  ["--rmg-blue-500" as string]: "var(--primary)",
 };
 
 // -------------------------------------------------------------------------
@@ -333,6 +344,8 @@ export function TaskGanttView({
   onTaskClick,
   isLoading = false,
   isError = false,
+  width = "100%",
+  height = "1000px",
 }: TaskGanttViewProps) {
   const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(
     null,
@@ -435,6 +448,17 @@ export function TaskGanttView({
           transform: "translateZ(0)",
           contain: "paint",
 
+          // -----------------------------------------------------------
+          // Overall chart size.
+          //
+          // `width`/`height` bound the whole component; `overflowY`
+          // lets the chart scroll internally instead of pushing the
+          // rest of the page down when there are many task groups.
+          // -----------------------------------------------------------
+          width,
+          height,
+          overflowY: "auto",
+
           ...GANTT_CSS_VARS,
         }}
       >
@@ -453,6 +477,8 @@ export function TaskGanttView({
         ) : (
           <GanttChart
             tasks={groups}
+            viewModes={[ViewMode.DAY, ViewMode.WEEK, ViewMode.MONTH]}
+            rowHeight={84}
             showProgress
             editMode={false}
             showCurrentDateMarker
