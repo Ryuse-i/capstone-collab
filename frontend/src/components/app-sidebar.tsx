@@ -221,7 +221,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="...">
+            <SidebarMenuButton
+              asChild
+              tooltip="PSU Collab"
+              className="group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
+            >
               <a
                 href="/dashboard"
                 className="flex items-center gap-2 overflow-hidden"
@@ -233,7 +237,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="size-8 object-cover rounded-full"
                   />
                 </div>
-                <span className="font-medium truncate group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-medium group-data-[collapsible=icon]:hidden">
                   PSU Collab
                 </span>
               </a>
