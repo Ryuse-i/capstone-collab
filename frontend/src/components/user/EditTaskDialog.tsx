@@ -98,7 +98,7 @@ const SKILL_OPTIONS: {
   { value: "Iot Development", label: "IoT Development" },
   { value: "Database Design", label: "Database Design" },
   { value: "System Architecture", label: "System Architecture" },
-  { value: "Ui/Ux Design", label: "UI/UX Design" },
+  { value: "UI/UX Design", label: "UI/UX Design" },
   {
     value: "Testing and Quality Assurance",
     label: "Testing and QA",

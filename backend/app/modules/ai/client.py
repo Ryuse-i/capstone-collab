@@ -118,7 +118,9 @@ async def call_ai(
             provider.value,
             e.response.text,
         )
-        raise AICallError(f"AI provider returned error: {e.status_code}") from e
+        raise AICallError(
+            f"{provider.value} returned HTTP {e.status_code}: {e.response.text}"
+        ) from e
     except Exception as e:
         logger.exception("Unexpected error calling AI provider (%s)", provider.value)
         raise AICallError("Unexpected AI provider error") from e

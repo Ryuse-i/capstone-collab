@@ -15,7 +15,7 @@ export type Skill =
   | "Iot Development"
   | "Database Design"
   | "System Architecture"
-  | "Ui/Ux Design"
+  | "UI/UX Design"
   | "Testing and Quality Assurance"
   | "Literature Review"
   | "Data Collection"
