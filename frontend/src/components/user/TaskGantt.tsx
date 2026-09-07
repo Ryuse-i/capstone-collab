@@ -13,45 +13,22 @@ import type { TaskResponseMembers, TaskStatus } from "@/types/task";
 // -------------------------------------------------------------------------
 // Color logic
 //
-// - not_started : pastel/light version of a per-task hue, hue is picked
-//                 (deterministically, via a hash of the task id) from an
-//                 arc that runs blue-violet -> violet -> magenta -> red ->
-//                 orange (260deg..390deg, wrapping). Yellow/green are
-//                 deliberately excluded from this arc since those are
-//                 reserved for submitted/completed below.
-// - in-progress : same per-task hue as its not_started state would have
-//                 had, but "solid" — saturation/lightness intensify as
-//                 progress (time elapsed toward the deadline) increases.
+// Fixed, unambiguous color per status (no more per-task hash colors —
+// those made two tasks in the SAME status render in different colors,
+// which read as "wrong"/inconsistent):
+//
+// - not_started : neutral gray  (nothing has happened yet)
+// - in-progress : blue, intensifying (lighter -> darker) as progress
+//                 (time elapsed toward the deadline) increases
 // - submitted   : fixed yellow
 // - completed   : fixed green
 // -------------------------------------------------------------------------
 
+const NOT_STARTED_COLOR = { backgroundColor: "#e2e8f0", textColor: "#334155" };
 const SUBMITTED_COLOR = { backgroundColor: "#eab308", textColor: "#ffffff" };
 const COMPLETED_COLOR = { backgroundColor: "#22c55e", textColor: "#ffffff" };
 
-const HUE_ARC_START = 260; // blue-violet
-const HUE_ARC_SPAN = 130; // wraps through violet/magenta/red into orange, stops before yellow/green
-
-function hashString(value: string): number {
-  let hash = 0;
-  for (let i = 0; i < value.length; i++) {
-    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
-/** Stable per-task hue (0-360) picked from the red-orange..blue-violet arc. */
-function taskHue(taskId: string): number {
-  const hue = HUE_ARC_START + (hashString(taskId) % HUE_ARC_SPAN);
-  return hue % 360;
-}
-
-function pastelColor(hue: number) {
-  return {
-    backgroundColor: `hsl(${hue}, 45%, 87%)`,
-    textColor: "#1f2937", // light bg, dark text
-  };
-}
+const IN_PROGRESS_HUE = 217; // blue
 
 function solidColorForProgress(hue: number, progress: number) {
   const clamped = Math.min(100, Math.max(0, progress));
@@ -145,18 +122,18 @@ function resolveTask(task: TaskResponseMembers): Resolved {
   }
 }
 
-function resolveColor(
-  task: TaskResponseMembers,
-  status: TaskStatus,
-  percent: number,
-) {
-  if (status === "submitted") return SUBMITTED_COLOR;
-  if (status === "completed") return COMPLETED_COLOR;
-
-  const hue = taskHue(task.id);
-  return status === "not_started"
-    ? pastelColor(hue)
-    : solidColorForProgress(hue, percent);
+function resolveColor(status: TaskStatus, percent: number) {
+  switch (status) {
+    case "submitted":
+      return SUBMITTED_COLOR;
+    case "completed":
+      return COMPLETED_COLOR;
+    case "in-progress":
+      return solidColorForProgress(IN_PROGRESS_HUE, percent);
+    case "not_started":
+    default:
+      return NOT_STARTED_COLOR;
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -250,7 +227,22 @@ export function TaskGanttView({
 
   return (
     <div className="mt-6 space-y-3">
-      <Card className="overflow-hidden p-0">
+      {/*
+        react-modern-gantt positions its sticky header row and task-name
+        sidebar with `position: fixed` internally. `overflow-hidden` alone
+        does NOT clip fixed-position descendants — only absolute/sticky
+        ones — so without a containing block those elements escape the
+        rounded card and float above it.
+
+        Applying `transform`/`contain` here makes this Card the CSS
+        "containing block" for any fixed-position descendants, which
+        forces the chart's header/sidebar to be clipped and positioned
+        relative to THIS box instead of the viewport.
+      */}
+      <Card
+        className="relative overflow-hidden rounded-lg p-0"
+        style={{ transform: "translateZ(0)", contain: "paint" }}
+      >
         <CardContent className="p-0">
           {isLoading ? (
             <div className="py-8 text-center text-muted-foreground">
@@ -271,7 +263,7 @@ export function TaskGanttView({
               editMode={false}
               getTaskColor={({ task }) => {
                 const t = task as GanttCustomTask;
-                return resolveColor(t.raw, t.status, t.percent ?? 0);
+                return resolveColor(t.status, t.percent ?? 0);
               }}
               onTaskClick={(task, group) => {
                 void group;
