@@ -11,7 +11,7 @@ git clone
 If prompted for credentials, enter your GitHub username and use your personal access token as the password.
 
 ```bash
-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
+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
 
 ```
 
