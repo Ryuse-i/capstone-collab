@@ -1,5 +1,6 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import GanttChart, {
+  ViewMode,
   type Task as GanttTask,
   type TaskGroup,
 } from "react-modern-gantt";
@@ -287,7 +288,11 @@ interface GanttCustomTask extends GanttTask {
 interface TaskGanttViewProps {
   tasks: TaskResponseMembers[];
 
-  /** Optional lookup so supertask ids render as real titles instead of raw ids. */
+  /**
+   * @deprecated No longer rendered — the sidebar (which showed these
+   * group names) has been removed. Kept optional so existing callers
+   * don't break; safe to stop passing this.
+   */
   supertaskNames?: Record<string, string>;
 
   /** Optional override for task click behavior. */
@@ -296,8 +301,6 @@ interface TaskGanttViewProps {
   isLoading?: boolean;
   isError?: boolean;
 }
-
-const UNGROUPED_KEY = "ungrouped";
 
 // -------------------------------------------------------------------------
 // Gantt styling
@@ -313,15 +316,20 @@ const GANTT_CSS_VARS: CSSProperties = {
 
   ["--rmg-border-color" as string]: "#e5e7eb",
 
-  ["--rmg-row-height" as string]: "60px",
+  ["--rmg-row-height" as string]: "80px",
 
-  ["--rmg-task-height" as string]: "36px",
+  ["--rmg-task-height" as string]: "60px",
 
   // Subtle rounding instead of a full pill.
   ["--rmg-border-radius" as string]: "6px",
 
-  ["--rmg-marker-color" as string]: "#2563eb",
+  ["--rmg-marker-color" as string]: "var(--maroon)",
 };
+
+// Single flat group. There's no sidebar to show a group label in
+// anymore, so grouping by supertask would only add invisible divider
+// lines between blocks — one continuous list reads cleaner.
+const ALL_TASKS_GROUP_ID = "all-tasks";
 
 // -------------------------------------------------------------------------
 // Component
@@ -329,7 +337,6 @@ const GANTT_CSS_VARS: CSSProperties = {
 
 export function TaskGanttView({
   tasks,
-  supertaskNames,
   onTaskClick,
   isLoading = false,
   isError = false,
@@ -363,59 +370,40 @@ export function TaskGanttView({
   };
 
   // -----------------------------------------------------------------------
-  // Group tasks
+  // Build one flat task group (no supertask grouping — see note above)
   // -----------------------------------------------------------------------
 
   const groups = useMemo<TaskGroup[]>(() => {
-    const bySupertask = new Map<string, TaskResponseMembers[]>();
+    if (tasks.length === 0) return [];
 
-    for (const task of tasks) {
-      const key = task.supertask_id ?? UNGROUPED_KEY;
+    const ganttTasks: GanttCustomTask[] = tasks
+      .map((task) => {
+        const status: TaskStatus = task.status ?? "not_started";
 
-      const bucket = bySupertask.get(key) ?? [];
-
-      bucket.push(task);
-
-      bySupertask.set(key, bucket);
-    }
-
-    return Array.from(bySupertask.entries()).map(
-      ([supertaskId, groupTasks]) => {
-        const ganttTasks: GanttCustomTask[] = groupTasks
-          .map((task) => {
-            const status: TaskStatus = task.status ?? "not_started";
-
-            const { startDate, endDate, percent } = resolveTask(task);
-
-            return {
-              id: task.id,
-              name: task.name,
-              startDate,
-              endDate,
-              percent,
-              status,
-              raw: task,
-            };
-          })
-
-          // Earliest-starting task first.
-          .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-
-        const label =
-          supertaskId === UNGROUPED_KEY
-            ? "Ungrouped Tasks"
-            : (supertaskNames?.[supertaskId] ?? supertaskId);
+        const { startDate, endDate, percent } = resolveTask(task);
 
         return {
-          id: supertaskId,
-
-          name: `${label} (${groupTasks.length})`,
-
-          tasks: ganttTasks,
+          id: task.id,
+          name: task.name,
+          startDate,
+          endDate,
+          percent,
+          status,
+          raw: task,
         };
+      })
+
+      // Earliest-starting task first.
+      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+
+    return [
+      {
+        id: ALL_TASKS_GROUP_ID,
+        name: "All Tasks",
+        tasks: ganttTasks,
       },
-    );
-  }, [tasks, supertaskNames]);
+    ];
+  }, [tasks]);
 
   // -----------------------------------------------------------------------
   // Render
@@ -424,16 +412,16 @@ export function TaskGanttView({
   return (
     <div className="mt-6">
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-visible"
         style={{
           /*
            * react-modern-gantt uses fixed-position elements internally.
            *
-           * transform + contain creates a containing block so the
-           * chart header/sidebar remain clipped inside this element.
+           * transform keeps the library's positioned elements anchored to
+           * this chart without clipping the full task stack.
            */
           transform: "translateZ(0)",
-          contain: "paint",
+          contain: "layout",
 
           ...GANTT_CSS_VARS,
         }}
@@ -453,10 +441,19 @@ export function TaskGanttView({
         ) : (
           <GanttChart
             tasks={groups}
+            maxHeight={900}
             showProgress
             editMode={false}
             showCurrentDateMarker
             todayLabel="Today"
+            // -------------------------------------------------------------
+            // Day-only view, no Day/Week/Month selector, no title bar,
+            // no sidebar — just the day header + the task rows.
+            // -------------------------------------------------------------
+            viewMode={ViewMode.DAY}
+            viewModes={false}
+            renderHeader={() => null}
+            renderTaskList={() => null}
             // -------------------------------------------------------------
             // Task colors
             // -------------------------------------------------------------
@@ -470,7 +467,7 @@ export function TaskGanttView({
             // Custom task renderer
             // -------------------------------------------------------------
 
-            renderTask={({ task, leftPx, widthPx, topPx, isHovered }) => {
+            renderTask={({ task, isHovered }) => {
               const t = task as GanttCustomTask;
 
               const color = resolveColor(t.status, t.percent ?? 0);
@@ -480,14 +477,8 @@ export function TaskGanttView({
               return (
                 <div
                   style={{
-                    position: "absolute",
-
-                    left: `${leftPx}px`,
-                    top: `${topPx}px`,
-
-                    width: `${Math.max(widthPx, 36)}px`,
-
-                    height: "36px",
+                    width: "100%",
+                    height: "100%",
 
                     display: "flex",
                     alignItems: "center",
@@ -543,9 +534,7 @@ export function TaskGanttView({
             // Task click
             // -------------------------------------------------------------
 
-            onTaskClick={(task, group) => {
-              void group;
-
+            onTaskClick={(task) => {
               handleTaskClick((task as GanttCustomTask).raw);
             }}
           />
