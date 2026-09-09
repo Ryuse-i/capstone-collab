@@ -47,7 +47,7 @@ class Meeting(Base):
         ),
         nullable=False,
     )
-    meeting_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    meeting_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     join_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     host_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     topic: Mapped[str] = mapped_column(String(255), nullable=False)

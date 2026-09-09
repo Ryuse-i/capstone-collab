@@ -12,7 +12,7 @@ from app.modules.users.model import User
 message_router = APIRouter()
 
 
-@message_router.get("/", response_model=List[MessageResponse])
+@message_router.get("", response_model=List[MessageResponse])
 async def get_messages(
     project_id: UUID,
     before: datetime | None = None,
@@ -22,7 +22,7 @@ async def get_messages(
     return await MessageService.get_project_messages(db, project_id, before)
 
 
-@message_router.post("/", response_model=MessageResponse)
+@message_router.post("", response_model=MessageResponse)
 async def create_message(
     message: CreateMessage,
     db: AsyncSession = Depends(get_async_session),

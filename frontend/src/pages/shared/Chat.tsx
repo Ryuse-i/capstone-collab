@@ -1,27 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import googlemeetlogo from "@/assets/googlemeetlogo.png";
-import zoomlogo from "@/assets/zoomlogo.png";
-import { Send, Video } from "lucide-react";
+import { CalendarClock, ExternalLink, Send, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import { useGetProjectMessages, useSendMessage } from "@/hooks/useMessage";
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-// Local-only UI state for the call banner — not persisted, no backend yet.
-type ActiveCall = {
-  provider: "Gmeet" | "Zoom";
-  joined: boolean;
-} | null;
+import { useGetProjectMeetings } from "@/hooks/useMeeting";
+import { MeetingDialog } from "@/components/meetings/MeetingDialog";
+import type { MeetingProvider } from "@/types/meeting";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
   if (!firstName && !lastName) return "?";
@@ -39,6 +28,16 @@ export default function Chat() {
   const { data: user } = useCurrentUser();
   const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
   const projectId = currentProject?.id ?? "";
+  const { data: currentMember } = useGetCurrentMember(user?.id ?? "");
+  const currentMemberRole = currentMember?.project_role.toLowerCase();
+  const canManageMeetings =
+    user?.role?.toLowerCase() === "admin" ||
+    ["leader", "advisor", "instructor"].includes(currentMemberRole ?? "");
+  const {
+    data: meetings = [],
+    isLoading: meetingsLoading,
+    isError: meetingsError,
+  } = useGetProjectMeetings(projectId);
 
   const {
     data: messages,
@@ -48,7 +47,8 @@ export default function Chat() {
   const { mutate: sendMessage, isPending: sending } = useSendMessage(projectId);
 
   const [input, setInput] = useState("");
-  const [activeCall, setActiveCall] = useState<ActiveCall>(null);
+  const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [meetingProvider] = useState<MeetingProvider>("google_meet");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -64,15 +64,6 @@ export default function Chat() {
     });
   };
 
-  const startCall = (provider: "Gmeet" | "Zoom") => {
-    setActiveCall({ provider, joined: false });
-  };
-
-  const joinCall = () => {
-    if (!activeCall) return;
-    setActiveCall({ ...activeCall, joined: true });
-  };
-
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
       <Card className="mt-2 pb-1 overflow-hidden h-[85vh] flex flex-col">
@@ -85,59 +76,22 @@ export default function Chat() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <Video className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-40 p-3">
-                  <PopoverHeader>
-                    <PopoverDescription className="flex flex-col gap-2">
-                      <Button
-                        onClick={() => startCall("Gmeet")}
-                        className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
-                        variant="outline"
-                      >
-                        <img
-                          src={googlemeetlogo}
-                          alt="google meet"
-                          className="h-5 w-5 shrink-0"
-                        />
-                        Gmeet
-                      </Button>
-                      <Button
-                        onClick={() => startCall("Zoom")}
-                        className="flex w-full items-center gap-3 justify-start rounded-md border px-4 py-3"
-                        variant="outline"
-                      >
-                        <img
-                          src={zoomlogo}
-                          alt="zoom"
-                          className="h-5 w-5 shrink-0"
-                        />
-                        Zoom
-                      </Button>
-                    </PopoverDescription>
-                  </PopoverHeader>
-                </PopoverContent>
-              </Popover>
-            </div>
+            {canManageMeetings && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={() => setMeetingDialogOpen(true)}
+                  aria-label="Create meeting"
+                  title="Create meeting"
+                >
+                  <Video className="h-4 w-4" />
+                  <span className="ml-2 hidden sm:inline">Create meeting</span>
+                </Button>
+              </div>
+            )}
           </div>
-
-          {activeCall && !activeCall.joined ? (
-            <div className="mx-4 mt-2 shrink-0 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-900 dark:border-green-900/40 dark:bg-green-950/50 dark:text-green-100">
-              {activeCall.provider} call is ongoing.{" "}
-              <button
-                type="button"
-                onClick={joinCall}
-                className="font-semibold underline"
-              >
-                Tap to join
-              </button>
-            </div>
-          ) : null}
 
           {/* Messages area */}
           <div
@@ -150,6 +104,68 @@ export default function Chat() {
               </div>
             ) : (
               <div className="flex flex-col gap-4">
+                {meetingsLoading && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
+                    Loading meeting details...
+                  </div>
+                )}
+                {meetingsError && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100">
+                    Unable to load meeting details.
+                  </div>
+                )}
+                {meetings
+                  .filter((meeting) => meeting.status === "scheduled")
+                  .map((meeting) => (
+                    <div
+                      key={`meeting-${meeting.id}`}
+                      className={`flex ${
+                        meeting.created_by === user?.id
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      <div className="flex max-w-[85%] items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50">
+                        <CalendarClock className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                            Meeting available
+                          </p>
+                          <p className="truncate font-semibold">
+                            {meeting.topic}
+                          </p>
+                          <p className="text-xs text-emerald-800/80 dark:text-emerald-200/80">
+                            {meeting.provider === "google_meet"
+                              ? "Google Meet"
+                              : "Zoom"}
+                            {meeting.start_time
+                              ? ` · ${new Date(
+                                  meeting.start_time,
+                                ).toLocaleString([], {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })}`
+                              : ""}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="shrink-0 bg-emerald-700 text-white hover:bg-emerald-800"
+                          onClick={() =>
+                            window.open(
+                              meeting.join_url,
+                              "_blank",
+                              "noopener,noreferrer",
+                            )
+                          }
+                        >
+                          <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                          Join
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 {messages?.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
                   const sender = msg.sender;
@@ -230,6 +246,13 @@ export default function Chat() {
           </div>
         </CardContent>
       </Card>
+      <MeetingDialog
+        key={meetingProvider}
+        open={meetingDialogOpen}
+        onOpenChange={setMeetingDialogOpen}
+        projectId={projectId}
+        provider={meetingProvider}
+      />
     </AppLayout>
   );
 }

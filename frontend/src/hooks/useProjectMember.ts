@@ -177,6 +177,7 @@ export function useGetCurrentMember(member_id: string) {
   return useQuery({
     queryKey: memberKeys.userDetail(member_id),
     queryFn: () => api.getCurrentMember(member_id),
+    enabled: !!member_id,
   });
 }
 

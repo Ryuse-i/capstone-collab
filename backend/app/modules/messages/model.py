@@ -13,7 +13,9 @@ class Message(Base):
     __tablename__="messages"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    project_id: Mapped[UUID] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"), index=True)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
     sender_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     content: Mapped[str]  = mapped_column(String)
     created_at: Mapped[datetime | None] = mapped_column(
@@ -23,14 +25,12 @@ class Message(Base):
     )
 
 
-    users: Mapped["User"] = relationship(
+    sender: Mapped["User"] = relationship(
         "User",
-        back_populates="messages",
         foreign_keys=[sender_id],
-        
     )
 
     project: Mapped["Project"] = relationship(
         "Project",
-        fore
-    ) 
+        foreign_keys=[project_id],
+    )

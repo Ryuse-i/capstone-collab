@@ -22,6 +22,9 @@ class Settings:
     SECRET_KEY: str = str(os.getenv("SECRET_KEY"))
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID")
+    ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID")
+    ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
 
 
 settings = Settings()

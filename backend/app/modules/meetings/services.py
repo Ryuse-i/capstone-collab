@@ -1,7 +1,7 @@
-from datetime import timedelta
-from uuid import UUID, uuid4
-
 from fastapi import HTTPException, status
+from uuid import UUID
+from typing import NoReturn
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.project_members.model import ProjectRole
@@ -10,6 +10,12 @@ from app.modules.projects.repo import ProjectRepo
 from app.modules.users.model import User, UserRole
 
 from .model import Meeting
+from .providers import (
+    MeetingProviderAPIError,
+    MeetingProviderError,
+    MeetingProviderNotConfigured,
+    get_meeting_provider,
+)
 from .repo import MeetingRepo
 from .schema import CreateMeetingRequest
 
@@ -21,6 +27,25 @@ MANAGER_ROLES = {
 
 
 class MeetingService:
+    @staticmethod
+    def _raise_provider_http_error(error: MeetingProviderError) -> NoReturn:
+        if isinstance(error, MeetingProviderNotConfigured):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Meeting provider is not configured",
+            ) from error
+
+        if isinstance(error, MeetingProviderAPIError):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Meeting provider request failed",
+            ) from error
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported meeting provider",
+        ) from error
+
     @staticmethod
     async def _require_project_access(
         db: AsyncSession,
@@ -65,22 +90,27 @@ class MeetingService:
             db, request.project_id, current_user, require_manager=True
         )
 
-        meeting_id = uuid4()
-        end_time = request.start_time + timedelta(minutes=request.duration_minutes)
+        try:
+            provider = get_meeting_provider(request.provider)
+            provider_result = await provider.create_meeting(
+                topic=request.topic,
+                start_time=request.start_time,
+                duration_minutes=request.duration_minutes,
+                join_url=request.join_url,
+            )
+        except MeetingProviderError as error:
+            MeetingService._raise_provider_http_error(error)
 
-        # Provider creation is intentionally deferred to the next integration step.
-        # The invalid domain prevents this placeholder from being mistaken for a
-        # usable production meeting link.
         meeting = Meeting(
             project_id=request.project_id,
             created_by=current_user.id,
             provider=request.provider,
-            meeting_id=f"pending-{meeting_id}",
-            join_url=f"https://meeting-not-configured.invalid/{meeting_id}",
-            host_url=None,
+            meeting_id=provider_result.meeting_id,
+            join_url=provider_result.join_url,
+            host_url=provider_result.host_url,
             topic=request.topic,
-            start_time=request.start_time,
-            end_time=end_time,
+            start_time=provider_result.start_time,
+            end_time=provider_result.end_time,
         )
         return await MeetingRepo(db).create(meeting)
 
@@ -121,4 +151,11 @@ class MeetingService:
         await MeetingService._require_project_access(
             db, meeting.project_id, current_user, require_manager=True
         )
+
+        try:
+            provider = get_meeting_provider(meeting.provider)
+            await provider.cancel_meeting(meeting.meeting_id)
+        except MeetingProviderError as error:
+            MeetingService._raise_provider_http_error(error)
+
         return await MeetingRepo(db).cancel(meeting)
