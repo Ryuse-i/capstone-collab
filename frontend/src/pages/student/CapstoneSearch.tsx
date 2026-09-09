@@ -168,7 +168,7 @@ export default function CapstoneSearch() {
             >
               <div className="flex items-start gap-2">
                 <BookOpen className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                <h3 className="font-semibold text-gray-900 dark:text-card-foreground">
+                <h3 className="font-semibold text-foreground dark:text-card-foreground">
                   {result.title}
                 </h3>
               </div>

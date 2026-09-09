@@ -247,7 +247,7 @@ export default function Task() {
 
                 <p
                   className={`text-3xl font-bold ${
-                    stat.valueColor ?? "text-gray-900 dark:text-gray-100"
+                    stat.valueColor ?? "text-foreground dark:text-gray-100"
                   }`}
                 >
                   {stat.value}
@@ -309,6 +309,8 @@ export default function Task() {
             tasks={allProjectTasks ?? []}
             isLoading={isTasksLoading}
             isError={isTasksError}
+            width="100%"
+            height="100000px"
           />
         ) : (
           <div className="relative mt-4 w-full min-w-0 overflow-x-auto pb-2 no-scrollbar">
