@@ -5,7 +5,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   /* Custom site tokens */
@@ -28,8 +28,8 @@
   --card-foreground: oklch(0.15 0.02 20);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #6b1426;
-  --maroon: #6b1426;
+  --primary: #701d0b;
+  --maroon: #701d0b;
   --primary-foreground: oklch(100% 0.00011 271.152);
   --secondary: oklch(0.75 0.12 85);
   --secondary-foreground: oklch(0.15 0 0);
@@ -65,31 +65,22 @@
   --invert-foreground: var(--color-zinc-50);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Custom site tokens — dark */
-    --text: #000000;
-    --text-h: #000000;
-    --bg: #16171d;
-    --code-bg: #1f2028;
-    --accent: #cecbd2;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
 .dark {
+  --text: #e4e6eb;
+  --text-h: #e4e6eb;
+  --bg: #18191a;
+  --code-bg: #1f2028;
+  --accent: #cecbd2;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.5);
+  --social-bg: rgba(47, 48, 58, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+
   /* Shadcn tokens — dark */
   --background: #18191a;
   --semi-background: #1d1d1d;
-  --foreground: #F5F5F7;
+  --foreground: #f5f5f7;
   --semi-foreground: #888888;
   --card: #242526;
   --semi-card: #2f3031;
@@ -296,7 +287,9 @@
 .animate-on-scroll {
   opacity: 0;
   transform: translateY(40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s ease-out;
 }
 
 .animate-on-scroll.visible {
@@ -307,7 +300,9 @@
 .fade-left {
   opacity: 0;
   transform: translateX(-40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s ease-out;
 }
 
 .fade-left.visible {
@@ -318,7 +313,9 @@
 .fade-right {
   opacity: 0;
   transform: translateX(40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s ease-out;
 }
 
 .fade-right.visible {
@@ -351,7 +348,7 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: var(--foreground);
 }
- 
+
 /* ─── Components ────────────────────────────────────────── */
 
 @layer components {

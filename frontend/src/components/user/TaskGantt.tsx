@@ -235,14 +235,14 @@ function AvatarStack({
   const overflow = members.length - visible.length;
 
   const bubbleStyle = (bg: string, marginLeft: number): CSSProperties => ({
-    width: 22,
-    height: 22,
+    width: 28,
+    height: 28,
     marginLeft,
     borderRadius: "9999px",
     border: `2px solid ${ringColor}`,
     backgroundColor: bg,
     color: "#ffffff",
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: 700,
     display: "flex",
     alignItems: "center",
@@ -255,7 +255,7 @@ function AvatarStack({
       style={{
         display: "flex",
         alignItems: "center",
-        marginLeft: 8,
+        marginLeft: 10,
         flexShrink: 0,
       }}
     >
@@ -263,14 +263,14 @@ function AvatarStack({
         <div
           key={member.id}
           title={`${member.first_name} ${member.last_name}`}
-          style={bubbleStyle(avatarColorFor(member.id), i === 0 ? 0 : -8)}
+          style={bubbleStyle(avatarColorFor(member.id), i === 0 ? 0 : -10)}
         >
           {initials(member)}
         </div>
       ))}
 
       {overflow > 0 && (
-        <div style={bubbleStyle("#334155", -8)}>+{overflow}</div>
+        <div style={bubbleStyle("#334155", -10)}>+{overflow}</div>
       )}
     </div>
   );
@@ -309,10 +309,31 @@ interface TaskGanttViewProps {
 const UNGROUPED_KEY = "ungrouped";
 
 // -------------------------------------------------------------------------
+// Gantt sizing constants
+//
+// Bumped up across the board — taller rows, bigger bars, larger text —
+// so the chart reads as a substantial, primary element on the page
+// instead of a thin sliver with lots of empty space around it.
+// -------------------------------------------------------------------------
+
+const ROW_HEIGHT = 130;
+const TASK_BAR_HEIGHT = 56;
+const TASK_FONT_SIZE = 15;
+
+// -------------------------------------------------------------------------
 // Gantt styling
 //
 // Keep the chart itself flat and rectangular.
 // Only the individual task bars receive subtle rounding.
+//
+// NOTE: react-modern-gantt applies --rmg-row-height and --rmg-task-height
+// as an inline declaration directly on its own root element
+// (`.rmg-gantt-chart`). A same-element declaration always wins over an
+// inherited value from an ancestor, so setting these vars on a wrapper
+// div (via GANTT_CSS_VARS below) has no effect on row/task sizing no
+// matter how that wrapper is resized. They're forced via the scoped
+// <style> override in the component render instead — see
+// GANTT_SIZE_OVERRIDE_CSS.
 // -------------------------------------------------------------------------
 
 const GANTT_CSS_VARS: CSSProperties = {
@@ -322,17 +343,29 @@ const GANTT_CSS_VARS: CSSProperties = {
 
   ["--rmg-border-color" as string]: "#e5e7eb",
 
-  ["--rmg-row-height" as string]: "84px",
+  // Bigger header/sidebar text to match the larger rows.
+  ["--rmg-font-size" as string]: "15px",
 
-  ["--rmg-task-height" as string]: "36px",
+  ["--rmg-header-font-size" as string]: "16px",
 
   // Subtle rounding instead of a full pill.
-  ["--rmg-border-radius" as string]: "6px",
+  ["--rmg-border-radius" as string]: "8px",
 
   ["--rmg-marker-color" as string]: "var(--primary)",
 
   ["--rmg-blue-500" as string]: "var(--primary)",
 };
+
+// Scoped override for the row/task height variables — see note above.
+// Targets react-modern-gantt's own root class so it beats the library's
+// same-element declaration. Kept in sync with ROW_HEIGHT / TASK_BAR_HEIGHT
+// above so there's a single source of truth for these numbers.
+const GANTT_SIZE_OVERRIDE_CSS = `
+  .rmg-gantt-chart {
+    --rmg-row-height: ${ROW_HEIGHT}px !important;
+    --rmg-task-height: ${TASK_BAR_HEIGHT}px !important;
+  }
+`;
 
 // -------------------------------------------------------------------------
 // Component
@@ -345,7 +378,7 @@ export function TaskGanttView({
   isLoading = false,
   isError = false,
   width = "100%",
-  height = "1000px",
+  height = "1200px",
 }: TaskGanttViewProps) {
   const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(
     null,
@@ -436,6 +469,10 @@ export function TaskGanttView({
 
   return (
     <div className="mt-6">
+      {/* Scoped size override — see GANTT_SIZE_OVERRIDE_CSS above for why
+          this can't be done via the GANTT_CSS_VARS inline style instead. */}
+      <style>{GANTT_SIZE_OVERRIDE_CSS}</style>
+
       <div
         className="relative overflow-hidden"
         style={{
@@ -463,22 +500,22 @@ export function TaskGanttView({
         }}
       >
         {isLoading ? (
-          <div className="py-8 text-center text-muted-foreground">
+          <div className="py-8 text-center text-muted-foreground text-base">
             Loading timeline...
           </div>
         ) : isError ? (
-          <div className="py-8 text-center text-rose-600">
+          <div className="py-8 text-center text-rose-600 text-base">
             Failed to load tasks.
           </div>
         ) : groups.length === 0 ? (
-          <div className="py-10 text-center text-muted-foreground">
+          <div className="py-10 text-center text-muted-foreground text-base">
             No tasks to show on the timeline yet.
           </div>
         ) : (
           <GanttChart
             tasks={groups}
             viewModes={[ViewMode.DAY, ViewMode.WEEK, ViewMode.MONTH]}
-            rowHeight={84}
+            rowHeight={ROW_HEIGHT}
             showProgress
             editMode={false}
             showCurrentDateMarker
@@ -511,27 +548,27 @@ export function TaskGanttView({
                     left: `${leftPx}px`,
                     top: `${topPx}px`,
 
-                    width: `${Math.max(widthPx, 36)}px`,
+                    width: `${Math.max(widthPx, 48)}px`,
 
-                    height: "36px",
+                    height: `${TASK_BAR_HEIGHT}px`,
 
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
 
-                    gap: 6,
+                    gap: 8,
 
-                    padding: "0 6px 0 14px",
+                    padding: "0 10px 0 18px",
 
                     // Subtle rounded corners.
                     // No more full pill shape.
-                    borderRadius: "7px",
+                    borderRadius: "9px",
 
                     backgroundColor: color.backgroundColor,
 
                     color: color.textColor,
 
-                    fontSize: 13,
+                    fontSize: `${TASK_FONT_SIZE}px`,
 
                     fontWeight: 600,
 
@@ -542,7 +579,7 @@ export function TaskGanttView({
                     // Keep the default state flat.
                     // Only give a small elevation on hover.
                     boxShadow: isHovered
-                      ? "0 2px 6px rgba(15, 23, 42, 0.12)"
+                      ? "0 3px 8px rgba(15, 23, 42, 0.15)"
                       : "none",
 
                     transition: "box-shadow 0.15s ease",

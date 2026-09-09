@@ -199,7 +199,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-gray-900 dark:text-card-foreground">
+                <p className="text-3xl font-bold text-foreground">
                   {Number(healthScore).toFixed(0)}%
                 </p>
                 <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
@@ -211,7 +211,7 @@ export default function Dashboard() {
             {/* ── Project Progress ──────────────────────────────────── */}
             <Card className="shadow-sm p-4 rounded-lg flex flex-col justify-evenly h-full">
               <div>
-                <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
+                <h2 className="font-semibold text-foreground dark:text-card-foreground">
                   {currentProject?.name}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
@@ -306,7 +306,7 @@ export default function Dashboard() {
             <Card className="p-6 rounded-2xl lg:col-span-2 shadow-sm border">
               <div className="flex items-center justify-between mb-1">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-card-foreground">
+                  <h2 className="text-xl font-semibold text-foreground">
                     Recent Activity
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
@@ -331,7 +331,7 @@ export default function Dashboard() {
                       />
                       <div>
                         <p className="text-sm text-gray-700 dark:text-(--semi-foreground)">
-                          <span className="font-semibold text-gray-900 dark:text-card-foreground">
+                          <span className="font-semibold text-foreground">
                             {activity.user}
                           </span>{" "}
                           <span className={`${activity.text} font-semibold`}>
