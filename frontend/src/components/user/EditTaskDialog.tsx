@@ -210,7 +210,9 @@ export default function EditTaskDialog({
     return (projectMembersData ?? [])
       .filter(
         (projectMember) =>
-          projectMember.project_role === "member" && projectMember.users,
+          (projectMember.project_role === "member" ||
+            projectMember.project_role === "leader") &&
+          projectMember.users,
       )
       .map((projectMember) => ({
         member_id: projectMember.id.toString(),
@@ -288,14 +290,21 @@ export default function EditTaskDialog({
   const toggleAssignedMember = (member: AssignableMember) => {
     setTaskForm((prev) => {
       const exists = prev.assigned_members.some(
-        (assigned) => assigned.member_id === member.member_id,
+        (assigned) =>
+          (assigned.member_id && assigned.member_id === member.member_id) ||
+          assigned.id === member.id,
       );
 
       return {
         ...prev,
         assigned_members: exists
           ? prev.assigned_members.filter(
-              (assigned) => assigned.member_id !== member.member_id,
+              (assigned) =>
+                !(
+                  (assigned.member_id &&
+                    assigned.member_id === member.member_id) ||
+                  assigned.id === member.id
+                ),
             )
           : [...prev.assigned_members, member],
       };
@@ -686,7 +695,10 @@ export default function EditTaskDialog({
 
                       {assignableMembers.map((member) => {
                         const selected = taskForm.assigned_members.some(
-                          (assigned) => assigned.member_id === member.member_id,
+                          (assigned) =>
+                            (assigned.member_id &&
+                              assigned.member_id === member.member_id) ||
+                            assigned.id === member.id,
                         );
 
                         return (

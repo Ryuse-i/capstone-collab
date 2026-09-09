@@ -170,13 +170,12 @@ export function AddTaskDialog({
     isError: membersError,
   } = useGetMembersWithUserInfo(projectId ?? "");
 
-  // Only show project members whose role is exactly "member" — leaders,
-  // advisors, instructors, and admins are excluded from assignment.
+  // Show project members with role "member" or "leader" — leaders can be assigned tasks and carry workload
   const assignableMembers: AssignableMember[] = useMemo(() => {
     return (projectMembersData ?? [])
       .filter(
         (projectMember) =>
-          projectMember.project_role === "member" && projectMember.users,
+          (projectMember.project_role === "member" || projectMember.project_role === "leader") && projectMember.users,
       )
       .map((projectMember) => ({
         member_id: projectMember.id.toString(),

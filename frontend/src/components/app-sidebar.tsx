@@ -179,7 +179,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // normalize the member's project role for comparison
 
   const memberRole = member?.project_role.toLocaleLowerCase();
-  console.log(role, memberRole);
 
   const isLeaderOrAbove =
     memberRole === "leader" ||

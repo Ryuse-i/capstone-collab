@@ -391,138 +391,130 @@ export function TaskTable({
       {/* Table */}
       <Card className="p-0">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Task</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Assigned</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Complexity</TableHead>
-                <TableHead className="w-45">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {isLoading ? (
+          <div className="custom-scrollbar">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    Loading tasks...
-                  </TableCell>
+                  <TableHead>Task</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Assigned</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Complexity</TableHead>
+                  <TableHead className="w-45">Action</TableHead>
                 </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-rose-600"
-                  >
-                    Failed to load tasks.
-                  </TableCell>
-                </TableRow>
-              ) : filteredTasks.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-10 text-center text-muted-foreground"
-                  >
-                    No tasks found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredTasks.map((task) => {
-                  const status = task.status ?? "not_started";
-
-                  return (
-                    <TableRow key={task.id}>
-                      {/* Task */}
-                      <TableCell className="font-medium text-gray-800 dark:text-gray-200">
-                        {task.name}
-                      </TableCell>
-
-                      {/* Status */}
-                      <TableCell>
-                        <Badge
-                          className={`${statusStyle[status]} border-0 capitalize`}
-                        >
-                          {status.replace(/[-_]/g, " ")}
-                        </Badge>
-                      </TableCell>
-
-                      {/* Priority */}
-                      <TableCell>
-                        <Badge
-                          className={`${priorityStyle[task.priority]} border-0 capitalize`}
-                        >
-                          {task.priority}
-                        </Badge>
-                      </TableCell>
-
-                      {/* Assigned */}
-                      <TableCell>
-                        {/* TODO:
-                            Replace this once TaskResponse
-                            contains assignee information.
-                        */}
-                        <span className="text-xs text-neutral-400">—</span>
-                      </TableCell>
-
-                      {/* Due Date */}
-                      <TableCell className="text-muted-foreground">
-                        {task.deadline
-                          ? new Date(task.deadline).toLocaleDateString()
-                          : "No deadline"}
-                      </TableCell>
-
-                      {/* Complexity */}
-                      <TableCell>
-                        {task.complexity ? (
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="py-8 text-center text-muted-foreground"
+                    >
+                      Loading tasks...
+                    </TableCell>
+                  </TableRow>
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="py-8 text-center text-rose-600"
+                    >
+                      Failed to load tasks.
+                    </TableCell>
+                  </TableRow>
+                ) : filteredTasks.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="py-10 text-center text-muted-foreground"
+                    >
+                      No tasks found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredTasks.map((task) => {
+                    const status = task.status ?? "not_started";
+                    return (
+                      <TableRow key={task.id}>
+                        {/* Task */}
+                        <TableCell className="font-medium text-gray-800 dark:text-gray-200">
+                          {task.name}
+                        </TableCell>
+                        {/* Status */}
+                        <TableCell>
                           <Badge
-                            className={`${complexityStyle[task.complexity]} border-0 capitalize`}
+                            className={`${statusStyle[status]} border-0 capitalize`}
                           >
-                            {task.complexity}
+                            {status.replace(/[-_]/g, " ")}
                           </Badge>
-                        ) : (
-                          <span className="text-xs text-neutral-400">—</span>
-                        )}
-                      </TableCell>
-
-                      {/* Actions */}
-                      <TableCell>
-                        <div className="flex items-center gap-2 whitespace-nowrap">
-                          {/* View */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewTask(task)}
+                        </TableCell>
+                        {/* Priority */}
+                        <TableCell>
+                          <Badge
+                            className={`${priorityStyle[task.priority]} border-0 capitalize`}
                           >
-                            View
-                          </Button>
-
-                          {/* Edit */}
-                          <EditTaskDialog
-                            task={task}
-                            projectId={projectId}
-                            trigger={
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                            }
-                          />
-
-                          {/* Delete */}
-                          <DeleteTaskDialog task={task} projectId={projectId} />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                            {task.priority}
+                          </Badge>
+                        </TableCell>
+                        {/* Assigned */}
+                        <TableCell>
+                          {/* TODO:
+                              Replace this once TaskResponse
+                              contains assignee information.
+                          */}
+                          <span className="text-xs text-neutral-400">—</span>
+                        </TableCell>
+                        {/* Due Date */}
+                        <TableCell className="text-muted-foreground">
+                          {task.deadline
+                            ? new Date(task.deadline).toLocaleDateString()
+                            : "No deadline"}
+                        </TableCell>
+                        {/* Complexity */}
+                        <TableCell>
+                          {task.complexity ? (
+                            <Badge
+                              className={`${complexityStyle[task.complexity]} border-0 capitalize`}
+                            >
+                              {task.complexity}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-neutral-400">—</span>
+                          )}
+                        </TableCell>
+                        {/* Actions */}
+                        <TableCell>
+                          <div className="flex items-center gap-2 whitespace-nowrap">
+                            {/* View */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewTask(task)}
+                            >
+                              View
+                            </Button>
+                            {/* Edit */}
+                            <EditTaskDialog
+                              task={task}
+                              projectId={projectId}
+                              trigger={
+                                <Button variant="outline" size="sm">
+                                  Edit
+                                </Button>
+                              }
+                            />
+                            {/* Delete */}
+                            <DeleteTaskDialog task={task} projectId={projectId} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

@@ -16,6 +16,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGetTaskMembers } from "@/hooks/useAssignedMember";
+import { useUpdateTask } from "@/hooks/useTask";
+import { useState, useEffect } from "react";
 import type {
   TaskStatus,
   TaskComplexity,
@@ -96,6 +98,32 @@ export function ViewTaskDialog({
 
   const shouldFetchMembers = open && !!task?.id;
 
+  const [taskData, setTaskData] = useState<TaskResponseMembers | null>(task);
+  const updateTaskMutation = useUpdateTask();
+
+  useEffect(() => {
+    if (task) {
+      setTaskData(task);
+    }
+  }, [task]);
+
+  const handleStartTask = () => {
+    if (!taskData?.id) return;
+    updateTaskMutation.mutate(
+      {
+        id: taskData.id,
+        task: {
+          started_at: new Date().toISOString(),
+        },
+      },
+      {
+        onSuccess: (updatedTask) => {
+          setTaskData(updatedTask);
+        },
+      }
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -118,22 +146,22 @@ export function ViewTaskDialog({
           </DialogClose>
         </div>
 
-        {task ? (
+        {taskData ? (
           <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-6 pb-6">
             {/* Title */}
             <h2 className="text-2xl font-semibold text-foreground mb-4">
-              {task.name}
+              {taskData.name}
             </h2>
 
             {/* Description panel */}
-            {task.description && (
+            {taskData.description && (
               <div className="mt-4 rounded-lg bg-muted/20 p-4">
                 <p className="text-sm font-semibold text-foreground mb-1.5">
                   Description
                 </p>
 
                 <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {task.description}
+                  {taskData.description}
                 </p>
               </div>
             )}
@@ -144,16 +172,15 @@ export function ViewTaskDialog({
               <MetaRow icon={<CircleCheck className="size-4" />} label="Status">
                 <Badge
                   className={`border-0 gap-1.5 font-medium ${
-                    statusPillStyle[task.status ?? "not_started"]
+                    statusPillStyle[taskData.status ?? "not_started"]
                   }`}
                 >
                   <span
                     className={`size-1.5 rounded-full ${
-                      statusDotStyle[task.status ?? "not_started"]
+                      statusDotStyle[taskData.status ?? "not_started"]
                     }`}
                   />
-
-                  {(task.status ?? "not_started").replace(/[-_]/g, " ")}
+                  {(taskData.status ?? "not_started").replace(/[-_]/g, " ")}
                 </Badge>
               </MetaRow>
 
@@ -161,24 +188,24 @@ export function ViewTaskDialog({
               <MetaRow icon={<Gauge className="size-4" />} label="Priority">
                 <Badge
                   className={`border-0 font-medium ${
-                    priorityPillStyle[task.priority]
+                    priorityPillStyle[taskData.priority]
                   }`}
                 >
-                  {task.priority.charAt(0).toUpperCase() +
-                    task.priority.slice(1)}
+                  {taskData.priority.charAt(0).toUpperCase() +
+                    taskData.priority.slice(1)}
                 </Badge>
               </MetaRow>
 
               {/* Complexity */}
-              {task.complexity && (
+              {taskData.complexity && (
                 <MetaRow icon={<Gauge className="size-4" />} label="Complexity">
                   <Badge
                     className={`border-0 font-medium ${
-                      complexityPillStyle[task.complexity]
+                      complexityPillStyle[taskData.complexity]
                     }`}
                   >
-                    {task.complexity.charAt(0).toUpperCase() +
-                      task.complexity.slice(1)}
+                    {taskData.complexity.charAt(0).toUpperCase() +
+                      taskData.complexity.slice(1)}
                   </Badge>
                 </MetaRow>
               )}
@@ -186,8 +213,8 @@ export function ViewTaskDialog({
               {/* Due Date */}
               <MetaRow icon={<Calendar className="size-4" />} label="Due Date">
                 <span className="text-sm text-foreground">
-                  {task.deadline
-                    ? new Date(task.deadline).toLocaleString(undefined, {
+                  {taskData.deadline
+                    ? new Date(taskData.deadline).toLocaleString(undefined, {
                         month: "long",
                         day: "numeric",
                         year: "numeric",
@@ -199,7 +226,7 @@ export function ViewTaskDialog({
               </MetaRow>
 
               {/* Primary Skill */}
-              {task.primary_skill && (
+              {taskData.primary_skill && (
                 <MetaRow
                   icon={<Tag className="size-4" />}
                   label="Primary Skill"
@@ -208,18 +235,18 @@ export function ViewTaskDialog({
                     variant="secondary"
                     className="font-normal bg-muted text-foreground"
                   >
-                    {task.primary_skill}
+                    {taskData.primary_skill}
                   </Badge>
                 </MetaRow>
               )}
 
               {/* Secondary Skills */}
-              {task.secondary_skills && task.secondary_skills.length > 0 && (
+              {taskData.secondary_skills && taskData.secondary_skills.length > 0 && (
                 <MetaRow
                   icon={<Tag className="size-4" />}
                   label="Secondary Skills"
                 >
-                  {task.secondary_skills.map((skill) => (
+                  {taskData.secondary_skills.map((skill) => (
                     <Badge
                       key={skill}
                       variant="secondary"
@@ -277,6 +304,16 @@ export function ViewTaskDialog({
 
         {/* Footer */}
         <div className="border-t px-6 py-3 shrink-0 flex justify-end bg-muted/50">
+          {taskData && taskData.status === "not_started" && !taskData.started_at ? (
+            <Button
+              variant="default"
+              onClick={handleStartTask}
+              className="min-w-24"
+              disabled={updateTaskMutation.isPending}
+            >
+              {updateTaskMutation.isPending ? "Starting..." : "Start Task"}
+            </Button>
+          ) : null}
           <DialogClose asChild>
             <Button variant="outline" className="min-w-24">
               Close

@@ -36,7 +36,7 @@ class TaskUpdate(BaseModel):
     complexity: Complexity | None = None
     complexity_points: int | None = None
     category: Category | None = None
-    primary_skill: Skills
+    primary_skill: Skills | None = None 
     secondary_skills: list[Skills] | None = None
     deadline: date | None = None
     started_at: datetime | None = None
@@ -56,7 +56,7 @@ class TaskResponse(BaseModel):
     complexity: Complexity | None = None
     complexity_points: int | None = None
     category: Category | None = None
-    primary_skill: Skills
+    primary_skill: Skills | None = None
     secondary_skills: list[Skills] | None = None
     deadline: date | None = None
     started_at: datetime | None = None

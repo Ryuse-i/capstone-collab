@@ -155,6 +155,41 @@ class TaskService:
         ]
 
     @staticmethod
+    async def get_tasks_for_user(db: AsyncSession, user_id: UUID):
+        repo = TaskRepo(db)
+        tasks = await repo.get_tasks_for_user(user_id)
+
+        # Convert to TaskResponseWithMembers format - matching the pattern in get_assigned_members
+        from app.modules.tasks.schema import TaskResponseWithMembers
+
+        result = []
+        for task in tasks:
+            # Get the assigned members for this task (already loaded via selectinload)
+            assigned_members_obj = task.assigned_members or []
+
+            # Extract user objects from assigned members (matching get_assigned_members pattern)
+            assigned_members = [
+                am.members.user for am in assigned_members_obj if am.members and am.members.user
+            ]
+
+            # Build the TaskResponseWithMembers object
+            task_dict = {
+                col: getattr(task, col) for col in task.__table__.columns.keys()
+            }
+            task_dict["assigned_members"] = assigned_members
+            # For tasks fetched by user_id, we need to set member_id to one of the member ids
+            # for this task and user. Since a user can only be assigned once to a task,
+            # we can take the first one.
+            member_id = None
+            if assigned_members_obj:
+                member_id = assigned_members_obj[0].member_id
+            task_dict["member_id"] = member_id
+
+            result.append(TaskResponseWithMembers.model_validate(task_dict))
+
+        return result
+
+    @staticmethod
     async def batch_get_task(db: AsyncSession, ids: Sequence[UUID]):
         repo = TaskRepo(db)
         return await repo.batch_get_task(ids)

@@ -43,6 +43,21 @@ class TaskRepo(BaseRepo):
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
+    async def get_tasks_for_user(self, user_id: UUID):
+        stmt = (
+            select(Task)
+            .join(AssignedMember, Task.id == AssignedMember.task_id)
+            .join(ProjectMember, AssignedMember.member_id == ProjectMember.id)
+            .where(ProjectMember.user_id == user_id)
+            .options(
+                selectinload(Task.assigned_members)
+                .selectinload(AssignedMember.members)
+                .selectinload(ProjectMember.user)
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
+
     async def batch_get_task(self, ids: Sequence[UUID]) -> list[TaskResponse]:
         if not ids:
             return []

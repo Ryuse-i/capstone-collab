@@ -7,11 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
 import type {
-  TaskPriority,
   TaskResponseMembers,
-  TaskStatus,
 } from "@/types/task";
-import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
+import { useGetTasksForUser } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
 
 export default function MyTask() {
@@ -22,7 +20,7 @@ export default function MyTask() {
 
   // Fetch tasks assigned to the current user
   const userId = currentUser?.id || "";
-  const { data: tasks = [], isLoading, error } = useGetAllTaskAssignedMembers(userId);
+  const { data: tasks = [], isLoading, error } = useGetTasksForUser(userId);
 
   // Transform backend tasks to match the UI format expected by the existing components
   const projects = tasks.map((task) => {

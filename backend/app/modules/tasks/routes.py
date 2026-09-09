@@ -97,3 +97,14 @@ async def get_assigned_members(
     current_user: User = Depends(current_active_user),
 ):
     return await TaskService.get_assigned_members(db, project_id)
+
+
+@task_router.get(
+    "/assigned-members/user/{user_id}", response_model=list[TaskResponseWithMembers]
+)
+async def get_tasks_for_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await TaskService.get_tasks_for_user(db, user_id)

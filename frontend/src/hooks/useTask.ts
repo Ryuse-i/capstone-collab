@@ -85,6 +85,20 @@ const api = {
       throw error;
     }
   },
+
+  getTasksForUser: async (
+    user_id: string,
+  ): Promise<TaskResponseMembers[]> => {
+    try {
+      const response = await apiClient.get<TaskResponseMembers[]>(
+        `${url}/assigned-members/user/${user_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get tasks for user", error);
+      throw error;
+    }
+  },
 };
 
 export const taskKeys = {
@@ -160,8 +174,16 @@ export function useDeleteTask() {
 
 export function useGetAllTaskAssignedMembers(id: string) {
   return useQuery({
-    queryKey: taskKeys.byProject(id),
+    queryKey: ["tasks", "assignedMembers", id],
     queryFn: () => api.getAllTaskAssignedMembers(id),
     enabled: !!id,
+  });
+}
+
+export function useGetTasksForUser(user_id: string) {
+  return useQuery({
+    queryKey: ["tasks", "forUser", user_id],
+    queryFn: () => api.getTasksForUser(user_id),
+    enabled: !!user_id,
   });
 }
