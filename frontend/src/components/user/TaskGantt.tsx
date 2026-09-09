@@ -3,7 +3,6 @@ import GanttChart, {
   ViewMode,
   type Task as GanttTask,
   type TaskGroup,
-  ViewMode,
 } from "react-modern-gantt";
 import "react-modern-gantt/dist/index.css";
 
@@ -236,14 +235,14 @@ function AvatarStack({
   const overflow = members.length - visible.length;
 
   const bubbleStyle = (bg: string, marginLeft: number): CSSProperties => ({
-    width: 28,
-    height: 28,
+    width: 22,
+    height: 22,
     marginLeft,
     borderRadius: "9999px",
     border: `2px solid ${ringColor}`,
     backgroundColor: bg,
     color: "#ffffff",
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: 700,
     display: "flex",
     alignItems: "center",
@@ -256,7 +255,7 @@ function AvatarStack({
       style={{
         display: "flex",
         alignItems: "center",
-        marginLeft: 10,
+        marginLeft: 8,
         flexShrink: 0,
       }}
     >
@@ -264,14 +263,14 @@ function AvatarStack({
         <div
           key={member.id}
           title={`${member.first_name} ${member.last_name}`}
-          style={bubbleStyle(avatarColorFor(member.id), i === 0 ? 0 : -10)}
+          style={bubbleStyle(avatarColorFor(member.id), i === 0 ? 0 : -8)}
         >
           {initials(member)}
         </div>
       ))}
 
       {overflow > 0 && (
-        <div style={bubbleStyle("#334155", -10)}>+{overflow}</div>
+        <div style={bubbleStyle("#334155", -8)}>+{overflow}</div>
       )}
     </div>
   );
@@ -301,42 +300,13 @@ interface TaskGanttViewProps {
 
   isLoading?: boolean;
   isError?: boolean;
-
-  /**
-   * Overall size of the whole Gantt chart container.
-   * Accepts any valid CSS size (px, %, rem, vh, etc).
-   * Defaults to full width and a capped height with internal scrolling.
-   */
-  width?: CSSProperties["width"];
-  height?: CSSProperties["height"];
 }
-
-// -------------------------------------------------------------------------
-// Gantt sizing constants
-//
-// Bumped up across the board — taller rows, bigger bars, larger text —
-// so the chart reads as a substantial, primary element on the page
-// instead of a thin sliver with lots of empty space around it.
-// -------------------------------------------------------------------------
-
-const ROW_HEIGHT = 130;
-const TASK_BAR_HEIGHT = 56;
-const TASK_FONT_SIZE = 15;
 
 // -------------------------------------------------------------------------
 // Gantt styling
 //
 // Keep the chart itself flat and rectangular.
 // Only the individual task bars receive subtle rounding.
-//
-// NOTE: react-modern-gantt applies --rmg-row-height and --rmg-task-height
-// as an inline declaration directly on its own root element
-// (`.rmg-gantt-chart`). A same-element declaration always wins over an
-// inherited value from an ancestor, so setting these vars on a wrapper
-// div (via GANTT_CSS_VARS below) has no effect on row/task sizing no
-// matter how that wrapper is resized. They're forced via the scoped
-// <style> override in the component render instead — see
-// GANTT_SIZE_OVERRIDE_CSS.
 // -------------------------------------------------------------------------
 
 const GANTT_CSS_VARS: CSSProperties = {
@@ -351,27 +321,25 @@ const GANTT_CSS_VARS: CSSProperties = {
   ["--rmg-task-height" as string]: "60px",
 
   // Subtle rounding instead of a full pill.
-  ["--rmg-border-radius" as string]: "8px",
+  ["--rmg-border-radius" as string]: "6px",
 
-<<<<<<< HEAD
   ["--rmg-marker-color" as string]: "var(--maroon)",
 };
 
 // Single flat group. There's no sidebar to show a group label in
 // anymore, so grouping by supertask would only add invisible divider
 // lines between blocks — one continuous list reads cleaner.
-=======
-  ["--rmg-marker-color" as string]: "var(--primary)",
+const ALL_TASKS_GROUP_ID = "all-tasks";
 
-  ["--rmg-blue-500" as string]: "var(--primary)",
-};
+// -------------------------------------------------------------------------
+// Component
+// -------------------------------------------------------------------------
 
-// Scoped override for the row/task height variables — see note above.
+export function TaskGanttView({
+  tasks,
   onTaskClick,
   isLoading = false,
   isError = false,
-  width = "100%",
-  height = "1200px",
 }: TaskGanttViewProps) {
   const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(
     null,
@@ -443,10 +411,6 @@ const GANTT_CSS_VARS: CSSProperties = {
 
   return (
     <div className="mt-6">
-      {/* Scoped size override — see GANTT_SIZE_OVERRIDE_CSS above for why
-          this can't be done via the GANTT_CSS_VARS inline style instead. */}
-      <style>{GANTT_SIZE_OVERRIDE_CSS}</style>
-
       <div
         className="relative overflow-visible"
         style={{
@@ -459,41 +423,25 @@ const GANTT_CSS_VARS: CSSProperties = {
           transform: "translateZ(0)",
           contain: "layout",
 
-          // -----------------------------------------------------------
-          // Overall chart size.
-          //
-          // `width`/`height` bound the whole component; `overflowY`
-          // lets the chart scroll internally instead of pushing the
-          // rest of the page down when there are many task groups.
-          // -----------------------------------------------------------
-          width,
-          height,
-          overflowY: "auto",
-
           ...GANTT_CSS_VARS,
         }}
       >
         {isLoading ? (
-          <div className="py-8 text-center text-muted-foreground text-base">
+          <div className="py-8 text-center text-muted-foreground">
             Loading timeline...
           </div>
         ) : isError ? (
-          <div className="py-8 text-center text-rose-600 text-base">
+          <div className="py-8 text-center text-rose-600">
             Failed to load tasks.
           </div>
         ) : groups.length === 0 ? (
-          <div className="py-10 text-center text-muted-foreground text-base">
+          <div className="py-10 text-center text-muted-foreground">
             No tasks to show on the timeline yet.
           </div>
         ) : (
           <GanttChart
             tasks={groups}
-<<<<<<< HEAD
             maxHeight={900}
-=======
-            viewModes={[ViewMode.DAY, ViewMode.WEEK, ViewMode.MONTH]}
-            rowHeight={ROW_HEIGHT}
->>>>>>> feature/chart
             showProgress
             editMode={false}
             showCurrentDateMarker
@@ -529,37 +477,26 @@ const GANTT_CSS_VARS: CSSProperties = {
               return (
                 <div
                   style={{
-<<<<<<< HEAD
                     width: "100%",
                     height: "100%",
-=======
-                    position: "absolute",
-
-                    left: `${leftPx}px`,
-                    top: `${topPx}px`,
-
-                    width: `${Math.max(widthPx, 48)}px`,
-
-                    height: `${TASK_BAR_HEIGHT}px`,
->>>>>>> feature/chart
 
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
 
-                    gap: 8,
+                    gap: 6,
 
-                    padding: "0 10px 0 18px",
+                    padding: "0 6px 0 14px",
 
                     // Subtle rounded corners.
                     // No more full pill shape.
-                    borderRadius: "9px",
+                    borderRadius: "7px",
 
                     backgroundColor: color.backgroundColor,
 
                     color: color.textColor,
 
-                    fontSize: `${TASK_FONT_SIZE}px`,
+                    fontSize: 13,
 
                     fontWeight: 600,
 
@@ -570,7 +507,7 @@ const GANTT_CSS_VARS: CSSProperties = {
                     // Keep the default state flat.
                     // Only give a small elevation on hover.
                     boxShadow: isHovered
-                      ? "0 3px 8px rgba(15, 23, 42, 0.15)"
+                      ? "0 2px 6px rgba(15, 23, 42, 0.12)"
                       : "none",
 
                     transition: "box-shadow 0.15s ease",
