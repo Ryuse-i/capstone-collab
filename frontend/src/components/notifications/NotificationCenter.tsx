@@ -69,6 +69,13 @@ export default function NotificationCenter({
       inviteFetching ||
       (!!invite?.project_id && (projectLoading || projectFetching)));
 
+  // The invite object only stores sender_id (recipients are matched by
+  // email, not a user id). Since notifications are already scoped to the
+  // logged-in user via useGetUserNotifications(userId), whoever is viewing
+  // this notification and is NOT the sender is, by definition, the
+  // recipient. This flag drives all sender-vs-recipient branching below.
+  const isSender = !!userId && !!invite && invite.sender_id === userId;
+
   function handleNotificationClick(item: NotificationResponse) {
     setSelectedNotification(item);
     if (!item.is_read) markAsRead(item.id);
@@ -217,9 +224,9 @@ export default function NotificationCenter({
                           {project.description}
                         </p>
                       </div>
-                    )}{console.log("DEBUG sender_id:", invite?.sender_id, "userId:", userId, "match:", invite?.sender_id === userId)}
+                    )}
                     {invite?.status === "pending" &&
-                      (userId && invite.sender_id !== userId ? (
+                      (!isSender ? (
                         <div className="flex gap-2 pt-3">
                           <Button
                             type="button"
@@ -243,17 +250,22 @@ export default function NotificationCenter({
                         </div>
                       ) : (
                         <p className="pt-3 text-sm text-muted-foreground">
-                          Waiting for a response to this invitation.
+                          You sent this invitation and are waiting for a
+                          response.
                         </p>
                       ))}
                     {invite?.status === "accepted" && (
                       <div className="mt-3 rounded-md border bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">
-                        You have accepted this invitation.
+                        {isSender
+                          ? "This invitation has been accepted."
+                          : "You have accepted this invitation."}
                       </div>
                     )}
                     {invite?.status === "rejected" && (
                       <div className="mt-3 rounded-md border bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200">
-                        You have declined this invitation.
+                        {isSender
+                          ? "This invitation has been declined."
+                          : "You have declined this invitation."}
                       </div>
                     )}
                   </>
