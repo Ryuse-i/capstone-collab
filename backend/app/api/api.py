@@ -17,6 +17,7 @@ from app.modules.redistribution_recommendations.routes import recommendation_rou
 from app.modules.project_snapshots.routes import project_snapshot_router
 from app.modules.notifications.routes import notification_router
 from app.modules.invitations.route import project_invitation_router
+from app.modules.meetings.routes import meeting_router
 
 api_router = APIRouter()
 api_router.include_router(users_router)
@@ -64,3 +65,4 @@ api_router.include_router(
 api_router.include_router(
     project_invitation_router, prefix="/invitations", tags=["invitations"]
 )
+api_router.include_router(meeting_router, prefix="/meetings", tags=["meetings"])
