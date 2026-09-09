@@ -19,6 +19,7 @@ modules = [
     "app.modules.member_activities.model",
     "app.modules.notifications.model",
     "app.modules.invitations.model",
+    "app.modules.meetings.model",
 ]
 
 
