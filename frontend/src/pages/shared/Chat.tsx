@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetProjectMessages, useSendMessage } from "@/hooks/useMessage";
 import {
   Popover,
   PopoverContent,
@@ -16,126 +17,60 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-type Member = {
-  id: string;
-  name: string;
-  initials: string;
-  role?: string;
-};
+// Local-only UI state for the call banner — not persisted, no backend yet.
+type ActiveCall = {
+  provider: "Gmeet" | "Zoom";
+  joined: boolean;
+} | null;
 
-type Message = {
-  id: string;
-  senderId: string;
-  text: string;
-  time: string;
-  callProvider?: "Gmeet" | "Zoom";
-  isJoined?: boolean;
-};
+function getInitials(firstName?: string | null, lastName?: string | null) {
+  if (!firstName && !lastName) return "?";
+  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
+}
 
-const members: Member[] = [
-  { id: "JW", name: "John Wesley", initials: "JW", role: "Frontend" },
-  { id: "DM", name: "Dylan Mangaoang", initials: "DM", role: "Backend" },
-  { id: "HG", name: "Harry Guzman", initials: "HG", role: "QA" },
-  { id: "RM", name: "Rommel", initials: "RM", role: "DevOps" },
-];
-
-// Mock conversation (single conversation between current user `JW` and `DM`)
-const initialMessages: Message[] = [
-  {
-    id: "m1",
-    senderId: "DM",
-    text: "Hey John — are you available to review the API changes?",
-    time: "10:55 am",
-  },
-  {
-    id: "m2",
-    senderId: "HG",
-    text: "MAMAMO BLUE",
-    time: "10:56 am",
-  },
-  {
-    id: "m3",
-    senderId: "JW",
-    text: "Yes — I'll take a look now and push feedback shortly.",
-    time: "10:57 am",
-  },
-  {
-    id: "m4",
-    senderId: "DM",
-    text: "Thanks! Also I uploaded a draft for the endpoint tests.",
-    time: "11:01 am",
-  },
-  {
-    id: "m5",
-    senderId: "JW",
-    text: "Great, I'll check the tests and run them locally.",
-    time: "11:04 am",
-  },
-];
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function Chat() {
   const { data: user } = useCurrentUser();
   const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const projectId = currentProject?.id ?? "";
+
+  const {
+    data: messages,
+    isLoading: messagesLoading,
+    isFetching,
+  } = useGetProjectMessages(projectId);
+  const { mutate: sendMessage, isPending: sending } = useSendMessage(projectId);
+
   const [input, setInput] = useState("");
-  const [activeCall, setActiveCall] = useState<"Gmeet" | "Zoom" | null>(null);
+  const [activeCall, setActiveCall] = useState<ActiveCall>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const currentUserId = "JW";
 
   useEffect(() => {
-    // auto-scroll to bottom when messages change
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
-    const m: Message = {
-      id: `m_${Date.now()}`,
-      senderId: currentUserId,
-      text: input.trim(),
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-    setMessages((s) => [...s, m]);
-    setInput("");
+  const handleSend = () => {
+    if (!input.trim() || !projectId) return;
+    sendMessage(input.trim(), {
+      onSuccess: () => setInput(""),
+    });
   };
 
   const startCall = (provider: "Gmeet" | "Zoom") => {
-    const callText = `${provider} call is ongoing. Tap to join.`;
-    setActiveCall(provider);
-    setMessages((s) => [
-      ...s,
-      {
-        id: `call_${Date.now()}`,
-        senderId: currentUserId,
-        text: callText,
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        callProvider: provider,
-      },
-    ]);
+    setActiveCall({ provider, joined: false });
   };
 
-  const joinCall = (provider: "Gmeet" | "Zoom") => {
-    setMessages((s) => [
-      ...s,
-      {
-        id: `join_${Date.now()}`,
-        senderId: currentUserId,
-        text: `You joined the ${provider} call.`,
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        isJoined: true,
-      },
-    ]);
+  const joinCall = () => {
+    if (!activeCall) return;
+    setActiveCall({ ...activeCall, joined: true });
   };
 
   return (
@@ -191,12 +126,12 @@ export default function Chat() {
             </div>
           </div>
 
-          {activeCall ? (
+          {activeCall && !activeCall.joined ? (
             <div className="mx-4 mt-2 shrink-0 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-900 dark:border-green-900/40 dark:bg-green-950/50 dark:text-green-100">
-              {activeCall} call is ongoing.{" "}
+              {activeCall.provider} call is ongoing.{" "}
               <button
                 type="button"
-                onClick={() => joinCall(activeCall)}
+                onClick={joinCall}
                 className="font-semibold underline"
               >
                 Tap to join
@@ -209,74 +144,62 @@ export default function Chat() {
             ref={scrollRef}
             className="p-6 flex-1 min-h-0 overflow-auto bg-white dark:bg-[#101014] custom-scrollbar"
           >
-            <div className="flex flex-col gap-4">
-              {messages.map((msg) => {
-                const isMe = msg.senderId === currentUserId;
-                const isCallMessage = !!msg.callProvider;
-                const isJoinedMessage = !!msg.isJoined;
-                const sender = members.find((m) => m.id === msg.senderId);
+            {isFetching && messagesLoading ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Loading messages...
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {messages?.map((msg) => {
+                  const isMe = msg.sender_id === user?.id;
+                  const sender = msg.sender;
 
-                if (isJoinedMessage) {
                   return (
-                    <div key={msg.id} className="flex justify-center">
-                      <div className="text-xs text-muted-foreground">
-                        {msg.text}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-                  >
-                    {!isMe && (
-                      <div className="mr-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold">
-                        {sender?.initials}
-                      </div>
-                    )}
-
                     <div
-                      onClick={
-                        isCallMessage
-                          ? () => joinCall(msg.callProvider!)
-                          : undefined
-                      }
-                      className={`max-w-[70%] p-3 rounded-lg ${
-                        isCallMessage
-                          ? "border border-green-200 bg-green-50 text-green-900 shadow-sm dark:border-green-900/40 dark:bg-green-950/50 dark:text-green-100 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/70 transition-colors"
-                          : isMe
+                      key={msg.id}
+                      className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                    >
+                      {!isMe && (
+                        <div className="mr-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          {getInitials(sender.first_name, sender.last_name)}
+                        </div>
+                      )}
+
+                      <div
+                        className={`max-w-[70%] p-3 rounded-lg ${
+                          isMe
                             ? "bg-[#800000] text-white dark:bg-[#6a0101]"
                             : "bg-gray-100 dark:bg-[#16161a] text-foreground"
-                      }`}
-                    >
-                      <div
-                        className={`text-sm ${isCallMessage ? "font-semibold" : ""}`}
+                        }`}
                       >
-                        {isCallMessage ? (
-                          <>
-                            {msg.callProvider} call is ongoing.{" "}
-                            <span className="underline">Tap to join</span>
-                          </>
-                        ) : (
-                          msg.text
+                        {!isMe && (
+                          <div className="text-xs font-semibold mb-1 opacity-80">
+                            {sender
+                              ? `${sender.first_name} ${sender.last_name}`
+                              : "Unknown"}
+                          </div>
                         )}
+                        <div className="text-sm">{msg.content}</div>
+                        <div className="text-[11px] text-muted-foreground mt-1 text-right">
+                          {formatTime(msg.created_at)}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-muted-foreground mt-1 text-right">
-                        {msg.time}
-                      </div>
-                    </div>
 
-                    {isMe && (
-                      <div className="ml-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold">
-                        {currentUserId}
-                      </div>
-                    )}
+                      {isMe && (
+                        <div className="ml-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          {getInitials(user?.first_name, user?.last_name)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {!messages?.length && (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    No messages yet — say hello.
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
           <Separator className="shrink-0" />
@@ -287,16 +210,21 @@ export default function Chat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               rows={1}
-              className="flex-1 resize-none rounded-md border px-3 py-2 bg-transparent text-sm focus:outline-none"
+              disabled={!projectId || sending}
+              className="flex-1 resize-none rounded-md border px-3 py-2 bg-transparent text-sm focus:outline-none disabled:opacity-50"
               placeholder="Type your message"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  sendMessage();
+                  handleSend();
                 }
               }}
             />
-            <Button onClick={sendMessage} className="h-10">
+            <Button
+              onClick={handleSend}
+              disabled={!projectId || sending || !input.trim()}
+              className="h-10"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </div>
