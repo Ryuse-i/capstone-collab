@@ -10,6 +10,7 @@ import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
 
 import type { TaskResponseMembers, TaskStatus } from "@/types/task";
 import type { UserBase } from "@/types/user";
+import * as ProjectMemberTypes from "@/types/project_member";
 
 // -------------------------------------------------------------------------
 // Color logic
@@ -37,6 +38,31 @@ const COMPLETED_COLOR = {
 };
 
 const IN_PROGRESS_HUE = 217; // blue
+const MIN_GANTT_ROWS = 8;
+
+// Dummy raw object for placeholder tasks
+const dummyRaw: TaskResponseMembers = {
+  id: "",
+  name: "",
+  description: "",
+  created_by: "",
+  project_id: "",
+  priority: "low",
+  category: "document",
+  deadline: "",
+  complexity: undefined,
+  complexity_points: undefined,
+  total_time_spent: undefined,
+  started_at: undefined,
+  completed_at: undefined,
+  status: "not_started",
+  supertask_id: undefined,
+  primary_skill: "Backend Development" as ProjectMemberTypes.Skill,
+  secondary_skills: [],
+  assigned_members: [],
+  created_at: "",
+  updated_at: "",
+};
 
 function solidColorForProgress(hue: number, progress: number) {
   const clamped = Math.min(100, Math.max(0, progress));
@@ -442,7 +468,9 @@ export function TaskGanttView({
   // Build one flat task group (no supertask grouping — see note above)
   // -----------------------------------------------------------------------
 
-  const groups = useMemo<TaskGroup[]>(() => {
+  const now = new Date();
+
+  const realGroups = useMemo<TaskGroup[]>(() => {
     if (tasks.length === 0) return [];
 
     return tasks
@@ -471,6 +499,52 @@ export function TaskGanttView({
           a.tasks[0].startDate.getTime() - b.tasks[0].startDate.getTime(),
       );
   }, [tasks]);
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const groups = useMemo<TaskGroup[]>(() => {
+    if (realGroups.length >= MIN_GANTT_ROWS) {
+      return realGroups;
+    }
+
+    // Compute minStart and maxEnd from realGroups to preserve timeline range
+    let minStart: Date | null = null;
+    let maxEnd: Date | null = null;
+    for (const group of realGroups) {
+      const task = group.tasks[0];
+      if (minStart === null || task.startDate < minStart) {
+        minStart = task.startDate;
+      }
+      if (maxEnd === null || task.endDate > maxEnd) {
+        maxEnd = task.endDate;
+      }
+    }
+
+    const placeholders: TaskGroup[] = [];
+    const baseDate =
+      realGroups.length > 0 && maxEnd !== null ? maxEnd : startOfToday;
+
+    for (let i = 0; i < MIN_GANTT_ROWS - realGroups.length; i++) {
+      placeholders.push({
+        id: `placeholder-${i}`,
+        name: "",
+        tasks: [
+          {
+            id: `placeholder-task-${i}`,
+            name: "",
+            startDate: baseDate,
+            endDate: baseDate, // zero width
+            percent: 0,
+            status: "not_started",
+            raw: dummyRaw,
+          },
+        ],
+      });
+    }
+
+    return [...realGroups, ...placeholders];
+  }, [realGroups, startOfToday]);
 
   // -----------------------------------------------------------------------
   // Render
@@ -559,7 +633,11 @@ export function TaskGanttView({
                 transition: "box-shadow 0.15s ease",
               };
 
-              if (t.status === "in-progress") {
+              if (t.name === "") {
+                // Placeholder task: make it invisible and non-interactable
+                taskStyle.backgroundColor = "transparent";
+                taskStyle.pointerEvents = "none";
+              } else if (t.status === "in-progress") {
                 const passed = solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0);
                 const upcoming = pastelColorForProgress(IN_PROGRESS_HUE, 0);
 
