@@ -98,14 +98,14 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
   switch (status) {
     case "not_started": {
-      // Dynamic: "today" as long as nobody has picked it up yet.
-      const start = now;
+      const start = safeDate(task.started_at, now);
       const end = deadline ?? addDays(start, 7);
 
       const [startDate, endDate] = clampRange(start, end);
 
       return {
         startDate,
+
         endDate,
         percent: 0,
       };
@@ -329,7 +329,6 @@ const GANTT_CSS_VARS: CSSProperties = {
 // Single flat group. There's no sidebar to show a group label in
 // anymore, so grouping by supertask would only add invisible divider
 // lines between blocks — one continuous list reads cleaner.
-const ALL_TASKS_GROUP_ID = "all-tasks";
 
 // -------------------------------------------------------------------------
 // Component
@@ -376,13 +375,12 @@ export function TaskGanttView({
   const groups = useMemo<TaskGroup[]>(() => {
     if (tasks.length === 0) return [];
 
-    const ganttTasks: GanttCustomTask[] = tasks
+    return tasks
       .map((task) => {
         const status: TaskStatus = task.status ?? "not_started";
-
         const { startDate, endDate, percent } = resolveTask(task);
 
-        return {
+        const ganttTask: GanttCustomTask = {
           id: task.id,
           name: task.name,
           startDate,
@@ -391,18 +389,17 @@ export function TaskGanttView({
           status,
           raw: task,
         };
+
+        return {
+          id: task.id, // one group per task
+          name: task.name,
+          tasks: [ganttTask], // single task in that group
+        };
       })
-
-      // Earliest-starting task first.
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-
-    return [
-      {
-        id: ALL_TASKS_GROUP_ID,
-        name: "All Tasks",
-        tasks: ganttTasks,
-      },
-    ];
+      .sort(
+        (a, b) =>
+          a.tasks[0].startDate.getTime() - b.tasks[0].startDate.getTime(),
+      );
   }, [tasks]);
 
   // -----------------------------------------------------------------------
@@ -441,7 +438,7 @@ export function TaskGanttView({
         ) : (
           <GanttChart
             tasks={groups}
-            maxHeight={900}
+            maxHeight={700}
             showProgress
             editMode={false}
             showCurrentDateMarker
@@ -478,7 +475,7 @@ export function TaskGanttView({
                 <div
                   style={{
                     width: "100%",
-                    height: "100%",
+                    height: "var(--rmg-task-height, 85px)",
 
                     display: "flex",
                     alignItems: "center",
