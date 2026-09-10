@@ -852,9 +852,10 @@ export function AddTaskDialog({
                         onSelect={(date) => {
                           handleTaskFieldChange(
                             "deadline",
-                            date ? format(date, "yyy-MM-dd") : "",
+                            date ? format(date, "yyyy-MM-dd") : "",
                           );
                         }}
+                        disabled={{before: today}}
                       />
                     </PopoverContent>
                   </Popover>
@@ -892,7 +893,7 @@ export function AddTaskDialog({
                       onSelect={(date) => {
                         handleSupertaskFieldChange(
                           "deadline",
-                          date ? format(date, "yyy-MM-dd") : "",
+                          date ? format(date, "yyyy-MM-dd") : "",
                         );
                       }}
                       disabled={{ before: today }}

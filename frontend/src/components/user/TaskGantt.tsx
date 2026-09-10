@@ -50,9 +50,53 @@ function solidColorForProgress(hue: number, progress: number) {
   };
 }
 
+function pastelColorForProgress(hue: number, progress: number) {
+  const clamped = Math.min(100, Math.max(0, progress));
+
+  // For pastel: increase lightness, decrease saturation
+  const saturation = 30 + (clamped / 100) * 15; // Lower saturation range
+  const lightness = 80 + (clamped / 100) * 10; // Higher lightness range
+
+  return {
+    backgroundColor: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
+    textColor: lightness > 60 ? "#1f2937" : "#ffffff",
+  };
+}
+
 // -------------------------------------------------------------------------
 // Date + progress resolution per status
 // -------------------------------------------------------------------------
+
+/**
+ * Normalizes a status value to the canonical TaskStatus form.
+ * This project has repeatedly hit backend/frontend enum casing mismatches
+ * (e.g. NOT_STARTED vs not_started), so match defensively instead of an
+ * exact string comparison that can silently fall through and look like
+ * "no color at all". Note the canonical statuses themselves use mixed
+ * separators ("not_started" vs "in-progress"), so the hyphen-normalized
+ * key is mapped explicitly back to each real value rather than reused as
+ * the value directly.
+ */
+function normalizeStatus(raw: unknown): TaskStatus {
+  if (typeof raw !== "string") return "not_started";
+
+  // Trim, lowercase, and convert spaces/underscores to hyphens for matching
+  const key = raw.trim().toLowerCase().replace(/[_\s]+/g, "-");
+
+  switch (key) {
+    case "not-started":
+      return "not_started";
+    case "in-progress":
+      return "in-progress";
+    case "submitted":
+      return "submitted";
+    case "completed":
+      return "completed";
+    default:
+      console.warn("[TaskGantt] Unrecognized task status:", raw);
+      return "not_started";
+  }
+}
 
 function addDays(date: Date, days: number): Date {
   const copy = new Date(date);
@@ -88,7 +132,7 @@ function clampRange(startDate: Date, endDate: Date): [Date, Date] {
 }
 
 function resolveTask(task: TaskResponseMembers): Resolved {
-  const status: TaskStatus = task.status ?? "not_started";
+  const status: TaskStatus = normalizeStatus(task.status);
 
   const now = new Date();
 
@@ -120,7 +164,11 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
       const total = endDate.getTime() - startDate.getTime();
 
-      const elapsed = Date.now() - startDate.getTime();
+      // Calculate progress relative to start of today (00:00) to synchronize
+      // with the today marker which is fixed at the start of the day.
+      const startOfToday = new Date(now);
+      startOfToday.setHours(0, 0, 0, 0);
+      const elapsed = Math.max(0, startOfToday.getTime() - startDate.getTime());
 
       const percent =
         total > 0 ? Math.min(99, Math.max(1, (elapsed / total) * 100)) : 1;
@@ -163,6 +211,18 @@ function resolveTask(task: TaskResponseMembers): Resolved {
         percent: 100,
       };
     }
+
+    default: {
+      // This should never happen due to normalizeStatus, but added for TypeScript safety
+      const start = safeDate(task.started_at ?? task.created_at, now);
+      const end = deadline ?? addDays(start, 7);
+      const [startDate, endDate] = clampRange(start, end);
+      return {
+        startDate,
+        endDate,
+        percent: 0,
+      };
+    }
   }
 }
 
@@ -178,8 +238,11 @@ function resolveColor(status: TaskStatus, percent: number) {
     case "completed":
       return COMPLETED_COLOR;
 
-    case "in-progress":
+    case "in-progress": {
+      // For in-progress tasks, we return a solid color based on progress.
+      // The gradient effect will be handled in the renderTask style.
       return solidColorForProgress(IN_PROGRESS_HUE, percent);
+    }
 
     case "not_started":
     default:
@@ -312,7 +375,7 @@ interface TaskGanttViewProps {
 const GANTT_CSS_VARS: CSSProperties = {
   ["--rmg-bg-color" as string]: "#ffffff",
 
-  ["--rmg-text-color" as string]: "#1e293b",
+  ["--rmg-text-color" as string]: "#000000",
 
   ["--rmg-border-color" as string]: "#e5e7eb",
 
@@ -324,6 +387,10 @@ const GANTT_CSS_VARS: CSSProperties = {
   ["--rmg-border-radius" as string]: "6px",
 
   ["--rmg-marker-color" as string]: "var(--maroon)",
+
+  // Position today marker at start of day (00:00) instead of current time
+  // In DAY view, setting to 0% places it at the left edge of today's column
+  ["--rmg-today-marker-left" as string]: "0%",
 };
 
 // Single flat group. There's no sidebar to show a group label in
@@ -345,6 +412,9 @@ export function TaskGanttView({
   );
 
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+
+  // Today marker position is now controlled via CSS variable --rmg-today-marker-left
+// Set to "0%" to position it at the start of today's column (00:00)
 
   // -----------------------------------------------------------------------
   // Task click
@@ -377,7 +447,7 @@ export function TaskGanttView({
 
     return tasks
       .map((task) => {
-        const status: TaskStatus = task.status ?? "not_started";
+        const status: TaskStatus = normalizeStatus(task.status);
         const { startDate, endDate, percent } = resolveTask(task);
 
         const ganttTask: GanttCustomTask = {
@@ -469,47 +539,41 @@ export function TaskGanttView({
 
               const color = resolveColor(t.status, t.percent ?? 0);
 
+              // For in-progress tasks, create a gradient effect
+              const taskStyle: CSSProperties = {
+                width: "100%",
+                height: "var(--rmg-task-height, 85px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 6,
+                padding: "0 6px 0 14px",
+                borderRadius: "7px",
+                fontSize: 13,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+                boxShadow: isHovered
+                  ? "0 2px 6px rgba(15, 23, 42, 0.12)"
+                  : "none",
+                transition: "box-shadow 0.15s ease",
+              };
+
+              if (t.status === "in-progress") {
+                const passed = solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0);
+                const upcoming = pastelColorForProgress(IN_PROGRESS_HUE, 0);
+
+                taskStyle.background = `linear-gradient(to right, ${passed.backgroundColor} 0%, ${passed.backgroundColor} ${t.percent ?? 0}%, ${upcoming.backgroundColor} ${t.percent ?? 0}%, ${upcoming.backgroundColor} 100%)`;
+                taskStyle.color = passed.textColor;
+              } else {
+                taskStyle.backgroundColor = color.backgroundColor;
+                taskStyle.color = color.textColor;
+              }
+
               const members = t.raw.assigned_members ?? [];
 
               return (
-                <div
-                  style={{
-                    width: "100%",
-                    height: "var(--rmg-task-height, 85px)",
-
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-
-                    gap: 6,
-
-                    padding: "0 6px 0 14px",
-
-                    // Subtle rounded corners.
-                    // No more full pill shape.
-                    borderRadius: "7px",
-
-                    backgroundColor: color.backgroundColor,
-
-                    color: color.textColor,
-
-                    fontSize: 13,
-
-                    fontWeight: 600,
-
-                    whiteSpace: "nowrap",
-
-                    cursor: "pointer",
-
-                    // Keep the default state flat.
-                    // Only give a small elevation on hover.
-                    boxShadow: isHovered
-                      ? "0 2px 6px rgba(15, 23, 42, 0.12)"
-                      : "none",
-
-                    transition: "box-shadow 0.15s ease",
-                  }}
-                >
+                <div style={taskStyle}>
                   <span
                     style={{
                       overflow: "hidden",
@@ -522,7 +586,9 @@ export function TaskGanttView({
 
                   <AvatarStack
                     members={members}
-                    ringColor={color.backgroundColor}
+                    ringColor={t.status === "in-progress"
+                      ? solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0).backgroundColor
+                      : color.backgroundColor}
                   />
                 </div>
               );

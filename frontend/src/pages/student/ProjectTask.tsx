@@ -173,6 +173,7 @@ export default function Task() {
   const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
 
   const projectId = currentProject?.id ?? "";
+  const now = new Date()
 
   const {
     data: allProjectTasks,
@@ -183,6 +184,14 @@ export default function Task() {
   const { data: project } = useGetOneProjectWithSpanshot(projectId);
 
   const snapshot = project?.snapshot;
+
+  // counts all overdue task
+  const overdueTaskCounter = (allProjectTasks ?? []).filter((task) => {
+    if(task.status === "completed") return false
+    if(!task.deadline) return false
+
+    return new Date(task.deadline) < now
+  }).length
 
   const stats = [
     {
@@ -204,17 +213,17 @@ export default function Task() {
     {
       icon: <XSquare className="h-6 w-6 text-red-500" />,
       change: "+28%",
-      value: (allProjectTasks ?? []).filter(
-        (task) => task.status === "not_started",
-      ).length,
-      label: "STUCK",
+      value: overdueTaskCounter,
+      label: "OVERDUE",
       valueColor: "text-red-500",
     },
     {
       icon: <BarChart2 className="h-6 w-6 text-purple-400" />,
       change: "+36%",
-      value: 9,
-      label: "AVG. COMPLETION",
+      value: (allProjectTasks ?? []).filter(
+        (task) => task.status === "not_started"
+      ).length,
+      label: "Not Started",
     },
   ];
 
