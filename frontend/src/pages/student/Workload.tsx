@@ -1,7 +1,6 @@
 import AppLayout from "@/layouts/Applayout";
-import { TriangleAlert, ArrowRight } from "lucide-react";
+import { TriangleAlert, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import {
   PieChart,
   Pie,
@@ -10,268 +9,261 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetCurrentProject } from "@/hooks/useProject";
+import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
+import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
+import { useGetProjectRecommendations } from "@/hooks/useRedistributionRecommendation";
+import type { MemberStatus } from "@/types/member_snapshot";
 
-interface WorkloadHealth {
-  severity: "mild" | "bad";
-  warningMessage: string;
-  suggestions: string[];
-}
+const complexityColors = {
+  high: "#ef4444",
+  medium: "#eab308",
+  low: "#22c55e",
+} as const;
 
-const projectHealth: WorkloadHealth = {
-  severity: "bad", // switch to "bad" to preview the severe/red state
-  warningMessage: "2 member(s) underutilized. Imbalance ratio: 1.27",
-  suggestions: ["Task Redistribution Recommended"],
+const workloadStyles: Record<
+  MemberStatus,
+  { bar: string; text: string }
+> = {
+  overloaded: { bar: "bg-red-500", text: "text-red-500" },
+  underutilized: { bar: "bg-yellow-400", text: "text-yellow-600" },
+  normal: { bar: "bg-green-500", text: "text-green-600" },
 };
 
-const workloadStats = [
-  {
-    title: "TOTAL WORKLOAD",
-    value: "40 PTS",
-    description: "ACROSS 5 MEMBERS",
-    valueColor: "text-black",
-  },
-  {
-    title: "AVG. PER MEMBER",
-    value: "2.5 PTS",
-    description: "TARGET CAPACITY",
-    valueColor: "text-black",
-  },
-  {
-    title: "OVERLOADED",
-    value: "1",
-    description: "MEMBERS OVER LIMIT",
-    valueColor: "text-red-500",
-  },
-  {
-    title: "UNDERUTILIZED",
-    value: "1",
-    description: "MEMBERS BELOW 20%",
-    valueColor: "text-black",
-  },
-];
-
-const memberWorkload = [
-  { name: "Harry Guzman", pts: 17, max: 20 },
-  { name: "Rommel Magsino", pts: 19, max: 20 },
-  { name: "Dylan Mangaoang", pts: 12, max: 20 },
-  { name: "John Wesley Montes", pts: 16, max: 20 },
-  { name: "Clarisa Paule", pts: 15, max: 20 },
-  { name: "Andrea Paule", pts: 20, max: 20 },
-];
-
-const complexityData = [
-  { name: "High Complexity", value: 20, count: 4, color: "#ef4444" },
-  { name: "Medium Complexity", value: 55, count: 11, color: "#eab308" },
-  { name: "Low Complexity", value: 25, count: 5, color: "#22c55e" },
-];
-
-const redistributionItems = [
-  {
-    priority: "HIGH",
-    type: "Transfer",
-    description: `Transfer "User Auth Scaffolding" from`,
-    from: "John Wesley Montes",
-    to: "Dylan Mangaoang",
-    impact: "Balances workload by 15%",
-    priorityColor: "bg-red-500 text-white",
-  },
-  {
-    priority: "MEDIUM",
-    type: "Transfer",
-    description: `Transfer "API Integration" from`,
-    from: "Rommel Magsino",
-    to: "Dylan Mangaoang",
-    impact: "Balances workload by 10%",
-    priorityColor: "bg-yellow-400 text-black",
-  },
-  {
-    priority: "LOW",
-    type: "Reassign",
-    description: `Reassign "Documentation" from`,
-    from: "Andrea Paule",
-    to: "Harry Guzman",
-    impact: "Balances workload by 5%",
-    priorityColor: "bg-green-500 text-white",
-  },
-];
+function memberName(member: {
+  user: { first_name: string; last_name: string };
+}) {
+  return `${member.user.first_name} ${member.user.last_name}`.trim();
+}
 
 export default function Workload() {
-  const isBad = projectHealth.severity === "bad";
+  const { data: user } = useCurrentUser();
+  const { data: project, isLoading: isProjectLoading } = useGetCurrentProject(
+    user?.id ?? "",
+  );
+  const projectId = project?.id ?? "";
+  const { data: members = [], isLoading: isMembersLoading } =
+    useGetMembersWithUserSnapshot(projectId);
+  const { data: tasks = [], isLoading: isTasksLoading } =
+    useGetAllTaskAssignedMembers(projectId);
+  const { data: recommendations = [], isLoading: isRecommendationsLoading } =
+    useGetProjectRecommendations(projectId);
+  const snapshot = project?.snapshot;
+
+  const memberWorkload = members.map((member) => {
+    const latestSnapshot = member.snapshots[0];
+    const points = latestSnapshot
+      ? Number(latestSnapshot.total_effective_points)
+      : 0;
+    const capacityMultiplier = latestSnapshot
+      ? Number(latestSnapshot.capacity_multiplier)
+      : 0;
+
+    return {
+      name: memberName(member),
+      pts: points,
+      capacityMultiplier,
+      status: latestSnapshot?.workload_status ?? "normal",
+    };
+  });
+
+  const complexityCounts = tasks.reduce(
+    (counts, task) => {
+      const complexity = task.complexity ?? "low";
+      counts[complexity] += 1;
+      return counts;
+    },
+    { high: 0, medium: 0, low: 0 },
+  );
+  const totalComplexityTasks =
+    complexityCounts.high + complexityCounts.medium + complexityCounts.low;
+  const complexityData = (["high", "medium", "low"] as const).map(
+    (complexity) => ({
+      name: `${complexity[0].toUpperCase()}${complexity.slice(1)} Complexity`,
+      value:
+        totalComplexityTasks === 0
+          ? 0
+          : (complexityCounts[complexity] / totalComplexityTasks) * 100,
+      count: complexityCounts[complexity],
+      color: complexityColors[complexity],
+    }),
+  );
+
+  const overloadedCount = memberWorkload.filter(
+    (member) => member.status === "overloaded",
+  ).length;
+  const underutilizedCount = memberWorkload.filter(
+    (member) => member.status === "underutilized",
+  ).length;
+  const severity = snapshot?.imbalance_severity ?? "low";
+  const isBad = severity === "high" || severity === "critical";
+  const isLoading =
+    isProjectLoading ||
+    (!!projectId && (isMembersLoading || isTasksLoading || isRecommendationsLoading));
 
   return (
-    <AppLayout
-      breadcrumbs={[{ label: "Workload", href: "/workload" }]}
-    >
-     <div>
-       
-       <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground mb-2">
-         Track and optimize task distribution across team members
-       </h1>
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-         {/* Warning Banner */}
-         <Card
-           className={`bg-card border-4 p-4 rounded-lg lg:col-span-2 flex items-start justify-between ${
-             isBad
-               ? "border-red-500 dark:border-red-500"
-               : "border-yellow-500 dark:border-yellow-500"
-           }`}
-         >
-           <div className="flex flex-col gap-2">
-             <div className="flex items-center gap-2">
-               <TriangleAlert
-                 className={`h-5 w-5 ${isBad ? "text-red-500" : "text-yellow-500"}`}
-               />
-               <h2
-                 className={`font-semibold ${
-                   isBad
-                     ? "text-red-700 dark:text-red-500"
-                     : "text-gray-900 dark:text-yellow-500"
-                 }`}
-               >
-                 {isBad
-                   ? "Severe Workload Imbalance Detected"
-                   : "Mild Workload Imbalance Detected"}
-               </h2>
-             </div>
-             <p className="text-sm text-gray-500 dark:text-card-foreground">
-               {projectHealth.warningMessage}
-             </p>
-             <p className="text-sm text-gray-600 dark:text-card-foreground">
-               Suggestions
-             </p>
-             <div className="flex gap-2 flex-wrap">
-               {projectHealth.suggestions.map((s) => (
-                 <span
-                   key={s}
-                   className={`rounded-full border px-3 py-1 text-xs dark:text-card-foreground ${
-                     isBad
-                       ? "border-red-600 text-red-600"
-                       : "border-gray-300 text-gray-600"
-                   }`}
-                 >
-                   {s}
-                 </span>
-               ))}
-             </div>
-           </div>
-         </Card>
-         {/* Stats Cards */}
-         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:col-span-2">
-           {workloadStats.map((stat, index) => (
-             <Card key={index} className="shadow-sm border rounded-xl">
-               <CardContent className="p-5 flex flex-col gap-3">
-                 <p className="text-xs tracking-wide text-card-foreground font-medium">
-                   {stat.title}
-                 </p>
-                 <h2 className={`text-3xl text-card-foreground font-bold ${stat.valueColor}`}>
-                   {stat.value}
-                 </h2>
-                 <p className="text-xs text-card-foreground">{stat.description}</p>
-               </CardContent>
-             </Card>
-           ))}
-         </div>
-         {/* Member Workload */}
-         <Card className="shadow-sm border rounded-xl">
-           <CardHeader>
-             <CardTitle className="text-base font-semibold">Member Workload</CardTitle>
-           </CardHeader>
-           <CardContent className="flex flex-col gap-4">
-             {memberWorkload.map((member) => {
-               const pct = (member.pts / member.max) * 100;
-               const isOver = member.pts >= member.max;
-               return (
-                 <div key={member.name} className="flex flex-col gap-1">
-                   <div className="flex justify-between text-sm">
-                     <span className="text-card-foreground font-medium">{member.name}</span>
-                     <span className={`text-xs font-semibold ${isOver ? "text-red-500" : "text-card-foreground"}`}>
-                       {member.pts}/{member.max} pts
-                     </span>
-                   </div>
-                   <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                     <div
-                       className={`h-full rounded-full transition-all ${isOver ? "bg-red-500" : "bg-yellow-400"}`}
-                       style={{ width: `${pct}%` }}
-                     />
-                   </div>
-                 </div>
-               );
-             })}
-           </CardContent>
-         </Card>
-         {/* Task Complexity Distribution */}
-         <Card className="shadow-sm border rounded-xl">
-           <CardHeader>
-             <CardTitle className="text-base font-semibold">Task Complexity Distribution</CardTitle>
-           </CardHeader>
-           <CardContent>
-             <ResponsiveContainer width="100%" height={220}>
-               <PieChart>
-                 <Pie
-                   data={complexityData}
-                   cx="50%"
-                   cy="50%"
-                   innerRadius={55}
-                   outerRadius={90}
-                   paddingAngle={2}
-                   dataKey="value"
-                 >
-                   {complexityData.map((entry, index) => (
-                     <Cell key={index} fill={entry.color} />
-                   ))}
-                 </Pie>
-                 <Tooltip
-                   formatter={(value) => [`${value}%`, ""]}
-                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                 />
-                 <Legend
-                   formatter={(value) => <span className="text-xs text-card-foreground">{value}</span>}
-                 />
-               </PieChart>
-             </ResponsiveContainer>
-             <div className="grid grid-cols-3 gap-2 mt-2 text-center">
-               {complexityData.map((d) => (
-                 <div key={d.name} className="flex flex-col items-center gap-0.5">
-                   <span className="text-2xl font-bold" style={{ color: d.color }}>
-                     {d.count}
-                   </span>
-                   <span className="text-xs text-card-foreground">
-                     {d.name.replace(" Complexity", "")}
-                   </span>
-                 </div>
-               ))}
-             </div>
-           </CardContent>
-         </Card>
-         {/* Redistribution Recommendations */}
-         <Card className="shadow-sm border rounded-xl lg:col-span-2">
-           <CardHeader>
-             <CardTitle className="text-base font-semibold">Redistribution Recommendations</CardTitle>
-           </CardHeader>
-           <CardContent className="flex flex-col gap-3">
-             {redistributionItems.map((item, i) => (
-               <div key={i} className="border rounded-lg p-4 flex flex-col gap-2">
-                 <div className="flex items-center gap-2">
-                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${item.priorityColor}`}>
-                     {item.priority}
-                   </span>
-                   <span className="text-xs border border-gray-300 rounded px-2 py-0.5 text-card-foreground">
-                     {item.type}
-                   </span>
-                 </div>
-                 <p className="text-sm text-card-foreground">
-                   {item.description}{" "}
-                   <span className="font-semibold">{item.from}</span>{" "}
-                   <ArrowRight className="inline h-3 w-3 text-gray-400" />{" "}
-                   <span className="font-semibold">{item.to}</span>
-                 </p>
-                 <p className="text-xs text-gray-400">{item.impact}</p>
-               </div>
-             ))}
-           </CardContent>
-         </Card>
-       </div>
-     </div>
+    <AppLayout breadcrumbs={[{ label: "Workload", href: "/workload" }]}>
+      <div>
+        <h1 className="mb-2 text-(--text-h) text-2xl font-bold dark:text-card-foreground">
+          Track and optimize task distribution across team members
+        </h1>
+        {isLoading ? (
+          <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading workload data...
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card
+              className={`flex items-start justify-between rounded-lg border-4 bg-card p-4 lg:col-span-2 ${
+                isBad ? "border-red-500" : "border-yellow-500"
+              }`}
+            >
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <TriangleAlert
+                    className={`h-5 w-5 ${
+                      isBad ? "text-red-500" : "text-yellow-500"
+                    }`}
+                  />
+                  <h2
+                    className={`font-semibold ${
+                      isBad
+                        ? "text-red-700 dark:text-red-500"
+                        : "text-yellow-900 dark:text-yellow-500"
+                    }`}
+                  >
+                    {isBad
+                      ? "Severe Workload Imbalance Detected"
+                      : "Workload Balance Status"}
+                  </h2>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-card-foreground">
+                  {snapshot
+                    ? `${snapshot.imbalance_severity} imbalance based on the latest project snapshot.`
+                    : "No workload snapshot is available yet."}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border px-3 py-1 text-xs capitalize">
+                    {severity}
+                  </span>
+                  <span className="rounded-full border px-3 py-1 text-xs">
+                    {snapshot?.workload_balance ?? 0}% balance
+                  </span>
+                </div>
+              </div>
+            </Card>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-4">
+              {[
+                ["TOTAL WORKLOAD", `${snapshot?.total_workload_points ?? 0} PTS`, "ACROSS MEMBERS"],
+                ["AVG. PER MEMBER", `${Number(snapshot?.avg_workload ?? 0).toFixed(1)} PTS`, "CURRENT AVERAGE"],
+                ["OVERLOADED", overloadedCount.toString(), "MEMBERS OVER LIMIT"],
+                ["UNDERUTILIZED", underutilizedCount.toString(), "MEMBERS BELOW TARGET"],
+              ].map(([title, value, description]) => (
+                <Card key={title} className="rounded-xl border shadow-sm">
+                  <CardContent className="flex flex-col gap-3 p-5">
+                    <p className="text-xs font-medium tracking-wide text-card-foreground">{title}</p>
+                    <h2 className="text-3xl font-bold text-card-foreground">{value}</h2>
+                    <p className="text-xs text-card-foreground">{description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="rounded-xl border shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">Member Workload</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                {memberWorkload.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No member snapshot data available.</p>
+                ) : (
+                  memberWorkload.map((member) => {
+                    const pct = Math.min(
+                      Math.max(member.capacityMultiplier * 50, 0),
+                      100,
+                    );
+                    const style = workloadStyles[member.status as MemberStatus];
+                    return (
+                      <div key={member.name} className="flex flex-col gap-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium text-card-foreground">{member.name}</span>
+                          <span className={`text-xs font-semibold ${style.text}`}>
+                            {member.pts.toFixed(1)} pts ·{" "}
+                            {member.capacityMultiplier.toFixed(1)}x capacity
+                          </span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                          <div className={`h-full rounded-full ${style.bar}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl border shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">Task Complexity Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={complexityData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2} dataKey="value">
+                      {complexityData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`${Number(value).toFixed(0)}%`, ""]} />
+                    <Legend formatter={(value) => <span className="text-xs text-card-foreground">{value}</span>} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                  {complexityData.map((item) => (
+                    <div key={item.name}>
+                      <span className="text-2xl font-bold" style={{ color: item.color }}>{item.count}</span>
+                      <span className="block text-xs text-card-foreground">{item.name.replace(" Complexity", "")}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl border shadow-sm lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">Redistribution Recommendations</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                {recommendations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No redistribution recommendations are available for this project.
+                  </p>
+                ) : (
+                  recommendations.map((item) => (
+                    <div key={item.id} className="flex flex-col gap-2 rounded-lg border p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
+                          {item.rank}
+                        </span>
+                        <span className="rounded border px-2 py-0.5 text-xs text-card-foreground">
+                          {item.suggestion_type}
+                        </span>
+                      </div>
+                      <p className="text-sm text-card-foreground">{item.detail}</p>
+                      <p className="text-xs text-gray-400">
+                        {item.expected_workload_after} <ArrowRight className="inline h-3 w-3" /> {item.deadline_impact}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </AppLayout>
   );
 }

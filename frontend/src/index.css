@@ -54,6 +54,11 @@
   --sidebar-accent-foreground: oklch(100% 0.00011 271.152);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --notification-card: #f5f5f5;
+  --notification-card-foreground: #323232;
+  --notification-card-muted: #24242d;
+  --notification-card-border: rgba(255, 255, 255, 0.12);
+  --notification-card-shadow: 0 14px 35px rgba(0, 0, 0, 0.24);
   --destructive-foreground: var(--color-red-800);
   --success: var(--color-emerald-500);
   --success-foreground: var(--color-emerald-900);
@@ -113,6 +118,11 @@
   --sidebar-accent-foreground: oklch(100% 0.00011 271.152);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --notification-card: #0f0f14;
+  --notification-card-foreground: #f5f5f7;
+  --notification-card-muted: #a1a1aa;
+  --notification-card-border: rgba(255, 255, 255, 0.12);
+  --notification-card-shadow: 0 14px 35px rgba(0, 0, 0, 0.42);
   --destructive-foreground: var(--color-red-600);
   --success: var(--color-emerald-500);
   --success-foreground: var(--color-emerald-600);
@@ -329,7 +339,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
+  width: 1px;
   height: 8px;
   background-color: transparent; /* the track background you actually want */
 }
