@@ -118,9 +118,9 @@ export function ViewTaskDialog({
       },
       {
         onSuccess: (updatedTask) => {
-          setTaskData(updatedTask);
+          setTaskData((prev) => (prev ? { ...prev, ...updatedTask } : prev));
         },
-      }
+      },
     );
   };
 
@@ -241,22 +241,23 @@ export function ViewTaskDialog({
               )}
 
               {/* Secondary Skills */}
-              {taskData.secondary_skills && taskData.secondary_skills.length > 0 && (
-                <MetaRow
-                  icon={<Tag className="size-4" />}
-                  label="Secondary Skills"
-                >
-                  {taskData.secondary_skills.map((skill) => (
-                    <Badge
-                      key={skill}
-                      variant="secondary"
-                      className="font-normal bg-muted text-foreground"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
-                </MetaRow>
-              )}
+              {taskData.secondary_skills &&
+                taskData.secondary_skills.length > 0 && (
+                  <MetaRow
+                    icon={<Tag className="size-4" />}
+                    label="Secondary Skills"
+                  >
+                    {taskData.secondary_skills.map((skill) => (
+                      <Badge
+                        key={skill}
+                        variant="secondary"
+                        className="font-normal bg-muted text-foreground"
+                      >
+                        {skill}
+                      </Badge>
+                    ))}
+                  </MetaRow>
+                )}
 
               {/* Assigned Members */}
               <MetaRow icon={<Users className="size-4" />} label="Assigned To">
@@ -304,7 +305,9 @@ export function ViewTaskDialog({
 
         {/* Footer */}
         <div className="border-t px-6 py-3 shrink-0 flex justify-end bg-muted/50">
-          {taskData && taskData.status === "not_started" && !taskData.started_at ? (
+          {taskData &&
+          taskData.status === "not_started" &&
+          !taskData.started_at ? (
             <Button
               variant="default"
               onClick={handleStartTask}

@@ -26,22 +26,20 @@ class TestMemberSnapshotEndpoints:
     async def test_create_member_snapshot(
         self, ac: AsyncClient, test_user: dict, test_project: dict
     ):
-        """Tests POST /member_snapshots/ — creates a new member snapshot."""
+        """Tests POST /member_snapshots/{member_id}/upsert — creates a new member snapshot."""
         member_id = await self._create_project_member(ac, test_user, test_project)
 
         payload = {
-            "member_id": member_id,
-            "workload_points": "25.50",
-            "workload_status": "ok",
+            "total_effective_points": "25.50",
+            "workload_status": "normal",
         }
-        response = await ac.post(f"{self.base_url}/", json=payload)
-        assert response.status_code == 201, f"Create failed: {response.text}"
+        response = await ac.post(f"{self.base_url}/{member_id}/upsert", json=payload)
+        assert response.status_code == 200, f"Create failed: {response.text}"
         data = response.json()
         assert data["member_id"] == member_id
-        assert float(data["workload_points"]) == 25.50
-        assert data["workload_status"] == "ok"
+        assert float(data["total_effective_points"]) == 25.50
+        assert data["workload_status"] == "normal"
         assert "id" in data
-        assert "created_at" in data
 
     async def test_get_all_member_snapshots(
         self, ac: AsyncClient, test_user: dict, test_project: dict
@@ -67,12 +65,11 @@ class TestMemberSnapshotEndpoints:
         member_id = await self._create_project_member(ac, test_user, test_project)
 
         payload = {
-            "member_id": member_id,
             "workload_points": "15.75",
             "workload_status": "overloaded",
         }
-        create_res = await ac.post(f"{self.base_url}/", json=payload)
-        assert create_res.status_code == 201, f"Setup failed: {create_res.text}"
+        create_res = await ac.post(f"{self.base_url}/{member_id}/upsert", json=payload)
+        assert create_res.status_code == 200, f"Setup failed: {create_res.text}"
         snapshot_id = create_res.json()["id"]
 
         response = await ac.get(f"{self.base_url}/{snapshot_id}")
@@ -92,22 +89,21 @@ class TestMemberSnapshotEndpoints:
         member_id = await self._create_project_member(ac, test_user, test_project)
 
         payload = {
-            "member_id": member_id,
-            "workload_points": "20.00",
-            "workload_status": "ok",
+            "total_effective_points": "20.00",
+            "workload_status": "normal",
         }
-        create_res = await ac.post(f"{self.base_url}/", json=payload)
-        assert create_res.status_code == 201, f"Setup failed: {create_res.text}"
+        create_res = await ac.post(f"{self.base_url}/{member_id}/upsert", json=payload)
+        assert create_res.status_code == 200, f"Setup failed: {create_res.text}"
         snapshot_id = create_res.json()["id"]
 
         update_payload = {
-            "workload_points": "45.00",
+            "total_effective_points": "45.00",
             "workload_status": "overloaded",
         }
         response = await ac.patch(f"{self.base_url}/{snapshot_id}", json=update_payload)
         assert response.status_code == 200
         data = response.json()
-        assert float(data["workload_points"]) == 45.00
+        assert float(data["total_effective_points"]) == 45.00
         assert data["workload_status"] == "overloaded"
 
     async def test_update_member_snapshot_not_found(self, ac: AsyncClient):
@@ -124,12 +120,11 @@ class TestMemberSnapshotEndpoints:
         member_id = await self._create_project_member(ac, test_user, test_project)
 
         payload = {
-            "member_id": member_id,
-            "workload_points": "5.00",
+            "total_effective_points": "5.00",
             "workload_status": "underutilized",
         }
-        create_res = await ac.post(f"{self.base_url}/", json=payload)
-        assert create_res.status_code == 201, f"Setup failed: {create_res.text}"
+        create_res = await ac.post(f"{self.base_url}/{member_id}/upsert", json=payload)
+        assert create_res.status_code == 200, f"Setup failed: {create_res.text}"
         snapshot_id = create_res.json()["id"]
 
         delete_res = await ac.delete(f"{self.base_url}/{snapshot_id}")

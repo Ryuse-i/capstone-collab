@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
+import { MyTaskDialog } from "@/components/user/MyTaskDialog";
 import type {
   TaskResponseMembers,
 } from "@/types/task";
@@ -23,7 +23,8 @@ export default function MyTask() {
   const { data: tasks = [], isLoading, error } = useGetTasksForUser(userId);
 
   // Transform backend tasks to match the UI format expected by the existing components
-  const projects = tasks.map((task) => {
+  // Include the original task object to avoid stale closure issues in onClick handlers
+  const projectsWithTask = tasks.map((task) => {
     // Generate a tag from primary skill (take first letters of each word)
     const tag = task.primary_skill
       .replace(/\s+/g, " ")
@@ -85,21 +86,22 @@ export default function MyTask() {
         .map((member) => `${member.first_name} ${member.last_name || ""}`.trim())
         .filter(Boolean),
       due: dueDate,
+      task: task, // Include the original task object
     };
   });
 
   const filteredProjects =
     activeTab === "All"
-      ? projects
-      : projects.filter((p) => p.status === activeTab);
+      ? projectsWithTask
+      : projectsWithTask.filter((project) => project.status === activeTab);
 
   const countFor = (
     status: "All" | "Not Started" | "In Progress" | "Submitted" | "Completed"
   ) => {
     if (status === "All") {
-      return projects.length;
+      return projectsWithTask.length;
     }
-    return projects.filter((p) => p.status === status).length;
+    return projectsWithTask.filter((project) => project.status === status).length;
   };
 
   // Show loading state while waiting for user data or tasks
@@ -197,8 +199,15 @@ export default function MyTask() {
             <Card
               key={project.id}
               className="hover:shadow-md transition-shadow"
+              onClick={() => {
+                // Use the original task object we attached to avoid stale closures
+                if (project.task) {
+                  setSelectedTask(project.task);
+                  setOpenTaskDialog(true);
+                }
+              }}
             >
-              <CardContent className="p-4 flex flex-col gap-3">
+              <CardContent className="p-4 flex flex-col gap-3 cursor-pointer">
                 <div>
                   <h3 className="font-semibold text-foreground leading-snug">
                     {project.title}
@@ -212,11 +221,11 @@ export default function MyTask() {
                   <Button
                     variant="outline"
                     className="w-full h-11 justify-between rounded-md border bg-muted/30 px-3 text-sm font-medium hover:bg-muted/50"
-                    onClick={() => {
-                      // Find the original task object to pass to the dialog
-                      const originalTask = tasks.find((t) => t.id === project.id);
-                      if (originalTask) {
-                        setSelectedTask(originalTask);
+                    onClick={e => {
+                      e.stopPropagation(); // Prevent triggering card click
+                      // Use the original task object we attached to avoid stale closures
+                      if (project.task) {
+                        setSelectedTask(project.task);
                         setOpenTaskDialog(true);
                       }
                     }}
@@ -251,7 +260,7 @@ export default function MyTask() {
         )}
       </div>
 
-      <ViewTaskDialog
+      <MyTaskDialog
         open={openTaskDialog}
         onOpenChange={(open) => {
           if (!open) {

@@ -103,57 +103,56 @@ class MemberSnapshotService:
 
     @staticmethod
     async def calculate_member_workload(db: AsyncSession, member_id: UUID):
-        # get all row in the joint table of member and task
+        """
+        Calculate workload for a single member and update their snapshot.
+        Maintains the same interface as before but uses the centralized calculation logic.
+        """
         from app.modules.assigned_members.services import AssignedMemberService
         from app.modules.tasks.services import TaskService
         from app.modules.projects.services import ProjectService
+        from app.modules.project_members.services import ProjectMemberService
+        from app.modules.redistribution_recommendations.workload_calculation import (
+            calculate_member_workload_totals,
+            validate_task_deadline
+        )
+        from app.modules.project_snapshots.services import ProjectSnapshotService
 
+        # Get member's project and assigned tasks
         assigned_members = await AssignedMemberService.get_members(db, member_id)
-        task_ids = [member.task_id for member in assigned_members]
+        task_ids = [member.task_id for member in assigned_members if member.task_id is not None]
         all_tasks = await TaskService.batch_get_task(db, task_ids)
-        project = await ProjectService.get_project_by_user(db, member_id)
+
+        # Get the project (assuming member belongs to one project)
+        project = None
+        member_project = await ProjectMemberService.get_member_by_user_id(db, member_id)
+        if member_project:
+            project = await ProjectService.get_one_project(db, member_project.project_id)
 
         if project is None:
             return None
 
         project_id = project.id
+        base_days_per_point = project.base_days_per_point if project else 1
 
-        # filter tasks to only in-progress and not-started
-        filtered_task = [
-            task
-            for task in all_tasks
-            if task.status in (Status.IN_PROGRESS, Status.NOT_STARTED)
-        ]
+        # Validate deadlines for all tasks (preserving existing validation logic)
+        for task in all_tasks:
+            is_valid, msg = await validate_task_deadline(task, base_days_per_point)
+            if not is_valid:
+                # Log validation error but continue processing (preserving existing behavior)
+                logger.warning(f"Task deadline validation failed for task {task.id}: {msg}")
 
-        # calculate the task effective_points
-        total_points = 0
-        for task in filtered_task:
-            if task.status == Status.IN_PROGRESS:
-                urgency_multiplier = 1.0
-            else:  # Status.NOT_STARTED
-                if task.deadline is None:
-                    urgency_multiplier = 1.0  # no deadline -> 14-day bucket
-                else:
-                    days_left = (task.deadline - date.today()).days
-                    if days_left <= 3 and days_left >= 0:
-                        urgency_multiplier = 1.5
-                    elif days_left <= 7 and days_left > 3:
-                        urgency_multiplier = 1.25
-                    elif days_left <= 14 and days_left > 7:
-                        urgency_multiplier = 1.0
-                    else:
-                        urgency_multiplier = 0.75
+        # Calculate workload totals for this member using our new centralized logic
+        total_points, total_effective_points = await calculate_member_workload_totals(db, member_id)
 
-            complexity_points = task.complexity_points or 0
-
-            total_points += complexity_points * Decimal(str(urgency_multiplier))
-
-        # turn float to decimal
-        total_effective_points = Decimal(str(total_points)).quantize(
+        # Convert to Decimal for consistency with existing code
+        total_effective_points_decimal = Decimal(str(total_effective_points)).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        total_points_decimal = Decimal(str(total_points)).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
 
-        # get project total workload
+        # Get project total workload (existing logic)
         project = await ProjectService.get_project_with_latest_snapshot(db, project_id)
 
         member_snapshot = await MemberSnapshotService.get_latest_snapshot(db, member_id)
@@ -164,10 +163,10 @@ class MemberSnapshotService:
             else Decimal("0")
         )
 
-        # get change in this member's workload
-        difference = total_effective_points - previous_member_points
+        # Calculate change in this member's workload
+        difference = total_effective_points_decimal - previous_member_points
 
-        # guard: project may not have a snapshot yet (first run for this project)
+        # Guard: project may not have a snapshot yet (first run for this project)
         previous_project_total = (
             project.snapshot.total_workload_points
             if project.snapshot is not None
@@ -175,9 +174,8 @@ class MemberSnapshotService:
         )
         project_workload_points = previous_project_total + difference
         project_workload_points = round_half_up_int(project_workload_points)
-        # update total_workload of project return updated project workload
-        from app.modules.project_snapshots.services import ProjectSnapshotService
 
+        # Update total_workload of project
         project_snapshot = await ProjectSnapshotService.upsert_today_snapshot(
             db,
             project_id,
@@ -187,17 +185,17 @@ class MemberSnapshotService:
         if project_snapshot is None:
             return None
 
-        # check workload status return workload status for member
+        # Check workload status (existing logic)
         status = await MemberSnapshotService.check_workload_status(
-            db, member_id, total_effective_points
+            db, member_id, total_effective_points_decimal
         )
 
-        # update the member_snapshot
+        # Update the member_snapshot
         member_snapshot = await MemberSnapshotService.upsert_today_member_snapshot(
             db,
             member_id,
             MemberSnapshotUpsert(
-                total_effective_points=total_effective_points,
+                total_effective_points=total_effective_points_decimal,
                 workload_status=status,
             ),
         )
