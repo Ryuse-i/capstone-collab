@@ -20,7 +20,7 @@ import logging
 from app.modules.tasks.model import Task
 from app.modules.tasks.enums import Status as TaskStatus, Complexity
 from app.modules.project_members.model import ProjectMember
-from app.modules.member_snapshots.model import MemberSnapshot, MemberStatus
+from app.modules.member_snapshots.model import MemberSnapshot
 from app.modules.assigned_members.model import AssignedMember
 from app.modules.projects.model import Project
 from app.modules.assigned_members.services import AssignedMemberService
@@ -166,11 +166,11 @@ async def recompute_workload_state(
 
     for member in members:
         total_points, total_effective_points = await calculate_member_workload_totals(
-            db, member.id
+            db, member.member_id
         )
 
         member_data.append({
-            "member_id": member.id,
+            "member_id": member.member_id,
             "total_points": total_points,
             "total_effective_points": total_effective_points,
             "member_obj": member  # Keep reference for later
@@ -292,20 +292,20 @@ async def create_or_update_member_snapshots(
             snapshot.capacity_multiplier = data["capacity_multiplier"]
             # Update workload status based on overload calculation
             if data["is_overloaded"]:
-                snapshot.workload_status = MemberStatus.OVERLOADED
+                snapshot.workload_status = "overloaded"
             elif snapshot.total_effective_points < (data["expected_load"] / 2.0):
-                snapshot.workload_status = MemberStatus.UNDERUTILIZED
+                snapshot.workload_status = "underutilized"
             else:
-                snapshot.workload_status = MemberStatus.NORMAL
+                snapshot.workload_status = "normal"
         else:
             # Create new snapshot
             # Determine workload status
             if data["is_overloaded"]:
-                workload_status = MemberStatus.OVERLOADED
+                workload_status = "overloaded"
             elif data["total_effective_points"] < (data["expected_load"] / 2.0):
-                workload_status = MemberStatus.UNDERUTILIZED
+                workload_status = "underutilized"
             else:
-                workload_status = MemberStatus.NORMAL
+                workload_status = "normal"
 
             snapshot = MemberSnapshot(
                 member_id=data["member_id"],

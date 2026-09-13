@@ -60,5 +60,5 @@ class ProjectSnapshotService:
         # update the total workload
         # Check the median of all members total workload = median_points
         # call member workload calculation
-        dylan = "pangit"
-        return dylan
+        # TODO: Implement actual project workload calculation
+        return "not_implemented"

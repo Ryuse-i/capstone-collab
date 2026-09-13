@@ -137,3 +137,61 @@ class TestMemberSnapshotEndpoints:
         """Tests DELETE /member_snapshots/{member_snapshot_id} — returns 404 for non-existent snapshot."""
         response = await ac.delete(f"{self.base_url}/999999")
         assert response.status_code == 404
+
+    async def test_create_member_snapshot_capacity_multiplier_validation(self, ac: AsyncClient, test_user: dict, test_project: dict):
+        """Tests POST /member_snapshots/{member_id}/upsert validates capacity_multiplier bounds."""
+        member_id = await self._create_project_member(ac, test_user, test_project)
+
+        # Test valid boundary values
+        for valid_val in ["0.5", "1.0", "1.5", "2.0"]:
+            payload = {
+                "total_effective_points": "10.00",
+                "capacity_multiplier": valid_val,
+                "workload_status": "normal",
+            }
+            response = await ac.post(f"{self.base_url}/{member_id}/upsert", json=payload)
+            assert response.status_code == 200, f"Valid capacity_multiplier {valid_val} failed: {response.text}"
+            data = response.json()
+            assert float(data["capacity_multiplier"]) == float(valid_val)
+
+        # Test invalid values that should return 422
+        for invalid_val in ["0", "0.0", "-0.1", "-1.0", "2.1", "3.0", "5.0"]:
+            payload = {
+                "total_effective_points": "10.00",
+                "capacity_multiplier": invalid_val,
+                "workload_status": "normal",
+            }
+            response = await ac.post(f"{self.base_url}/{member_id}/upsert", json=payload)
+            assert response.status_code == 422, f"Invalid capacity_multiplier {invalid_val} should return 422: {response.text}"
+
+    async def test_update_member_snapshot_capacity_multiplier_validation(self, ac: AsyncClient, test_user: dict, test_project: dict):
+        """Tests PATCH /member_snapshots/{member_snapshot_id} validates capacity_multiplier bounds."""
+        member_id = await self._create_project_member(ac, test_user, test_project)
+
+        # Create a snapshot first
+        create_payload = {
+            "total_effective_points": "10.00",
+            "capacity_multiplier": "1.0",
+            "workload_status": "normal",
+        }
+        create_res = await ac.post(f"{self.base_url}/{member_id}/upsert", json=create_payload)
+        assert create_res.status_code == 200
+        snapshot_id = create_res.json()["id"]
+
+        # Test valid boundary values on update
+        for valid_val in ["0.5", "1.0", "1.5", "2.0"]:
+            update_payload = {
+                "capacity_multiplier": valid_val,
+            }
+            response = await ac.patch(f"{self.base_url}/{snapshot_id}", json=update_payload)
+            assert response.status_code == 200, f"Valid capacity_multiplier {valid_val} failed on update: {response.text}"
+            data = response.json()
+            assert float(data["capacity_multiplier"]) == float(valid_val)
+
+        # Test invalid values that should return 422 on update
+        for invalid_val in ["0", "0.0", "-0.1", "-1.0", "2.1", "3.0", "5.0"]:
+            update_payload = {
+                "capacity_multiplier": invalid_val,
+            }
+            response = await ac.patch(f"{self.base_url}/{snapshot_id}", json=update_payload)
+            assert response.status_code == 422, f"Invalid capacity_multiplier {invalid_val} should return 422 on update: {response.text}"

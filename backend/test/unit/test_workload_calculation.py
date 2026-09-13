@@ -209,8 +209,8 @@ class TestRecomputeWorkloadState:
         member_ids = [uuid4(), uuid4(), uuid4()]
         members = []
         for member_id in member_ids:
-            member = MagicMock(spec=ProjectMember)
-            member.member_id = member_id
+            member = MagicMock(spec_set=ProjectMember)
+            member.id = member_id
             members.append(member)
 
         # Mock member workload totals
@@ -266,8 +266,8 @@ class TestRecomputeWorkloadState:
         member_ids = [uuid4(), uuid4(), uuid4(), uuid4()]
         members = []
         for member_id in member_ids:
-            member = MagicMock(spec=ProjectMember)
-            member.member_id = member_id
+            member = MagicMock(spec_set=ProjectMember)
+            member.id = member_id
             members.append(member)
 
         # Mock member workload totals
@@ -322,7 +322,7 @@ class TestRecomputeWorkloadState:
         project_id = uuid4()
         member_id = uuid4()
         member = MagicMock(spec=ProjectMember)
-        member.member_id = member_id
+        member.id = member_id
 
         # Member with 4.0 effective points
         with pytest.MonkeyPatch().context() as mp:
@@ -375,7 +375,7 @@ class TestRecomputeWorkloadState:
         project_id = uuid4()
         member_id = uuid4()
         member = MagicMock(spec=ProjectMember)
-        member.member_id = member_id
+        member.id = member_id
 
         with pytest.MonkeyPatch().context() as mp:
             mp.setattr(

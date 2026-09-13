@@ -124,7 +124,7 @@ class MemberSnapshotService:
 
         # Get the project (assuming member belongs to one project)
         project = None
-        member_project = await ProjectMemberService.get_one_member(db, member_id)
+        member_project = await ProjectMemberService.get_member_by_user_id(db, member_id)
         if member_project:
             project = await ProjectService.get_one_project(db, member_project.project_id)
 
@@ -196,7 +196,6 @@ class MemberSnapshotService:
             member_id,
             MemberSnapshotUpsert(
                 total_effective_points=total_effective_points_decimal,
-                capacity_multiplier=Decimal('1.0'),  # Explicitly set to default
                 workload_status=status,
             ),
         )

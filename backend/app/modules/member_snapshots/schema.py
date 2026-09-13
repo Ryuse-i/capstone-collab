@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import date
 from uuid import UUID
 from .model import MemberStatus
@@ -9,7 +9,7 @@ class MemberSnapshotUpsert(BaseModel):
     member_id: UUID | None = None
     workload_status: MemberStatus | None = None
     total_effective_points: Decimal | None = None
-    capacity_multiplier: Decimal | None = None
+    capacity_multiplier: Decimal | None = Field(default=None, gt=0, le=2.0)
     silence_warning: bool | None = None
     consecutive_fallback_count: int | None = None
 
