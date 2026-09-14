@@ -59,8 +59,6 @@ async def update_member_snapshot(
     for field, value in update_data.items():
         setattr(db_item, field, value)
 
-    await db.commit()
-    await db.refresh(db_item)
     return db_item
 
 
@@ -78,6 +76,12 @@ async def upsert_today_snapshot(
             status_code=status.HTTP_404_NOT_FOUND, detail="Member snapshot not found"
         )
     await db.commit()
+    # DEBUG: Fresh SELECT after commit
+    from sqlalchemy import select
+    from .model import MemberSnapshot
+    fresh_result = await db.execute(select(MemberSnapshot).where(MemberSnapshot.member_id == member_id).order_by(MemberSnapshot.snapshot_date.desc()).limit(1))
+    fresh_snapshot = fresh_result.scalar_one_or_none()
+    print(f"DEBUG UPSERT: after commit, member_id={member_id}, fresh capacity_multiplier={getattr(fresh_snapshot, "capacity_multiplier", "None") if fresh_snapshot else "None"}")
     return snapshot
 
 

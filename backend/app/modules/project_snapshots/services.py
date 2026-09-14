@@ -37,20 +37,25 @@ class ProjectSnapshotService:
         project_members = await ProjectMemberService.get_all_members_by_project(
             db, project_id
         )
-        individual_points = [
-            member.total_effective_points for member in project_members
-        ]
 
+        # Get current points from existing snapshots (for baseline)
+        individual_points = []
+        for member in project_members:
+            member_snapshot = await MemberSnapshotService.get_latest_snapshot(db, member.id)
+            if member_snapshot:
+                individual_points.append(member_snapshot.total_effective_points)
+
+        # Recalculate workload for each member (updates their snapshots)
         total_points = 0
         for member in project_members:
             member_snapshot = await MemberSnapshotService.calculate_member_workload(
-                db, member.member_id
+                db, member.id
             )
             if member_snapshot:
                 total_points += member_snapshot.total_effective_points
 
         # average workload for all members in the project
-        normal_baseline = median(individual_points)
+        normal_baseline = median(individual_points) if individual_points else 0
 
         # calculate the progress of the project and percentage and also the expected progress and variance of the progress
         # how much tasks has been done base on the initial schedule of the overall tasks
@@ -60,5 +65,3 @@ class ProjectSnapshotService:
         # update the total workload
         # Check the median of all members total workload = median_points
         # call member workload calculation
-        # TODO: Implement actual project workload calculation
-        return "not_implemented"

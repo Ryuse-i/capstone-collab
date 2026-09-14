@@ -1,9 +1,9 @@
 from app.core.base_repo import BaseRepo
 from .model import MemberSnapshot
-from datetime import date
 from .schema import MemberSnapshotUpsert
-from uuid import UUID
+from datetime import date
 from sqlalchemy.dialects.postgresql import insert
+from uuid import UUID
 from sqlalchemy import select
 
 
@@ -15,43 +15,23 @@ class MemberSnapshotRepo(BaseRepo):
         self, member_id: UUID, metrics: MemberSnapshotUpsert
     ):
         today = date.today()
-
-        # Only include fields that were explicitly set to avoid using defaults
-        # when the user didn't provide a value (to respect database defaults)
-        values = {
-            k: v
-            for k, v in metrics.model_dump().items()
-            if k in metrics.model_fields_set
-        }
-
-        # Try to get existing snapshot for today
-        stmt = select(MemberSnapshot).where(
-            MemberSnapshot.member_id == member_id,
-            MemberSnapshot.snapshot_date == today
+        values = metrics.model_dump(exclude_unset=True)
+        stmt = insert(MemberSnapshot).values(
+            member_id=member_id,
+            snapshot_date=today,
+            **values,
         )
-        result = await self.db.execute(stmt)
-        existing_snapshot = result.scalar_one_or_none()
-
-        if existing_snapshot:
-            # Update existing snapshot with only the fields that were explicitly set
-            for key, value in values.items():
-                setattr(existing_snapshot, key, value)
-            await self.db.flush()
-            await self.db.refresh(existing_snapshot)
-            return existing_snapshot
-        else:
-            # Create new snapshot
-            # Always include required fields plus any explicitly set fields
-            create_data = {
-                'member_id': member_id,
-                'snapshot_date': today,
-                **values
-            }
-            new_snapshot = MemberSnapshot(**create_data)
-            self.db.add(new_snapshot)
-            await self.db.flush()
-            await self.db.refresh(new_snapshot)
-            return new_snapshot
+        stmt = (
+            stmt.on_conflict_do_update(
+                index_elements=["member_id", "snapshot_date"], set_=values
+            )
+            if values
+            else stmt.on_conflict_do_nothing(
+                index_elements=["member_id", "snapshot_date"]
+            )
+        ).returning(MemberSnapshot)
+        snapshot = await self.db.execute(stmt)
+        return snapshot.scalar_one_or_none()
 
     async def get_latest_member_snapshot(self, member_id: UUID):
         stmt = (

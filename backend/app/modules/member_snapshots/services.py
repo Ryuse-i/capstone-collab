@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from statistics import median
+import logging 
 
 from app.modules.project_snapshots.schema import (
     ProjectSnapshotUpsert,
@@ -12,6 +13,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from .schema import MemberSnapshotUpsert
 from app.modules.tasks.enums import Status
 
+logger = logging.getLogger(__name__)
 
 def round_half_up_int(value):
     return int(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
@@ -55,7 +57,7 @@ class MemberSnapshotService:
         repo = MemberSnapshotRepo(db)
 
         member_snapshot = await repo.get_latest_member_snapshot(member_id)
-        member = await ProjectMemberService.get_member_by_user_id(db, member_id)
+        member = await ProjectMemberService.get_one_member(db, member_id)
 
         if member is None:
             return None
@@ -196,7 +198,6 @@ class MemberSnapshotService:
             member_id,
             MemberSnapshotUpsert(
                 total_effective_points=total_effective_points_decimal,
-                capacity_multiplier=Decimal('1.0'),  # Explicitly set to default
                 workload_status=status,
             ),
         )
