@@ -7,8 +7,6 @@ import {
   FileText,
   Frame,
   Link2,
-  Star,
-  Clock,
 } from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
@@ -58,35 +56,40 @@ const CATEGORIES: CategoryConfig[] = [
     name: "Figma Links",
     count: 6,
     icon: Frame,
-    iconClass: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+    iconClass:
+      "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
     barClass: "border-violet-400",
   },
   {
     name: "Paper Files",
     count: 15,
     icon: FileText,
-    iconClass: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+    iconClass:
+      "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
     barClass: "border-blue-400",
   },
   {
     name: "Code",
     count: 12,
     icon: Code2,
-    iconClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    iconClass:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
     barClass: "border-emerald-400",
   },
   {
     name: "Datasets",
     count: 10,
     icon: Database,
-    iconClass: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+    iconClass:
+      "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
     barClass: "border-amber-400",
   },
   {
     name: "Tools & Links",
     count: 5,
     icon: Link2,
-    iconClass: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
+    iconClass:
+      "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
     barClass: "border-rose-400",
   },
 ];
@@ -96,7 +99,8 @@ export const RESOURCES: Resource[] = [
     id: 1,
     title: "Capstone UI Mockups (Figma)",
     category: "Figma Links",
-    description: "Final screen designs and interaction flows for the capstone system.",
+    description:
+      "Final screen designs and interaction flows for the capstone system.",
     type: "Live link",
     size: "figma.com",
     author: "Kevin",
@@ -108,7 +112,8 @@ export const RESOURCES: Resource[] = [
     id: 2,
     title: "Chapter 1-3 Manuscript",
     category: "Paper Files",
-    description: "Working manuscript covering the background, review, and methodology.",
+    description:
+      "Working manuscript covering the background, review, and methodology.",
     type: "PDF",
     size: "2.4 MB",
     author: "May",
@@ -120,7 +125,8 @@ export const RESOURCES: Resource[] = [
     id: 3,
     title: "Frontend Repository",
     category: "Code",
-    description: "React application source code, components, and project configuration.",
+    description:
+      "React application source code, components, and project configuration.",
     type: "GitHub",
     size: "github.com",
     author: "Ari",
@@ -132,7 +138,8 @@ export const RESOURCES: Resource[] = [
     id: 4,
     title: "Survey Response Dataset",
     category: "Datasets",
-    description: "Anonymized responses collected during the capstone user study.",
+    description:
+      "Anonymized responses collected during the capstone user study.",
     type: "XLSX",
     size: "840 KB",
     author: "Tey",
@@ -144,7 +151,8 @@ export const RESOURCES: Resource[] = [
     id: 5,
     title: "System Architecture Diagram",
     category: "Figma Links",
-    description: "Service boundaries, data flow, and deployment architecture overview.",
+    description:
+      "Service boundaries, data flow, and deployment architecture overview.",
     type: "Live link",
     size: "figma.com",
     author: "Kevin",
@@ -168,7 +176,8 @@ export const RESOURCES: Resource[] = [
     id: 7,
     title: "API Documentation",
     category: "Tools & Links",
-    description: "Shared endpoint reference for frontend and backend integration work.",
+    description:
+      "Shared endpoint reference for frontend and backend integration work.",
     type: "Live link",
     size: "swagger.io",
     author: "Ari",
@@ -180,7 +189,8 @@ export const RESOURCES: Resource[] = [
     id: 8,
     title: "Gantt Chart Timeline",
     category: "Tools & Links",
-    description: "Milestones, task dependencies, and target dates for the project plan.",
+    description:
+      "Milestones, task dependencies, and target dates for the project plan.",
     type: "Live link",
     size: "docs.google.com",
     author: "Tey",
@@ -192,7 +202,8 @@ export const RESOURCES: Resource[] = [
     id: 9,
     title: "Reference Papers Folder",
     category: "Paper Files",
-    description: "Curated sources and related studies used by the research team.",
+    description:
+      "Curated sources and related studies used by the research team.",
     type: "Folder",
     size: "12.6 MB",
     author: "Kevin",
@@ -227,9 +238,9 @@ export default function Resources() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Resources", href: "/resources" }]}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 py-2">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-2">
         <header>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="my-2 text-2xl font-semibold tracking-tight text-foreground">
             Resources
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -240,7 +251,9 @@ export default function Resources() {
         <Card>
           <CardHeader className="pb-1">
             <CardTitle>Browse by category</CardTitle>
-            <CardDescription>Quick access to your capstone files</CardDescription>
+            <CardDescription>
+              Quick access to your capstone files
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -254,11 +267,18 @@ export default function Resources() {
                     className="h-auto justify-start gap-3 px-2 py-2 text-left hover:bg-muted/60"
                     onClick={() => setActiveTab(category.name)}
                   >
-                    <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", category.iconClass)}>
+                    <span
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                        category.iconClass,
+                      )}
+                    >
                       <Icon className="size-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate font-medium">{category.name}</span>
+                      <span className="block truncate font-medium">
+                        {category.name}
+                      </span>
                       <span className="block text-xs font-normal text-muted-foreground">
                         {category.count} files
                       </span>
@@ -270,7 +290,10 @@ export default function Resources() {
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ResourceFilter)}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as ResourceFilter)}
+        >
           <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0">
             {FILTERS.map((filter) => (
               <TabsTrigger
@@ -301,11 +324,18 @@ export default function Resources() {
               >
                 <CardHeader className="pt-4">
                   <div className="flex items-start gap-3">
-                    <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", category.iconClass)}>
+                    <span
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                        category.iconClass,
+                      )}
+                    >
                       <Icon className="size-4" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <CardTitle className="truncate text-sm font-semibold">{resource.title}</CardTitle>
+                      <CardTitle className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug">
+                        {resource.title}
+                      </CardTitle>
                     </div>
                     <Badge variant="outline" className="shrink-0 text-[10px]">
                       {resource.category}
@@ -313,18 +343,23 @@ export default function Resources() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 pb-4">
-                  <p className={cn("border-l-2 pl-3 text-sm italic leading-relaxed text-muted-foreground", category.barClass)}>
+                  <p
+                    className={cn(
+                      "border-l-2 pl-3 text-sm italic leading-relaxed text-muted-foreground",
+                      category.barClass,
+                    )}
+                  >
                     {resource.description}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {resource.type} · {resource.size} · By {resource.author} · {resource.updatedAt}
+                    {resource.type} · {resource.size} · {" "}
+                    {resource.updatedAt}
                   </p>
                 </CardContent>
                 <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3">
-                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {resource.pinned ? <Star className="size-3.5 fill-secondary text-secondary" /> : <Clock className="size-3.5" />}
-                    {resource.pinned ? `Pinned · ${resource.uses} uses` : `${resource.uses} uses`}
-                  </span>
+                  <p className="truncate text-xs text-muted-foreground">
+                    By {resource.author}
+                  </p>
                   <Button variant="outline" size="sm" type="button">
                     Open
                     <ArrowRight className="size-3.5" />

@@ -67,7 +67,13 @@ function capacityPercent(multiplier: number) {
   return Math.min(Math.max(multiplier * 100, 0), 200) / 2;
 }
 
-function MemberCard({ member }: { member: ProjectMemberUserSnapshot }) {
+function MemberCard({
+  member,
+  showWorkload = true,
+}: {
+  member: ProjectMemberUserSnapshot;
+  showWorkload?: boolean;
+}) {
   const { user, project_role } = member;
   const snapshot = member.snapshots[0];
 
@@ -87,7 +93,9 @@ function MemberCard({ member }: { member: ProjectMemberUserSnapshot }) {
 
   return (
     <Card className="shadow-sm border rounded-xl">
-      <CardContent className="p-5 flex flex-col gap-4">
+      <CardContent
+        className={`p-5 flex flex-col ${showWorkload ? "gap-4" : "gap-3"}`}
+      >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -112,7 +120,7 @@ function MemberCard({ member }: { member: ProjectMemberUserSnapshot }) {
             </div>
           </div>
 
-          {snapshot?.silence_warning && (
+          {!showWorkload && snapshot?.silence_warning && (
             <span
               title="No recent activity reported"
               className="flex items-center gap-1 text-xs font-semibold border border-red-400 text-red-500 bg-white dark:bg-red-950/10 rounded px-2 py-1 shrink-0"
@@ -123,81 +131,115 @@ function MemberCard({ member }: { member: ProjectMemberUserSnapshot }) {
           )}
         </div>
 
-        {/* Workload status */}
-        <div className="bg-gray-50 dark:bg-card-foreground/5 rounded-lg px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-400 dark:text-card-foreground">
-              Workload status
-            </p>
-            <p className="text-sm font-semibold text-gray-800 dark:text-card-foreground mt-0.5">
-              {workload.label}
-            </p>
-          </div>
-          <span
-            className={`text-xs font-bold border rounded px-2 py-1 ${workload.badge}`}
-          >
-            {workload.label.toUpperCase()}
-          </span>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 border-b pb-4">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1 text-blue-500">
-              <Gauge className="w-3.5 h-3.5" />
-              <span className="text-xs text-gray-400">Points</span>
+        {showWorkload && (
+          <>
+            {/* Workload status */}
+            <div className="bg-gray-50 dark:bg-card-foreground/5 rounded-lg px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-400 dark:text-card-foreground">
+                  Workload status
+                </p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-card-foreground mt-0.5">
+                  {workload.label}
+                </p>
+              </div>
+              <span
+                className={`text-xs font-bold border rounded px-2 py-1 ${workload.badge}`}
+              >
+                {workload.label.toUpperCase()}
+              </span>
             </div>
-            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
-              {points !== undefined ? points : "—"}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1 text-yellow-500">
-              <Repeat className="w-3.5 h-3.5" />
-              <span className="text-xs text-gray-400">Fallbacks</span>
-            </div>
-            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
-              {snapshot ? snapshot.consecutive_fallback_count : "—"}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1 text-gray-400">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span className="text-xs text-gray-400">Capacity</span>
-            </div>
-            <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
-              {capacity !== undefined ? `${capacity.toFixed(1)}x` : "—"}
-            </span>
-          </div>
-        </div>
 
-        {/* Capacity bar */}
-        <div className="flex flex-col gap-1">
-          <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
-            <span>Capacity multiplier</span>
-            <span>
-              {capacity !== undefined ? `${capacity.toFixed(2)}x` : "No data"}
-            </span>
-          </div>
-          <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full ${workload.bar}`}
-              style={{
-                width: `${capacity !== undefined ? capacityPercent(capacity) : 0}%`,
-              }}
-            />
-          </div>
-        </div>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2 border-b pb-4">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1 text-blue-500">
+                  <Gauge className="w-3.5 h-3.5" />
+                  <span className="text-xs text-gray-400">Points</span>
+                </div>
+                <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
+                  {points !== undefined ? points : "—"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1 text-yellow-500">
+                  <Repeat className="w-3.5 h-3.5" />
+                  <span className="text-xs text-gray-400">Fallbacks</span>
+                </div>
+                <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
+                  {snapshot ? snapshot.consecutive_fallback_count : "—"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1 text-gray-400">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span className="text-xs text-gray-400">Capacity</span>
+                </div>
+                <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
+                  {capacity !== undefined ? `${capacity.toFixed(1)}x` : "—"}
+                </span>
+              </div>
+            </div>
 
-        {/* Footer */}
-        <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-          <CalendarClock className="w-3.5 h-3.5" />
-          {snapshot
-            ? `Last snapshot: ${formatDate(snapshot.snapshot_date)}`
-            : "No snapshot data yet"}
-        </div>
+            {/* Capacity bar */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
+                <span>Capacity multiplier</span>
+                <span>
+                  {capacity !== undefined
+                    ? `${capacity.toFixed(2)}x`
+                    : "No data"}
+                </span>
+              </div>
+              <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${workload.bar}`}
+                  style={{
+                    width: `${capacity !== undefined ? capacityPercent(capacity) : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <CalendarClock className="w-3.5 h-3.5" />
+              {snapshot
+                ? `Last snapshot: ${formatDate(snapshot.snapshot_date)}`
+                : "No snapshot data yet"}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function AdvisorPlaceholderCard({ message }: { message: string }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 h-34.5">
+      <Card className="shadow-sm border rounded-xl">
+        <CardContent className="p-5 flex min-h-full items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400">
+          {message}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdvisorSkeletonCard() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <Card className="rounded-xl">
+        <CardContent className="p-5">
+          <div className="animate-pulse flex flex-col gap-4">
+            <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-800" />
+            <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
+            <div className="h-4 w-1/2 bg-gray-100 dark:bg-gray-900 rounded" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -211,6 +253,19 @@ export default function Team() {
     isError,
   } = useGetMembersWithUserSnapshot(project?.id ?? "");
 
+  const advisorMembers =
+    members?.filter((member) => member.project_role === "advisor") ?? [];
+
+  const instructorMembers =
+    members?.filter((member) => member.project_role === "instructor") ?? [];
+
+  const regularMembers =
+    members?.filter(
+      (member) =>
+        member.project_role !== "advisor" &&
+        member.project_role !== "instructor",
+    ) ?? [];
+
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
       <div>
@@ -218,13 +273,73 @@ export default function Team() {
           <h1 className="text-2xl font-bold text-foreground">
             Manage members and monitor activities
           </h1>
-          {members && (
+          {!isLoading && !isError && members && (
             <span className="text-sm text-gray-400 dark:text-gray-500">
-              {members.length} member{members.length !== 1 ? "s" : ""}
+              {regularMembers.length} regular member
+              {regularMembers.length !== 1 ? "s" : ""}
             </span>
           )}
         </div>
 
+        <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              Advisor
+            </h2>
+
+            {isLoading && <AdvisorSkeletonCard />}
+
+            {!isLoading && isError && (
+              <AdvisorPlaceholderCard message="Failed to load advisor data. Please try again." />
+            )}
+
+            {!isLoading && !isError && advisorMembers.length > 0 && (
+              <div className="w-full gap-4">
+                {advisorMembers.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    showWorkload={false}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isLoading && !isError && advisorMembers.length === 0 && (
+              <AdvisorPlaceholderCard message="There is no advisor yet." />
+            )}
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              Instructor
+            </h2>
+
+            {isLoading && <AdvisorSkeletonCard />}
+
+            {!isLoading && isError && (
+              <AdvisorPlaceholderCard message="Failed to load instructor data. Please try again." />
+            )}
+
+            {!isLoading && !isError && instructorMembers.length > 0 && (
+              <div className="gap-4">
+                {instructorMembers.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    showWorkload={false}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isLoading && !isError && instructorMembers.length === 0 && (
+              <AdvisorPlaceholderCard message="There is no instructor yet." />
+            )}
+          </div>
+        </div>
+
+        {/* Regular members section */}
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -241,21 +356,21 @@ export default function Team() {
           </div>
         )}
 
-        {isError && (
+        {!isLoading && isError && (
           <p className="text-sm text-red-500">
             Failed to load team members. Please try again.
           </p>
         )}
 
-        {!isLoading && !isError && members?.length === 0 && (
+        {!isLoading && !isError && members && regularMembers.length === 0 && (
           <p className="text-sm text-gray-400">
-            No members found for this project.
+            No regular team members found for this project.
           </p>
         )}
 
-        {!isLoading && !isError && members && members.length > 0 && (
+        {!isLoading && !isError && members && regularMembers.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {members.map((member) => (
+            {regularMembers.map((member) => (
               <MemberCard key={member.id} member={member} />
             ))}
           </div>
@@ -264,4 +379,3 @@ export default function Team() {
     </AppLayout>
   );
 }
-

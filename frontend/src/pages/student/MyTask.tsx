@@ -141,7 +141,7 @@ export default function MyTask() {
       <div className="">
         <div>
           <div className="flex items-center">
-            <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground mb-2">
+            <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground my-2">
               My Tasks
             </h1>
           </div>

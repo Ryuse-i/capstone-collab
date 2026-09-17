@@ -206,7 +206,7 @@ export default function Task() {
       icon: <Clock className="h-6 w-6 text-yellow-500" />,
       change: "+22%",
       value: (allProjectTasks ?? []).filter(
-        (task) => task.status === "in-progress",
+        (task) => task.status === "in_progress",
       ).length,
       label: "IN PROGRESS",
     },
@@ -237,7 +237,7 @@ export default function Task() {
       ]}
     >
       <div className="min-w-0 w-full">
-        <h1 className="mb-2 text-2xl font-bold text-foreground">
+        <h1 className="my-2 text-2xl font-bold text-foreground">
           Distribute and manage tasks
         </h1>
 

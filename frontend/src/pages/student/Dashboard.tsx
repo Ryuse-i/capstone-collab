@@ -148,7 +148,7 @@ export default function Dashboard() {
       ) : (
         // Active project → show analytics
         <div>
-          <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground mb-2">
+          <h1 className="text-(--text-h) text-2xl font-bold dark:text-card-foreground my-2">
             Overview of project health and team performance
           </h1>
 
