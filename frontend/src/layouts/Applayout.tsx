@@ -228,7 +228,7 @@ export default function AppLayout({
               </CommandDialog>
             </div>
 
-            <NotificationCenter userId={user?.id} />
+            <NotificationCenter />
           </div>
         </header>
 

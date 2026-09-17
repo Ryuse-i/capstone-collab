@@ -1,9 +1,9 @@
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict
-
+from typing import List
 from app.modules.projects.schema import ProjectResponse
 from app.modules.users.schema import UserResponse
-from .model import ProjectRole
+from .model import ProjectRole, Skills
 from app.modules.member_snapshots.schema import MemberSnapshotResponse
 
 
@@ -26,6 +26,7 @@ class ProjectMemberResponse(BaseModel):
     user_id: UUID
     project_id: UUID
     project_role: ProjectRole
+    skills: List[Skills]
 
 
 class ProjectMember_Project_Response(ProjectMemberResponse):

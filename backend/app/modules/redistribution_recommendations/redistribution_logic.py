@@ -55,15 +55,14 @@ def _is_eligible_for_task(member: ProjectMember, task: Task) -> bool:
     2. Possessing at least 75% of the task's secondary skills (rounded up).
     """
     # Check primary skill
-    if member.skills != task.primary_skill:
+    # member.skills is now a list of Skills
+    member_skill_set = set(member.skills) if member.skills else set()
+    if task.primary_skill not in member_skill_set:
         return False
 
     # If there are no secondary skills, the condition is vacuously true
     if not task.secondary_skills:
         return True
-
-    # member.skills is a single Skills enum (per ProjectMember model)
-    member_skill_set = {member.skills}
 
     # Count how many of the task's secondary skills are in the member's skills
     matched_secondaries = sum(1 for skill in task.secondary_skills if skill in member_skill_set)

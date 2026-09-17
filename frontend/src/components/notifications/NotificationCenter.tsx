@@ -17,38 +17,30 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/useAuth";
 import {
   useGetUserNotifications,
   useMarkAsRead,
 } from "@/hooks/useNotification";
 import type { NotificationResponse } from "@/types/notification";
-import { getMockNotifications } from "./notificationFixtures";
 import NotificationDialogContent from "./NotificationDialogContent";
 import NotificationCard, {
   type NotificationCardType,
 } from "./NotificationCard";
 
-interface NotificationCenterProps {
-  userId?: string;
-}
-
-export default function NotificationCenter({
-  userId,
-}: NotificationCenterProps) {
+export default function NotificationCenter() {
+  const { data: user, isLoading: userLoading, isError: userError } = useCurrentUser();
   const [selectedNotification, setSelectedNotification] =
     React.useState<NotificationResponse | null>(null);
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(
     () => new Set(),
   );
-  const { data, isLoading: notificationLoading } = useGetUserNotifications(
-    userId ?? "",
-  );
-  const { mutate: markAsRead } = useMarkAsRead();
 
-  const notifications: NotificationResponse[] = [
-    ...(import.meta.env.DEV ? getMockNotifications(userId) : []),
-    ...(data ?? []),
-  ];
+  // Only fetch notifications if we have a user and the user is loaded
+  const { data, isLoading: notificationLoading, isError: notificationError } =
+    useGetUserNotifications(user?.id ?? "");
+
+  const notifications: NotificationResponse[] = data ?? [];
   const visibleNotifications = notifications.filter(
     (item) => !dismissedIds.has(item.id),
   );
@@ -100,6 +92,89 @@ export default function NotificationCenter({
     if (!item.is_read) markAsRead(item.id);
   }
 
+  // If there's an error loading the user, show an error message.
+  if (userError) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" className="relative">
+            <LucideBellRing className="h-4 w-4" />
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar">
+          <PopoverHeader className="sr-only">
+            <PopoverTitle>Notifications</PopoverTitle>
+            <PopoverDescription>Recent notifications</PopoverDescription>
+          </PopoverHeader>
+          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
+            <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-center text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
+              Failed to load user information.
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  // If the user is still loading, show a loading indicator in the popover.
+  if (userLoading) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" className="relative">
+            <LucideBellRing className="h-4 w-4" />
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar">
+          <PopoverHeader className="sr-only">
+            <PopoverTitle>Notifications</PopoverTitle>
+            <PopoverDescription>Recent notifications</PopoverDescription>
+          </PopoverHeader>
+          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
+            <div className="flex items-center justify-center gap-2 p-6">
+              <Loader2Icon className="h-4 w-4 animate-spin" />
+              Loading user information...
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  // If we don't have a user (e.g., not logged in), show an empty state.
+  if (!user) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" className="relative">
+            <LucideBellRing className="h-4 w-4" />
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar">
+          <PopoverHeader className="sr-only">
+            <PopoverTitle>Notifications</PopoverTitle>
+            <PopoverDescription>Recent notifications</PopoverDescription>
+          </PopoverHeader>
+          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
+            <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-center text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
+              Please log in to see notifications.
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  // Now we have the user and we are ready to show notifications.
   return (
     <>
       <Popover>
@@ -198,7 +273,7 @@ export default function NotificationCenter({
               </DialogHeader>
               <NotificationDialogContent
                 notification={selectedNotification}
-                userId={userId}
+                userId={user?.id}
                 onClose={() => setSelectedNotification(null)}
               />
             </>

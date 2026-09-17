@@ -72,14 +72,14 @@ const api = {
 
   delete: async (id: string): Promise<string> => {
     try {
-      const response = await apiClient.delete(id);
+      const response = await apiClient.delete(`${url}/${id}`);
       return response.data;
     } catch (error) {
       console.error("Failed to delete notification", error);
       throw error;
     }
   },
-  markAdRead: async (id: string): Promise<NotificationResponse> => {
+  markAsRead: async (id: string): Promise<NotificationResponse> => {
     try {
       const response = await apiClient.patch(`${url}/mark_as_read/${id}`);
       return response.data;
@@ -95,6 +95,7 @@ export const notificatonKeys = {
   list: () => [...notificatonKeys.all, "list"] as const,
   details: () => [...notificatonKeys.all, "details"] as const,
   detail: (id: string) => [...notificatonKeys.details(), id] as const,
+  userList: (userId: string) => [...notificatonKeys.all, "userList", userId] as const,
 };
 
 export function useGetOneNotification(id: string) {
@@ -113,7 +114,7 @@ export function useGetAllNotifications() {
 
 export function useGetUserNotifications(id: string) {
   return useQuery({
-    queryKey: notificatonKeys.list(),
+    queryKey: notificatonKeys.userList(id),
     queryFn: () => api.getUserNotification(id),
   });
 }
@@ -157,13 +158,13 @@ export function useDeleteNotification() {
   });
 }
 
-export function useMarkAsRead( ) {
+export function useMarkAsRead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.markAdRead(id),
+    mutationFn: (id: string) => api.markAsRead(id),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
-      queryClient.invalidateQueries({queryKey: notificatonKeys.detail(variables)})
+      queryClient.invalidateQueries({ queryKey: notificatonKeys.detail(variables) });
     },
   });
 }

@@ -30,7 +30,7 @@ class TestEligibility:
         """Test member with primary skill and no secondary skills is eligible."""
         # Create mock objects that match the actual model structure
         member = MagicMock(spec=ProjectMember)
-        member.skills = Skills.BACKEND_DEVELOPMENT  # Single skill enum
+        member.skills = [Skills.BACKEND_DEVELOPMENT]  # Now a list of skills
 
         task = MagicMock(spec=Task)
         task.primary_skill = Skills.BACKEND_DEVELOPMENT
@@ -41,7 +41,7 @@ class TestEligibility:
     def test_eligible_primary_and_secondaries_sufficient(self):
         """Test member with primary skill and sufficient secondary skills (75% threshold)."""
         member = MagicMock(spec=ProjectMember)
-        member.skills = Skills.BACKEND_DEVELOPMENT  # Primary skill
+        member.skills = [Skills.BACKEND_DEVELOPMENT]  # Primary skill as a list
 
         task = MagicMock(spec=Task)
         task.primary_skill = Skills.BACKEND_DEVELOPMENT
@@ -130,7 +130,7 @@ class TestEligibility:
     def test_not_eligible_wrong_primary(self):
         """Test member with wrong primary skill is not eligible."""
         member = MagicMock(spec=ProjectMember)
-        member.skills = Skills.MOBILE_DEVELOPMENT  # Wrong primary
+        member.skills = [Skills.MOBILE_DEVELOPMENT]  # Wrong primary
 
         task = MagicMock(spec=Task)
         task.primary_skill = Skills.BACKEND_DEVELOPMENT
@@ -141,7 +141,7 @@ class TestEligibility:
     def test_eligible_no_secondaries(self):
         """Test member eligibility when task has no secondary skills."""
         member = MagicMock(spec=ProjectMember)
-        member.skills = Skills.BACKEND_DEVELOPMENT
+        member.skills = [Skills.BACKEND_DEVELOPMENT]
 
         task = MagicMock(spec=Task)
         task.primary_skill = Skills.BACKEND_DEVELOPMENT
@@ -218,10 +218,10 @@ class TestRedistributionLogic:
                     # Create mock members
                     overloaded_member = MagicMock(spec=ProjectMember)
                     overloaded_member.id = overloaded_member_id
-                    overloaded_member.skills = Skills.BACKEND_DEVELOPMENT  # Single skill enum
+                    overloaded_member.skills = [Skills.BACKEND_DEVELOPMENT]  # Single skill as a list
                     recipient_member = MagicMock(spec=ProjectMember)
                     recipient_member.id = recipient_member_id
-                    recipient_member.skills = Skills.BACKEND_DEVELOPMENT  # Same primary skill
+                    recipient_member.skills = [Skills.BACKEND_DEVELOPMENT]  # Same primary skill
                     mock_get_members.return_value = [overloaded_member, recipient_member]
 
                     # Mock _get_project_base_days_per_point
