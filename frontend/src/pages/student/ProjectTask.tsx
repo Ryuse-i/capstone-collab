@@ -309,8 +309,8 @@ export default function Task() {
             tasks={allProjectTasks ?? []}
             isLoading={isTasksLoading}
             isError={isTasksError}
-            width="100%"
-            height="100000px"
+            
+            
           />
         ) : (
           <div className="relative mt-4 w-full min-w-0 overflow-x-auto pb-2 no-scrollbar">
