@@ -30,14 +30,14 @@ import type {
 const statusPillStyle: Record<TaskStatus, string> = {
   completed: "bg-green-50 text-green-700",
   submitted: "bg-yellow-50 text-yellow-700",
-  "in-progress": "bg-blue-50 text-blue-700",
+  in_progress: "bg-blue-50 text-blue-700",
   not_started: "bg-gray-100 text-gray-500",
 };
 
 const statusDotStyle: Record<TaskStatus, string> = {
   completed: "bg-green-500",
   submitted: "bg-yellow-500",
-  "in-progress": "bg-blue-500",
+  in_progress: "bg-blue-500",
   not_started: "bg-gray-400",
 };
 
@@ -52,6 +52,12 @@ const complexityPillStyle: Record<TaskComplexity, string> = {
   medium: "bg-yellow-50 text-yellow-600",
   low: "bg-indigo-50 text-indigo-600",
 };
+
+function formatStatusLabel(status: string) {
+  return status
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 interface ViewTaskDialogProps {
   open: boolean;
@@ -180,7 +186,7 @@ export function ViewTaskDialog({
                       statusDotStyle[taskData.status ?? "not_started"]
                     }`}
                   />
-                  {(taskData.status ?? "not_started").replace(/[-_]/g, " ")}
+                  {formatStatusLabel(taskData.status ?? "not_started")}
                 </Badge>
               </MetaRow>
 

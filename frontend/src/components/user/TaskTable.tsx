@@ -50,7 +50,7 @@ import type {
 const statusStyle: Record<TaskStatus, string> = {
   completed: "bg-green-100 text-green-700",
   submitted: "bg-yellow-100 text-yellow-700",
-  "in-progress": "bg-blue-100 text-blue-700",
+  in_progress: "bg-blue-100 text-blue-700",
   not_started: "bg-gray-100 text-gray-500",
 };
 
@@ -124,6 +124,12 @@ const complexityOptions = [
     color: "#9ca3af",
   },
 ];
+
+export function formatStatusLabel(status: string) {
+  return status
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 type FacetedOption = {
   label: string;
@@ -446,7 +452,7 @@ export function TaskTable({
                           <Badge
                             className={`${statusStyle[status]} border-0 capitalize`}
                           >
-                            {status.replace(/[-_]/g, " ")}
+                            {formatStatusLabel(status)}
                           </Badge>
                         </TableCell>
                         {/* Priority */}
@@ -505,7 +511,10 @@ export function TaskTable({
                               }
                             />
                             {/* Delete */}
-                            <DeleteTaskDialog task={task} projectId={projectId} />
+                            <DeleteTaskDialog
+                              task={task}
+                              projectId={projectId}
+                            />
                           </div>
                         </TableCell>
                       </TableRow>

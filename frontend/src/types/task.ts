@@ -1,6 +1,6 @@
 export type TaskStatus =
   | "not_started"
-  | "in-progress"
+  | "in_progress"
   | "submitted"
   | "completed";
 export type TaskPriority = "low" | "medium" | "high";

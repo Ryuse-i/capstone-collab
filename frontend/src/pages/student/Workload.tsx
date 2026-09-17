@@ -105,7 +105,7 @@ export default function Workload() {
   return (
     <AppLayout breadcrumbs={[{ label: "Workload", href: "/workload" }]}>
       <div>
-        <h1 className="mb-2 text-(--text-h) text-2xl font-bold dark:text-card-foreground">
+        <h1 className="my-2 text-(--text-h) text-2xl font-bold dark:text-card-foreground">
           Track and optimize task distribution across team members
         </h1>
         {isLoading ? (

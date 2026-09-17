@@ -89,7 +89,7 @@ export default function CapstoneSearch() {
     >
       {/* Header */}
       <div className="gap-0 flex flex-col">
-        <h1 className="text-2xl font-semibold flex items-center dark:text-foreground mb-2">
+        <h1 className="text-2xl font-semibold flex items-center dark:text-foreground my-2">
           ✦ Capstone Semantic Search
         </h1>
         <p className="text-sm text-muted-foreground">
