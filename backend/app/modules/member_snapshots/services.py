@@ -135,6 +135,7 @@ class MemberSnapshotService:
 
         project_id = project.id
         base_days_per_point = project.base_days_per_point if project else 1
+        #check
 
         # Validate deadlines for all tasks (preserving existing validation logic)
         for task in all_tasks:
