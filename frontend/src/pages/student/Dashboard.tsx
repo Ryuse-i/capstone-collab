@@ -179,9 +179,13 @@ export default function Dashboard() {
                   </h2>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-card-foreground">
-                  {isAtRisk
-                    ? "Some tasks are approaching deadlines. Monitor workload distribution."
-                    : "Project is on track. Keep up the great work!"}
+                  {scheduleVariance < 0 && healthStatus !== "healthy"
+                    ? "The project is behind schedule and its overall health needs attention."
+                    : scheduleVariance < 0
+                      ? "The project is behind schedule. Review task progress and deadlines."
+                      : healthStatus !== "healthy"
+                        ? "The project's overall health needs attention. Review workload and task progress."
+                        : "Project is on track. Keep up the great work!"}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-card-foreground">
                   Status

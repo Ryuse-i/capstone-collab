@@ -21,14 +21,12 @@ import {
   useGetUserNotifications,
   useMarkAsRead,
 } from "@/hooks/useNotification";
-import {
-  useAcceptInvite,
-  useDeclineInvite,
-  useGetOneInvite,
-} from "@/hooks/useProjectInvite";
-import { projectKeys, useGetOneProject } from "@/hooks/useProject";
 import type { NotificationResponse } from "@/types/notification";
-import { useQueryClient } from "@tanstack/react-query";
+import { getMockNotifications } from "./notificationFixtures";
+import NotificationDialogContent from "./NotificationDialogContent";
+import NotificationCard, {
+  type NotificationCardType,
+} from "./NotificationCard";
 
 interface NotificationCenterProps {
   userId?: string;
@@ -39,61 +37,67 @@ export default function NotificationCenter({
 }: NotificationCenterProps) {
   const [selectedNotification, setSelectedNotification] =
     React.useState<NotificationResponse | null>(null);
-  const queryClient = useQueryClient();
+  const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
   const { data, isLoading: notificationLoading } = useGetUserNotifications(
     userId ?? "",
   );
-  const notifications: NotificationResponse[] = data ?? [];
   const { mutate: markAsRead } = useMarkAsRead();
-  const { mutate: acceptInvite, isPending: isAcceptPending } =
-    useAcceptInvite();
-  const { mutate: declineInvite, isPending: isDeclinePending } =
-    useDeclineInvite();
-  const {
-    data: invite,
-    isLoading: inviteLoading,
-    isFetching: inviteFetching,
-  } = useGetOneInvite(selectedNotification?.invitation_id);
-  const {
-    data: project,
-    isLoading: projectLoading,
-    isFetching: projectFetching,
-  } = useGetOneProject(invite?.project_id ?? "");
 
-  const hasUnread = notifications.some((item) => !item.is_read);
-  const isInviteDataLoading =
-    !!selectedNotification &&
-    selectedNotification.type === "project_invitation" &&
-    !!selectedNotification.invitation_id &&
-    (inviteLoading ||
-      inviteFetching ||
-      (!!invite?.project_id && (projectLoading || projectFetching)));
+  const notifications: NotificationResponse[] = [
+    ...(import.meta.env.DEV ? getMockNotifications(userId) : []),
+    ...(data ?? []),
+  ];
+  const visibleNotifications = notifications.filter(
+    (item) => !dismissedIds.has(item.id),
+  );
+  const hasUnread = visibleNotifications.some((item) => !item.is_read);
+
+  function getNotificationCardType(
+    notification: NotificationResponse,
+  ): NotificationCardType {
+    const searchableText = `${notification.title} ${notification.body}`.toLowerCase();
+
+    if (
+      searchableText.includes("error") ||
+      searchableText.includes("fail")
+    ) {
+      return "error";
+    }
+    if (
+      searchableText.includes("complete") ||
+      searchableText.includes("success")
+    ) {
+      return "task_completed";
+    }
+    if (
+      notification.type === "project_invitation" ||
+      searchableText.includes("need") ||
+      searchableText.includes("attention")
+    ) {
+      return "needs_info";
+    }
+    return "context_updated";
+  }
+
+  function dismissNotification(id: string) {
+    setDismissedIds((current) => new Set(current).add(id));
+  }
+
+  function formatTimestamp(createdAt: string) {
+    return new Date(createdAt).toLocaleString([], {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
 
   function handleNotificationClick(item: NotificationResponse) {
     setSelectedNotification(item);
     if (!item.is_read) markAsRead(item.id);
-  }
-
-  function handleAcceptInvite() {
-    if (!selectedNotification?.invitation_id) return;
-
-    acceptInvite(selectedNotification.invitation_id, {
-      onSuccess: () => {
-        setSelectedNotification(null);
-        if (userId) {
-          queryClient.invalidateQueries({
-            queryKey: projectKeys.listUser(userId),
-          });
-        }
-      },
-    });
-  }
-
-  function handleDeclineInvite() {
-    if (!selectedNotification?.invitation_id) return;
-    declineInvite(selectedNotification.invitation_id, {
-      onSuccess: () => setSelectedNotification(null),
-    });
   }
 
   return (
@@ -107,56 +111,52 @@ export default function NotificationCenter({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-80 p-0">
-          <PopoverHeader className="border-b px-4 pb-2 pt-4">
-            <PopoverTitle className="text-base font-semibold">
-              Notifications
-            </PopoverTitle>
-            <PopoverDescription>
-              View and manage your notifications
-            </PopoverDescription>
+        <PopoverContent
+          align="end"
+          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
+        >
+          <PopoverHeader className="sr-only">
+            <PopoverTitle>Notifications</PopoverTitle>
+            <PopoverDescription>Recent notifications</PopoverDescription>
           </PopoverHeader>
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
             {notificationLoading ? (
-              <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
-                <Loader2Icon className="h-4 w-4 animate-spin" />
-                Loading notifications...
+              <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                  Loading notifications...
+                </div>
               </div>
-            ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">
+            ) : visibleNotifications.length === 0 ? (
+              <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-center text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
                 You currently have no notifications
               </div>
             ) : (
-              notifications.map((item) => (
-                <button
+              visibleNotifications.map((item) => (
+                <NotificationCard
                   key={item.id}
-                  type="button"
-                  className={`flex w-full items-center gap-2 border-b p-4 text-left text-sm transition-colors last:border-0 ${
-                    !item.is_read
-                      ? "cursor-pointer bg-muted/30 font-medium hover:bg-muted/50"
-                      : "cursor-pointer opacity-70 hover:bg-muted/30"
-                  }`}
-                  onClick={() => handleNotificationClick(item)}
-                >
-                  {!item.is_read && (
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
-                  )}
-                  <span
-                    className={`flex-1 truncate pl-1 ${
-                      !item.is_read
-                        ? "font-semibold text-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {item.title}
-                  </span>
-                  <span className="ml-2 whitespace-nowrap text-xs font-normal text-muted-foreground">
-                    {new Date(item.created_at).toLocaleDateString([], {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                </button>
+                  type={getNotificationCardType(item)}
+                  title={item.title}
+                  description={item.body}
+                  timestamp={formatTimestamp(item.created_at)}
+                  onDismiss={() => dismissNotification(item.id)}
+                  actions={[
+                    {
+                      label: "View details",
+                      onClick: () => handleNotificationClick(item),
+                    },
+                    {
+                      label: item.is_read ? "Dismiss" : "Mark as read",
+                      onClick: () => {
+                        if (item.is_read) {
+                          dismissNotification(item.id);
+                        } else {
+                          markAsRead(item.id);
+                        }
+                      },
+                    },
+                  ]}
+                />
               ))
             )}
           </div>
@@ -196,68 +196,11 @@ export default function NotificationCenter({
                   )}
                 </DialogDescription>
               </DialogHeader>
-              <p className="whitespace-pre-wrap text-sm text-foreground">
-                {selectedNotification.body}
-              </p>
-
-              {selectedNotification.type === "project_invitation" &&
-                (isInviteDataLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                    <Loader2Icon className="h-4 w-4 animate-spin" />
-                    Loading invitation details...
-                  </div>
-                ) : (
-                  <>
-                    {project && (
-                      <div className="mt-3 rounded-md border bg-muted/5 p-3">
-                        <h4 className="text-sm font-semibold">
-                          {project.name}
-                        </h4>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {project.description}
-                        </p>
-                      </div>
-                    )}{console.log("DEBUG sender_id:", invite?.sender_id, "userId:", userId, "match:", invite?.sender_id === userId)}
-                    {invite?.status === "pending" &&
-                      (userId && invite.sender_id !== userId ? (
-                        <div className="flex gap-2 pt-3">
-                          <Button
-                            type="button"
-                            className="flex-1"
-                            onClick={handleAcceptInvite}
-                            disabled={isAcceptPending || isDeclinePending}
-                          >
-                            {isAcceptPending ? "Accepting..." : "Accept Invite"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={handleDeclineInvite}
-                            disabled={isAcceptPending || isDeclinePending}
-                          >
-                            {isDeclinePending
-                              ? "Declining..."
-                              : "Decline Invite"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <p className="pt-3 text-sm text-muted-foreground">
-                          Waiting for a response to this invitation.
-                        </p>
-                      ))}
-                    {invite?.status === "accepted" && (
-                      <div className="mt-3 rounded-md border bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">
-                        You have accepted this invitation.
-                      </div>
-                    )}
-                    {invite?.status === "rejected" && (
-                      <div className="mt-3 rounded-md border bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200">
-                        You have declined this invitation.
-                      </div>
-                    )}
-                  </>
-                ))}
+              <NotificationDialogContent
+                notification={selectedNotification}
+                userId={userId}
+                onClose={() => setSelectedNotification(null)}
+              />
             </>
           )}
         </DialogContent>

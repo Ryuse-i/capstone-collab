@@ -36,6 +36,7 @@ import {
   ClipboardCheck,
   LucideLayers,
   FolderKanban,
+  FolderOpen,
 } from "lucide-react";
 
 const data = {
@@ -100,7 +101,17 @@ const chatNavItem = {
   icon: <MessageCircleMore />,
 };
 
-const studentNoProjectNavMain = [...commonNavMain, capstoneSearchNavItem];
+const resourcesNavItem = {
+  title: "Resources",
+  url: "/resources",
+  icon: <FolderOpen />,
+};
+
+const studentNoProjectNavMain = [
+  ...commonNavMain,
+  resourcesNavItem,
+  capstoneSearchNavItem,
+];
 
 // Full nav for a student who is the project leader
 const studentLeaderNavMain = [
@@ -110,6 +121,7 @@ const studentLeaderNavMain = [
   workloadNavItem,
   teamNavItem,
   chatNavItem,
+  resourcesNavItem,
   capstoneSearchNavItem,
 ];
 
@@ -118,6 +130,7 @@ const studentMemberNavMain = [
   ...commonNavMain,
   myTaskNavItem,
   chatNavItem,
+  resourcesNavItem,
   capstoneSearchNavItem,
 ];
 

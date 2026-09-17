@@ -1,0 +1,98 @@
+import type { NotificationResponse } from "@/types/notification";
+
+export function getMockNotifications(userId?: string): NotificationResponse[] {
+  const now = Date.now();
+  const timestamp = (minutesAgo: number) =>
+    new Date(now - minutesAgo * 60 * 1000).toISOString();
+
+  return [
+    {
+      id: "mock-notification-project-health-alert",
+      user_id: userId ?? "mock-user",
+      title: "Project Health Alert",
+      body: "Your project is behind schedule and its overall health needs attention. Review task progress and workload distribution.",
+      is_read: false,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(8),
+      updated_at: timestamp(8),
+    },
+    {
+      id: "mock-notification-unassigned-tasks",
+      user_id: userId ?? "mock-user",
+      title: "5 Tasks Unassigned in Project Task",
+      body: "Five tasks have no assigned member and need attention before the next project checkpoint.",
+      is_read: false,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(16),
+      updated_at: timestamp(16),
+    },
+    {
+      id: "mock-notification-task-completed",
+      user_id: userId ?? "mock-user",
+      title: "Task completed",
+      body: "Mia Santos completed the user research summary in Project Task.",
+      is_read: false,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(29),
+      updated_at: timestamp(29),
+    },
+    {
+      id: "mock-notification-context-updated",
+      user_id: userId ?? "mock-user",
+      title: "Context updated",
+      body: "The project brief was updated from Google Drive and is ready for review.",
+      is_read: false,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(43),
+      updated_at: timestamp(43),
+    },
+    {
+      id: "mock-notification-meeting-starting",
+      user_id: userId ?? "mock-user",
+      title: "Team meeting starting soon",
+      body: "Your Google Meet project sync starts in 30 minutes. Three teammates have joined the agenda.",
+      is_read: false,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(57),
+      updated_at: timestamp(57),
+    },
+    {
+      id: "mock-notification-comment-mentioned",
+      user_id: userId ?? "mock-user",
+      title: "You were mentioned in a task comment",
+      body: "Carlos mentioned you in the API integration task and asked for feedback on the latest changes.",
+      is_read: true,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(74),
+      updated_at: timestamp(74),
+    },
+    {
+      id: "mock-notification-workload-recommendation",
+      user_id: userId ?? "mock-user",
+      title: "Workload redistribution recommended",
+      body: "Project Task detected an uneven workload. Review the recommended assignments before the deadline.",
+      is_read: true,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(96),
+      updated_at: timestamp(96),
+    },
+    {
+      id: "mock-notification-sync-failed",
+      user_id: userId ?? "mock-user",
+      title: "Calendar sync failed",
+      body: "The latest Microsoft Outlook calendar sync failed. Try again or reconnect the integration.",
+      is_read: false,
+      type: "general",
+      invitation_id: "",
+      created_at: timestamp(121),
+      updated_at: timestamp(121),
+    },
+  ];
+}
