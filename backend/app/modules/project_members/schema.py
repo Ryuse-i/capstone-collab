@@ -30,11 +30,11 @@ class ProjectMemberResponse(BaseModel):
 
 
 class ProjectMember_Project_Response(ProjectMemberResponse):
-    projects: ProjectResponse
+    project: ProjectResponse
 
 
 class ProjectMember_User_Response(ProjectMemberResponse):
-    users: UserResponse
+    user: UserResponse
 
 
 class ProjectMemberWithSnapshot(ProjectMemberResponse):
