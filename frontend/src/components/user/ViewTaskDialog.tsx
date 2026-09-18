@@ -29,28 +29,40 @@ import type {
 // rather than solid-fill badges — reserved for the header meta rows.
 const statusPillStyle: Record<TaskStatus, string> = {
   completed: "bg-green-50 text-green-700",
-  submitted: "bg-yellow-50 text-yellow-700",
-  in_progress: "bg-blue-50 text-blue-700",
+  submitted: "bg-blue-50 text-blue-700",
+  in_progress: "bg-yellow-50 text-yellow-700",
   not_started: "bg-gray-100 text-gray-500",
 };
 
 const statusDotStyle: Record<TaskStatus, string> = {
   completed: "bg-green-500",
-  submitted: "bg-yellow-500",
-  in_progress: "bg-blue-500",
+  submitted: "bg-blue-500",
+  in_progress: "bg-yellow-500",
   not_started: "bg-gray-400",
 };
 
 const priorityPillStyle: Record<TaskPriority, string> = {
   high: "bg-red-50 text-red-600",
   medium: "bg-yellow-50 text-yellow-600",
-  low: "bg-indigo-50 text-indigo-600",
+  low: "bg-gray-50 text-gray-600",
+};
+
+const priorityDotStyle: Record<TaskPriority, string> = {
+  high: "bg-red-500",
+  medium: "bg-yellow-500",
+  low: "bg-gray-400",
 };
 
 const complexityPillStyle: Record<TaskComplexity, string> = {
   high: "bg-red-50 text-red-600",
   medium: "bg-yellow-50 text-yellow-600",
-  low: "bg-indigo-50 text-indigo-600",
+  low: "bg-gray-50 text-gray-600",
+};
+
+const complexityDotStyle: Record<TaskComplexity, string> = {
+  high: "bg-red-500",
+  medium: "bg-yellow-500",
+  low: "bg-gray-400",
 };
 
 function formatStatusLabel(status: string) {
@@ -193,10 +205,15 @@ export function ViewTaskDialog({
               {/* Priority */}
               <MetaRow icon={<Gauge className="size-4" />} label="Priority">
                 <Badge
-                  className={`border-0 font-medium ${
+                  className={`border-0 gap-1.5 font-medium ${
                     priorityPillStyle[taskData.priority]
                   }`}
                 >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      priorityDotStyle[taskData.priority]
+                    }`}
+                  />
                   {taskData.priority.charAt(0).toUpperCase() +
                     taskData.priority.slice(1)}
                 </Badge>
@@ -206,10 +223,15 @@ export function ViewTaskDialog({
               {taskData.complexity && (
                 <MetaRow icon={<Gauge className="size-4" />} label="Complexity">
                   <Badge
-                    className={`border-0 font-medium ${
+                    className={`border-0 gap-1.5 font-medium ${
                       complexityPillStyle[taskData.complexity]
                     }`}
                   >
+                    <span
+                      className={`size-1.5 rounded-full ${
+                        complexityDotStyle[taskData.complexity]
+                      }`}
+                    />
                     {taskData.complexity.charAt(0).toUpperCase() +
                       taskData.complexity.slice(1)}
                   </Badge>

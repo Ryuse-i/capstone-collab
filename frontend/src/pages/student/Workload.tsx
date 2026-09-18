@@ -22,10 +22,7 @@ const complexityColors = {
   low: "#22c55e",
 } as const;
 
-const workloadStyles: Record<
-  MemberStatus,
-  { bar: string; text: string }
-> = {
+const workloadStyles: Record<MemberStatus, { bar: string; text: string }> = {
   overloaded: { bar: "bg-red-500", text: "text-red-500" },
   underutilized: { bar: "bg-yellow-400", text: "text-yellow-600" },
   normal: { bar: "bg-green-500", text: "text-green-600" },
@@ -100,7 +97,8 @@ export default function Workload() {
   const isBad = severity === "high" || severity === "critical";
   const isLoading =
     isProjectLoading ||
-    (!!projectId && (isMembersLoading || isTasksLoading || isRecommendationsLoading));
+    (!!projectId &&
+      (isMembersLoading || isTasksLoading || isRecommendationsLoading));
 
   return (
     <AppLayout breadcrumbs={[{ label: "Workload", href: "/workload" }]}>
@@ -157,16 +155,38 @@ export default function Workload() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-4">
               {[
-                ["TOTAL WORKLOAD", `${snapshot?.total_workload_points ?? 0} PTS`, "ACROSS MEMBERS"],
-                ["AVG. PER MEMBER", `${Number(snapshot?.avg_workload ?? 0).toFixed(1)} PTS`, "CURRENT AVERAGE"],
-                ["OVERLOADED", overloadedCount.toString(), "MEMBERS OVER LIMIT"],
-                ["UNDERUTILIZED", underutilizedCount.toString(), "MEMBERS BELOW TARGET"],
+                [
+                  "TOTAL WORKLOAD",
+                  `${snapshot?.total_workload_points ?? 0} PTS`,
+                  "ACROSS MEMBERS",
+                ],
+                [
+                  "AVG. PER MEMBER",
+                  `${Number(snapshot?.avg_workload ?? 0).toFixed(1)} PTS`,
+                  "CURRENT AVERAGE",
+                ],
+                [
+                  "OVERLOADED",
+                  overloadedCount.toString(),
+                  "MEMBERS OVER LIMIT",
+                ],
+                [
+                  "UNDERUTILIZED",
+                  underutilizedCount.toString(),
+                  "MEMBERS BELOW TARGET",
+                ],
               ].map(([title, value, description]) => (
                 <Card key={title} className="rounded-xl border shadow-sm">
                   <CardContent className="flex flex-col gap-3 p-5">
-                    <p className="text-xs font-medium tracking-wide text-card-foreground">{title}</p>
-                    <h2 className="text-3xl font-bold text-card-foreground">{value}</h2>
-                    <p className="text-xs text-card-foreground">{description}</p>
+                    <p className="text-xs font-medium tracking-wide text-card-foreground">
+                      {title}
+                    </p>
+                    <h2 className="text-3xl font-bold text-card-foreground">
+                      {value}
+                    </h2>
+                    <p className="text-xs text-card-foreground">
+                      {description}
+                    </p>
                   </CardContent>
                 </Card>
               ))}
@@ -174,11 +194,15 @@ export default function Workload() {
 
             <Card className="rounded-xl border shadow-sm">
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Member Workload</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  Member Workload
+                </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
                 {memberWorkload.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No member snapshot data available.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No member snapshot data available.
+                  </p>
                 ) : (
                   memberWorkload.map((member) => {
                     const pct = Math.min(
@@ -189,14 +213,21 @@ export default function Workload() {
                     return (
                       <div key={member.name} className="flex flex-col gap-1">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium text-card-foreground">{member.name}</span>
-                          <span className={`text-xs font-semibold ${style.text}`}>
+                          <span className="font-medium text-card-foreground">
+                            {member.name}
+                          </span>
+                          <span
+                            className={`text-xs font-semibold ${style.text}`}
+                          >
                             {member.pts.toFixed(1)} pts ·{" "}
                             {member.capacityMultiplier.toFixed(1)}x capacity
                           </span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                          <div className={`h-full rounded-full ${style.bar}`} style={{ width: `${pct}%` }} />
+                          <div
+                            className={`h-full rounded-full ${style.bar}`}
+                            style={{ width: `${pct}%` }}
+                          />
                         </div>
                       </div>
                     );
@@ -207,43 +238,72 @@ export default function Workload() {
 
             <Card className="rounded-xl border shadow-sm">
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Task Complexity Distribution</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  Task Complexity Distribution
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={complexityData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2} dataKey="value">
+                    <Pie
+                      data={complexityData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
                       {complexityData.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${Number(value).toFixed(0)}%`, ""]} />
-                    <Legend formatter={(value) => <span className="text-xs text-card-foreground">{value}</span>} />
+                    <Tooltip
+                      formatter={(value) => [
+                        `${Number(value).toFixed(0)}%`,
+                        "",
+                      ]}
+                    />
+                    <Legend
+                      formatter={(value) => (
+                        <span className="text-xs text-card-foreground">
+                          {value}
+                        </span>
+                      )}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                   {complexityData.map((item) => (
                     <div key={item.name}>
-                      <span className="text-2xl font-bold" style={{ color: item.color }}>{item.count}</span>
-                      <span className="block text-xs text-card-foreground">{item.name.replace(" Complexity", "")}</span>
+                      <span
+                        className="text-2xl font-bold"
+                        style={{ color: item.color }}
+                      >
+                        {item.count}
+                      </span>
+                      <span className="block text-xs text-card-foreground">
+                        {item.name.replace(" Complexity", "")}
+                      </span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border shadow-sm lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">Redistribution Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                {recommendations.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No redistribution recommendations are available for this project.
-                  </p>
-                ) : (
-                  recommendations.map((item) => (
-                    <div key={item.id} className="flex flex-col gap-2 rounded-lg border p-4">
+            {recommendations.length > 0 && (
+              <Card className="rounded-xl border shadow-sm lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold">
+                    Redistribution Recommendations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  {recommendations.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-2 rounded-lg border p-4"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
                           {item.rank}
@@ -252,15 +312,19 @@ export default function Workload() {
                           {item.suggestion_type}
                         </span>
                       </div>
-                      <p className="text-sm text-card-foreground">{item.detail}</p>
+                      <p className="text-sm text-card-foreground">
+                        {item.detail}
+                      </p>
                       <p className="text-xs text-gray-400">
-                        {item.expected_workload_after} <ArrowRight className="inline h-3 w-3" /> {item.deadline_impact}
+                        {item.expected_workload_after}{" "}
+                        <ArrowRight className="inline h-3 w-3" />{" "}
+                        {item.deadline_impact}
                       </p>
                     </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>

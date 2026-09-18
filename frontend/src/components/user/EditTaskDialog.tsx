@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Check, Users, X } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, Users, X } from "lucide-react";
 import { format } from "date-fns";
 
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
@@ -16,14 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import {
   Dialog,
@@ -87,6 +79,12 @@ const PRIORITY_OPTIONS: {
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
 ];
+
+const priorityDotStyle: Record<TaskPriority, string> = {
+  high: "bg-red-500",
+  medium: "bg-yellow-500",
+  low: "bg-gray-400",
+};
 
 const SKILL_OPTIONS: {
   value: Skill;
@@ -179,6 +177,8 @@ export default function EditTaskDialog({
   );
 
   const [error, setError] = useState<string | null>(null);
+  const [priorityOpen, setPriorityOpen] = useState(false);
+  const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
 
@@ -505,48 +505,133 @@ export default function EditTaskDialog({
               <div className="space-y-2">
                 <Label>Priority</Label>
 
-                <Select
-                  value={taskForm.priority}
-                  onValueChange={(value) =>
-                    handleTaskFieldChange("priority", value as TaskPriority)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
+                <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={priorityOpen}
+                      className="justify-between text-left font-normal"
+                    >
+                      <span
+                        className={cn(
+                          "flex items-center gap-1.5",
+                          !taskForm.priority && "text-muted-foreground",
+                        )}
+                      >
+                        {taskForm.priority && (
+                          <span
+                            className={`size-1.5 rounded-full ${
+                              priorityDotStyle[taskForm.priority]
+                            }`}
+                          />
+                        )}
+                        {PRIORITY_OPTIONS.find(
+                          (option) => option.value === taskForm.priority,
+                        )?.label ?? "Select priority"}
+                      </span>
 
-                  <SelectContent>
-                    {PRIORITY_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {PRIORITY_OPTIONS.map((option) => {
+                        const selected = taskForm.priority === option.value;
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              handleTaskFieldChange("priority", option.value);
+                              setPriorityOpen(false);
+                            }}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className={`size-1.5 rounded-full ${
+                                  priorityDotStyle[option.value]
+                                }`}
+                              />
+                              {option.label}
+                            </span>
+
+                            {selected && (
+                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Primary Skill */}
               <div className="space-y-2">
                 <Label>Primary Skill</Label>
 
-                <Select
-                  value={taskForm.primary_skill}
-                  onValueChange={(value) =>
-                    handlePrimarySkillChange(value as Skill)
-                  }
+                <Popover
+                  open={primarySkillOpen}
+                  onOpenChange={setPrimarySkillOpen}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select skill" />
-                  </SelectTrigger>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={primarySkillOpen}
+                      className="w-full justify-between text-left font-normal"
+                    >
+                      <span
+                        className={cn(
+                          !taskForm.primary_skill && "text-muted-foreground",
+                        )}
+                      >
+                        {SKILL_OPTIONS.find(
+                          (option) => option.value === taskForm.primary_skill,
+                        )?.label ?? "Select skill"}
+                      </span>
 
-                  <SelectContent>
-                    {SKILL_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {SKILL_OPTIONS.map((option) => {
+                        const selected =
+                          taskForm.primary_skill === option.value;
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              handlePrimarySkillChange(option.value);
+                              setPrimarySkillOpen(false);
+                            }}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                          >
+                            <span>{option.label}</span>
+
+                            {selected && (
+                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Secondary Skill */}
@@ -579,6 +664,7 @@ export default function EditTaskDialog({
                                 taskForm.secondary_skills.length > 1 ? "s" : ""
                               } selected`}
                       </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
 

@@ -49,8 +49,8 @@ import type {
 
 const statusStyle: Record<TaskStatus, string> = {
   completed: "bg-green-100 text-green-700",
-  submitted: "bg-yellow-100 text-yellow-700",
-  in_progress: "bg-blue-100 text-blue-700",
+  submitted: "bg-blue-100 text-blue-700",
+  in_progress: "bg-yellow-100 text-yellow-700",
   not_started: "bg-gray-100 text-gray-500",
 };
 
@@ -75,12 +75,12 @@ const statusOptions = [
   {
     label: "Submitted",
     value: "submitted",
-    color: "#eab308",
+    color: "#3b82f6",
   },
   {
     label: "In Progress",
     value: "in-progress",
-    color: "#3b82f6",
+    color: "#eab308",
   },
   {
     label: "Not Started",

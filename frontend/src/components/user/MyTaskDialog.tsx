@@ -1,4 +1,12 @@
-import { Calendar, CircleCheck, Clock, Gauge, Tag, X } from "lucide-react";
+import {
+  Calendar,
+  CircleCheck,
+  Clock,
+  Gauge,
+  Tag,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,28 +30,40 @@ import { formatStatusLabel } from "@/components/user/TaskTable";
 // rather than solid-fill badges — reserved for the header meta rows.
 const statusPillStyle: Record<TaskStatus, string> = {
   completed: "bg-green-50 text-green-700",
-  submitted: "bg-yellow-50 text-yellow-700",
-  in_progress: "bg-blue-50 text-blue-700",
+  submitted: "bg-blue-50 text-blue-700",
+  in_progress: "bg-yellow-50 text-yellow-700",
   not_started: "bg-gray-100 text-gray-500",
 };
 
 const statusDotStyle: Record<TaskStatus, string> = {
   completed: "bg-green-500",
-  submitted: "bg-yellow-500",
-  in_progress: "bg-blue-500",
+  submitted: "bg-blue-500",
+  in_progress: "bg-yellow-500",
   not_started: "bg-gray-400",
 };
 
 const priorityPillStyle: Record<TaskPriority, string> = {
   high: "bg-red-50 text-red-600",
   medium: "bg-yellow-50 text-yellow-600",
-  low: "bg-indigo-50 text-indigo-600",
+  low: "bg-gray-50 text-gray-600",
+};
+
+const priorityDotStyle: Record<TaskPriority, string> = {
+  high: "bg-red-500",
+  medium: "bg-yellow-500",
+  low: "bg-gray-400",
 };
 
 const complexityPillStyle: Record<TaskComplexity, string> = {
   high: "bg-red-50 text-red-600",
   medium: "bg-yellow-50 text-yellow-600",
-  low: "bg-indigo-50 text-indigo-600",
+  low: "bg-gray-50 text-gray-600",
+};
+
+const complexityDotStyle: Record<TaskComplexity, string> = {
+  high: "bg-red-500",
+  medium: "bg-yellow-500",
+  low: "bg-gray-400",
 };
 
 // Normalizes status strings so comparisons work regardless of whether the
@@ -194,10 +214,12 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                 <div className="shrink-0 rounded-lg">
                   {getDeadlineUrgency()?.type === "overdue" ? (
                     <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+                      <TriangleAlert className="mr-1.5 inline-block size-4 text-red-600" />
                       {getDeadlineUrgency()?.message}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-3 text-sm font-medium text-yellow-700">
+                      <TriangleAlert className="mr-1.5 inline-block size-4 text-yellow-600" />
                       {getDeadlineUrgency()?.message}
                     </div>
                   )}
@@ -239,10 +261,15 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
               {/* Priority */}
               <MetaRow icon={<Gauge className="size-4" />} label="Priority">
                 <Badge
-                  className={`border-0 font-medium ${
+                  className={`border-0 gap-1.5 font-medium ${
                     priorityPillStyle[task.priority]
                   }`}
                 >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      priorityDotStyle[task.priority]
+                    }`}
+                  />
                   {task.priority.charAt(0).toUpperCase() +
                     task.priority.slice(1)}
                 </Badge>
@@ -252,10 +279,15 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
               {task?.complexity && (
                 <MetaRow icon={<Gauge className="size-4" />} label="Complexity">
                   <Badge
-                    className={`border-0 font-medium ${
+                    className={`border-0 gap-1.5 font-medium ${
                       complexityPillStyle[task.complexity]
                     }`}
                   >
+                    <span
+                      className={`size-1.5 rounded-full ${
+                        complexityDotStyle[task.complexity]
+                      }`}
+                    />
                     {task.complexity.charAt(0).toUpperCase() +
                       task.complexity.slice(1)}
                   </Badge>
@@ -393,7 +425,7 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
           </div>
         )}
 
-                {/* Footer */}
+        {/* Footer */}
         <div className="border-t px-6 py-3 shrink-0 flex justify-end bg-muted/50">
           {task && (
             <>
@@ -410,7 +442,9 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                     className="min-w-24"
                     disabled={updateTaskMutation.isPending}
                   >
-                    {updateTaskMutation.isPending ? "Starting..." : "Start Task"}
+                    {updateTaskMutation.isPending
+                      ? "Starting..."
+                      : "Start Task"}
                   </Button>
                 </>
               ) : isInProgress ? (

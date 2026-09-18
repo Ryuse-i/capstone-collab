@@ -282,33 +282,6 @@ export default function Team() {
         </div>
 
         <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div>
-            <h2 className="mb-3 text-lg font-semibold text-foreground">
-              Advisor
-            </h2>
-
-            {isLoading && <AdvisorSkeletonCard />}
-
-            {!isLoading && isError && (
-              <AdvisorPlaceholderCard message="Failed to load advisor data. Please try again." />
-            )}
-
-            {!isLoading && !isError && advisorMembers.length > 0 && (
-              <div className="w-full gap-4">
-                {advisorMembers.map((member) => (
-                  <MemberCard
-                    key={member.id}
-                    member={member}
-                    showWorkload={false}
-                  />
-                ))}
-              </div>
-            )}
-
-            {!isLoading && !isError && advisorMembers.length === 0 && (
-              <AdvisorPlaceholderCard message="There is no advisor yet." />
-            )}
-          </div>
 
           <div>
             <h2 className="mb-3 text-lg font-semibold text-foreground">
@@ -335,6 +308,34 @@ export default function Team() {
 
             {!isLoading && !isError && instructorMembers.length === 0 && (
               <AdvisorPlaceholderCard message="There is no instructor yet." />
+            )}
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              Advisor
+            </h2>
+
+            {isLoading && <AdvisorSkeletonCard />}
+
+            {!isLoading && isError && (
+              <AdvisorPlaceholderCard message="Failed to load advisor data. Please try again." />
+            )}
+
+            {!isLoading && !isError && advisorMembers.length > 0 && (
+              <div className="w-full gap-4">
+                {advisorMembers.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    showWorkload={false}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isLoading && !isError && advisorMembers.length === 0 && (
+              <AdvisorPlaceholderCard message="There is no advisor yet." />
             )}
           </div>
         </div>
