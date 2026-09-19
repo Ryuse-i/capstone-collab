@@ -1,9 +1,10 @@
-import { useMemo, useState, useEffect} from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Activity,
   ArrowLeft,
   BarChart3,
   CalendarDays,
+  ClipboardCheck,
   Files,
   FolderKanban,
   Gauge,
@@ -22,7 +23,12 @@ import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
 
-type ProjectViewTab = "overview" | "tasks" | "members" | "resources";
+type ProjectViewTab =
+  | "overview"
+  | "tasks"
+  | "submissions"
+  | "members"
+  | "resources";
 
 const tabs: {
   id: ProjectViewTab;
@@ -38,6 +44,11 @@ const tabs: {
     id: "tasks",
     label: "Tasks",
     icon: <Target className="h-4 w-4" />,
+  },
+  {
+    id: "submissions",
+    label: "Submissions",
+    icon: <ClipboardCheck className="h-4 w-4" />,
   },
   {
     id: "members",
@@ -193,6 +204,16 @@ export default function ProjectView() {
       icon: <BarChart3 className="h-4 w-4 text-[#7A0C2E]" />,
     },
   ];
+
+  const submittedTasks = (allProjectTasks ?? []).filter(
+    (task) => task.status === "submitted" || task.status === "completed",
+  );
+  const submittedCount = submittedTasks.filter(
+    (task) => task.status === "submitted",
+  ).length;
+  const completedCount = submittedTasks.filter(
+    (task) => task.status === "completed",
+  ).length;
 
   if (isLoading) {
     return (
@@ -442,6 +463,178 @@ export default function ProjectView() {
               </div>
             )}
 
+            {/* Submissions */}
+            {activeTab === "submissions" && (
+              <div className="mt-6 space-y-6">
+                {isTasksLoading && (
+                  <Card className="border p-4 text-sm text-neutral-500">
+                    Loading submissions...
+                  </Card>
+                )}
+
+                {!isTasksLoading && isTasksError && (
+                  <Card className="border p-4">
+                    <p className="text-xs text-rose-600">
+                      Couldn't load project submissions.
+                    </p>
+                  </Card>
+                )}
+
+                {!isTasksLoading && !isTasksError && (
+                  <>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <Card className="border p-4">
+                        <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                          <ClipboardCheck className="h-5 w-5 text-[#7A0C2E]" />
+                          Submission summary
+                        </div>
+                        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                          <div className="rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
+                            <p className="text-xs text-(--semi-foreground)">
+                              Total
+                            </p>
+                            <p className="mt-1 text-lg font-semibold text-foreground">
+                              {submittedTasks.length}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
+                            <p className="text-xs text-(--semi-foreground)">
+                              Submitted
+                            </p>
+                            <p className="mt-1 text-lg font-semibold text-foreground">
+                              {submittedCount}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
+                            <p className="text-xs text-(--semi-foreground)">
+                              Completed
+                            </p>
+                            <p className="mt-1 text-lg font-semibold text-foreground">
+                              {completedCount}
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
+
+                    {submittedTasks.length === 0 ? (
+                      <Card className="border p-4">
+                        <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500 dark:border-(--semi-foreground) dark:bg-card">
+                          No submissions yet.
+                        </div>
+                      </Card>
+                    ) : (
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {submittedTasks.map((task) => {
+                          const submission = getTaskSubmission();
+                          const attachmentCount =
+                            (submission.files?.length ?? 0) +
+                            (submission.links?.length ?? 0);
+
+                          return (
+                            <Card key={task.id} className="border p-4">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h2 className="text-lg font-semibold text-foreground">
+                                    {task.name}
+                                  </h2>
+                                  <p className="mt-2 text-sm text-(--semi-foreground)">
+                                    {task.description ||
+                                      "No description provided."}
+                                  </p>
+                                </div>
+                                <div className="flex shrink-0 gap-2">
+                                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold capitalize text-neutral-700 dark:bg-(--semi-card) dark:text-foreground">
+                                    {task.category}
+                                  </span>
+                                  <span
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${
+                                      task.status === "completed"
+                                        ? "bg-emerald-100 text-emerald-700 dark:text-emerald-100"
+                                        : "bg-blue-100 text-blue-700 dark:text-blue-100"
+                                    }`}
+                                  >
+                                    {task.status}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 space-y-3 text-sm">
+                                <div className="flex flex-col gap-1 rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
+                                  <span className="text-xs text-(--semi-foreground)">
+                                    Assigned member(s)
+                                  </span>
+                                  <span>
+                                    {task.assigned_members.length > 0
+                                      ? task.assigned_members
+                                          .map((member) =>
+                                            `${member.first_name} ${member.last_name}`.trim(),
+                                          )
+                                          .join(", ")
+                                      : "No members assigned"}
+                                  </span>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
+                                    <span className="block text-xs text-(--semi-foreground)">
+                                      Deadline
+                                    </span>
+                                    <span>{formatDate(task.deadline)}</span>
+                                  </div>
+                                  <div className="rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
+                                    <span className="block text-xs text-(--semi-foreground)">
+                                      Completed at
+                                    </span>
+                                    <span>{formatDate(task.completed_at)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 border-t pt-4">
+                                <p className="text-xs font-semibold text-(--semi-foreground)">
+                                  Attachments
+                                </p>
+                                {attachmentCount === 0 ? (
+                                  <p className="mt-2 text-sm text-neutral-500">
+                                    No attachments
+                                  </p>
+                                ) : (
+                                  <div className="mt-2 space-y-2 text-sm">
+                                    {submission.files?.map((file) => (
+                                      <a
+                                        key={file.url}
+                                        href={file.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block text-[#7A0C2E] underline underline-offset-2"
+                                      >
+                                        {file.name}
+                                      </a>
+                                    ))}
+                                    {submission.links?.map((link) => (
+                                      <a
+                                        key={link}
+                                        href={link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block truncate text-[#7A0C2E] underline underline-offset-2"
+                                      >
+                                        {getLinkLabel(link)}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Members */}
             {activeTab === "members" && (
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -537,4 +730,34 @@ export default function ProjectView() {
       </div>
     </AppLayout>
   );
+}
+
+interface TaskSubmissionFile {
+  name: string;
+  url: string;
+}
+
+interface TaskSubmission {
+  files?: TaskSubmissionFile[];
+  links?: string[];
+}
+
+function getTaskSubmission(): TaskSubmission {
+  // TODO: Map real submission data here when the submissions API is available.
+  return {};
+}
+
+function formatDate(value?: string) {
+  if (!value) return "No date set";
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function getLinkLabel(link: string) {
+  try {
+    return new URL(link).hostname;
+  } catch {
+    return link;
+  }
 }

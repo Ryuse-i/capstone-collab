@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Eye, TriangleAlert } from "lucide-react";
+import { ArrowRight, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -302,7 +302,7 @@ export default function MyTask() {
                       }}
                     >
                       View Task
-                      <Eye className="h-4 w-4 text-primary" />
+                      <ArrowRight className="size-3.5" />
                     </Button>
                   </div>
                 )}
