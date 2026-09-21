@@ -1,0 +1,9 @@
+# Member Workload Calculation
+backend/app/modules/redistribution_recommendations/workload_calculation.py
+backend/app/modules/tasks/model.py - contains Task model used for workload calculation and redistribution
+backend/app/modules/tasks/enums.py - contains TaskStatus and Complexity enums used in workload calculation
+backend/app/modules/tasks/services.py - contains TaskService used in workload_calculation and redistribution_logic
+backend/app/modules/project_members/model.py - contains ProjectMember and Skills models used for eligibility
+backend/app/modules/project_members/services.py - contains ProjectMemberService used in redistribution logic
+backend/app/modules/projects/model.py - contains Project model used in workload calculation
+backend/app/modules/projects/services.py - contains ProjectService used in redistribution logic

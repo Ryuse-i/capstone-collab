@@ -1,0 +1,1682 @@
+=== backend/app/modules/redistribution_recommendations/workload_calculation.py ===
+"""
+Workload calculation logic for PSU-COLLAB.
+
+This module implements the core workload calculation logic as specified:
+- effective_points(task) with deadline-weighted urgency multipliers
+- Member aggregates (total_points, total_effective_points)
+- baseline_points as median across members
+- expected_load and overload determination
+- Minimum deadline validation
+"""
+
+from typing import List, Tuple, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from statistics import median
+from uuid import UUID
+from datetime import date, timezone
+import logging
+
+from app.modules.tasks.model import Task
+from app.modules.tasks.enums import Status as TaskStatus, Complexity
+from app.modules.project_members.model import ProjectMember
+from app.modules.member_snapshots.model import MemberSnapshot, MemberStatus
+from app.modules.assigned_members.model import AssignedMember
+from app.modules.projects.model import Project
+from app.modules.assigned_members.services import AssignedMemberService
+from app.modules.tasks.services import TaskService
+from app.modules.projects.services import ProjectService
+from app.modules.project_members.services import ProjectMemberService
+
+logger = logging.getLogger(__name__)
+
+
+def complexity_to_points(complexity: Optional[Complexity]) -> int:
+    """Convert complexity enum to points: Low=1, Medium=2, High=3."""
+    if complexity is None:
+        return 0
+    mapping = {
+        Complexity.LOW: 1,
+        Complexity.MEDIUM: 2,
+        Complexity.HIGH: 3
+    }
+    return mapping.get(complexity, 0)
+
+
+def calculate_urgency_multiplier(task_deadline: Optional[date]) -> float:
+    """
+    Calculate urgency multiplier based on days until deadline.
+
+    Returns:
+        1.5 for overdue or <= 3 days
+        1.25 for <= 7 days
+        1.0 for <= 14 days
+        0.75 for > 14 days
+        1.0 for no deadline (treated as 14-day bucket)
+    """
+    if task_deadline is None:
+        # No deadline -> treated as 14-day bucket (not low-pressure)
+        return 1.0
+
+    today = date.today()
+    days_until = (task_deadline - today).days
+
+    if days_until <= 3:
+        return 1.5
+    elif days_until <= 7:
+        return 1.25
+    elif days_until <= 14:
+        return 1.0
+    else:
+        return 0.75
+
+
+def calculate_effective_points(task: Task) -> float:
+    """
+    Calculate effective points for a task based on status and deadline urgency.
+
+    Rules:
+    - Not Started: complexity_points * urgency_multiplier
+    - In Progress: complexity_points * 1.0 (no urgency scaling)
+    - Completed: excluded (returns 0)
+    """
+    if task.status == TaskStatus.COMPLETED:
+        return 0.0
+
+    complexity_points = complexity_to_points(task.complexity)
+
+    if task.status == TaskStatus.IN_PROGRESS:
+        # In progress tasks don't get urgency scaling
+        urgency_multiplier = 1.0
+    else:  # NOT_STARTED
+        urgency_multiplier = calculate_urgency_multiplier(task.deadline)
+
+    return complexity_points * urgency_multiplier
+
+
+async def get_member_tasks(db: AsyncSession, member_id: UUID) -> List[Task]:
+    """
+    Get all non-completed tasks assigned to a member.
+    """
+    assigned_members = await AssignedMemberService.get_members(db, member_id)
+    task_ids = [am.task_id for am in assigned_members if am.task_id is not None]
+
+    if not task_ids:
+        return []
+
+    return await TaskService.batch_get_task(db, task_ids)
+
+
+async def calculate_member_workload_totals(
+    db: AsyncSession,
+    member_id: UUID
+) -> Tuple[float, float]:
+    """
+    Calculate total_points (raw) and total_effective_points (weighted) for a member.
+
+    Returns:
+        (total_points, total_effective_points)
+    """
+    tasks = await get_member_tasks(db, member_id)
+
+    total_points = 0.0
+    total_effective_points = 0.0
+
+    for task in tasks:
+        # Skip completed tasks for both totals (as per spec)
+        if task.status == TaskStatus.COMPLETED:
+            continue
+
+        complexity_points = complexity_to_points(task.complexity)
+        total_points += complexity_points
+        total_effective_points += calculate_effective_points(task)
+
+    return total_points, total_effective_points
+
+
+async def recompute_workload_state(
+    db: AsyncSession,
+    project_id: UUID
+) -> List[dict]:
+    """
+    Recompute workload state for all members in a project.
+
+    This is the main calculation service that:
+    1. Computes effective_points per task
+    2. Sums per member -> total_points and total_effective_points
+    3. Computes baseline_points as median across members
+    4. Computes expected_load per member
+    5. Determines is_overloaded per member
+
+    Returns list of member workload data dictionaries ready for snapshot creation/updating.
+    """
+    # Get all members in the project
+    members = await ProjectMemberService.get_all_members_by_project(db, project_id)
+
+    if not members:
+        return []
+
+    # Get the project for deadline validation constants
+    project = await ProjectService.get_one_project(db, project_id)
+    base_days_per_point = project.base_days_per_point if project else 1
+
+    # Step 1-2: Calculate per-member totals
+    member_data = []
+    effective_points_list = []
+
+    for member in members:
+        total_points, total_effective_points = await calculate_member_workload_totals(
+            db, member.id
+        )
+
+        member_data.append({
+            "member_id": member.id,
+            "total_points": total_points,
+            "total_effective_points": total_effective_points,
+            "member_obj": member  # Keep reference for later
+        })
+        effective_points_list.append(total_effective_points)
+
+    # Step 3: Calculate baseline as median
+    if effective_points_list:
+        baseline_points = median(effective_points_list)
+        # Handle even/odd case - statistics.median already does this correctly
+    else:
+        baseline_points = 0.0
+
+    # Step 4-5: Calculate expected load and overload status
+    results = []
+    for data in member_data:
+        # Get capacity multiplier from latest snapshot or default to 1.0
+        latest_snapshot = await get_latest_member_snapshot(db, data["member_id"])
+        capacity_multiplier = float(latest_snapshot.capacity_multiplier) if latest_snapshot else 1.0
+
+        # Clamp capacity multiplier to valid range (0, 2.0]
+        capacity_multiplier = max(0.01, min(capacity_multiplier, 2.0))
+
+        expected_load = baseline_points * capacity_multiplier
+        is_overloaded = data["total_effective_points"] > expected_load
+
+        results.append({
+            "member_id": data["member_id"],
+            "total_points": data["total_points"],
+            "total_effective_points": data["total_effective_points"],
+            "expected_load": expected_load,
+            "is_overloaded": is_overloaded,
+            "capacity_multiplier": capacity_multiplier
+        })
+
+    return results
+
+
+async def get_latest_member_snapshot(
+    db: AsyncSession,
+    member_id: UUID
+) -> Optional[MemberSnapshot]:
+    """Get the most recent snapshot for a member."""
+    result = await db.execute(
+        select(MemberSnapshot)
+        .where(MemberSnapshot.member_id == member_id)
+        .order_by(MemberSnapshot.snapshot_date.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def validate_task_deadline(
+    task: Task,
+    project_base_days_per_point: int = 1
+) -> Tuple[bool, Optional[str]]:
+    """
+    Validate that a task's deadline meets the minimum required lead time.
+
+    Returns:
+        (is_valid, error_message)
+    """
+    if task.status == TaskStatus.COMPLETED:
+        # Completed tasks don't need deadline validation
+        return True, None
+
+    if task.deadline is None:
+        # No deadline set - this is allowed (treated as 14-day bucket for urgency)
+        return True, None
+
+    complexity_points = complexity_to_points(task.complexity)
+    min_days_required = complexity_points * project_base_days_per_point
+
+    if min_days_required <= 0:
+        # No minimum required for 0 complexity points
+        return True, None
+
+    today = date.today()
+    days_until_deadline = (task.deadline - today).days
+
+    if days_until_deadline < min_days_required:
+        return False, (
+            f"Task deadline must be at least {min_days_required} day(s) from today "
+            f"(based on {complexity_points} complexity points × {project_base_days_per_point} base days/point). "
+            f"Got {days_until_deadline} day(s)."
+        )
+
+    return True, None
+
+
+async def create_or_update_member_snapshots(
+    db: AsyncSession,
+    project_id: UUID
+) -> List[MemberSnapshot]:
+    """
+    Calculate workload state and create/update member snapshots for a project.
+
+    This is the main entry point that combines calculation with persistence.
+    """
+    # Calculate workload state for all members
+    workload_data = await recompute_workload_state(db, project_id)
+
+    snapshots = []
+    for data in workload_data:
+        # Try to get existing snapshot for today
+        today = date.today()
+        existing_snapshot = await db.execute(
+            select(MemberSnapshot)
+            .where(
+                MemberSnapshot.member_id == data["member_id"],
+                MemberSnapshot.snapshot_date == today
+            )
+        )
+        snapshot = existing_snapshot.scalar_one_or_none()
+
+        if snapshot:
+            # Update existing snapshot
+            snapshot.total_effective_points = data["total_effective_points"]
+            snapshot.capacity_multiplier = data["capacity_multiplier"]
+            # Update workload status based on overload calculation
+            if data["is_overloaded"]:
+                snapshot.workload_status = MemberStatus.OVERLOADED
+            elif snapshot.total_effective_points < (data["expected_load"] / 2.0):
+                snapshot.workload_status = MemberStatus.UNDERUTILIZED
+            else:
+                snapshot.workload_status = MemberStatus.NORMAL
+        else:
+            # Create new snapshot
+            # Determine workload status
+            if data["is_overloaded"]:
+                workload_status = MemberStatus.OVERLOADED
+            elif data["total_effective_points"] < (data["expected_load"] / 2.0):
+                workload_status = MemberStatus.UNDERUTILIZED
+            else:
+                workload_status = MemberStatus.NORMAL
+
+            snapshot = MemberSnapshot(
+                member_id=data["member_id"],
+                snapshot_date=today,
+                total_effective_points=data["total_effective_points"],
+                capacity_multiplier=data["capacity_multiplier"],
+                workload_status=workload_status,
+                silence_warning=False,
+                consecutive_fallback_count=0
+            )
+            db.add(snapshot)
+
+        snapshots.append(snapshot)
+
+    await db.commit()
+
+    # Refresh to get IDs and timestamps
+    for snapshot in snapshots:
+        await db.refresh(snapshot)
+
+    return snapshots
+
+
+=== backend/app/modules/member_snapshots/model.py ===
+from datetime import date
+from app.core.db import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from uuid import UUID
+from sqlalchemy import (
+    Boolean,
+    Date,
+    ForeignKey,
+    UUID as PG_UUID,
+    Integer,
+    Numeric,
+    UniqueConstraint,
+)
+from sqlalchemy import Enum as SAENUM
+from decimal import Decimal
+import enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.project_members.model import ProjectMember
+
+
+"""
+    This is the member snapshot where most 
+    of the data about status and other things about the members
+"""
+
+
+class MemberStatus(str, enum.Enum):
+    NORMAL = "normal"
+    UNDERUTILIZED = "underutilized"
+    OVERLOADED = "overloaded"
+
+
+class MemberSnapshot(Base):
+    __tablename__ = "member_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    member_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("project_members.id", ondelete="CASCADE")
+    )
+
+    # Relationships
+    member: Mapped["ProjectMember"] = relationship(
+        "ProjectMember",
+        back_populates="snapshots",
+        foreign_keys=[member_id],
+    )
+
+    # Deadline weighted sum, this is the actual workload of member
+    total_effective_points: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
+    # adjusts personal expected load base on the baseline
+    capacity_multiplier: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=1.0)
+    # hides overload warning
+    silence_warning: Mapped[bool] = mapped_column(Boolean, default=False)
+    consecutive_fallback_count: Mapped[int] = mapped_column(Integer, default=0)
+    workload_status: Mapped[MemberStatus] = mapped_column(
+        SAENUM(MemberStatus, name="member_status"), default=MemberStatus.NORMAL
+    )
+
+    snapshot_date: Mapped[date] = mapped_column(Date, default=date.today)
+
+    __table_args__ = (
+        UniqueConstraint("member_id", "snapshot_date", name="uq_member_snapshot_date"),
+    )
+
+
+
+=== backend/app/modules/member_snapshots/schema.py ===
+from pydantic import BaseModel, ConfigDict, Field
+from datetime import date
+from uuid import UUID
+from .model import MemberStatus
+from decimal import Decimal
+
+
+class MemberSnapshotUpsert(BaseModel):
+    member_id: UUID | None = None
+    workload_status: MemberStatus | None = None
+    total_effective_points: Decimal | None = None
+    capacity_multiplier: Decimal | None = Field(default=None, gt=0, le=2.0)
+    silence_warning: bool | None = None
+    consecutive_fallback_count: int | None = None
+
+
+class MemberSnapshotResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    member_id: UUID
+    workload_status: MemberStatus
+    total_effective_points: Decimal
+    capacity_multiplier: Decimal
+    silence_warning: bool
+    consecutive_fallback_count: int
+    snapshot_date: date
+
+
+
+=== backend/app/modules/member_snapshots/services.py ===
+from sqlalchemy.ext.asyncio import AsyncSession
+from statistics import median
+import logging
+
+from app.modules.project_snapshots.schema import (
+    ProjectSnapshotUpsert,
+)
+from .model import MemberSnapshot, MemberStatus
+from .repo import MemberSnapshotRepo
+from uuid import UUID
+from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
+from .schema import MemberSnapshotUpsert
+from app.modules.tasks.enums import Status
+
+logger = logging.getLogger(__name__)
+
+
+def round_half_up_int(value):
+    return int(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+class MemberSnapshotService:
+    @staticmethod
+    async def get_one_member_snapshot(db: AsyncSession, member_snapshot_id):
+        repo = MemberSnapshotRepo(db)
+        return await repo.get_by_id(member_snapshot_id)
+
+    @staticmethod
+    async def get_all_member_snapshots(db: AsyncSession):
+        repo = MemberSnapshotRepo(db)
+        return await repo.get_all()
+
+    @staticmethod
+    async def upsert_today_member_snapshot(
+        db: AsyncSession, member_id: UUID, snapshot: MemberSnapshotUpsert
+    ):
+        repo = MemberSnapshotRepo(db)
+        return await repo.upsert_today_member_snapshot(member_id, snapshot)
+
+    @staticmethod
+    async def get_latest_snapshot(db: AsyncSession, member_id: UUID):
+        repo = MemberSnapshotRepo(db)
+        return await repo.get_latest_member_snapshot(member_id)
+
+    @staticmethod
+    async def delete_member_snapshot(db: AsyncSession, db_item: MemberSnapshot):
+        repo = MemberSnapshotRepo(db)
+        return await repo.delete(db_item)
+
+    @staticmethod
+    async def check_workload_status(
+        db: AsyncSession, member_id: UUID, member_workload_points: Decimal
+    ):
+        from app.modules.project_members.services import ProjectMemberService
+        from app.modules.projects.services import ProjectService
+        from app.modules.redistribution_recommendations.workload_calculation import (
+            calculate_member_workload_totals,
+        )
+
+        repo = MemberSnapshotRepo(db)
+
+        member_snapshot = await repo.get_latest_member_snapshot(member_id)
+        member = await ProjectMemberService.get_one_member(db, member_id)
+
+        if member is None:
+            return None
+
+        project = await ProjectService.get_project_with_latest_snapshot(
+            db, member.project_id
+        )
+
+        if project is None:
+            return None
+
+        # total number of project members
+        project_members = (
+            await ProjectMemberService.get_members_by_project_with_member_snapshot(
+                db, project.id
+            )
+        )
+
+        if project_members is None:
+            return None
+
+        # Compute each member's CURRENT effective points fresh, not from
+        # possibly-missing/stale persisted snapshots — spec 2.3 requires the
+        # baseline to reflect all members' current state.
+        member_points = []
+        for proj_member in project_members:
+            if proj_member.id == member_id:
+                # Already freshly computed by the caller — don't redo the work.
+                member_points.append(member_workload_points)
+            else:
+                _, eff_points = await calculate_member_workload_totals(db, proj_member.id)
+                member_points.append(
+                    Decimal(str(eff_points)).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+                )
+
+        # Guard: no members with any computable workload — nothing to compare against.
+        if not member_points:
+            return MemberStatus.NORMAL
+
+        capacity_multiplier = (
+            member_snapshot.capacity_multiplier if member_snapshot is not None else 1.0
+        )
+
+        # normalize baseline for every member
+        normal_baseline = median(member_points)
+        member_baseline = normal_baseline * Decimal(str(capacity_multiplier))
+        lower_baseline = member_baseline / Decimal(str(2.00))
+
+        # Conditional for the workload status of the member
+        status = MemberStatus.NORMAL
+        if member_workload_points > member_baseline:
+            status = MemberStatus.OVERLOADED
+        elif member_workload_points < lower_baseline:
+            status = MemberStatus.UNDERUTILIZED
+
+        return status
+
+    @staticmethod
+    async def calculate_member_workload(db: AsyncSession, member_id: UUID):
+        """
+        Calculate workload for a single member and update their snapshot.
+        Maintains the same interface as before but uses the centralized calculation logic.
+        """
+        from app.modules.assigned_members.services import AssignedMemberService
+        from app.modules.tasks.services import TaskService
+        from app.modules.projects.services import ProjectService
+        from app.modules.project_members.services import ProjectMemberService
+        from app.modules.redistribution_recommendations.workload_calculation import (
+            calculate_member_workload_totals,
+            validate_task_deadline
+        )
+        from app.modules.project_snapshots.services import ProjectSnapshotService
+
+        # Get member's project and assigned tasks
+        assigned_members = await AssignedMemberService.get_members(db, member_id)
+        task_ids = [member.task_id for member in assigned_members if member.task_id is not None]
+        all_tasks = await TaskService.batch_get_task(db, task_ids)
+
+        # Get the project (assuming member belongs to one project)
+        project = None
+        member_project = await ProjectMemberService.get_one_member(db, member_id)
+        if member_project:
+            project = await ProjectService.get_one_project(db, member_project.project_id)
+
+        if project is None:
+            return None
+
+        project_id = project.id
+        base_days_per_point = project.base_days_per_point if project else 1
+        #check
+
+        # Validate deadlines for all tasks (preserving existing validation logic)
+        for task in all_tasks:
+            is_valid, msg = await validate_task_deadline(task, base_days_per_point)
+            if not is_valid:
+                # Log validation error but continue processing (preserving existing behavior)
+                logger.warning(f"Task deadline validation failed for task {task.id}: {msg}")
+
+        # Calculate workload totals for this member using our new centralized logic
+        _, total_effective_points = await calculate_member_workload_totals(db, member_id)
+
+        # Convert to Decimal for consistency with existing code
+        total_effective_points_decimal = Decimal(str(total_effective_points)).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
+        # Get project total workload (existing logic)
+        project = await ProjectService.get_project_with_latest_snapshot(db, project_id)
+
+        member_snapshot = await MemberSnapshotService.get_latest_snapshot(db, member_id)
+
+        previous_member_points = (
+            member_snapshot.total_effective_points
+            if member_snapshot is not None
+            else Decimal("0")
+        )
+
+        # Calculate change in this member's workload
+        difference = total_effective_points_decimal - previous_member_points
+
+        # Guard: project may not have a snapshot yet (first run for this project)
+        latest_project_snapshot = (
+            sorted(project.snapshots, key=lambda s: s.snapshot_date, reverse=True)[0]
+            if project.snapshots
+            else None
+        )
+        previous_project_total = (
+            latest_project_snapshot.total_workload_points
+            if latest_project_snapshot is not None
+            else Decimal("0")
+        )
+        project_workload_points = previous_project_total + difference
+        project_workload_points = round_half_up_int(project_workload_points)
+
+        # Update total_workload of project
+        project_snapshot = await ProjectSnapshotService.upsert_today_snapshot(
+            db,
+            project_id,
+            ProjectSnapshotUpsert(total_workload_points=project_workload_points),
+        )
+
+        if project_snapshot is None:
+            return None
+
+        # Check workload status (existing logic)
+        status = await MemberSnapshotService.check_workload_status(
+            db, member_id, total_effective_points_decimal
+        )
+
+        # Update the member_snapshot
+        member_snapshot = await MemberSnapshotService.upsert_today_member_snapshot(
+            db,
+            member_id,
+            MemberSnapshotUpsert(
+                total_effective_points=total_effective_points_decimal,
+                workload_status=status,
+            ),
+        )
+
+        return member_snapshot
+
+
+=== backend/app/modules/tasks/model.py ===
+from datetime import datetime, timezone, date
+from app.core.db import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from uuid import UUID, uuid4
+from sqlalchemy import DateTime, ForeignKey, String, UUID as PG_UUID, Date, ARRAY
+from sqlalchemy import Enum as SAENUM
+from app.modules.tasks.enums import Priority, Status, Complexity, Category
+from typing import TYPE_CHECKING
+from app.modules.project_members.model import Skills
+
+if TYPE_CHECKING:
+    from app.modules.task_comments.model import TaskComment
+    from app.modules.task_submissions.model import TaskSubmission
+    from app.modules.task_contents.model import TaskContent
+    from app.modules.task_relations.model import TaskRelation
+    from app.modules.task_tags.model import TaskTag
+    from app.modules.assigned_members.model import AssignedMember
+    from app.modules.peer_evaluations.model import PeerEvaluation
+    from app.modules.projects.model import Project
+
+task_skills_enum = SAENUM(
+    Skills,
+    name="task_skills",
+    values_callable=lambda obj: [e.value for e in obj],
+)
+
+"""
+    This is the task model
+    This contains the normal tasks that would be mostly used in the system
+    This is the heart of the task modules
+"""
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    name: Mapped[str] = mapped_column(String(150))
+    description: Mapped[str] = mapped_column(nullable=True)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id")
+    )
+    project_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
+    )
+
+    started_at: Mapped[date] = mapped_column(Date, nullable=True)
+    completed_at: Mapped[date] = mapped_column(Date, nullable=True)
+
+    # Relationships
+    project: Mapped["Project"] = relationship(
+        "Project",
+        back_populates="tasks",
+        foreign_keys=[project_id],
+    )
+
+    comments: Mapped[list["TaskComment"]] = relationship(
+        "TaskComment",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+
+    submissions: Mapped[list["TaskSubmission"]] = relationship(
+        "TaskSubmission",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+
+    contents: Mapped[list["TaskContent"]] = relationship(
+        "TaskContent",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+
+    task_relations: Mapped[list["TaskRelation"]] = relationship(
+        "TaskRelation",
+        back_populates="task",
+        foreign_keys="TaskRelation.task_id",
+        cascade="all, delete-orphan",
+        primaryjoin="Task.id == TaskRelation.task_id",
+    )
+
+    related_tasks: Mapped[list["TaskRelation"]] = relationship(
+        "TaskRelation",
+        back_populates="related_task",
+        foreign_keys="TaskRelation.related_to",
+        cascade="all, delete-orphan",
+        primaryjoin="Task.id == TaskRelation.related_to",
+    )
+
+    tags: Mapped[list["TaskTag"]] = relationship(
+        "TaskTag",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+
+    assigned_members: Mapped[list["AssignedMember"]] = relationship(
+        "AssignedMember",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+
+    peer_evaluations: Mapped[list["PeerEvaluation"]] = relationship(
+        "PeerEvaluation",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        foreign_keys="PeerEvaluation.task_id",
+    )
+    # supertask_id: Mapped[UUID | None] = mapped_column(
+    #    PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), default=None, nullable=True
+    # )
+    status: Mapped[Status] = mapped_column(
+        SAENUM(
+            Status, name="status", values_callable=lambda obj: [e.value for e in obj]
+        ),
+        default=Status.NOT_STARTED,
+        nullable=True,
+    )
+    complexity: Mapped[Complexity] = mapped_column(
+        SAENUM(Complexity, name="complexity"), default=None, nullable=True
+    )
+    priority: Mapped[Priority] = mapped_column(
+        SAENUM(Priority, name="priority"), default=None, nullable=True
+    )
+    complexity_points: Mapped[int] = mapped_column(default=0, nullable=True)
+    category: Mapped[Category] = mapped_column(
+        SAENUM(Category, name="category"), default=None, nullable=True
+    )
+    deadline: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+    total_time_spent: Mapped[int] = mapped_column(default=0, nullable=True)
+    primary_skill: Mapped[Skills] = mapped_column(
+        task_skills_enum,
+        nullable=False,
+    )
+    secondary_skills: Mapped[list[Skills]] = mapped_column(
+        ARRAY(task_skills_enum),
+        nullable=False,
+        default=list,
+    )
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+
+
+
+=== backend/app/modules/tasks/enums.py ===
+import enum
+
+
+# tasks
+class Status(str, enum.Enum):
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    SUBMITTED = "submitted"
+    COMPLETED = "completed"
+
+
+class Priority(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class Complexity(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class Category(str, enum.Enum):
+    DOCUMENT = "document"
+    RESEARCH = "research"
+    DEVELOPMENT = "development"
+    FINANCE = "finance"
+
+
+# task relations
+class Relation(str, enum.Enum):
+    BLOCKS = "blocks"
+    BLOCKED_BY = "blocked_by"
+    RELATED = "related"
+
+
+# Task submissions
+class Result(str, enum.Enum):
+    REVISION = "revision"
+    ACCEPTED = "accepted"
+    PENDING = "pending"
+
+
+# Assigned Member
+class Role(str, enum.Enum):
+    LEADER = "leader"
+    MEMBER = "member"
+
+
+
+=== backend/app/modules/tasks/services.py ===
+from typing import Sequence
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.modules.tasks.model import Task, Category, Complexity
+from app.modules.tasks.repo import TaskRepo
+from app.modules.tasks.schema import (
+    TaskCreate,
+    TaskResponseWithMembers,
+    TaskUpdate,
+)
+from app.modules.project_members.model import Skills
+from app.modules.ai.service import score_task_complexity
+from app.modules.project_snapshots.services import ProjectSnapshotService
+from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
+from uuid import UUID
+
+_VERDICT_TO_COMPLEXITY: dict[int, Complexity] = {
+    1: Complexity.LOW,
+    2: Complexity.MEDIUM,
+    3: Complexity.HIGH,
+}
+
+
+class TaskService:
+    @staticmethod
+    async def get_one_task(db: AsyncSession, task_id):
+        repo = TaskRepo(db)
+        return await repo.get_by_id(task_id)
+
+    @staticmethod
+    async def get_all_project_tasks(db: AsyncSession, project_id):
+        repo = TaskRepo(db)
+        return await repo.get_all_project_tasks(project_id)
+
+    @staticmethod
+    async def get_all_tasks(db: AsyncSession):
+        repo = TaskRepo(db)
+        return await repo.get_all()
+
+    @staticmethod
+    async def create_task(db: AsyncSession, task: TaskCreate):
+        repo = TaskRepo(db)
+
+        ai_result = await score_task_complexity(task.name, task.description)
+        category = TaskService._determine_task_category(task.primary_skill)
+        complexity = _VERDICT_TO_COMPLEXITY[ai_result.verdict]
+        complexity_points = ai_result.verdict
+
+        task_item = task.model_copy(
+            update={
+                "category": category,
+                "complexity": complexity,
+                "complexity_points": complexity_points,
+            }
+        )
+
+        # update the project_snapshot to have +1 unassigned_tasks
+        snapshot = await ProjectSnapshotService.get_latest_snapshot(
+            db, task_item.project_id
+        )
+        u_tasks = snapshot.unassigned_tasks + 1
+        update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=u_tasks)
+        # update the snapshot
+        await ProjectSnapshotService.upsert_today_snapshot(
+            db, task_item.project_id, update_snapshot
+        )
+
+        return await repo.create(task_item)
+        # send http request towards openrouter free model for the
+
+    @staticmethod
+    async def update_task(db: AsyncSession, db_item: TaskUpdate, task: TaskUpdate):
+        repo = TaskRepo(db)
+        return await repo.update(db_item, task)
+
+    @staticmethod
+    async def delete_task(db: AsyncSession, db_item: Task):
+        repo = TaskRepo(db)
+
+        task = await repo.get_assigned_member(db_item.id)
+
+        if not task.assigned_members:
+            snapshot = await ProjectSnapshotService.get_latest_snapshot(
+                db, db_item.project_id
+            )
+            u_tasks = 0
+            if snapshot.unassigned_tasks > 0:
+                u_tasks = snapshot.unassigned_tasks - 1
+
+            update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=u_tasks)
+            # update the snapshot
+            await ProjectSnapshotService.upsert_today_snapshot(
+                db, db_item.project_id, update_snapshot
+            )
+        return await repo.delete(db_item)
+
+    @staticmethod
+    def _determine_task_category(primary_skill: Skills) -> Category:
+        category_map: dict[Category, list[Skills]] = {
+            Category.DEVELOPMENT: [
+                Skills.BACKEND_DEVELOPMENT,
+                Skills.FRONTEND_DEVELOPMENT,
+                Skills.MOBILE_DEVELOPMENT,
+                Skills.IOT_DEVELOPMENT,
+                Skills.DATABASE_DESIGN,
+                Skills.SYSTEM_ARCHITECTURE,
+                Skills.UI_UX_DESIGN,
+                Skills.TESTING_AND_QUALITY_ASSURANCE,
+            ],
+            Category.RESEARCH: [
+                Skills.LITERATURE_REVIEW,
+                Skills.DATA_COLLECTION,
+                Skills.SURVEY_AND_QUESTIONNAIRE_DESIGN,
+                Skills.INTERVIEW_AND_OBSERVATION,
+                Skills.DATA_ANALYSIS,
+            ],
+            Category.DOCUMENT: [
+                Skills.TECHNICAL_WRITING,
+                Skills.DOCUMENTATION,
+                Skills.DIAGRAM_AND_MODELING,
+                Skills.EDITING_AND_PROOFREADING,
+            ],
+            Category.FINANCE: [
+                Skills.FINANCIAL_DOCUMENTATION,
+                Skills.BUDGET_PLANNING,
+                Skills.RESOURCE_MANAGEMENT,
+            ],
+        }
+
+        for category, skills in category_map.items():
+            if primary_skill in skills:
+                return category
+
+        raise ValueError(f"No category found for skill: {primary_skill}")
+
+    @staticmethod
+    async def get_assigned_members(db: AsyncSession, project_id: UUID):
+        repo = TaskRepo(db)
+        tasks = await repo.get_assigned_members(project_id)
+        return [
+            TaskResponseWithMembers.model_validate(
+                {
+                    **{
+                        col: getattr(task, col) for col in task.__table__.columns.keys()
+                    },
+                    "member_id": task.assigned_members[0].members.id
+                    if task.assigned_members
+                    else None,
+                    "assigned_members": [
+                        member.members.user for member in task.assigned_members
+                    ],
+                }
+            )
+            for task in tasks
+        ]
+
+    @staticmethod
+    async def get_tasks_for_user(db: AsyncSession, user_id: UUID):
+        repo = TaskRepo(db)
+        tasks = await repo.get_tasks_for_user(user_id)
+
+        # Convert to TaskResponseWithMembers format - matching the pattern in get_assigned_members
+        from app.modules.tasks.schema import TaskResponseWithMembers
+
+        result = []
+        for task in tasks:
+            # Get the assigned members for this task (already loaded via selectinload)
+            assigned_members_obj = task.assigned_members or []
+
+            # Extract user objects from assigned members (matching get_assigned_members pattern)
+            assigned_members = [
+                am.members.user for am in assigned_members_obj if am.members and am.members.user
+            ]
+
+            # Build the TaskResponseWithMembers object
+            task_dict = {
+                col: getattr(task, col) for col in task.__table__.columns.keys()
+            }
+            task_dict["assigned_members"] = assigned_members
+            # For tasks fetched by user_id, we need to set member_id to one of the member ids
+            # for this task and user. Since a user can only be assigned once to a task,
+            # we can take the first one.
+            member_id = None
+            if assigned_members_obj:
+                member_id = assigned_members_obj[0].member_id
+            task_dict["member_id"] = member_id
+
+            result.append(TaskResponseWithMembers.model_validate(task_dict))
+
+        return result
+
+    @staticmethod
+    async def batch_get_task(db: AsyncSession, ids: Sequence[UUID]):
+        repo = TaskRepo(db)
+        return await repo.batch_get_task(ids)
+
+
+
+=== backend/app/modules/project_members/model.py ===
+import enum
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
+from app.core.db import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, Date, text
+from sqlalchemy import Enum as SAENUM
+from sqlalchemy.dialects.postgresql import ARRAY
+from app.modules.tasks.enums import Priority, Status, Complexity, Category
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from app.modules.member_snapshots.model import MemberSnapshot
+    from app.modules.projects.model import Project
+    from app.modules.member_activities.model import MemberActivity
+    from app.modules.users.model import User
+    from app.modules.assigned_members.model import AssignedMember
+
+
+class ProjectRole(str, enum.Enum):
+    LEADER = "leader"
+    ADVISOR = "advisor"
+    MEMBER = "member"
+    INSTRUCTOR = "instructor"
+
+
+class Skills(str, enum.Enum):
+    BACKEND_DEVELOPMENT = "Backend Development"
+    FRONTEND_DEVELOPMENT = "Frontend Development"
+    MOBILE_DEVELOPMENT = "Mobile Development"
+    IOT_DEVELOPMENT = "IOT Development"
+    DATABASE_DESIGN = "Database Design"
+    SYSTEM_ARCHITECTURE = "System Architecture"
+    UI_UX_DESIGN = "UI/UX Design"
+    TESTING_AND_QUALITY_ASSURANCE = "Testing and Quality Assurance"
+    LITERATURE_REVIEW = "Literature Review"
+    DATA_COLLECTION = "Data Collection"
+    SURVEY_AND_QUESTIONNAIRE_DESIGN = "Survey and Questionnaire Design"
+    INTERVIEW_AND_OBSERVATION = "Interview and Observation"
+    DATA_ANALYSIS = "Data Analysis"
+    TECHNICAL_WRITING = "Technical Writing"
+    DOCUMENTATION = "Documentation"
+    DIAGRAM_AND_MODELING = "Diagram and Modeling"
+    EDITING_AND_PROOFREADING = "Editing and Proofreading"
+    FINANCIAL_DOCUMENTATION = "Financial Documentation"
+    BUDGET_PLANNING = "Budget Planning "
+    RESOURCE_MANAGEMENT = "Resource Management"
+
+
+class ProjectMember(Base):
+    __tablename__ = "project_members"
+
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
+    # Relationships
+    project: Mapped["Project"] = relationship(
+        "Project",
+        back_populates="members",
+        foreign_keys=[project_id],
+    )
+    user: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[user_id],
+    )
+
+    project_role: Mapped[ProjectRole] = mapped_column(
+        SAENUM(
+            ProjectRole,
+            name="projectrole",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        default=ProjectRole.MEMBER,
+        nullable=True,
+    )
+
+    skills: Mapped[list[Skills]] = mapped_column(
+        ARRAY(
+            SAENUM(
+                Skills,
+                name="member_skills",
+                values_callable=lambda obj: [e.value for e in obj],
+            )
+        ),
+        nullable=False,
+        default=list,
+        server_default=text("'{}'::member_skills[]"),
+    )
+
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+
+    # Relationships
+    snapshots: Mapped[list["MemberSnapshot"]] = relationship(
+        "MemberSnapshot",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    activities: Mapped[list["MemberActivity"]] = relationship(
+        "MemberActivity",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    assigned_members: Mapped[list["AssignedMember"]] = relationship(
+        "AssignedMember",
+        back_populates="members",
+        cascade="all, delete-orphan",
+    )
+
+
+=== backend/app/modules/project_members/services.py ===
+from uuid import UUID
+
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.projects.model import Project
+from app.modules.projects.schema import ProjectResponseSnapshot
+from app.modules.users.model import User
+from app.modules.member_snapshots.schema import MemberSnapshotUpsert
+
+from .model import ProjectMember
+from .repo import ProjectMemberRepo
+from .schema import ProjectMemberCreate, ProjectMemberUpdate
+
+
+class ProjectMemberService:
+    @staticmethod
+    async def get_current_member(db: AsyncSession, member_id: UUID):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_current_member(member_id)
+
+    @staticmethod
+    async def get_one_member(db: AsyncSession, project_member_id):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_by_id(project_member_id)
+
+    @staticmethod
+    async def get_member_by_user_id(db: AsyncSession, user_id: UUID):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_by_user_id(user_id)
+
+    @staticmethod
+    async def get_all_members(db: AsyncSession):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_all()
+
+    @staticmethod
+    async def get_all_members_by_project(db: AsyncSession, project_id: UUID):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_all_members_by_project(project_id)
+
+    @staticmethod
+    async def get_all_projects_by_member(db: AsyncSession, member_id: UUID):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_all_projects_by_member(member_id)
+
+    @staticmethod
+    async def add_member(db: AsyncSession, project_member: ProjectMemberCreate):
+        repo = ProjectMemberRepo(db)
+
+        if project_member.user_id is None or project_member.project_id is None:
+            raise HTTPException(
+                status_code=400, detail="user_id and project_id are required"
+            )
+
+        existing_member = await repo.get_by_user_and_project(
+            project_member.user_id, project_member.project_id
+        )
+        if existing_member:
+            raise HTTPException(status_code=409, detail="Project member already exists")
+
+        # conflict of python in fastapiusers User.id fields type matching
+        user_result = await db.execute(
+            select(User).where(User.id == project_member.user_id)  # pyright: ignore[reportArgumentType]
+        )
+        if not user_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="User not found")
+
+        project_result = await db.execute(
+            select(Project).where(Project.id == project_member.project_id)
+        )
+        if not project_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        try:
+            result = await repo.create(project_member)
+
+            from app.modules.member_snapshots.services import MemberSnapshotService
+
+            # create member_snapshot
+            await MemberSnapshotService.upsert_today_member_snapshot(
+                db, result.id, MemberSnapshotUpsert()
+            )
+
+            return result
+
+            # create the project member snapshot here
+        except IntegrityError as exc:
+            raise HTTPException(
+                status_code=409, detail="Unable to create project member"
+            ) from exc
+
+    @staticmethod
+    async def update_member(
+        db: AsyncSession,
+        db_item: ProjectMember,
+        project_member: ProjectMemberUpdate,
+    ):
+        repo = ProjectMemberRepo(db)
+        return await repo.update(db_item, project_member)
+
+    @staticmethod
+    async def get_project_for_member_with_snapshot(
+        db: AsyncSession, user_id: UUID, project_id: UUID
+    ) -> ProjectResponseSnapshot | None:
+        member_repo = ProjectMemberRepo(db)
+        member = await member_repo.get_by_user_and_project(user_id, project_id)
+        if not member:
+            return None
+
+        from app.modules.projects.services import ProjectService
+
+        return await ProjectService.get_by_id_with_snapshot(db, project_id)
+
+    @staticmethod
+    async def delete_member(db: AsyncSession, db_item: ProjectMember):
+        repo = ProjectMemberRepo(db)
+        await repo.delete(db_item)
+        return None
+
+    @staticmethod
+    async def get_members_by_project_with_member_snapshot(
+        db: AsyncSession, project_id: UUID
+    ):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_members_by_project_with_member_snapshot(project_id)
+
+    @staticmethod
+    async def get_members_with_user_and_snapshot(db: AsyncSession, project_id: UUID):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_members_with_user_and_snapshot(project_id)
+
+
+
+=== backend/app/modules/projects/model.py ===
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
+from app.core.db import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UUID as PG_UUID
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.project_snapshots.model import ProjectSnapshot
+    from app.modules.supertasks.model import Supertask
+    from app.modules.tasks.model import Task
+    from app.modules.project_members.model import ProjectMember
+    from app.modules.invitations.model import ProjectInvitation
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    # ID should be a UUID to match your Pydantic schemas and test logic
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str] = mapped_column(String, nullable=False)
+
+    # These were sa.UUID() in your migration.
+    # Remove primary_key=True from these! They are just Foreign Keys.
+    created_by: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    advisor: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    instructor: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    # Unit for the deadline effect on the workload calculation
+    base_days_per_point: Mapped[int] = mapped_column(Integer, default=1)
+    # Number of times redistribution mechanics can be triggered before flagging
+    escalation_threshold: Mapped[int] = mapped_column(Integer, default=0)
+
+    snapshots: Mapped[list["ProjectSnapshot"]] = relationship(
+        "ProjectSnapshot",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    tasks: Mapped[list["Task"]] = relationship(
+        "Task",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        foreign_keys="Task.project_id",
+    )
+
+    supertasks: Mapped[list["Supertask"]] = relationship(
+        "Supertask",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        foreign_keys="Supertask.project_id",
+    )
+
+    members: Mapped[list["ProjectMember"]] = relationship(
+        "ProjectMember",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    invitations: Mapped[list["ProjectInvitation"]] = relationship(
+        "ProjectInvitation",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+
+
+
+=== backend/app/modules/projects/services.py ===
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
+from app.modules.projects.model import Project
+from app.modules.projects.repo import ProjectRepo
+from app.modules.projects.schema import (
+    ProjectCreate,
+    ProjectResponseSnapshot,
+    ProjectUpdate,
+    ProjectResponse,
+)
+from app.modules.project_snapshots.repo import ProjectSnapshotRepo
+from app.modules.project_snapshots.schema import ProjectSnapshotResponse
+
+
+class ProjectService:
+    @staticmethod
+    async def get_one_project(db: AsyncSession, project_id):
+        repo = ProjectRepo(db)
+        return await repo.get_by_id(project_id)
+
+    @staticmethod
+    async def get_all_projects(db: AsyncSession):
+        repo = ProjectRepo(db)
+        return await repo.get_all()
+
+    @staticmethod
+    async def create_project(db: AsyncSession, project: ProjectCreate):
+        # initialize the repos
+        project_repo = ProjectRepo(db)
+        snapshot_repo = ProjectSnapshotRepo(db)
+
+        try:
+            project_result = await project_repo.create(project)
+            await snapshot_repo.upsert_today_snapshot(
+                project_result.id, ProjectSnapshotUpsert()
+            )
+
+            return project_result
+        except Exception:
+            await db.rollback()
+            raise
+
+    @staticmethod
+    async def update_project(
+        db: AsyncSession, db_item: ProjectUpdate, project: ProjectUpdate
+    ):
+        repo = ProjectRepo(db)
+        return await repo.update(db_item, project)
+
+    @staticmethod
+    async def delete_project(db: AsyncSession, db_item: Project):
+        repo = ProjectRepo(db)
+        return await repo.delete(db_item)
+
+    @staticmethod
+    async def get_project_by_user(db: AsyncSession, user_id) -> Project | None:
+        repo = ProjectRepo(db)
+        return await repo.get_by_creator(user_id)
+
+    @staticmethod
+    async def get_project_with_snapshot(db: AsyncSession, user_id) -> Project | None:
+        repo = ProjectRepo(db)
+        return await repo.get_by_creator_with_latest_snapshot(user_id)
+
+    @staticmethod
+    async def get_projects_for_instructor(db: AsyncSession, user_id):
+        repo = ProjectRepo(db)
+        return await repo.get_projects_for_instructor(user_id)
+
+    @staticmethod
+    async def get_projects_for_instructor_with_snapshot(db: AsyncSession, user_id):
+        repo = ProjectRepo(db)
+        return await repo.get_projects_for_user_with_snapshot(user_id)
+
+    @staticmethod
+    async def get_by_id_with_snapshot(
+        db: AsyncSession, project_id
+    ) -> ProjectResponseSnapshot | None:
+        repo = ProjectRepo(db)
+        project = await repo.get_by_id(project_id)
+        if project is None:
+            return None
+
+        from app.modules.project_snapshots.services import ProjectSnapshotService
+
+        latest_snapshot = await ProjectSnapshotService.get_latest_snapshot(
+            db, project_id
+        )
+
+        return ProjectResponseSnapshot(
+            **ProjectResponse.model_validate(
+                project, from_attributes=True
+            ).model_dump(),
+            snapshot=(
+                ProjectSnapshotResponse.model_validate(
+                    latest_snapshot, from_attributes=True
+                )
+                if latest_snapshot is not None
+                else None
+            ),
+        )
+
+    @staticmethod
+    async def get_project_with_latest_snapshot(db, project_id):
+        repo = ProjectRepo(db)
+        return await repo.get_project_with_latest_snapshot(project_id)
+
+
+
+=== backend/app/modules/assigned_members/model.py ===
+from datetime import datetime, timezone
+from app.core.db import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from uuid import UUID, uuid4
+from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.tasks.model import Task
+    from app.modules.project_members.model import ProjectMember
+
+
+"""
+    This is the assigned member for each tasks
+"""
+
+
+class AssignedMember(Base):
+    __tablename__ = "assigned_members"
+
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    member_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("project_members.id")
+    )
+    task_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE")
+    )
+    effort_share: Mapped[float] = mapped_column(default=0.0, nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=True,
+    )
+
+    # Relationships
+    task: Mapped["Task"] = relationship(
+        "Task",
+        back_populates="assigned_members",
+        foreign_keys=[task_id],
+    )
+    members: Mapped["ProjectMember"] = relationship(
+        "ProjectMember",
+        back_populates="assigned_members",
+        foreign_keys=[member_id],
+    )
+
+
+
+=== backend/app/modules/assigned_members/services.py ===
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.modules.assigned_members.model import AssignedMember
+from app.modules.assigned_members.repo import AssignedMemberRepo
+from .schema import AssignedMemberCreate, AssignedMemberResponse, AssignedMemberUpdate
+from uuid import UUID
+from typing import Sequence
+
+
+class AssignedMemberService:
+    @staticmethod
+    async def get_one_assigned_member(db: AsyncSession, assigned_member_id):
+        repo = AssignedMemberRepo(db)
+        return await repo.get_by_id(assigned_member_id)
+
+    @staticmethod
+    async def get_all_assigned_members(db: AsyncSession):
+        repo = AssignedMemberRepo(db)
+        return await repo.get_all()
+
+    @staticmethod
+    async def create_assigned_member(
+        db: AsyncSession, assigned_member: AssignedMemberCreate
+    ):
+        repo = AssignedMemberRepo(db)
+
+        # get task
+        member = await repo.create(assigned_member)
+        # calculate the member workload
+        from app.modules.member_snapshots.services import MemberSnapshotService
+
+        await MemberSnapshotService.calculate_member_workload(db, member.member_id)
+
+        return member
+
+    @staticmethod
+    async def update_assigned_member(
+        db: AsyncSession,
+        db_item: AssignedMemberUpdate,
+        assigned_member: AssignedMemberUpdate,
+    ):
+        repo = AssignedMemberRepo(db)
+        return await repo.update(db_item, assigned_member)
+
+    @staticmethod
+    async def delete_assigned_member(db: AsyncSession, db_item: AssignedMember):
+        repo = AssignedMemberRepo(db)
+        return await repo.delete(db_item)
+
+    @staticmethod
+    async def get_task_members(db, task_id: UUID):
+        repo = AssignedMemberRepo(db)
+
+        results = await repo.get_task_members(task_id)
+
+        users = [result.members.user for result in results]
+        return users
+
+    @staticmethod
+    async def batch_create_members(
+        db: AsyncSession, members: list[AssignedMemberCreate]
+    ):
+        repo = AssignedMemberRepo(db)
+
+        for member in members:
+            response = await repo.create(member)
+
+            result = []
+            result.append(response.users)
+            return result
+
+    @staticmethod
+    async def get_members(
+        db: AsyncSession, member_id: UUID
+    ) -> list[AssignedMemberResponse]:
+        repo = AssignedMemberRepo(db)
+        return await repo.get_members(member_id)
+
+    @staticmethod
+    async def get_members_with_task(db: AsyncSession, member_ids: Sequence[UUID]):
+        repo = AssignedMemberRepo(db)
+
+        return await repo.get_members_with_task(member_ids)
+
+
+

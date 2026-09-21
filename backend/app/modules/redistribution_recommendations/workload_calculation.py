@@ -78,9 +78,10 @@ def calculate_effective_points(task: Task) -> float:
     Rules:
     - Not Started: complexity_points * urgency_multiplier
     - In Progress: complexity_points * 1.0 (no urgency scaling)
+    - Submitted: excluded (returns 0)
     - Completed: excluded (returns 0)
     """
-    if task.status == TaskStatus.COMPLETED:
+    if task.status in (TaskStatus.COMPLETED, TaskStatus.SUBMITTED):
         return 0.0
 
     complexity_points = complexity_to_points(task.complexity)
@@ -123,8 +124,8 @@ async def calculate_member_workload_totals(
     total_effective_points = 0.0
 
     for task in tasks:
-        # Skip completed tasks for both totals (as per spec)
-        if task.status == TaskStatus.COMPLETED:
+        # Skip completed and submitted tasks for both totals (as per spec)
+        if task.status in (TaskStatus.COMPLETED, TaskStatus.SUBMITTED):
             continue
 
         complexity_points = complexity_to_points(task.complexity)

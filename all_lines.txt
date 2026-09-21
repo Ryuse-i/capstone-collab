@@ -1,0 +1,51 @@
+backend/app/modules/redistribution_recommendations/model.py
+backend/app/modules/redistribution_recommendations/redistribution_logic.py
+backend/app/modules/redistribution_recommendations/repo.py
+backend/app/modules/redistribution_recommendations/routes.py
+backend/app/modules/redistribution_recommendations/schema.py
+backend/app/modules/redistribution_recommendations/services.py
+backend/app/modules/redistribution_recommendations/workload_calculation.py
+backend/app/modules/tasks/model.py - contains Task model used for workload calculation and redistribution
+backend/app/modules/tasks/enums.py - contains TaskStatus and Complexity enums used in workload calculation
+backend/app/modules/tasks/services.py - contains TaskService used in workload_calculation and redistribution_logic
+backend/app/modules/project_members/model.py - contains ProjectMember and Skills models used for eligibility
+backend/app/modules/project_members/services.py - contains ProjectMemberService used in redistribution logic
+backend/app/modules/projects/model.py - contains Project model used in workload calculation
+backend/app/modules/projects/services.py - contains ProjectService used in redistribution logic
+backend/app/modules/assigned_members.model.py - contains AssignedMember model used in workload calculation
+backend/app/modules/assigned_members.services.py - contains AssignedMemberService used in redistribution logic and workload calculation
+backend/app/modules/member_snapshots.model.py - contains MemberSnapshot and MemberStatus used extensively in workload calculation and redistribution
+backend/app/modules/member_snapshots.schema.py - contains schemas for member snapshots (used in API responses for workload data)
+backend/app/modules/member_snapshots.services.py - contains check_workload_status function used for workload determination
+backend/app/core/model_registry.py - registers the redistribution_recommendations model
+backend/app/api/api.py - imports and includes the redistribution_recommendations routes
+frontend/src/hooks/useRedistributionRecommendation.ts
+frontend/src/pages/student/Workload.tsx
+frontend/src/pages/student/Team.tsx
+frontend/src/types/member_snapshot.ts
+frontend/src/types/project_snapshot.ts
+frontend/src/pages/LandingPage.tsx - mentions workload balance engine and smart task redistribution
+frontend/src/pages/instructor/ProjectView.tsx - displays workload balance metrics from project snapshots
+frontend/src/pages/student/ProjectTask.tsx - references workload balance accuracy
+frontend/src/routes/StudentRoutes.tsx - routes to the Workload page
+frontend/src/components/app-sidebar.tsx - contains navigation link to Workload page
+frontend/src/components/notifications/notificationFixtures.ts - contains mock notification data for workload redistribution
+frontend/src/components/user/AddTaskDialog.tsx - contains skill fields (primary_skill, secondary_skills) used for workload redistribution eligibility
+frontend/src/components/user/EditTaskDialog.tsx - contains skill fields (primary_skill, secondary_skills) used for workload redistribution eligibility
+frontend/src/components/user/MyTaskDialog.tsx - contains skill fields (primary_skill, secondary_skills) used for workload redistribution eligibility
+frontend/src/components/user/TaskGantt.tsx - displays tasks with skill information used in workload calculations
+frontend/src/components/user/ViewTaskDialog.tsx - displays tasks with skill information used in workload calculations
+backend/test/unit/test_workload_calculation.py
+backend/test/integration/test_redistribution_recommendations.py
+backend/app/modules/redistribution_recommendations/test_redistribution_logic.py
+backend/app/modules/redistribution_recommendations/test_service.py
+backend/test/integration/test_member_snapshots.py
+backend/test/integration/test_project_snapshots.py
+backend/test/integration/test_project_members.py
+backend/test/integration/test_projects.py
+test_capacity_multiplier_persistence.py
+test_project_workload.py
+test_project_workload_simple.py
+backend/migrations/versions/f52b925590ab_update_member_snapshot.py
+backend/migrations/versions/52d8277c27f2_initial_migration.py
+backend/migrations/versions/a10944a318f0_add_workload_related_fields.py
