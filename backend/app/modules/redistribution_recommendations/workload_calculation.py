@@ -33,7 +33,7 @@ import logging
 
 from app.modules.tasks.model import Task
 from app.modules.tasks.enums import Status as TaskStatus, Complexity
-from app.modules.project_members.model import ProjectMember
+from app.modules.project_members.model import ProjectMember, ProjectRole
 from app.modules.member_snapshots.model import MemberSnapshot, MemberStatus
 from app.modules.assigned_members.model import AssignedMember
 from app.modules.projects.model import Project
@@ -135,6 +135,21 @@ def calculate_effective_points(task: Task) -> float:
 # =========================================================================== #
 # 2. Member-level calculations
 # =========================================================================== #
+
+# Only LEADER and MEMBER (including project_role=None which defaults to MEMBER)
+# count toward the project baseline for workload calculations.
+WORKING_ROLES = (ProjectRole.LEADER, ProjectRole.MEMBER)
+
+
+def is_working_member(member: ProjectMember) -> bool:
+    """
+    True if this member's workload counts toward the project baseline.
+
+    Only LEADER and MEMBER do task work. ADVISOR and INSTRUCTOR are excluded so
+    their 0 points don't drag the median down. project_role None means MEMBER.
+    """
+    return member.project_role is None or member.project_role in WORKING_ROLES
+
 
 async def get_member_tasks(db: AsyncSession, member_id: UUID) -> List[Task]:
     """
@@ -271,11 +286,13 @@ async def recompute_workload_state(
 
     Steps:
     1. Compute each member's total_points and total_effective_points.
-    2. baseline_points = MEDIAN of all members' total_effective_points.
+    2. baseline_points = MEDIAN of WORKING members' total_effective_points.
        (Median, not mean, so one very overloaded member doesn't drag the
        baseline up and hide themselves.)
     3. expected_load = baseline_points * the member's capacity_multiplier.
     4. Determine is_overloaded and workload_status per member.
+       Non-working members (ADVISOR/INSTRUCTOR) always get is_overloaded=False
+       and workload_status=NORMAL.
 
     This function only READS; it doesn't write to the database. Use
     create_or_update_member_snapshots to persist the result.
@@ -285,9 +302,9 @@ async def recompute_workload_state(
         is_overloaded, capacity_multiplier, workload_status
     Returns [] when the project has no members.
 
-    Known issue (bug 8): the median currently includes ADVISOR and INSTRUCTOR
-    members, who always have 0 points, which pulls the baseline down. Only
-    LEADER and MEMBER (project_role None = MEMBER) should count.
+    The median baseline now excludes ADVISOR and INSTRUCTOR members, who have ~0 points.
+    Non-working members still get a row in results but are never flagged overloaded or
+    underutilized.
     """
     members = await ProjectMemberService.get_all_members_by_project(db, project_id)
 
@@ -299,7 +316,8 @@ async def recompute_workload_state(
     project = await ProjectService.get_one_project(db, project_id)
     base_days_per_point = project.base_days_per_point if project else 1
 
-    # Step 1: per-member totals
+    # Step 1: per-member totals (compute for ALL members, but only working members
+    # contribute to the baseline)
     member_data = []
     effective_points_list = []
 
@@ -308,15 +326,17 @@ async def recompute_workload_state(
             db, member.id
         )
 
+        is_working = is_working_member(member)
         member_data.append({
             "member_id": member.id,
             "total_points": total_points,
             "total_effective_points": total_effective_points,
+            "is_working": is_working,
         })
-        effective_points_list.append(total_effective_points)
+        if is_working:
+            effective_points_list.append(total_effective_points)
 
-    # Step 2: baseline. statistics.median sorts internally and averages the two
-    # middle values for an even count, so no manual sorting is needed.
+    # Step 2: baseline (median of working members only)
     baseline_points = median(effective_points_list) if effective_points_list else 0.0
 
     # Steps 3-4: expected load and status per member
@@ -336,16 +356,27 @@ async def recompute_workload_state(
         expected_load = baseline_points * capacity_multiplier
 
         # Overload is judged on EFFECTIVE points (urgency-weighted), never raw.
+        # Non-working members (ADVISOR/INSTRUCTOR) are never flagged.
+        if data["is_working"]:
+            is_overloaded = data["total_effective_points"] > expected_load
+            workload_status = determine_workload_status(
+                data["total_effective_points"], expected_load
+            )
+        else:
+            # Non-working members always get a row but are never flagged: they have no
+            # workload expectation, and a 0-point advisor would otherwise show as
+            # UNDERUTILIZED whenever the baseline is above 0.
+            is_overloaded = False
+            workload_status = MemberStatus.NORMAL
+
         results.append({
             "member_id": data["member_id"],
             "total_points": data["total_points"],
             "total_effective_points": data["total_effective_points"],
             "expected_load": expected_load,
-            "is_overloaded": data["total_effective_points"] > expected_load,
+            "is_overloaded": is_overloaded,
             "capacity_multiplier": capacity_multiplier,
-            "workload_status": determine_workload_status(
-                data["total_effective_points"], expected_load
-            ),
+            "workload_status": workload_status,
         })
 
     return results

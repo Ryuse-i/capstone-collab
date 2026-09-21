@@ -15,7 +15,8 @@ from app.modules.redistribution_recommendations.workload_calculation import (
     complexity_to_points,
     calculate_urgency_multiplier,
     calculate_effective_points,
-    get_member_tasks
+    get_member_tasks,
+    is_working_member
 )
 from app.modules.tasks.model import Task
 from app.modules.tasks.enums import Status as TaskStatus
@@ -123,10 +124,10 @@ async def generate_redistribution_options(
 
     # Step 5: Get all members in the project (for eligibility checking)
     all_members = await ProjectMemberService.get_all_members_by_project(db, project_id)
-    # Exclude the overloaded member from potential recipients
+    # Exclude the overloaded member from potential recipients, and only consider working members
     potential_recipients = [
         m for m in all_members
-        if m.id != overloaded_member_id
+        if m.id != overloaded_member_id and is_working_member(m)
     ]
 
     # We'll collect all options here

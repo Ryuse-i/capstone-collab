@@ -18,7 +18,7 @@ from app.modules.redistribution_recommendations.redistribution_logic import (
 
 # Import enums for testing
 from app.modules.tasks.enums import Status as TaskStatus, Priority, Category, Complexity
-from app.modules.project_members.model import Skills
+from app.modules.project_members.model import Skills, ProjectRole
 from app.modules.tasks.model import Task
 from app.modules.project_members.model import ProjectMember
 
@@ -219,9 +219,11 @@ class TestRedistributionLogic:
                     overloaded_member = MagicMock(spec=ProjectMember)
                     overloaded_member.id = overloaded_member_id
                     overloaded_member.skills = [Skills.BACKEND_DEVELOPMENT]  # Single skill as a list
+                    overloaded_member.project_role = ProjectRole.LEADER  # Make it a working member
                     recipient_member = MagicMock(spec=ProjectMember)
                     recipient_member.id = recipient_member_id
                     recipient_member.skills = [Skills.BACKEND_DEVELOPMENT]  # Same primary skill
+                    recipient_member.project_role = ProjectRole.MEMBER  # Make it a working member
                     mock_get_members.return_value = [overloaded_member, recipient_member]
 
                     # Mock _get_project_base_days_per_point
@@ -315,6 +317,10 @@ class TestRedistributionLogic:
                             assert options[0]["recipient_member_id"] is None
                             assert options[0]["impact"] is None
                             assert "extension_days" in options[0]["details"]
+
+
+    
+
 
 
 if __name__ == "__main__":

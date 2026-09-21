@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from statistics import median
-import logging
+import logging 
 
 from app.modules.project_snapshots.schema import (
     ProjectSnapshotUpsert,
@@ -14,7 +14,6 @@ from .schema import MemberSnapshotUpsert
 from app.modules.tasks.enums import Status
 
 logger = logging.getLogger(__name__)
-
 
 def round_half_up_int(value):
     return int(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
@@ -54,9 +53,6 @@ class MemberSnapshotService:
     ):
         from app.modules.project_members.services import ProjectMemberService
         from app.modules.projects.services import ProjectService
-        from app.modules.redistribution_recommendations.workload_calculation import (
-            calculate_member_workload_totals,
-        )
 
         repo = MemberSnapshotRepo(db)
 
@@ -83,25 +79,11 @@ class MemberSnapshotService:
         if project_members is None:
             return None
 
-        # Compute each member's CURRENT effective points fresh, not from
-        # possibly-missing/stale persisted snapshots — spec 2.3 requires the
-        # baseline to reflect all members' current state.
-        member_points = []
-        for proj_member in project_members:
-            if proj_member.id == member_id:
-                # Already freshly computed by the caller — don't redo the work.
-                member_points.append(member_workload_points)
-            else:
-                _, eff_points = await calculate_member_workload_totals(db, proj_member.id)
-                member_points.append(
-                    Decimal(str(eff_points)).quantize(
-                        Decimal("0.01"), rounding=ROUND_HALF_UP
-                    )
-                )
-
-        # Guard: no members with any computable workload — nothing to compare against.
-        if not member_points:
-            return MemberStatus.NORMAL
+        member_points = [
+            member.snapshot.total_effective_points
+            for member in project_members
+            if member.snapshot is not None
+        ]
 
         capacity_multiplier = (
             member_snapshot.capacity_multiplier if member_snapshot is not None else 1.0
@@ -153,7 +135,6 @@ class MemberSnapshotService:
 
         project_id = project.id
         base_days_per_point = project.base_days_per_point if project else 1
-        #check
 
         # Validate deadlines for all tasks (preserving existing validation logic)
         for task in all_tasks:
@@ -163,10 +144,13 @@ class MemberSnapshotService:
                 logger.warning(f"Task deadline validation failed for task {task.id}: {msg}")
 
         # Calculate workload totals for this member using our new centralized logic
-        _, total_effective_points = await calculate_member_workload_totals(db, member_id)
+        total_points, total_effective_points = await calculate_member_workload_totals(db, member_id)
 
         # Convert to Decimal for consistency with existing code
         total_effective_points_decimal = Decimal(str(total_effective_points)).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        total_points_decimal = Decimal(str(total_points)).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
 
@@ -185,14 +169,9 @@ class MemberSnapshotService:
         difference = total_effective_points_decimal - previous_member_points
 
         # Guard: project may not have a snapshot yet (first run for this project)
-        latest_project_snapshot = (
-            sorted(project.snapshots, key=lambda s: s.snapshot_date, reverse=True)[0]
-            if project.snapshots
-            else None
-        )
         previous_project_total = (
-            latest_project_snapshot.total_workload_points
-            if latest_project_snapshot is not None
+            project.snapshot.total_workload_points
+            if project.snapshot is not None
             else Decimal("0")
         )
         project_workload_points = previous_project_total + difference

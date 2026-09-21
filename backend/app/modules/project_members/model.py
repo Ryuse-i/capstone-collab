@@ -1,12 +1,10 @@
-import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, Date, text
-from sqlalchemy import Enum as SAENUM
-from sqlalchemy.dialects.postgresql import ARRAY
-from app.modules.tasks.enums import Priority, Status, Complexity, Category
+from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
+import enum
+from sqlalchemy import Enum as SAEnum
 from typing import TYPE_CHECKING
 
 
@@ -74,8 +72,16 @@ class ProjectMember(Base):
         foreign_keys=[user_id],
     )
 
+    @property
+    def projects(self) -> "Project | None":
+        return self.project
+
+    @property
+    def users(self) -> "User | None":
+        return self.user
+
     project_role: Mapped[ProjectRole] = mapped_column(
-        SAENUM(
+        SAEnum(
             ProjectRole,
             name="projectrole",
             values_callable=lambda obj: [e.value for e in obj],
@@ -84,17 +90,13 @@ class ProjectMember(Base):
         nullable=True,
     )
 
-    skills: Mapped[list[Skills]] = mapped_column(
-        ARRAY(
-            SAENUM(
-                Skills,
-                name="member_skills",
-                values_callable=lambda obj: [e.value for e in obj],
-            )
+    skills: Mapped[Skills] = mapped_column(
+        SAEnum(
+            Skills,
+            name="member_skills",
+            values_callable=lambda obj: [e.value for e in obj],
         ),
-        nullable=False,
-        default=list,
-        server_default=text("'{}'::member_skills[]"),
+        nullable=True,
     )
 
     created_at: Mapped[datetime | None] = mapped_column(

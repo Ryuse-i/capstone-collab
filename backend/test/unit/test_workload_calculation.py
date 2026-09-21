@@ -22,20 +22,17 @@ from app.modules.redistribution_recommendations.workload_calculation import (
     calculate_member_workload_totals,
     recompute_workload_state,
     validate_task_deadline,
+    is_working_member,
 )
 from app.modules.tasks.model import Task
 from app.modules.tasks.enums import Status as TaskStatus, Complexity
 from app.modules.project_members.model import ProjectMember
 from app.modules.projects.model import Project
+from app.modules.member_snapshots.model import MemberStatus
 
 MODULE = "app.modules.redistribution_recommendations.workload_calculation"
 
-# TODO: replace these with your real project-role enum members once you
-# confirm the enum (e.g. ProjectRole.LEADER). Only used by the bug-8 test.
-ROLE_LEADER = "LEADER"
-ROLE_MEMBER = "MEMBER"
-ROLE_ADVISOR = "ADVISOR"
-ROLE_INSTRUCTOR = "INSTRUCTOR"
+from app.modules.project_members.model import ProjectRole
 
 
 # --------------------------------------------------------------------------- #
@@ -352,14 +349,13 @@ class TestRecomputeWorkloadState:
     # This test FAILS on current code (median includes advisors/instructors).
     # It is marked xfail(strict=True) so the suite stays green now and turns red
     # the moment bug 8 is fixed. When that happens, delete the marker.
-    @pytest.mark.xfail(strict=True, reason="bug 8: median still includes ADVISOR/INSTRUCTOR")
     @pytest.mark.asyncio
     async def test_median_excludes_advisor_and_instructor(self, monkeypatch):
-        leader = make_member(ROLE_LEADER)
-        member = make_member(ROLE_MEMBER)
+        leader = make_member(ProjectRole.LEADER)
+        member = make_member(ProjectRole.MEMBER)
         no_role = make_member(None)  # None is treated as MEMBER
-        instructor = make_member(ROLE_INSTRUCTOR)
-        advisor = make_member(ROLE_ADVISOR)
+        instructor = make_member(ProjectRole.INSTRUCTOR)
+        advisor = make_member(ProjectRole.ADVISOR)
         members = [leader, member, no_role, instructor, advisor]
 
         totals_by_id = {
@@ -381,6 +377,64 @@ class TestRecomputeWorkloadState:
         assert r[leader.id]["is_overloaded"] is False
         assert r[member.id]["is_overloaded"] is False
         assert r[no_role.id]["is_overloaded"] is True
+
+        # Non-working members should never be flagged
+        for non_worker in (instructor, advisor):
+            assert r[non_worker.id]["is_overloaded"] is False
+            assert r[non_worker.id]["workload_status"] == MemberStatus.NORMAL
+
+    @pytest.mark.asyncio
+    async def test_non_working_member_with_points_does_not_shift_median(self, monkeypatch):
+        # 3 working members with effective 4, 6, 8
+        leader = make_member(ProjectRole.LEADER)
+        member = make_member(ProjectRole.MEMBER)
+        no_role = make_member(None)  # None is treated as MEMBER
+        # Non-working member with high points (should not affect median)
+        instructor = make_member(ProjectRole.INSTRUCTOR)
+        members = [leader, member, no_role, instructor]
+
+        totals_by_id = {
+            leader.id: (3.0, 4.0),
+            member.id: (5.0, 6.0),
+            no_role.id: (7.0, 8.0),
+            instructor.id: (50.0, 60.0),  # High points but non-working
+        }
+        patch_recompute(monkeypatch, members, totals_by_id)
+
+        results = await recompute_workload_state(AsyncMock(), uuid4())
+        r = by_member_id(results)
+
+        # Median of workers only [4, 6, 8] = 6
+        for worker in (leader, member, no_role):
+            assert r[worker.id]["expected_load"] == 6.0
+        # Non-working member gets row but not flagged
+        assert r[instructor.id]["is_overloaded"] is False
+        assert r[instructor.id]["workload_status"] == MemberStatus.NORMAL
+
+    @pytest.mark.asyncio
+    async def test_only_non_working_members(self, monkeypatch):
+        # Two ADVISORs with (0.0, 0.0)
+        advisor1 = make_member(ProjectRole.ADVISOR)
+        advisor2 = make_member(ProjectRole.ADVISOR)
+        members = [advisor1, advisor2]
+
+        totals_by_id = {
+            advisor1.id: (0.0, 0.0),
+            advisor2.id: (0.0, 0.0),
+        }
+        patch_recompute(monkeypatch, members, totals_by_id)
+
+        results = await recompute_workload_state(AsyncMock(), uuid4())
+        assert len(results) == 2
+        r = by_member_id(results)
+        # Both should have expected_load 0.0 (median of empty list = 0.0)
+        assert r[advisor1.id]["expected_load"] == 0.0
+        assert r[advisor2.id]["expected_load"] == 0.0
+        # Both should not be overloaded and have NORMAL status
+        assert r[advisor1.id]["is_overloaded"] is False
+        assert r[advisor2.id]["is_overloaded"] is False
+        assert r[advisor1.id]["workload_status"] == MemberStatus.NORMAL
+        assert r[advisor2.id]["workload_status"] == MemberStatus.NORMAL
 
 
 # --------------------------------------------------------------------------- #
@@ -449,6 +503,19 @@ class TestDeadlineValidation:
 
         assert is_valid is True
         assert msg is None
+
+
+class TestIsWorkingMember:
+    @pytest.mark.parametrize("role, expected", [
+        (ProjectRole.LEADER, True),
+        (ProjectRole.MEMBER, True),
+        (None, True),  # None is treated as MEMBER
+        (ProjectRole.ADVISOR, False),
+        (ProjectRole.INSTRUCTOR, False),
+    ])
+    def test_is_working_member(self, role, expected):
+        member = make_member(role)
+        assert is_working_member(member) is expected
 
 
 if __name__ == "__main__":
