@@ -143,6 +143,10 @@ export function useCreateTask() {
       queryClient.invalidateQueries({
         queryKey: taskKeys.list(),
       });
+      // Invalidate assigned members queries for the project
+      queryClient.invalidateQueries({
+        queryKey: ["tasks", "assignedMembers", result.project_id],
+      });
     },
   });
 }
@@ -157,6 +161,13 @@ export function useUpdateTask() {
       queryClient.invalidateQueries({
         queryKey: taskKeys.detail(variables.id),
       });
+      // Need to get the project_id to invalidate assigned members query
+      // Since we don't have it in the variables, we'll rely on list invalidation
+      // which will trigger a refetch, and the assigned members query will
+      // also be invalidated through the list invalidation in the query key structure
+      queryClient.invalidateQueries({
+        queryKey: ["tasks", "assignedMembers"],
+      });
     },
   });
 }
@@ -168,6 +179,10 @@ export function useDeleteTask() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: taskKeys.list() });
       queryClient.removeQueries({ queryKey: taskKeys.detail(id) });
+      // Invalidate assigned members queries
+      queryClient.invalidateQueries({
+        queryKey: ["tasks", "assignedMembers"],
+      });
     },
   });
 }
