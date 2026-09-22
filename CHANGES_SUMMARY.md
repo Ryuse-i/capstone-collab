@@ -1,71 +1,56 @@
-# Summary of Changes Made to Fix Workload Recommendation System
+# Changes Made to Fix Project Snapshot Unassigned Tasks Tracking
 
-## Problem Identified
-The `_is_eligible_for_task` function in `/backend/app/modules/redistribution_recommendations/redistribution_logic.py` had a structural bug where it treated `member.skills` as a single Skills enum value, while `task.secondary_skills` was already a list. This made eligibility impossible for any task containing secondary skills.
+## Problem
+The `unassigned_tasks` field on ProjectSnapshot was maintained as an incremental counter that drifted from reality because:
+1. It was only updated on task create/delete (not member assignment changes)
+2. The incremental approach was inaccurate for tasks that get assigned members via separate API calls
+3. No logic existed in assigned_members service to update snapshot on member assignment/unassignment
 
-## Root Cause
-- `ProjectMember.skills` was defined as a single `Skills` enum in the database model
-- The eligibility logic assumed `member.skills` was a single value and used equality checks
-- For tasks with secondary skills, this always failed because a member's single skill (the primary skill) couldn't match the secondary skills
+## Solution
+Replaced incremental counter with recomputed count that queries actual state:
+- Count of Task rows with no related AssignedMember rows for a project
+- Updated whenever task/assignment state changes that could affect count
 
-## Solution Implemented
-Changed `ProjectMember.skills` from a single Skills enum to a list of Skills (array of enums) to match the existing pattern used by `Task.secondary_skills`.
+## Files Changed
 
-## Files Modified
+### Backend
+1. **`backend/app/modules/project_snapshots/repo.py`**
+   - Added `count_unassigned_tasks(self, project_id: UUID) -> int` method
+   - SQL: `SELECT COUNT(Task.id) FROM Task LEFT JOIN AssignedMember ON Task.id = AssignedMember.task_id WHERE Task.project_id = :project_id AND AssignedMember.id IS NULL`
 
-### 1. Database Model
-**File:** `backend/app/modules/project_members/model.py`
-- Changed `skills` field from `Mapped[Skills]` to `Mapped[list[Skills]]`
-- Changed column type from `SAEnum` to `ARRAY(SAEnum)`
-- Set nullable=False and default=list
-- Added proper imports (enum, ARRAY)
+2. **`backend/app/modules/project_snapshots/services.py`**
+   - Added `sync_unassigned_tasks(db: AsyncSession, project_id: UUID)` static method
+   - Calls repo method and upserts today's snapshot with computed count
 
-### 2. Database Migration
-**File:** `backend/migrations/versions/fd2f444f6e50_change_member_skills_to_list_of_skills.py`
-- Changed `project_members.skills` column from single enum to array of enums
-- Preserved existing data using `postgresql_using='ARRAY[skills]'`
-- Handled table drops/indexes that were detected during autogeneration
-- Added proper downgrade logic to handle NULL values and array-to-enum conversion
+3. **`backend/app/modules/tasks/services.py`**
+   - `create_task()`: Removed manual +1 logic, added `sync_unassigned_tasks()` call after creation
+   - `delete_task()`: Removed manual -1 logic, added `sync_unassigned_tasks()` call after deletion
 
-### 3. Pydantic Schemas
-**File:** `backend/app/modules/project_members/schema.py`
-- Added `skills: List[Skills]` to `ProjectMemberResponse`
-- Updated all relevant schema classes that inherit from `ProjectMemberResponse`
-- Added import for List and Skills
+4. **`backend/app/modules/assigned_members/services.py`**
+   - `create_assigned_member()`: Added `sync_unassigned_tasks()` call after creation (fetch project_id via member.task_id)
+   - `delete_assigned_member()`: Added `sync_unassigned_tasks()` call after deletion (fetch project_id via db_item.task_id)
+   - Did NOT modify `batch_create_members()`, `get_members()`, `get_members_with_task()`, `update_assigned_member()` (as instructed)
 
-### 4. Redistribution Logic
-**File:** `backend/app/modules/redistribution_recommendations/redistribution_logic.py`
-- Updated `_is_eligible_for_task` function to handle member.skills as a list:
-  - Convert member.skills to a set: `member_skill_set = set(member.skills) if member.skills else set()`
-  - Check primary skill: `if task.primary_skill not in member_skill_set: return False`
-  - Count matching secondary skills using the member's complete skill set
-- Updated comments to reflect the change
+### Frontend
+1. **`frontend/src/hooks/useAssignedMember.ts`**
+   - Added import: `import { projectKeys } from "./useProject";`
+   - Updated `useCreateAssignedMember()`: Accept projectId in variables, invalidate `projectKeys.detailSnapshot(projectId)` on success
+   - Updated `useDeleteAssignedMember()`: Accept projectId in variables, invalidate `projectKeys.detailSnapshot(projectId)` on success
 
-### 5. Test Updates
-**File:** `backend/app/modules/redistribution_recommendations/test_redistribution_logic.py`
-- Updated all test cases to use lists for member.skills:
-  - `member.skills = [Skills.BACKEND_DEVELOPMENT]` instead of `member.skills = Skills.BACKEND_DEVELOPMENT`
-- Maintained all existing test logic and assertions
+2. **`frontend/src/components/user/AddTaskDialog.tsx`**
+   - Added import: `import { projectKeys } from "@/hooks/useProject";`
+   - Pass `projectId` in `createAssignedMemberMutation.mutateAsync()` variables
+   - Invalidate `projectKeys.detailSnapshot(projectId)` after all assignments complete
+
+3. **`frontend/src/components/user/EditTaskDialog.tsx`**
+   - Added import: `import { projectKeys } from "@/hooks/useProject";`
+   - Pass `projectId` in both `createAssignedMember` and `deleteAssignedMember` mutations
+   - Invalidate `projectKeys.detailSnapshot(projectId)` after assignment changes complete
 
 ## Verification
-- All redistribution logic tests pass (7/7)
-- All workload calculation tests pass (30/30)
-- The eligibility logic now correctly handles:
-  - Members with no skills (empty list)
-  - Members with single skill
-  - Members with multiple skills
-  - Primary skill verification
-  - Secondary skill matching with 75% threshold
-  - Edge cases like no secondary skills, NULL values, etc.
-
-## Backward Compatibility
-- Migration preserves existing data by converting single enum values to single-element arrays
-- Default value is an empty list, ensuring backward compatibility for new records
-- All existing functionality remains intact
-- Follows existing patterns in the codebase (Task.secondary_skills already uses lists)
-
-## Impact
-- Fixes the core eligibility bug in workload redistribution
-- Allows members to have multiple skills, making the system more realistic
-- Maintains data integrity through proper migration
-- Enables future enhancements to the skills system
+- ✅ All Python files compile without syntax errors
+- ✅ Only modified specified files/methods
+- ✅ Did not modify migrations, models, schemas, or prohibited methods
+- ✅ Maintained existing code patterns and conventions
+- ✅ Frontend properly invalidates snapshot queries for immediate UI updates
+- ✅ Solution eliminates drift by recomputing count from actual state

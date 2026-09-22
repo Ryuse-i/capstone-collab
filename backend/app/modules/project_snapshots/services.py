@@ -65,3 +65,10 @@ class ProjectSnapshotService:
         # update the total workload
         # Check the median of all members total workload = median_points
         # call member workload calculation
+
+    @staticmethod
+    async def sync_unassigned_tasks(db: AsyncSession, project_id: UUID):
+        repo = ProjectSnapshotRepo(db)
+        count = await repo.count_unassigned_tasks(project_id)
+        snapshot = ProjectSnapshotUpsert(unassigned_tasks=count)
+        return await repo.upsert_today_snapshot(project_id, snapshot)

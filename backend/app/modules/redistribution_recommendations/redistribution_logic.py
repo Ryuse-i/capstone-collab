@@ -94,17 +94,13 @@ async def generate_redistribution_options(
 
     # Step 2: Identify the single most overloaded member
     # We define "most overloaded" as the member with the highest amount over expected_load
-    most_overloaded_member = None
-    max_overload = -float('inf')
-    for member_data in workload_data:
-        overload_amount = member_data["total_effective_points"] - member_data["expected_load"]
-        if overload_amount > max_overload:
-            max_overload = overload_amount
-            most_overloaded_member = member_data
-
-    if most_overloaded_member is None or max_overload <= 0:
-        # No overloaded member, nothing to do
+    overloaded_rows = [m for m in workload_data if m["is_overloaded"]]
+    if not overloaded_rows:
         return []
+    most_overloaded_member = max(
+        overloaded_rows,
+        key=lambda m: m["total_effective_points"] - m["expected_load"],
+    )
 
     overloaded_member_id = most_overloaded_member["member_id"]
     overloaded_member_total_effective = most_overloaded_member["total_effective_points"]

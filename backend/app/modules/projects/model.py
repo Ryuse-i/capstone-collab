@@ -39,6 +39,7 @@ class Project(Base):
     base_days_per_point: Mapped[int] = mapped_column(Integer, default=1)
     # Number of times redistribution mechanics can be triggered before flagging
     escalation_threshold: Mapped[int] = mapped_column(Integer, default=0)
+    
 
     snapshots: Mapped[list["ProjectSnapshot"]] = relationship(
         "ProjectSnapshot",

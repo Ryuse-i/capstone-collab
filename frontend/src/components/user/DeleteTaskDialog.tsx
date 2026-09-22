@@ -45,7 +45,7 @@ export default function DeleteTaskDialog({
       // taskKeys.detail(id), but the project-scoped list Task.tsx reads
       // from (useGetAllProjectTask) isn't covered by that.
       queryClient.invalidateQueries({
-        queryKey: taskKeys.byProject(projectId),
+        queryKey: taskKeys.listProject(projectId),
       });
 
       onDeleted?.();

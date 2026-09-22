@@ -162,14 +162,16 @@ class TestRedistributionLogic:
                 {
                     "member_id": uuid4(),
                     "total_effective_points": 5.0,
-                    "expected_load": 10.0,  # Underloaded
-                    "capacity_multiplier": 1.0
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False
                 },
                 {
                     "member_id": uuid4(),
                     "total_effective_points": 8.0,
-                    "expected_load": 10.0,  # Underloaded
-                    "capacity_multiplier": 1.0
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False
                 }
             ]
             options = await generate_redistribution_options(AsyncMock(), uuid4())
@@ -186,15 +188,17 @@ class TestRedistributionLogic:
             mock_recompute.return_value = [
                 {
                     "member_id": overloaded_member_id,
-                    "total_effective_points": 20.0,  # Overloaded
+                    "total_effective_points": 20.0,
                     "expected_load": 10.0,
-                    "capacity_multiplier": 1.0
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": True
                 },
                 {
                     "member_id": recipient_member_id,
-                    "total_effective_points": 5.0,   # Underloaded
+                    "total_effective_points": 5.0,
                     "expected_load": 10.0,
-                    "capacity_multiplier": 1.0
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False
                 }
             ]
 
@@ -270,7 +274,8 @@ class TestRedistributionLogic:
                     "member_id": overloaded_member_id,
                     "total_effective_points": 20.0,
                     "expected_load": 10.0,
-                    "capacity_multiplier": 1.0
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": True
                 }
             ]
 
@@ -319,7 +324,261 @@ class TestRedistributionLogic:
                             assert "extension_days" in options[0]["details"]
 
 
-    
+    @pytest.mark.asyncio
+    async def test_advisor_only_skilled_member_generates_move_deadline(self):
+        """Test that when only an ADVISOR has the required skills, Move Deadline is generated."""
+        advisor_id = uuid4()
+
+        # Mock recompute_workload_state to return an overloaded advisor and other non-working members
+        with patch('app.modules.redistribution_recommendations.redistribution_logic.recompute_workload_state') as mock_recompute:
+            mock_recompute.return_value = [
+                {
+                    "member_id": advisor_id,
+                    "total_effective_points": 15.0,
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": True
+                },
+                {
+                    "member_id": uuid4(),
+                    "total_effective_points": 5.0,
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False
+                }
+            ]
+
+            # Create a task that requires specific skills
+            task_mock = MagicMock(spec=Task)
+            task_mock.id = uuid4()
+            task_mock.name = "Skilled Task"
+            task_mock.project_id = uuid4()
+            task_mock.status = TaskStatus.NOT_STARTED
+            task_mock.complexity = Complexity.MEDIUM
+            task_mock.deadline = None
+            task_mock.primary_skill = Skills.BACKEND_DEVELOPMENT
+            task_mock.secondary_skills = []  # No secondary skills for simplicity
+
+            # Mock get_member_tasks
+            with patch('app.modules.redistribution_recommendations.redistribution_logic.get_member_tasks') as mock_get_tasks:
+                mock_get_tasks.return_value = [task_mock]
+
+                # Mock ProjectMemberService.get_all_members_by_project to return:
+                # 1. Advisor with the required skill (but advisor is non-working)
+                # 2. Other members without the required skill
+                with patch('app.modules.redistribution_recommendations.redistribution_logic.ProjectMemberService.get_all_members_by_project') as mock_get_members:
+                    advisor_member = MagicMock(spec=ProjectMember)
+                    advisor_member.id = advisor_id
+                    advisor_member.skills = [Skills.BACKEND_DEVELOPMENT]  # Has the required skill
+                    advisor_member.project_role = ProjectRole.ADVISOR  # Non-working role
+
+                    other_member = MagicMock(spec=ProjectMember)
+                    other_member.id = uuid4()
+                    other_member.skills = [Skills.FRONTEND_DEVELOPMENT]  # Different skill
+                    other_member.project_role = ProjectRole.MEMBER  # Working member but wrong skill
+
+                    mock_get_members.return_value = [advisor_member, other_member]
+
+                    # Mock _get_project_base_days_per_point
+                    with patch('app.modules.redistribution_recommendations.redistribution_logic._get_project_base_days_per_point') as mock_base_days:
+                        mock_base_days.return_value = 2
+
+                        # Mock the task effectiveness functions for Move Deadline calculation
+                        with patch('app.modules.redistribution_recommendations.redistribution_logic._get_task_effective_points') as mock_eff_points, \
+                             patch('app.modules.redistribution_recommendations.redistribution_logic.complexity_to_points') as mock_complexity_points:
+
+                            # Set up mock returns
+                            mock_eff_points.return_value = 2.0  # task_effective
+                            mock_complexity_points.return_value = 2  # task_complexity_points
+
+                            options = await generate_redistribution_options(AsyncMock(), task_mock.project_id)
+
+                            # Should have exactly one option: Move Deadline for the task
+                            # (since advisor is non-working and can't be a recipient, and other member lacks skills)
+                            assert len(options) == 1
+                            assert options[0]["type"] == "Move Deadline"
+                            assert options[0]["task_id"] == task_mock.id
+                            assert options[0]["original_member_id"] == advisor_id
+                            assert options[0]["recipient_member_id"] is None
+                            assert options[0]["impact"] is None
+                            assert "extension_days" in options[0]["details"]
+
+
+    @pytest.mark.asyncio
+    async def test_non_working_member_never_recipient_even_when_skilled(self):
+        """Test that a non-working member is never selected as recipient even when skilled."""
+        overloaded_member_id = uuid4()
+        skilled_advisor_id = uuid4()
+        skilled_leader_id = uuid4()
+
+        # Mock recompute_workload_state to return an overloaded leader and skilled advisor
+        with patch('app.modules.redistribution_recommendations.redistribution_logic.recompute_workload_state') as mock_recompute:
+            mock_recompute.return_value = [
+                {
+                    "member_id": overloaded_member_id,
+                    "total_effective_points": 20.0,
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": True
+                },
+                {
+                    "member_id": skilled_advisor_id,
+                    "total_effective_points": 5.0,
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False
+                },
+                {
+                    "member_id": skilled_leader_id,
+                    "total_effective_points": 8.0,
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False
+                }
+            ]
+
+            # Create a task that requires specific skills
+            task_mock = MagicMock(spec=Task)
+            task_mock.id = uuid4()
+            task_mock.name = "Skilled Task"
+            task_mock.project_id = uuid4()
+            task_mock.status = TaskStatus.NOT_STARTED
+            task_mock.complexity = Complexity.MEDIUM
+            task_mock.deadline = None
+            task_mock.primary_skill = Skills.BACKEND_DEVELOPMENT
+            task_mock.secondary_skills = []  # No secondary skills for simplicity
+
+            # Mock get_member_tasks
+            with patch('app.modules.redistribution_recommendations.redistribution_logic.get_member_tasks') as mock_get_tasks:
+                mock_get_tasks.return_value = [task_mock]
+
+                # Mock ProjectMemberService.get_all_members_by_project to return:
+                # 1. Overloaded leader (has skill, working)
+                # 2. Skilled advisor (has skill, but non-working)
+                # 3. Skilled leader (has skill, working)
+                with patch('app.modules.redistribution_recommendations.redistribution_logic.ProjectMemberService.get_all_members_by_project') as mock_get_members:
+                    overloaded_member = MagicMock(spec=ProjectMember)
+                    overloaded_member.id = overloaded_member_id
+                    overloaded_member.skills = [Skills.BACKEND_DEVELOPMENT]
+                    overloaded_member.project_role = ProjectRole.LEADER  # Working
+
+                    skilled_advisor = MagicMock(spec=ProjectMember)
+                    skilled_advisor.id = skilled_advisor_id
+                    skilled_advisor.skills = [Skills.BACKEND_DEVELOPMENT]
+                    skilled_advisor.project_role = ProjectRole.ADVISOR  # Non-working
+
+                    skilled_leader = MagicMock(spec=ProjectMember)
+                    skilled_leader.id = skilled_leader_id
+                    skilled_leader.skills = [Skills.BACKEND_DEVELOPMENT]
+                    skilled_leader.project_role = ProjectRole.LEADER  # Working
+
+                    mock_get_members.return_value = [overloaded_member, skilled_advisor, skilled_leader]
+
+                    # Mock _get_project_base_days_per_point
+                    with patch('app.modules.redistribution_recommendations.redistribution_logic._get_project_base_days_per_point') as mock_base_days:
+                        mock_base_days.return_value = 2
+
+                        # Mock the task effectiveness functions
+                        with patch('app.modules.redistribution_recommendations.redistribution_logic._get_task_effective_points') as mock_eff_points, \
+                             patch('app.modules.redistribution_recommendations.redistribution_logic.complexity_to_points') as mock_complexity_points:
+
+                            # Set up mock returns
+                            mock_eff_points.return_value = 2.0  # task_effective
+                            mock_complexity_points.return_value = 2  # task_complexity_points
+
+                            options = await generate_redistribution_options(AsyncMock(), task_mock.project_id)
+
+                            # Filter out Move Deadline options to check recipient selection
+                            move_options = [opt for opt in options if opt["type"] in ["Move", "Share", "Split"]]
+
+                            # Verify that NONE of the options have the advisor as recipient
+                            # (even though advisor is skilled, they're non-working and should never be recipient)
+                            for opt in move_options:
+                                assert opt["recipient_member_id"] != skilled_advisor_id, \
+                                    f"Non-working advisor was incorrectly selected as recipient in {opt['type']} option"
+
+                            # Verify that at least one option has a working member as recipient
+                            assert len(move_options) > 0, "Should have generated Move/Share/Split options"
+                            recipient_ids = [opt["recipient_member_id"] for opt in move_options if opt["recipient_member_id"] is not None]
+                            assert len(recipient_ids) > 0, "Should have at least one option with a working recipient"
+                            # All recipients should be working members (leader or member, not advisor/instructor)
+                            # We can't easily check their roles here without more mocks, but we've verified
+                            # the advisor is never selected as recipient
+
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_no_is_overloaded_flag_true(self):
+        """Test that generate_redistribution_options returns [] when no workload_data row has is_overloaded True.
+        This proves the flag, not a recomputed difference, decides."""
+        # Mock recompute_workload_state to return members where some have total_effective_points > expected_load
+        # BUT none have is_overloaded = True (simulating a scenario where the flag wasn't set correctly)
+        with patch('app.modules.redistribution_recommendations.redistribution_logic.recompute_workload_state') as mock_recompute:
+            mock_recompute.return_value = [
+                {
+                    "member_id": uuid4(),
+                    "total_effective_points": 15.0,  # > expected_load
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False  # Flag is False despite points > expected_load
+                },
+                {
+                    "member_id": uuid4(),
+                    "total_effective_points": 8.0,   # < expected_load
+                    "expected_load": 10.0,
+                    "capacity_multiplier": 1.0,
+                    "is_overloaded": False
+                }
+            ]
+
+            # Create a simple task
+            task_mock = MagicMock(spec=Task)
+            task_mock.id = uuid4()
+            task_mock.name = "Simple Task"
+            task_mock.project_id = uuid4()
+            task_mock.status = TaskStatus.NOT_STARTED
+            task_mock.complexity = Complexity.MEDIUM
+            task_mock.deadline = None
+            task_mock.primary_skill = Skills.BACKEND_DEVELOPMENT
+            task_mock.secondary_skills = []
+
+            # Mock get_member_tasks
+            with patch('app.modules.redistribution_recommendations.redistribution_logic.get_member_tasks') as mock_get_tasks:
+                mock_get_tasks.return_value = [task_mock]
+
+                # Mock ProjectMemberService.get_all_members_by_project
+                with patch('app.modules.redistribution_recommendations.redistribution_logic.ProjectMemberService.get_all_members_by_project') as mock_get_members:
+                    member1 = MagicMock(spec=ProjectMember)
+                    member1.id = uuid4()
+                    member1.skills = [Skills.BACKEND_DEVELOPMENT]
+                    member1.project_role = ProjectRole.MEMBER
+
+                    member2 = MagicMock(spec=ProjectMember)
+                    member2.id = uuid4()
+                    member2.skills = [Skills.BACKEND_DEVELOPMENT]
+                    member2.project_role = ProjectRole.MEMBER
+
+                    mock_get_members.return_value = [member1, member2]
+
+                    # Mock _get_project_base_days_per_point
+                    with patch('app.modules.redistribution_recommendations.redistribution_logic._get_project_base_days_per_point') as mock_base_days:
+                        mock_base_days.return_value = 2
+
+                        # Mock the task effectiveness functions
+                        with patch('app.modules.redistribution_recommendations.redistribution_logic._get_task_effective_points') as mock_eff_points, \
+                             patch('app.modules.redistribution_recommendations.redistribution_logic.complexity_to_points') as mock_complexity_points:
+
+                            # Set up mock returns
+                            mock_eff_points.return_value = 2.0  # task_effective
+                            mock_complexity_points.return_value = 2  # task_complexity_points
+
+                            options = await generate_redistribution_options(AsyncMock(), task_mock.project_id)
+
+                            # Should return empty list because no member has is_overloaded = True
+                            # Even though member1 has total_effective_points (15.0) > expected_load (10.0)
+                            assert options == [], f"Expected empty list, got {options}"
+
+
+
 
 
 

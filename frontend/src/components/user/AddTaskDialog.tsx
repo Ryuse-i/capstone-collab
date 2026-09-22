@@ -9,6 +9,7 @@ import {
   useCreateAssignedMember,
   assignedMemberKeys,
 } from "@/hooks/useAssignedMember";
+import { projectKeys } from "@/hooks/useProject";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -338,7 +339,7 @@ export function AddTaskDialog({
         const createdTask = await createTaskMutation.mutateAsync(payload);
 
         queryClient.invalidateQueries({
-          queryKey: taskKeys.byProject(projectId),
+          queryKey: taskKeys.listProject(projectId),
         });
 
         if (taskForm.assigned_members.length > 0) {
@@ -346,14 +347,21 @@ export function AddTaskDialog({
             await Promise.all(
               taskForm.assigned_members.map((member) =>
                 createAssignedMemberMutation.mutateAsync({
-                  member_id: member.member_id,
-                  task_id: createdTask.id,
+                  projectId: projectId ?? "",
+                  member: {
+                    member_id: member.member_id,
+                    task_id: createdTask.id,
+                  },
                 }),
               ),
             );
 
             queryClient.invalidateQueries({
               queryKey: assignedMemberKeys.task_list(createdTask.id),
+            });
+            // Invalidate project snapshot to update unassigned_tasks count
+            queryClient.invalidateQueries({
+              queryKey: projectKeys.detailSnapshot(projectId ?? ""),
             });
           } catch (assignErr) {
             // The task itself was created successfully — don't roll that

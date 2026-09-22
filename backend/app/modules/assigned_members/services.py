@@ -4,6 +4,7 @@ from app.modules.assigned_members.repo import AssignedMemberRepo
 from .schema import AssignedMemberCreate, AssignedMemberResponse, AssignedMemberUpdate
 from uuid import UUID
 from typing import Sequence
+from app.modules.project_snapshots.services import ProjectSnapshotService
 
 
 class AssignedMemberService:
@@ -22,13 +23,16 @@ class AssignedMemberService:
         db: AsyncSession, assigned_member: AssignedMemberCreate
     ):
         repo = AssignedMemberRepo(db)
-
-        # get task
         member = await repo.create(assigned_member)
         # calculate the member workload
         from app.modules.member_snapshots.services import MemberSnapshotService
-
         await MemberSnapshotService.calculate_member_workload(db, member.member_id)
+        # Fetch the task to get project_id
+        from app.modules.tasks.repo import TaskRepo
+        task_repo = TaskRepo(db)
+        task = await task_repo.get_by_id(member.task_id)
+        project_id = task.project_id
+        await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
 
         return member
 
@@ -44,7 +48,15 @@ class AssignedMemberService:
     @staticmethod
     async def delete_assigned_member(db: AsyncSession, db_item: AssignedMember):
         repo = AssignedMemberRepo(db)
-        return await repo.delete(db_item)
+        task_id = db_item.task_id
+        result = await repo.delete(db_item)
+        # Fetch the task to get project_id
+        from app.modules.tasks.repo import TaskRepo
+        task_repo = TaskRepo(db)
+        task = await task_repo.get_by_id(task_id)
+        project_id = task.project_id
+        await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+        return result
 
     @staticmethod
     async def get_task_members(db, task_id: UUID):

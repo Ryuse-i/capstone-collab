@@ -54,19 +54,13 @@ class TaskService:
             }
         )
 
-        # update the project_snapshot to have +1 unassigned_tasks
-        snapshot = await ProjectSnapshotService.get_latest_snapshot(
-            db, task_item.project_id
-        )
-        u_tasks = snapshot.unassigned_tasks + 1
-        update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=u_tasks)
-        # update the snapshot
-        await ProjectSnapshotService.upsert_today_snapshot(
-            db, task_item.project_id, update_snapshot
-        )
+        # Create the task first
+        created_task = await repo.create(task_item)
 
-        return await repo.create(task_item)
-        # send http request towards openrouter free model for the
+        # Sync the unassigned tasks count for the project
+        await ProjectSnapshotService.sync_unassigned_tasks(db, created_task.project_id)
+
+        return created_task
 
     @staticmethod
     async def update_task(db: AsyncSession, db_item: TaskUpdate, task: TaskUpdate):
@@ -76,23 +70,10 @@ class TaskService:
     @staticmethod
     async def delete_task(db: AsyncSession, db_item: Task):
         repo = TaskRepo(db)
-
-        task = await repo.get_assigned_member(db_item.id)
-
-        if not task.assigned_members:
-            snapshot = await ProjectSnapshotService.get_latest_snapshot(
-                db, db_item.project_id
-            )
-            u_tasks = 0
-            if snapshot.unassigned_tasks > 0:
-                u_tasks = snapshot.unassigned_tasks - 1
-
-            update_snapshot = ProjectSnapshotUpsert(unassigned_tasks=u_tasks)
-            # update the snapshot
-            await ProjectSnapshotService.upsert_today_snapshot(
-                db, db_item.project_id, update_snapshot
-            )
-        return await repo.delete(db_item)
+        project_id = db_item.project_id
+        result = await repo.delete(db_item)
+        await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+        return result
 
     @staticmethod
     def _determine_task_category(primary_skill: Skills) -> Category:

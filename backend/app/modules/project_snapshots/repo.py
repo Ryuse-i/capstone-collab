@@ -4,7 +4,7 @@ from app.core.base_repo import BaseRepo
 from datetime import date
 from sqlalchemy.dialects.postgresql import insert
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 class ProjectSnapshotRepo(BaseRepo):
     def __init__(self, db):
@@ -51,3 +51,17 @@ class ProjectSnapshotRepo(BaseRepo):
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def count_unassigned_tasks(self, project_id: UUID) -> int:
+        from app.modules.tasks.model import Task
+        from app.modules.assigned_members.model import AssignedMember
+
+        stmt = (
+            select(func.count(Task.id))
+            .select_from(Task)
+            .outerjoin(AssignedMember, Task.id == AssignedMember.task_id)
+            .where(Task.project_id == project_id)
+            .where(AssignedMember.id.is_(None))
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one()

@@ -12,6 +12,7 @@ import {
   useDeleteAssignedMember,
   assignedMemberKeys,
 } from "@/hooks/useAssignedMember";
+import { projectKeys } from "@/hooks/useProject";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -386,12 +387,18 @@ export default function EditTaskDialog({
           await Promise.all([
             ...toAdd.map((member) =>
               createAssignedMemberMutation.mutateAsync({
-                member_id: member.member_id,
-                task_id: task.id,
+                projectId: projectId,
+                member: {
+                  member_id: member.member_id,
+                  task_id: task.id,
+                },
               }),
             ),
             ...toRemove.map((row) =>
-              deleteAssignedMemberMutation.mutateAsync(row.id),
+              deleteAssignedMemberMutation.mutateAsync({
+                projectId: projectId,
+                id: row.id,
+              }),
             ),
           ]);
 
@@ -401,6 +408,11 @@ export default function EditTaskDialog({
 
           queryClient.invalidateQueries({
             queryKey: assignedMemberKeys.list(),
+          });
+
+          // Invalidate project snapshot to update unassigned_tasks count
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.detailSnapshot(projectId),
           });
         } catch (assignErr) {
           console.error("Failed to sync assigned members", assignErr);
@@ -432,7 +444,7 @@ export default function EditTaskDialog({
       }
 
       queryClient.invalidateQueries({
-        queryKey: taskKeys.byProject(projectId),
+        queryKey: taskKeys.listProject(projectId),
       });
 
       onUpdated?.();

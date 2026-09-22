@@ -80,9 +80,9 @@ class MemberSnapshotService:
             return None
 
         member_points = [
-            member.snapshot.total_effective_points
+            member.snapshots[-1].total_effective_points
             for member in project_members
-            if member.snapshot is not None
+            if member.snapshots
         ]
 
         capacity_multiplier = (
@@ -170,8 +170,8 @@ class MemberSnapshotService:
 
         # Guard: project may not have a snapshot yet (first run for this project)
         previous_project_total = (
-            project.snapshot.total_workload_points
-            if project.snapshot is not None
+            project.snapshots[-1].total_workload_points
+            if project.snapshots
             else Decimal("0")
         )
         project_workload_points = previous_project_total + difference

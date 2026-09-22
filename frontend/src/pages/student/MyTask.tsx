@@ -41,7 +41,7 @@ export default function MyTask() {
         case "not_started":
           displayStatus = "Not Started";
           break;
-        case "in-progress":
+        case "in_progress":
           displayStatus = "In Progress";
           break;
         case "submitted":
