@@ -4,7 +4,10 @@ import { CalendarClock, ExternalLink, Send, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useGetCurrentProject } from "@/hooks/useProject";
+import {
+  useGetCurrentProject,
+  useGetInstructorProjects,
+} from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import { useGetProjectMessages, useSendMessage } from "@/hooks/useMessage";
@@ -26,8 +29,22 @@ function formatTime(iso: string) {
 
 export default function Chat() {
   const { data: user } = useCurrentUser();
+  const isInstructor = user?.role?.toLowerCase() === "instructor";
   const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
-  const projectId = currentProject?.id ?? "";
+  const {
+    data: instructorProjects = [],
+    isLoading: instructorProjectsLoading,
+    isError: instructorProjectsError,
+  } = useGetInstructorProjects(isInstructor ? (user?.id ?? "") : "");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
+  );
+  const projectId = isInstructor
+    ? (selectedProjectId ?? instructorProjects[0]?.id ?? "")
+    : (currentProject?.id ?? "");
+  const selectedProject = instructorProjects.find(
+    (project) => project.id === projectId,
+  );
   const { data: currentMember } = useGetCurrentMember(user?.id ?? "");
   const currentMemberRole = currentMember?.project_role.toLowerCase();
   const canManageMeetings =
@@ -64,18 +81,23 @@ export default function Chat() {
     });
   };
 
-  return (
-    <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
-      <Card className="mt-2 pb-1 overflow-hidden h-[85vh] flex flex-col">
-        <CardContent className="p-0 flex flex-col flex-1 min-h-0">
+  const handleProjectSelect = (nextProjectId: string) => {
+    setSelectedProjectId(nextProjectId);
+    setInput("");
+  };
+
+  const chatCard = (
+    <div className="-mx-4 flex-1 min-w-0">
+      <Card className="flex h-149 w-full flex-1 flex-col overflow-hidden pb-0">
+        <CardContent className="p-0 flex min-h-0 flex-1 flex-col">
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 pb-2 shrink-0">
             <div className="flex items-center gap-3">
               <div className="text-lg font-medium">
-                {currentProject?.name || "Project chat"}
+                {(isInstructor ? selectedProject?.name : currentProject?.name) ||
+                  "Project chat"}
               </div>
             </div>
-
             {canManageMeetings && (
               <div className="flex items-center gap-2">
                 <Button
@@ -92,7 +114,6 @@ export default function Chat() {
               </div>
             )}
           </div>
-
           {/* Messages area */}
           <div
             ref={scrollRef}
@@ -139,12 +160,13 @@ export default function Chat() {
                               ? "Google Meet"
                               : "Zoom"}
                             {meeting.start_time
-                              ? ` · ${new Date(
-                                  meeting.start_time,
-                                ).toLocaleString([], {
-                                  dateStyle: "medium",
-                                  timeStyle: "short",
-                                })}`
+                              ? ` · ${new Date(meeting.start_time).toLocaleString(
+                                  [],
+                                  {
+                                    dateStyle: "medium",
+                                    timeStyle: "short",
+                                  },
+                                )}`
                               : ""}
                           </p>
                         </div>
@@ -169,7 +191,6 @@ export default function Chat() {
                 {messages?.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
                   const sender = msg.sender;
-
                   return (
                     <div
                       key={msg.id}
@@ -180,7 +201,6 @@ export default function Chat() {
                           {getInitials(sender.first_name, sender.last_name)}
                         </div>
                       )}
-
                       <div
                         className={`max-w-[70%] p-3 rounded-lg ${
                           isMe
@@ -200,7 +220,6 @@ export default function Chat() {
                           {formatTime(msg.created_at)}
                         </div>
                       </div>
-
                       {isMe && (
                         <div className="ml-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
                           {getInitials(user?.first_name, user?.last_name)}
@@ -217,9 +236,7 @@ export default function Chat() {
               </div>
             )}
           </div>
-
           <Separator className="shrink-0" />
-
           {/* Input */}
           <div className="p-2 flex items-center gap-3 shrink-0">
             <textarea
@@ -246,6 +263,66 @@ export default function Chat() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+
+  const instructorSidebar = (
+    <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
+      <div className="border-b px-4 py-3">
+        <h2 className="text-sm font-semibold text-foreground">Projects</h2>
+      </div>
+      <div className="custom-scrollbar flex-1 overflow-y-auto p-2">
+        {instructorProjectsLoading ? (
+          <div className="px-2 py-3 text-sm text-muted-foreground">
+            Loading projects...
+          </div>
+        ) : instructorProjectsError ? (
+          <div className="px-2 py-3 text-sm text-red-600 dark:text-red-400">
+            Unable to load projects.
+          </div>
+        ) : instructorProjects.length === 0 ? (
+          <div className="px-2 py-3 text-sm text-muted-foreground">
+            No projects available
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {instructorProjects.map((project) => {
+              const id = project.id;
+              if (!id) return null;
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => handleProjectSelect(id)}
+                  className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                    id === projectId
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-muted dark:hover:bg-[#222228]"
+                  }`}
+                >
+                  <span className="block truncate">{project.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+
+  const content = isInstructor ? (
+    <div className="mt-2 flex h-145 min-h-0 w-full gap-6">
+      {instructorSidebar}
+      {chatCard}
+    </div>
+  ) : (
+    <div className="h-[calc(100vh-8rem)] min-h-0 w-full">{chatCard}</div>
+  );
+
+  return (
+    <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
+      {content}
       <MeetingDialog
         key={meetingProvider}
         open={meetingDialogOpen}

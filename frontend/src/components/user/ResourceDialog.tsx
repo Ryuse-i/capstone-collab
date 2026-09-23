@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { ArrowRight, Code2, FileText, Frame } from "lucide-react";
-import type { Resource } from "@/pages/Resources";
+import type { Resource } from "@/pages/student/Resources";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ interface CategoryStyle {
 }
 
 const CATEGORY_STYLES: Record<Resource["category"], CategoryStyle> = {
-  "Figma Links": {
+  "Links": {
     icon: Frame,
     iconClass:
       "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",

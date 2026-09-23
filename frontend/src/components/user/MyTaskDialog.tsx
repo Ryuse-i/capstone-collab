@@ -10,11 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { useUpdateTask } from "@/hooks/useTask";
 import { useEffect, useState } from "react";
 import type {
@@ -180,25 +183,21 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="rounded-2xl p-0 overflow-hidden sm:max-w-150 max-h-[85vh] flex flex-col gap-0"
-      >
-        <DialogTitle className="absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0 [clip:rect(0,0,0,0)]">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent className="ml-auto h-full w-full overflow-hidden rounded-none p-0 sm:max-w-[42rem]">
+        <DrawerTitle className="absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0 [clip:rect(0,0,0,0)]">
           Task details
-        </DialogTitle>
+        </DrawerTitle>
 
-        {/* Top bar: close button pinned to the right */}
         <div className="flex items-center justify-end px-5 py-4 shrink-0">
-          <DialogClose asChild>
+          <DrawerClose asChild>
             <button
               className="text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Close"
             >
               <X className="size-5" />
             </button>
-          </DialogClose>
+          </DrawerClose>
         </div>
 
         {task ? (
@@ -425,17 +424,16 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
           </div>
         )}
 
-        {/* Footer */}
         <div className="border-t px-6 py-3 shrink-0 flex justify-end bg-muted/50">
           {task && (
             <>
               {isNotStarted && !task.started_at ? (
                 <>
-                  <DialogClose asChild>
+                  <DrawerClose asChild>
                     <Button variant="outline" className="min-w-24 mr-2">
                       Close
                     </Button>
-                  </DialogClose>
+                  </DrawerClose>
                   <Button
                     variant="default"
                     onClick={handleStartTask}
@@ -449,11 +447,11 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                 </>
               ) : isInProgress ? (
                 <>
-                  <DialogClose asChild>
+                  <DrawerClose asChild>
                     <Button variant="outline" className="min-w-24 mr-2">
                       Close
                     </Button>
-                  </DialogClose>
+                  </DrawerClose>
                   <Button
                     variant="default"
                     onClick={() => setSubmissionOpen(true)}
@@ -470,34 +468,34 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                   <span className="text-sm text-muted-foreground mr-2">
                     Waiting for review
                   </span>
-                  <DialogClose asChild>
+                  <DrawerClose asChild>
                     <Button variant="outline" className="min-w-24">
                       Close
                     </Button>
-                  </DialogClose>
+                  </DrawerClose>
                 </>
               ) : isCompleted ? (
                 <>
                   <span className="text-sm text-muted-foreground mr-2">
                     Completed
                   </span>
-                  <DialogClose asChild>
+                  <DrawerClose asChild>
                     <Button variant="outline" className="min-w-24">
                       Close
                     </Button>
-                  </DialogClose>
+                  </DrawerClose>
                 </>
               ) : (
-                <DialogClose asChild>
+                <DrawerClose asChild>
                   <Button variant="outline" className="min-w-24">
                     Close
                   </Button>
-                </DialogClose>
+                </DrawerClose>
               )}
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

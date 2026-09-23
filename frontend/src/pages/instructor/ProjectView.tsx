@@ -2,11 +2,15 @@ import { useMemo, useState, useEffect } from "react";
 import {
   Activity,
   ArrowLeft,
+  ArrowRight,
   BarChart3,
   CalendarDays,
   ClipboardCheck,
+  Code2,
+  FileText,
   Files,
   FolderKanban,
+  Frame,
   Gauge,
   Target,
   Users,
@@ -14,9 +18,13 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 
 import AppLayout from "@/layouts/Applayout";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskTable } from "@/components/user/TaskTable";
+import ResourceDialog from "@/components/user/ResourceDialog";
+import { RESOURCES, type Resource } from "@/pages/student/Resources";
+import { cn } from "@/lib/utils";
 
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
@@ -102,6 +110,9 @@ export default function ProjectView() {
   const { id } = useParams();
 
   const [activeTab, setActiveTab] = useState<ProjectViewTab>("overview");
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(
+    null,
+  );
 
   const projectId = id ?? "";
 
@@ -685,49 +696,117 @@ export default function ProjectView() {
 
             {/* Resources */}
             {activeTab === "resources" && (
-              <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <Card className="border p-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                    <Files className="h-5 w-5 text-[#7A0C2E]" />
-                    Project resources
-                  </div>
-                  <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                    <div className="rounded-lg border border-dashed border-neutral-200 dark:border-(--semi-foreground) bg-neutral-50 dark:bg-card p-4 text-center">
-                      No project resources have been added yet.
-                    </div>
-                  </div>
-                </Card>
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Files className="h-5 w-5 text-[#7A0C2E]" />
+                  Project resources
+                </div>
 
-                <Card className="border p-4">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Snapshot summary
-                  </h2>
-                  <div className="mt-4 space-y-3 text-sm text-foreground">
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
-                      <span>Average workload</span>
-                      <span className="font-semibold text-(--semi-foreground)">
-                        {formatNumber(snapshot?.avg_workload)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
-                      <span>Workload balance</span>
-                      <span className="font-semibold text-(--semi-foreground)">
-                        {formatPercentage(snapshot?.workload_balance)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
-                      <span>Severity</span>
-                      <span className="font-semibold text-(--semi-foreground)">
-                        {snapshot?.imbalance_severity ?? "Not set"}
-                      </span>
-                    </div>
+                {RESOURCES.length === 0 ? (
+                  <Card className="border p-6 text-center text-sm text-muted-foreground">
+                    No project resources have been added yet.
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {RESOURCES.map((resource) => {
+                      const categoryMeta = {
+                        "Figma Links": {
+                          icon: Frame,
+                          iconClass:
+                            "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+                          barClass: "border-violet-400",
+                        },
+                        "Paper Files": {
+                          icon: FileText,
+                          iconClass:
+                            "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+                          barClass: "border-blue-400",
+                        },
+                        Code: {
+                          icon: Code2,
+                          iconClass:
+                            "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+                          barClass: "border-emerald-400",
+                        },
+                      }[resource.category];
+
+                      const Icon = categoryMeta.icon;
+
+                      return (
+                        <Card
+                          key={resource.id}
+                          className="gap-3 border border-border/70 py-0 transition-all hover:-translate-y-0.5 hover:border-(--maroon)/40 hover:shadow-md"
+                        >
+                          <CardHeader className="pt-4">
+                            <div className="flex items-start gap-3">
+                              <span
+                                className={cn(
+                                  "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                                  categoryMeta.iconClass,
+                                )}
+                              >
+                                <Icon className="size-4" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <CardTitle className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug">
+                                  {resource.title}
+                                </CardTitle>
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 text-[10px]"
+                              >
+                                {resource.category}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+
+                          <CardContent className="space-y-3 pb-4">
+                            <p
+                              className={cn(
+                                "border-l-2 pl-3 text-sm italic leading-relaxed text-muted-foreground",
+                                categoryMeta.barClass,
+                              )}
+                            >
+                              {resource.description}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {resource.type} · {resource.size} ·{" "}
+                              {resource.updatedAt}
+                            </p>
+                          </CardContent>
+
+                          <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3">
+                            <p className="truncate text-xs text-muted-foreground">
+                              By {resource.author}
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              type="button"
+                              onClick={() => setSelectedResource(resource)}
+                            >
+                              Open
+                              <ArrowRight className="size-3.5" />
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })}
                   </div>
-                </Card>
+                )}
               </div>
             )}
           </div>
         </Card>
       </div>
+      <ResourceDialog
+        resource={selectedResource}
+        open={selectedResource !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedResource(null);
+        }}
+      />
     </AppLayout>
   );
 }

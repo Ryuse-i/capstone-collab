@@ -6,7 +6,7 @@ import GanttChart, {
 } from "react-modern-gantt";
 import "react-modern-gantt/dist/index.css";
 
-import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
+
 
 import type { TaskResponseMembers, TaskStatus } from "@/types/task";
 import type { UserBase } from "@/types/user";
@@ -113,7 +113,7 @@ function normalizeStatus(raw: unknown): TaskStatus {
     case "not-started":
       return "not_started";
     case "in-progress":
-      return "in-progress";
+      return "in_progress";
     case "submitted":
       return "submitted";
     case "completed":
@@ -181,7 +181,7 @@ function resolveTask(task: TaskResponseMembers): Resolved {
       };
     }
 
-    case "in-progress": {
+    case "in_progress": {
       const start = safeDate(task.started_at ?? task.created_at, now);
 
       const end = deadline ?? addDays(start, 7);
@@ -264,7 +264,7 @@ function resolveColor(status: TaskStatus, percent: number) {
     case "completed":
       return COMPLETED_COLOR;
 
-    case "in-progress": {
+    case "in_progress": {
       // For in-progress tasks, we return a solid color based on progress.
       // The gradient effect will be handled in the renderTask style.
       return solidColorForProgress(IN_PROGRESS_HUE, percent);
@@ -637,7 +637,7 @@ export function TaskGanttView({
                 // Placeholder task: make it invisible and non-interactable
                 taskStyle.backgroundColor = "transparent";
                 taskStyle.pointerEvents = "none";
-              } else if (t.status === "in-progress") {
+              } else if (t.status === "in_progress") {
                 const passed = solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0);
                 const upcoming = pastelColorForProgress(IN_PROGRESS_HUE, 0);
 
@@ -664,7 +664,7 @@ export function TaskGanttView({
 
                   <AvatarStack
                     members={members}
-                    ringColor={t.status === "in-progress"
+                    ringColor={t.status === "in_progress"
                       ? solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0).backgroundColor
                       : color.backgroundColor}
                   />
@@ -681,13 +681,6 @@ export function TaskGanttView({
           />
         )}
       </div>
-
-      {/* View Task Dialog */}
-      <ViewTaskDialog
-        task={selectedTask}
-        open={viewDialogOpen}
-        onOpenChange={handleViewDialogChange}
-      />
     </div>
   );
 }

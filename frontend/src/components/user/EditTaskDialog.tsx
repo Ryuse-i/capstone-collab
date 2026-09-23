@@ -18,14 +18,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 
 import { Calendar } from "@/components/ui/calendar";
 
@@ -452,22 +453,33 @@ export default function EditTaskDialog({
     deleteAssignedMemberMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+    <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
+      <DrawerTrigger asChild>
         {trigger ?? <Button variant="outline">Edit</Button>}
-      </DialogTrigger>
+      </DrawerTrigger>
 
-      <DialogContent
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
-      >
-        {/* Header */}
-        <DialogHeader className="shrink-0 border-b px-6 py-5">
-          <DialogTitle>Edit task</DialogTitle>
-          <DialogDescription>Update the details below.</DialogDescription>
-        </DialogHeader>
+      <DrawerContent className="ml-auto h-full w-full overflow-hidden rounded-none p-0 sm:max-w-2xl">
+        <DrawerHeader className="shrink-0 border-b px-6 py-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <DrawerTitle>Task</DrawerTitle>
+              <DrawerDescription className="mt-1">
+                View, Edit or Delete this task.
+              </DrawerDescription>
+            </div>
 
-        {/* Scrollable body */}
+            <DrawerClose asChild>
+              <button
+                type="button"
+                className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Close edit task"
+              >
+                <X className="size-4" />
+              </button>
+            </DrawerClose>
+          </div>
+        </DrawerHeader>
+
         <div className="custom-scrollbar overflow-y-auto px-6 py-6">
           <div className="space-y-6">
             {/* Name */}
@@ -891,8 +903,7 @@ export default function EditTaskDialog({
           </div>
         </div>
 
-        {/* Footer */}
-        <DialogFooter className="shrink-0 gap-2 border-t bg-muted/40 px-6 py-2 pb-6">
+        <DrawerFooter className="shrink-0 gap-2 border-t bg-muted/40 px-6 py-3">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
@@ -904,8 +915,8 @@ export default function EditTaskDialog({
           <Button onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : "Save changes"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

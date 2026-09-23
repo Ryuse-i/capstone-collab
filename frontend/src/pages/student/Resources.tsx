@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, Code2, FileText, Frame } from "lucide-react";
+import { ArrowRight, Code2, FileText, Frame, PlusCircle } from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ResourceDialog from "@/components/user/ResourceDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import AddResoourceDialog from "@/components/user/AddResourceDialog";
 
 export interface Resource {
   id: number;
@@ -22,7 +23,7 @@ export interface Resource {
   uses: number;
 }
 
-type ResourceCategory = "Figma Links" | "Paper Files" | "Code";
+type ResourceCategory = "Links" | "Paper Files" | "Code";
 
 type ResourceFilter = "All" | "Pinned" | ResourceCategory;
 
@@ -36,7 +37,7 @@ interface CategoryConfig {
 
 const CATEGORIES: CategoryConfig[] = [
   {
-    name: "Figma Links",
+    name: "Links",
     count: 6,
     icon: Frame,
     iconClass:
@@ -65,11 +66,11 @@ export const RESOURCES: Resource[] = [
   {
     id: 1,
     title: "Capstone UI Mockups (Figma)",
-    category: "Figma Links",
+    category: "Links",
     description:
       "Final screen designs and interaction flows for the capstone system.",
     type: "Live link",
-    size: "figma.com",
+    size: "1tb",
     author: "Kevin",
     updatedAt: "3d ago",
     pinned: true,
@@ -104,7 +105,7 @@ export const RESOURCES: Resource[] = [
   {
     id: 4,
     title: "System Architecture Diagram",
-    category: "Figma Links",
+    category: "Links",
     description:
       "Service boundaries, data flow, and deployment architecture overview.",
     type: "Live link",
@@ -179,28 +180,39 @@ export default function Resources() {
           </p>
         </header>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as ResourceFilter)}
-        >
-          <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0">
-            {FILTERS.map((filter) => (
-              <TabsTrigger
-                key={filter.label}
-                value={filter.value}
-                className="h-8 gap-2 rounded-full px-3 text-xs hover:bg-muted data-active:bg-(--maroon)! data-active:text-white! data-active:hover:bg-(--maroon)! data-active:hover:text-white! data-active:shadow-sm"
-              >
-                {filter.label}
-                <Badge
-                  variant="secondary"
-                  className="h-5 rounded-full bg-transparent px-1.5 text-[10px] text-current"
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as ResourceFilter)}
+          >
+            <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0">
+              {FILTERS.map((filter) => (
+                <TabsTrigger
+                  key={filter.label}
+                  value={filter.value}
+                  className="h-8 gap-2 rounded-full px-3 text-xs hover:bg-muted data-active:bg-(--maroon)! data-active:text-white! data-active:hover:bg-(--maroon)! data-active:hover:text-white! data-active:shadow-sm"
                 >
-                  {filter.count}
-                </Badge>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+                  {filter.label}
+                  <Badge
+                    variant="secondary"
+                    className="h-5 rounded-full bg-transparent px-1.5 text-[10px] text-current"
+                  >
+                    {filter.count}
+                  </Badge>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          <AddResoourceDialog
+            trigger={
+              <Button size="sm" className="h-8">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                ADD RESOURCE
+              </Button>
+            }
+          />
+        </div>
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredResources.map((resource) => {

@@ -233,7 +233,7 @@ export default function AppLayout({
         </header>
 
         {/* Main Content Area */}
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-0 min-w-0">
           {children}
         </div>
       </SidebarInset>
