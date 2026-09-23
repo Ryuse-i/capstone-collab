@@ -168,22 +168,40 @@ export default function Task() {
 
   const [boardDialogOpen, setBoardDialogOpen] = useState(false);
 
-  const { data: user } = useCurrentUser();
+  // Fetch user data
+  const userQuery = useCurrentUser();
+  const { data: userData, isLoading: isUserLoading, isError: isUserError } = userQuery;
 
-  const { data: currentProject } = useGetCurrentProject(user?.id ?? "");
+  // Fetch current project (depends on user)
+  const currentProjectQuery = useGetCurrentProject(userData?.id ?? "");
+  const { data: currentProjectData, isLoading: isProjectLoading, isError: isProjectError } = currentProjectQuery;
 
-  const projectId = currentProject?.id ?? "";
+  const projectId = currentProjectData?.id ?? "";
+
+  // Fetch tasks (depends on projectId)
+  const tasksQuery = useGetAllTaskAssignedMembers(projectId);
+  const { data: allProjectTasks, isLoading: isTasksLoading, isError: isTasksError } = tasksQuery;
+
+  // Fetch project snapshot (depends on projectId)
+  const projectQuery = useGetOneProjectWithSpanshot(projectId);
+  const { data: projectData, isLoading: isSnapshotLoading, isError: isSnapshotError } = projectQuery;
+
+  // Combined loading state
+  const isLoading =
+    isUserLoading ||
+    isProjectLoading ||
+    isTasksLoading ||
+    isSnapshotLoading;
+
+  // Combined error state
+  const isError =
+    isUserError ||
+    isProjectError ||
+    isTasksError ||
+    isSnapshotError;
+
   const now = new Date()
-
-  const {
-    data: allProjectTasks,
-    isLoading: isTasksLoading,
-    isError: isTasksError,
-  } = useGetAllTaskAssignedMembers(projectId);
-
-  const { data: project } = useGetOneProjectWithSpanshot(projectId);
-
-  const snapshot = project?.snapshot;
+  const snapshot = projectData?.snapshot;
 
   // counts all overdue task
   const overdueTaskCounter = (allProjectTasks ?? []).filter((task) => {
@@ -236,10 +254,29 @@ export default function Task() {
         },
       ]}
     >
-      <div className="min-w-0 w-full">
-        <h1 className="my-2 text-2xl font-bold text-foreground">
-          Distribute and manage tasks
-        </h1>
+      {isError ? (
+        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
+          <div className="text-center">
+            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <p className="text-foreground dark:text-muted-foreground">
+              Failed to load project data. Please try again later.
+            </p>
+          </div>
+        </div>
+      ) : isLoading ? (
+        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <p className="text-foreground dark:text-muted-foreground">Loading project data...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="min-w-0 w-full">
+          <h1 className="my-2 text-2xl font-bold text-foreground">
+            Distribute and manage tasks
+          </h1>
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -376,7 +413,7 @@ export default function Task() {
           </div>
         )}
       </div>
-
+    )}
       {/* Mock board card dialog */}
       <BoardCardDialog
         card={selectedBoardCard}

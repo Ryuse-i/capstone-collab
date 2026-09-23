@@ -10,6 +10,9 @@ import {
   getStoredToken,
   storeToken,
   clearToken,
+  getStoredRefreshToken,
+  storeRefreshToken,
+  clearRefreshToken,
   type RegisterCredentials,
   type UpdateUserPayload,
   getUserByEmailAndRole,
@@ -23,8 +26,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
       loginUser(email, password),
-    onSuccess: (data) => {
-      storeToken(data.access_token);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["currentUser"] });
     },
   });
@@ -53,7 +55,8 @@ export function useLogout() {
   return useMutation({
     mutationFn: logoutUser,
     onMutate: () => {
-      clearToken(); // clear immediately, don't wait for server
+      clearToken();
+      clearRefreshToken(); // clear immediately, don't wait for server
       queryClient.clear();
     },
     onSettled: () => {

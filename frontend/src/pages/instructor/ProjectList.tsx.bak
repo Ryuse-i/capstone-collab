@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Eye, GraduationCap, ChevronsUpDown, Check, AlertTriangle } from "lucide-react";
+import { Eye, GraduationCap, ChevronsUpDown, Check } from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -181,79 +181,59 @@ export default function ProjectsPage() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
-      {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-foreground dark:text-muted-foreground">Loading your projects...</p>
-          </div>
-        </div>
-      ) : isError ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-            </div>
-            <p className="text-foreground dark:text-muted-foreground">
-              We could not load your projects right now. Please try again.
+      <div className="min-h-screen w-full px-4">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="my-2 text-2xl font-bold text-foreground">Projects</h1>
+            <p className="mt-2 text-sm text-neutral-500">
+              Projects connected to your instructor and advisor profile.
             </p>
           </div>
+          <RoleFilterDropdown value={roleFilter} onChange={setRoleFilter} />
         </div>
-      ) : (
-        <div className="min-h-screen w-full px-4">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="my-2 text-2xl font-bold text-foreground">Projects</h1>
-              <p className="mt-2 text-sm text-neutral-500">
-                Projects connected to your instructor and advisor profile.
-              </p>
-            </div>
-            <RoleFilterDropdown value={roleFilter} onChange={setRoleFilter} />
-          </div>
 
-          {isLoading ? (
-            <Card className="border border-neutral-200 p-6 text-sm text-neutral-500 shadow-sm">
-              Loading your projects...
-            </Card>
-          ) : isError ? (
-            <Card className="border border-neutral-200 p-6 text-sm text-red-600 shadow-sm">
-              We could not load your projects right now.
-            </Card>
-          ) : (
-            <Card className="border shadow-sm">
-              <div className="flex items-center justify-between border-b px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
-                    <GraduationCap size={16} />
-                  </div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Projects
-                  </h2>
+        {isLoading ? (
+          <Card className="border border-neutral-200 p-6 text-sm text-neutral-500 shadow-sm">
+            Loading your projects...
+          </Card>
+        ) : isError ? (
+          <Card className="border border-neutral-200 p-6 text-sm text-red-600 shadow-sm">
+            We could not load your projects right now.
+          </Card>
+        ) : (
+          <Card className="border shadow-sm">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div className="flex items-center gap-2">
+                <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
+                  <GraduationCap size={16} />
                 </div>
-                <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600">
-                  {filteredProjects.length}
-                </span>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Projects
+                </h2>
               </div>
+              <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600">
+                {filteredProjects.length}
+              </span>
+            </div>
 
-              <div className="space-y-3 p-5 ">
-                {filteredProjects.length > 0 ? (
-                  filteredProjects.map(({ project, role }) => (
-                    <ProjectCard
-                      key={`${role}-${project.id}`}
-                      project={project}
-                      role={role}
-                    />
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
-                    {emptyMessage}
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
-        </div>
-      )}
+            <div className="space-y-3 p-5 ">
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map(({ project, role }) => (
+                  <ProjectCard
+                    key={`${role}-${project.id}`}
+                    project={project}
+                    role={role}
+                  />
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
+                  {emptyMessage}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+      </div>
     </AppLayout>
   );
 }

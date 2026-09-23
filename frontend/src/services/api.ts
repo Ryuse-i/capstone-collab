@@ -1,7 +1,5 @@
 // src/services/api.ts
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
-import apiClient from "./apiClient";
-import axios from "axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +17,14 @@ export interface ApiError {
 /** POST /auth/jwt/login → OAuth2 bearer response */
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
+  token_type: "bearer";
+}
+
+/** POST /auth/refresh-token → same structure as login */
+export interface RefreshTokenResponse {
+  access_token: string;
+  refresh_token: string;
   token_type: "bearer";
 }
 
@@ -81,11 +87,129 @@ function parseApiError(error: ApiError): string {
   return "An unexpected error occurred.";
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
+// ─── Token storage ────────────────────────────────────────────────────────────
+
+export function getStoredToken(): string | null {
+  return localStorage.getItem("access_token");
+}
+
+export function storeToken(token: string): void {
+  localStorage.setItem("access_token", token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem("access_token");
+}
+
+export function getStoredRefreshToken(): string | null {
+  return localStorage.getItem("refresh_token");
+}
+
+export function storeRefreshToken(token: string): void {
+  localStorage.setItem("refresh_token", token);
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem("refresh_token");
+}
+
+// ─── Refresh token handling ────────────────────────────────────────────────────
+
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed(token: string) {
+  refreshSubscribers.map(cb => cb(token));
+  refreshSubscribers = [];
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (isRefreshing) {
+    return new Promise(resolve => {
+      subscribeTokenRefresh(token => {
+        resolve(token);
+      });
+    });
+  }
+
+  isRefreshing = true;
+  return new Promise(async (resolve, reject) => {
+    const refreshToken = getStoredRefreshToken();
+    if (!refreshToken) {
+      isRefreshing = false;
+      resolve(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Refresh failed: ${response.status}`);
+      }
+
+      const data: RefreshTokenResponse = await response.json();
+      const { access_token, refresh_token } = data;
+
+      storeToken(access_token);
+      storeRefreshToken(refresh_token);
+      isRefreshing = false;
+      onRefreshed(access_token);
+      resolve(access_token);
+    } catch (err) {
+      console.error("Refresh token error:", err);
+      clearToken();
+      clearRefreshToken();
+      isRefreshing = false;
+      resolve(null);
+    }
+  });
+}
+
+// ─── Core fetch with refresh logic ───────────────────────────────────────────
+
+async function fetchWithRefresh<T>(
+  url: string,
+  init: RequestInit = {}
+): Promise<T> {
+  let response = await fetch(url, init);
   if (response.status === 401) {
-    clearToken();
-    window.dispatchEvent(new Event("auth:expired"));
-    throw new Error("Session expired. Please log in again.");
+    const newAccessToken = await refreshAccessToken();
+    if (newAccessToken) {
+      // Retry with new token
+      const newInit = {
+        ...init,
+        headers: {
+          ...init.headers,
+          Authorization: `Bearer ${newAccessToken}`,
+        },
+      };
+      response = await fetch(url, newInit);
+      if (!response.ok) {
+        let error: ApiError = { detail: "An unexpected error occurred." };
+        try {
+          error = await response.json();
+        } catch {
+          /* non-JSON body */
+        }
+        throw new Error(parseApiError(error));
+      }
+      return response.json() as Promise<T>;
+    } else {
+      // Refresh failed or no refresh token
+      clearToken();
+      clearRefreshToken();
+      window.dispatchEvent(new Event("auth:expired"));
+      throw new Error("Session expired. Please log in again.");
+    }
   }
 
   if (!response.ok) {
@@ -122,22 +246,32 @@ export async function loginUser(
   password: string,
 ): Promise<LoginResponse> {
   const body = new URLSearchParams({ username: email, password });
-  const response = await fetch(`${API_BASE_URL}/auth/jwt/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-  return handleResponse<LoginResponse>(response);
+  const response = await fetchWithRefresh<LoginResponse>(
+    `${API_BASE_URL}/auth/jwt/login`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    }
+  );
+  storeToken(response.access_token);
+  storeRefreshToken(response.refresh_token);
+  return response;
 }
 
 /**
  * POST /auth/jwt/logout
  */
 export async function logoutUser(): Promise<void> {
-  await fetch(`${API_BASE_URL}/auth/jwt/logout`, {
-    method: "POST",
-    headers: authHeaders(),
-  }).catch(() => {});
+  await fetchWithRefresh<void>(
+    `${API_BASE_URL}/auth/jwt/logout`,
+    {
+      method: "POST",
+      headers: authHeaders(),
+    }
+  );
+  clearToken();
+  clearRefreshToken();
 }
 
 /**
@@ -148,41 +282,51 @@ export async function logoutUser(): Promise<void> {
 export async function registerUser(
   credentials: RegisterCredentials,
 ): Promise<UserRead> {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(credentials),
-  });
-  return handleResponse<UserRead>(response);
+  return await fetchWithRefresh<UserRead>(
+    `${API_BASE_URL}/auth/register`,
+    {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(credentials),
+    }
+  );
 }
 
 // ─── User endpoints ───────────────────────────────────────────────────────────
 
 /** GET /users/me */
 export async function getCurrentUser(): Promise<UserRead> {
-  const response = await fetch(`${API_BASE_URL}/users/me`, {
-    headers: authHeaders(),
-  });
-  return handleResponse<UserRead>(response);
+  return await fetchWithRefresh<UserRead>(
+    `${API_BASE_URL}/users/me`,
+    {
+      headers: authHeaders(),
+    }
+  );
 }
 
 /** GET /users/me/profile (your custom route) */
 export async function getMyProfile(): Promise<UserRead> {
-  const response = await fetch(`${API_BASE_URL}/users/me/profile`, {
-    headers: authHeaders(),
-  });
-  return handleResponse<UserRead>(response);
+  return await fetchWithRefresh<UserRead>(
+    `${API_BASE_URL}/users/me/profile`,
+    {
+      headers: authHeaders(),
+    }
+  );
 }
 
 export async function getUserByEmail(email: string): Promise<UserRead | null> {
   try {
-    const response = await apiClient.get(`${API_BASE_URL}/user/${email}`);
-    return response.data;
+    // The endpoint returns the UserRead object directly (not wrapped)
+    return await fetchWithRefresh<UserRead>(
+      `${API_BASE_URL}/user/${email}`,
+      {
+        headers: authHeaders(),
+      }
+    );
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
+    if (error instanceof Error && error.message.includes("404")) {
       return null;
     }
-    console.error("Failed to get user");
     throw error;
   }
 }
@@ -192,19 +336,18 @@ export async function getUserByEmailAndRole(
   role: string,
 ): Promise<UserRead[] | null> {
   try {
-    const response = await apiClient.get(`${API_BASE_URL}/users/search_users`, {
-      params: {
-        email: email,
-        role: role,
-      },
+    // Build URL with query parameters
+    const url = `${API_BASE_URL}/users/search_users?email=${encodeURIComponent(
+      email
+    )}&role=${encodeURIComponent(role)}`;
+    // The endpoint returns the UserRead[] array directly (not wrapped)
+    return await fetchWithRefresh<UserRead[]>(url, {
+      headers: authHeaders(),
     });
-    return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
-      console.error("User does not exist");
+    if (error instanceof Error && error.message.includes("404")) {
       return null;
     }
-    console.error("Failed to get user", error);
     throw error;
   }
 }
@@ -216,24 +359,12 @@ export async function getUserByEmailAndRole(
 export async function updateCurrentUser(
   payload: UpdateUserPayload,
 ): Promise<UserRead> {
-  const response = await fetch(`${API_BASE_URL}/users/me`, {
-    method: "PATCH",
-    headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
-  });
-  return handleResponse<UserRead>(response);
-}
-
-// ─── Token storage ────────────────────────────────────────────────────────────
-
-export function getStoredToken(): string | null {
-  return localStorage.getItem("access_token");
-}
-
-export function storeToken(token: string): void {
-  localStorage.setItem("access_token", token);
-}
-
-export function clearToken(): void {
-  localStorage.removeItem("access_token");
+  return await fetchWithRefresh<UserRead>(
+    `${API_BASE_URL}/users/me`,
+    {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    }
+  );
 }

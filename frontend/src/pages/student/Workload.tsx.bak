@@ -1,5 +1,5 @@
 import AppLayout from "@/layouts/Applayout";
-import { TriangleAlert, ArrowRight, Loader2, AlertTriangle as AlertTriangleIcon } from "lucide-react";
+import { TriangleAlert, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   PieChart,
@@ -39,31 +39,16 @@ function memberName(member: {
 
 export default function Workload() {
   const { data: user } = useCurrentUser();
-  const { 
-    data: project, 
-    isLoading: isProjectLoading, 
-    isError: isProjectError,
-    error: projectErrorObj
-  } = useGetCurrentProject(user?.id ?? "");
+  const { data: project, isLoading: isProjectLoading } = useGetCurrentProject(
+    user?.id ?? "",
+  );
   const projectId = project?.id ?? "";
-  const { 
-    data: members = [], 
-    isLoading: isMembersLoading, 
-    isError: isMembersError,
-    error: membersErrorObj
-  } = useGetMembersWithUserSnapshot(projectId);
-  const { 
-    data: tasks = [], 
-    isLoading: isTasksLoading, 
-    isError: isTasksError,
-    error: tasksErrorObj
-  } = useGetAllTaskAssignedMembers(projectId);
-  const { 
-    data: recommendations = [], 
-    isLoading: isRecommendationsLoading, 
-    isError: isRecommendationsError,
-    error: recommendationsErrorObj
-  } = useGetProjectRecommendations(projectId);
+  const { data: members = [], isLoading: isMembersLoading } =
+    useGetMembersWithUserSnapshot(projectId);
+  const { data: tasks = [], isLoading: isTasksLoading } =
+    useGetAllTaskAssignedMembers(projectId);
+  const { data: recommendations = [], isLoading: isRecommendationsLoading } =
+    useGetProjectRecommendations(projectId);
   const snapshot = project?.snapshot;
 
   const memberWorkload = members.map((member) => {
@@ -116,9 +101,6 @@ export default function Workload() {
   const isLoading =
     isProjectLoading ||
     (!!projectId && (isMembersLoading || isTasksLoading || isRecommendationsLoading));
-  const isError =
-    isProjectError ||
-    (!!projectId && (isMembersError || isTasksError || isRecommendationsError));
 
   return (
     <AppLayout breadcrumbs={[{ label: "Workload", href: "/workload" }]}>
@@ -126,25 +108,10 @@ export default function Workload() {
         <h1 className="my-2 text-(--text-h) text-2xl font-bold dark:text-card-foreground">
           Track and optimize task distribution across team members
         </h1>
-        {isError ? (
-          <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-            <div className="text-center">
-              <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
-                <AlertTriangleIcon className="h-6 w-6 text-destructive" />
-              </div>
-              <p className="text-foreground dark:text-muted-foreground">
-                Failed to load workload data. Please try again.
-              </p>
-            </div>
-          </div>
-        ) : isLoading ? (
-          <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-              <p className="text-foreground dark:text-muted-foreground">
-                Loading workload data...
-              </p>
-            </div>
+        {isLoading ? (
+          <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading workload data...
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

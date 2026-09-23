@@ -433,12 +433,19 @@ function AdvisorSkeletonCard() {
 export default function Team() {
   const { data: user } = useCurrentUser();
 
-  const { data: project } = useGetCurrentProject(user?.id ?? "");
   const {
-    data: members,
-    isLoading,
-    isError,
+    data: project,
+    isLoading: isProjectLoading,
+    isError: isProjectError
+  } = useGetCurrentProject(user?.id ?? "");
+  const {
+    data: members = [],
+    isLoading: isMembersLoading,
+    isError: isMembersError,
   } = useGetMembersWithUserSnapshot(project?.id ?? "");
+
+  const isLoading = isProjectLoading || isMembersLoading;
+  const isError = isProjectError || isMembersError;
 
   const advisorMembers =
     members?.filter((member) => member.project_role === "advisor") ?? [];
@@ -455,114 +462,100 @@ export default function Team() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-foreground">
-            Manage members and monitor activities
-          </h1>
-          {!isLoading && !isError && members && (
+      {isError ? (
+        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
+          <div className="text-center">
+            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <p className="text-foreground dark:text-muted-foreground">
+              Failed to load team data. Please try again.
+            </p>
+          </div>
+        </div>
+      ) : isLoading ? (
+        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <p className="text-foreground dark:text-muted-foreground">
+              Loading team data...
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              Manage members and monitor activities
+            </h1>
             <span className="text-sm text-gray-400 dark:text-gray-500">
               {regularMembers.length} regular member
               {regularMembers.length !== 1 ? "s" : ""}
             </span>
+          </div>
+
+          <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">
+                Advisor
+              </h2>
+
+              {advisorMembers.length > 0 && (
+                <div className="w-full gap-4">
+                  {advisorMembers.map((member) => (
+                    <MemberCard
+                      key={member.id}
+                      member={member}
+                      showWorkload={false}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {advisorMembers.length === 0 && (
+                <AdvisorPlaceholderCard message="There is no advisor yet." />
+              )}
+            </div>
+
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">
+                Instructor
+              </h2>
+
+              {instructorMembers.length > 0 && (
+                <div className="gap-4">
+                  {instructorMembers.map((member) => (
+                    <MemberCard
+                      key={member.id}
+                      member={member}
+                      showWorkload={false}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {instructorMembers.length === 0 && (
+                <AdvisorPlaceholderCard message="There is no instructor yet." />
+              )}
+            </div>
+          </div>
+
+          {/* Regular members section */}
+          {regularMembers.length === 0 && (
+            <p className="text-sm text-gray-400">
+              No regular team members found for this project.
+            </p>
+          )}
+
+          {regularMembers.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {regularMembers.map((member) => (
+                <MemberCard key={member.id} member={member} />
+              ))}
+            </div>
           )}
         </div>
-
-        <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div>
-            <h2 className="mb-3 text-lg font-semibold text-foreground">
-              Advisor
-            </h2>
-
-            {isLoading && <AdvisorSkeletonCard />}
-
-            {!isLoading && isError && (
-              <AdvisorPlaceholderCard message="Failed to load advisor data. Please try again." />
-            )}
-
-            {!isLoading && !isError && advisorMembers.length > 0 && (
-              <div className="w-full gap-4">
-                {advisorMembers.map((member) => (
-                  <MemberCard
-                    key={member.id}
-                    member={member}
-                    showWorkload={false}
-                  />
-                ))}
-              </div>
-            )}
-
-            {!isLoading && !isError && advisorMembers.length === 0 && (
-              <AdvisorPlaceholderCard message="There is no advisor yet." />
-            )}
-          </div>
-
-          <div>
-            <h2 className="mb-3 text-lg font-semibold text-foreground">
-              Instructor
-            </h2>
-
-            {isLoading && <AdvisorSkeletonCard />}
-
-            {!isLoading && isError && (
-              <AdvisorPlaceholderCard message="Failed to load instructor data. Please try again." />
-            )}
-
-            {!isLoading && !isError && instructorMembers.length > 0 && (
-              <div className="gap-4">
-                {instructorMembers.map((member) => (
-                  <MemberCard
-                    key={member.id}
-                    member={member}
-                    showWorkload={false}
-                  />
-                ))}
-              </div>
-            )}
-
-            {!isLoading && !isError && instructorMembers.length === 0 && (
-              <AdvisorPlaceholderCard message="There is no instructor yet." />
-            )}
-          </div>
-        </div>
-
-        {/* Regular members section */}
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="rounded-xl">
-                <CardContent className="p-5">
-                  <div className="animate-pulse flex flex-col gap-4">
-                    <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-800" />
-                    <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
-                    <div className="h-20 w-full bg-gray-100 dark:bg-gray-900 rounded" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {!isLoading && isError && (
-          <p className="text-sm text-red-500">
-            Failed to load team members. Please try again.
-          </p>
-        )}
-
-        {!isLoading && !isError && members && regularMembers.length === 0 && (
-          <p className="text-sm text-gray-400">
-            No regular team members found for this project.
-          </p>
-        )}
-
-        {!isLoading && !isError && members && regularMembers.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {regularMembers.map((member) => (
-              <MemberCard key={member.id} member={member} />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </AppLayout>
   );
 }

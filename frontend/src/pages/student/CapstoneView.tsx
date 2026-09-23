@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
@@ -14,21 +14,84 @@ import {
 } from "lucide-react";
 import { results } from "@/types/capstoneresults";
 import { rememberLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
+import { AlertTriangle } from "lucide-react";
 
 export default function CapstoneView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<any>(null);
 
-  const result = results.find((r) => r.id === id);
-
-  // Remember this project's view page so the sidebar's "Capstone Search"
-  // item returns here after visiting other pages, instead of resetting
-  // to the search list.
   useEffect(() => {
+    // Simulate loading delay for consistency with other pages
+    const timer = setTimeout(() => {
+      try {
+        const foundResult = results.find((r) => r.id === id);
+        if (foundResult) {
+          setResult(foundResult);
+          setLoading(false);
+        } else {
+          setError("Capstone project not found");
+          setLoading(false);
+        }
+      } catch (err) {
+        setError("Failed to load capstone data. Please try again.");
+        setLoading(false);
+      }
+    }, 300); // 300ms delay to show loading state
+
+    // Remember this project's view page so the sidebar's "Capstone Search"
+    // item returns here after visiting other pages, instead of resetting
+    // to the search list.
     if (id) {
       rememberLastVisitedCapstone(`/capstone-view/${id}`);
     }
+
+    return () => clearTimeout(timer);
   }, [id]);
+
+  if (error) {
+    return (
+      <AppLayout
+        breadcrumbs={[
+          { label: "Capstone Search", href: "/capstone-search" },
+          { label: "Error", href: "#" },
+        ]}
+      >
+        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
+          <div className="text-center">
+            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <p className="text-foreground dark:text-muted-foreground">
+              {error}
+            </p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (loading) {
+    return (
+      <AppLayout
+        breadcrumbs={[
+          { label: "Capstone Search", href: "/capstone-search" },
+          { label: "Loading", href: "#" },
+        ]}
+      >
+        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <p className="text-foreground dark:text-muted-foreground">
+              Loading capstone data...
+            </p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!result) {
     return (
