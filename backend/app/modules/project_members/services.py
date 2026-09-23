@@ -27,6 +27,11 @@ class ProjectMemberService:
         return await repo.get_by_id(project_member_id)
 
     @staticmethod
+    async def get_one_member_with_project(db: AsyncSession, project_member_id):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_by_id_with_project(project_member_id)
+
+    @staticmethod
     async def get_member_by_user_id(db: AsyncSession, user_id: UUID):
         repo = ProjectMemberRepo(db)
         return await repo.get_by_user_id(user_id)

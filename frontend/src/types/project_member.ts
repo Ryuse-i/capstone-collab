@@ -12,7 +12,7 @@ export type Skill =
   | "Backend Development"
   | "Frontend Development"
   | "Mobile Development"
-  | "Iot Development"
+  | "IOT Development"
   | "Database Design"
   | "System Architecture"
   | "UI/UX Design"
@@ -37,14 +37,17 @@ export interface MemberBase {
 }
 
 export interface ProjectMemberResponse extends MemberBase {
-  id: number;
+  id: string;
   created_at: Date;
   updated_at: Date;
+  skills: Skill[] | null;
 }
 
 export type CreateProjectMember = MemberBase;
 
-export type UpdateProjectMember = Partial<MemberBase>;
+export type UpdateProjectMember = Partial<MemberBase> & {
+  skills: Skill[] | null;
+};
 
 export interface ProjectMemberUserResponse extends ProjectMemberResponse {
   users: UserBase;

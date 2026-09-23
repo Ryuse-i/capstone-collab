@@ -159,6 +159,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     user?.id ?? "",
   );
   const { data: projects } = useGetInstructorProjects(user?.id ?? "");
+
+  // Check if sidebar data is loaded (project and member data)
+  const sidebarDataLoaded = !isProjectLoading && !isMemberLoading && !!user;
+
   const role = user?.role?.toLowerCase();
   const hasProject = Boolean(currentProject);
   const shouldShowProjectNav = !isProjectLoading && hasProject;
@@ -258,19 +262,44 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
-        <NavMain items={navMain} />
-        {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
-          <NavShortcut items={navShortcuts} />
-        )}
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
-      </SidebarContent>
+      {!sidebarDataLoaded ? (
+        // Loading state for sidebar body
+        <div className="flex flex-col h-full">
+          <SidebarContent className="flex-1">
+            {/* Loading state for nav content */}
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-400 text-sm animate-pulse">
+                Loading navigation…
+              </p>
+            </div>
+          </SidebarContent>
+          <SidebarFooter>
+            {/* Loading state for user info */}
+            <div className="flex items-center justify-center py-4">
+              <p className="text-gray-400 text-sm animate-pulse">
+                Loading user info…
+              </p>
+            </div>
+          </SidebarFooter>
+          <SidebarRail />
+        </div>
+      ) : (
+        <>
+          <SidebarContent>
+            <NavMain items={navMain} />
+            {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
+              <NavShortcut items={navShortcuts} />
+            )}
+            <NavSecondary items={data.navSecondary} className="mt-auto" />
+          </SidebarContent>
 
-      <SidebarFooter>
-        <NavUser user={sidebarUser} />
-      </SidebarFooter>
+          <SidebarFooter>
+            <NavUser user={sidebarUser} />
+          </SidebarFooter>
 
-      <SidebarRail />
+          <SidebarRail />
+        </>
+      )}
     </Sidebar>
   );
 }

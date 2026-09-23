@@ -95,3 +95,12 @@ class ProjectMemberRepo(BaseRepo):
         )
         result = await self.db.execute(stmt.execution_options(populate_existing=True))
         return result.unique().scalars().all()
+
+    async def get_by_id_with_project(self, item_id):
+        query = (
+            select(self.model)
+            .options(selectinload(self.model.project))
+            .where(self.model.id == item_id)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()

@@ -123,6 +123,8 @@ export default function Dashboard() {
   }
 
   const hasProject = Boolean(currentProject);
+  // Check if we have both project and snapshot data loaded
+  const dataLoaded = !!currentProject && !!currentProject.snapshot;
 
   const healthScore = currentProject?.snapshot?.health_score ?? 0;
   const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
@@ -135,7 +137,7 @@ export default function Dashboard() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
-      {isLoading ? (
+      {isLoading || !dataLoaded ? (
         // Loading state
         <div className="flex items-center justify-center h-64">
           <p className="text-gray-400 text-sm animate-pulse">

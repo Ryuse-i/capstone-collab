@@ -96,7 +96,7 @@ const SKILL_OPTIONS: { value: Skill; label: string }[] = [
   { value: "Backend Development", label: "Backend Development" },
   { value: "Frontend Development", label: "Frontend Development" },
   { value: "Mobile Development", label: "Mobile Development" },
-  { value: "Iot Development", label: "IoT Development" },
+  { value: "IOT Development", label: "IOT Development" },
   { value: "Database Design", label: "Database Design" },
   { value: "System Architecture", label: "System Architecture" },
   { value: "UI/UX Design", label: "UI/UX Design" },

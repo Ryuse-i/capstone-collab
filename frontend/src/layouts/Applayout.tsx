@@ -55,7 +55,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-import { useCurrentUser } from "@/hooks/useAuth";
 import NotificationCenter from "@/components/notifications/NotificationCenter";
 
 interface BreadcrumbItemType {
@@ -74,7 +73,6 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const [open, setOpen] = React.useState(false);
 
-  const { data: user } = useCurrentUser();
 
   return (
     <SidebarProvider>

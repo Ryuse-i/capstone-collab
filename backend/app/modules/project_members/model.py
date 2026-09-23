@@ -2,10 +2,11 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID
+from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, text
+from sqlalchemy.dialects.postgresql import ARRAY
 import enum
 from sqlalchemy import Enum as SAEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class Skills(str, enum.Enum):
     DIAGRAM_AND_MODELING = "Diagram and Modeling"
     EDITING_AND_PROOFREADING = "Editing and Proofreading"
     FINANCIAL_DOCUMENTATION = "Financial Documentation"
-    BUDGET_PLANNING = "Budget Planning "
+    BUDGET_PLANNING = "Budget Planning"
     RESOURCE_MANAGEMENT = "Resource Management"
 
 
@@ -90,13 +91,14 @@ class ProjectMember(Base):
         nullable=True,
     )
 
-    skills: Mapped[Skills] = mapped_column(
-        SAEnum(
+    skills: Mapped[List[Skills]] = mapped_column(
+        ARRAY(SAEnum(
             Skills,
             name="member_skills",
             values_callable=lambda obj: [e.value for e in obj],
-        ),
+        )),
         nullable=True,
+        server_default=text("'{}'::member_skills[]"),
     )
 
     created_at: Mapped[datetime | None] = mapped_column(

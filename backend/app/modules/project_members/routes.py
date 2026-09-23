@@ -140,10 +140,19 @@ async def update_project_member(
     member_id: UUID,
     project_member: ProjectMemberUpdate,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
-    db_item = await ProjectMemberService.get_one_member(db, member_id)
+    # Get member with project relationship loaded
+    db_item = await ProjectMemberService.get_one_member_with_project(db, member_id)
     if not db_item:
         raise HTTPException(status_code=404, detail="Member not found")
+
+    # Check if current user is the leader of the project
+    if db_item.project and db_item.project.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project leaders can edit member skills",
+        )
     return await ProjectMemberService.update_member(db, db_item, project_member)
 
 
