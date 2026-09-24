@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
+import { Spinner } from "@/components/ui/spinner";
 import {
   AlertTriangle,
   CheckSquare,
@@ -170,46 +171,56 @@ export default function Task() {
 
   // Fetch user data
   const userQuery = useCurrentUser();
-  const { data: userData, isLoading: isUserLoading, isError: isUserError } = userQuery;
+  const {
+    data: userData,
+    isLoading: isUserLoading,
+    isError: isUserError,
+  } = userQuery;
 
   // Fetch current project (depends on user)
   const currentProjectQuery = useGetCurrentProject(userData?.id ?? "");
-  const { data: currentProjectData, isLoading: isProjectLoading, isError: isProjectError } = currentProjectQuery;
+  const {
+    data: currentProjectData,
+    isLoading: isProjectLoading,
+    isError: isProjectError,
+  } = currentProjectQuery;
 
   const projectId = currentProjectData?.id ?? "";
 
   // Fetch tasks (depends on projectId)
   const tasksQuery = useGetAllTaskAssignedMembers(projectId);
-  const { data: allProjectTasks, isLoading: isTasksLoading, isError: isTasksError } = tasksQuery;
+  const {
+    data: allProjectTasks,
+    isLoading: isTasksLoading,
+    isError: isTasksError,
+  } = tasksQuery;
 
   // Fetch project snapshot (depends on projectId)
   const projectQuery = useGetOneProjectWithSpanshot(projectId);
-  const { data: projectData, isLoading: isSnapshotLoading, isError: isSnapshotError } = projectQuery;
+  const {
+    data: projectData,
+    isLoading: isSnapshotLoading,
+    isError: isSnapshotError,
+  } = projectQuery;
 
   // Combined loading state
   const isLoading =
-    isUserLoading ||
-    isProjectLoading ||
-    isTasksLoading ||
-    isSnapshotLoading;
+    isUserLoading || isProjectLoading || isTasksLoading || isSnapshotLoading;
 
   // Combined error state
   const isError =
-    isUserError ||
-    isProjectError ||
-    isTasksError ||
-    isSnapshotError;
+    isUserError || isProjectError || isTasksError || isSnapshotError;
 
-  const now = new Date()
+  const now = new Date();
   const snapshot = projectData?.snapshot;
 
   // counts all overdue task
   const overdueTaskCounter = (allProjectTasks ?? []).filter((task) => {
-    if(task.status === "completed") return false
-    if(!task.deadline) return false
+    if (task.status === "completed") return false;
+    if (!task.deadline) return false;
 
-    return new Date(task.deadline) < now
-  }).length
+    return new Date(task.deadline) < now;
+  }).length;
 
   const stats = [
     {
@@ -239,7 +250,7 @@ export default function Task() {
       icon: <BarChart2 className="h-6 w-6 text-purple-400" />,
       change: "+36%",
       value: (allProjectTasks ?? []).filter(
-        (task) => task.status === "not_started"
+        (task) => task.status === "not_started",
       ).length,
       label: "Not Started",
     },
@@ -255,22 +266,15 @@ export default function Task() {
       ]}
     >
       {isError ? (
-        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-          <div className="text-center">
-            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-            </div>
-            <p className="text-foreground dark:text-muted-foreground">
-              Failed to load project data. Please try again later.
-            </p>
-          </div>
+        <div className="flex flex-col justify-center items-center gap-4 h-screen">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <p className="text-foreground dark:text-muted-foreground">
+            Failed to load project data. Please try again later.
+          </p>
         </div>
       ) : isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-foreground dark:text-muted-foreground">Loading project data...</p>
-          </div>
+        <div className="flex justify-center items-center flex-1">
+          <Spinner />
         </div>
       ) : (
         <div className="min-w-0 w-full">
@@ -278,142 +282,142 @@ export default function Task() {
             Distribute and manage tasks
           </h1>
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat, index) => (
-            <Card key={index}>
-              <CardContent className="flex flex-col gap-2 p-4">
-                <div className="flex items-center justify-between">
-                  {stat.icon}
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {stats.map((stat, index) => (
+              <Card key={index}>
+                <CardContent className="flex flex-col gap-2 p-4">
+                  <div className="flex items-center justify-between">
+                    {stat.icon}
 
-                  <span className="text-xs font-medium text-green-500">
-                    {stat.change} ↑
-                  </span>
-                </div>
+                    <span className="text-xs font-medium text-green-500">
+                      {stat.change} ↑
+                    </span>
+                  </div>
 
-                <p
-                  className={`text-3xl font-bold ${
-                    stat.valueColor ?? "text-foreground dark:text-gray-100"
-                  }`}
-                >
-                  {stat.value}
-                </p>
+                  <p
+                    className={`text-3xl font-bold ${
+                      stat.valueColor ?? "text-foreground dark:text-gray-100"
+                    }`}
+                  >
+                    {stat.value}
+                  </p>
 
-                <p className="text-xs font-medium text-muted-foreground">
-                  {stat.label}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {stat.label}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-        {/* Unassigned task warning */}
-        {typeof snapshot?.unassigned_tasks === "number" &&
-          snapshot.unassigned_tasks > 0 && (
-            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 mt-4">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
+          {/* Unassigned task warning */}
+          {typeof snapshot?.unassigned_tasks === "number" &&
+            snapshot.unassigned_tasks > 0 && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 mt-4">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
 
-              <span>
-                {snapshot.unassigned_tasks} task
-                {snapshot.unassigned_tasks > 1 ? "s" : ""} unassigned
-                {" — "}
-                assign {snapshot.unassigned_tasks > 1 ? "them" : "it"} to keep
-                workload balance accurate.
-              </span>
+                <span>
+                  {snapshot.unassigned_tasks} task
+                  {snapshot.unassigned_tasks > 1 ? "s" : ""} unassigned
+                  {" — "}
+                  assign {snapshot.unassigned_tasks > 1 ? "them" : "it"} to keep
+                  workload balance accurate.
+                </span>
+              </div>
+            )}
+
+          {/* View switcher */}
+          <div className="mt-6">
+            <Select
+              value={viewMode}
+              onValueChange={(value) => setViewMode(value as ViewMode)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Select view" />
+              </SelectTrigger>
+              <SelectContent>
+                {viewTabs.map((tab) => (
+                  <SelectItem key={tab.id} value={tab.id}>
+                    {tab.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Table / Board */}
+          {viewMode === "table" ? (
+            <TaskTable
+              tasks={allProjectTasks ?? []}
+              projectId={projectId}
+              isLoading={isTasksLoading}
+              isError={isTasksError}
+            />
+          ) : viewMode === "timeline" ? (
+            <TaskGanttView
+              tasks={allProjectTasks ?? []}
+              isLoading={isTasksLoading}
+              isError={isTasksError}
+            />
+          ) : (
+            <div className="relative mt-4 w-full min-w-0 overflow-x-auto pb-2 no-scrollbar">
+              <div className="flex w-max gap-4">
+                {boardSupertasks.map((supertask) => (
+                  <Card
+                    key={supertask.id}
+                    className="w-[85vw] shrink-0 border-dashed sm:w-70"
+                  >
+                    <CardContent className="p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h3 className="font-semibold text-foreground">
+                          {supertask.title}
+                        </h3>
+
+                        <Badge variant="secondary">
+                          {supertask.tasks.length}
+                        </Badge>
+                      </div>
+
+                      <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto pr-1">
+                        {supertask.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="rounded-lg border bg-background p-3 shadow-sm"
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium text-foreground">
+                                {task.title}
+                              </p>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => {
+                                  setSelectedBoardCard(task);
+                                  setBoardDialogOpen(true);
+                                }}
+                                aria-label={`View ${task.title}`}
+                              >
+                                <Eye className="h-4 w-4 text-primary" />
+                              </Button>
+                            </div>
+
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {task.description}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
-
-        {/* View switcher */}
-        <div className="mt-6">
-          <Select
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value as ViewMode)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Select view" />
-            </SelectTrigger>
-            <SelectContent>
-              {viewTabs.map((tab) => (
-                <SelectItem key={tab.id} value={tab.id}>
-                  {tab.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
-
-        {/* Table / Board */}
-        {viewMode === "table" ? (
-          <TaskTable
-            tasks={allProjectTasks ?? []}
-            projectId={projectId}
-            isLoading={isTasksLoading}
-            isError={isTasksError}
-          />
-        ) : viewMode === "timeline" ? (
-          <TaskGanttView
-            tasks={allProjectTasks ?? []}
-            isLoading={isTasksLoading}
-            isError={isTasksError}
-          />
-        ) : (
-          <div className="relative mt-4 w-full min-w-0 overflow-x-auto pb-2 no-scrollbar">
-            <div className="flex w-max gap-4">
-              {boardSupertasks.map((supertask) => (
-                <Card
-                  key={supertask.id}
-                  className="w-[85vw] shrink-0 border-dashed sm:w-70"
-                >
-                  <CardContent className="p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <h3 className="font-semibold text-foreground">
-                        {supertask.title}
-                      </h3>
-
-                      <Badge variant="secondary">
-                        {supertask.tasks.length}
-                      </Badge>
-                    </div>
-
-                    <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto pr-1">
-                      {supertask.tasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className="rounded-lg border bg-background p-3 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="font-medium text-foreground">
-                              {task.title}
-                            </p>
-
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => {
-                                setSelectedBoardCard(task);
-                                setBoardDialogOpen(true);
-                              }}
-                              aria-label={`View ${task.title}`}
-                            >
-                              <Eye className="h-4 w-4 text-primary" />
-                            </Button>
-                          </div>
-
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {task.description}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )}
+      )}
       {/* Mock board card dialog */}
       <BoardCardDialog
         card={selectedBoardCard}

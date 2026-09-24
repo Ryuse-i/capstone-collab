@@ -1,0 +1,16 @@
+backend/app/core/config.py
+backend/app/modules/users/auth.py
+backend/app/modules/users/manager.py
+backend/app/modules/users/model.py
+backend/app/modules/users/routes.py
+backend/app/modules/users/schema.py
+backend/app/modules/users/services.py
+frontend/src/App.tsx
+frontend/src/components/login-form.tsx
+frontend/src/components/nav-user.tsx
+frontend/src/components/PrivateRoute.tsx
+frontend/src/components/signup-form.tsx
+frontend/src/pages/LoginPage.tsx
+frontend/src/pages/SignupPage.tsx
+frontend/src/hooks/useAuth.ts
+frontend/src/services/api.ts

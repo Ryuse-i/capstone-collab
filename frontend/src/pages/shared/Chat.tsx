@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
+import { Spinner } from "@/components/ui/spinner";
 import { CalendarClock, ExternalLink, Send, Video, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import { useGetProjectMessages, useSendMessage } from "@/hooks/useMessage";
 import { useGetProjectMeetings } from "@/hooks/useMeeting";
 import type { MeetingProvider } from "@/types/meeting";
+import { MeetingDialog } from "@/components/meetings/MeetingDialog";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
   if (!firstName && !lastName) return "?";
@@ -102,11 +104,8 @@ export default function Chat() {
           </div>
         </div>
       ) : isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-foreground dark:text-muted-foreground">Loading chat...</p>
-          </div>
+        <div className="flex flex-1 justify-center items-center">
+          <Spinner/>
         </div>
       ) : (
         <>

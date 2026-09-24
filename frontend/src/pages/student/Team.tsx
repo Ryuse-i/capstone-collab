@@ -1,4 +1,5 @@
 import AppLayout from "@/layouts/Applayout";
+import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +63,6 @@ const workloadStyles: Record<
 function getInitials(first: string, last: string) {
   return `${first?.trim()?.[0] ?? ""}${last?.trim()?.[0] ?? ""}`.toUpperCase();
 }
-
 
 function capacityPercent(multiplier: number) {
   // capacity_multiplier is expressed relative to 1.0 (baseline capacity).
@@ -394,7 +394,6 @@ function MemberCard({
                 />
               </div>
             </div>
-
           </>
         )}
       </CardContent>
@@ -436,7 +435,7 @@ export default function Team() {
   const {
     data: project,
     isLoading: isProjectLoading,
-    isError: isProjectError
+    isError: isProjectError,
   } = useGetCurrentProject(user?.id ?? "");
   const {
     data: members = [],
@@ -463,24 +462,15 @@ export default function Team() {
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
       {isError ? (
-        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-          <div className="text-center">
-            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-            </div>
-            <p className="text-foreground dark:text-muted-foreground">
-              Failed to load team data. Please try again.
-            </p>
-          </div>
+        <div className="flex flex-col justify-center items-center gap-4 h-screen">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <p className="text-foreground dark:text-muted-foreground">
+            Failed to load project data. Please try again later.
+          </p>
         </div>
       ) : isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-foreground dark:text-muted-foreground">
-              Loading team data...
-            </p>
-          </div>
+        <div className="flex flex-1 justify-center items-center">
+          <Spinner />
         </div>
       ) : (
         <div>

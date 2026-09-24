@@ -1,5 +1,7 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
+import { AlertTriangle } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -108,11 +110,8 @@ export default function MyTask() {
   if (userLoading || isLoading) {
     return (
       <AppLayout breadcrumbs={[{ label: "My Tasks", href: "/mytask" }]}>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-b-transparent"></div>
-            <p className="mt-2 text-sm text-muted-foreground">Loading your tasks...</p>
-          </div>
+        <div className="flex justify-center items-center flex-1">
+          <Spinner/>
         </div>
       </AppLayout>
     );
@@ -121,16 +120,12 @@ export default function MyTask() {
   if (error) {
     return (
       <AppLayout breadcrumbs={[{ label: "My Tasks", href: "/mytask" }]}>
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Retry
-            </Button>
-          </div>
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4">
-            <p>Failed to load tasks. Please try again.</p>
-          </div>
-        </div>
+          <div className="flex flex-col justify-center items-center gap-4 h-screen">
+    <AlertTriangle className="h-8 w-8 text-destructive" />
+    <p className="text-foreground dark:text-muted-foreground">
+      Failed to load project data. Please try again later.
+    </p>
+  </div>
       </AppLayout>
     );
   }
