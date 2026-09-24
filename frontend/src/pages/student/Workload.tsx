@@ -319,20 +319,15 @@ export default function Workload() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border shadow-sm lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">
-                  Redistribution Recommendations
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                {recommendations.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No redistribution recommendations are available for this
-                    project.
-                  </p>
-                ) : (
-                  recommendations.map((item) => (
+            {recommendations.length > 0 && (
+              <Card className="rounded-xl border shadow-sm lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold">
+                    Redistribution Recommendations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  {recommendations.map((item) => (
                     <div
                       key={item.id}
                       className="flex flex-col gap-2 rounded-lg border p-4"
@@ -354,10 +349,10 @@ export default function Workload() {
                         {item.deadline_impact}
                       </p>
                     </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
     </AppLayout>

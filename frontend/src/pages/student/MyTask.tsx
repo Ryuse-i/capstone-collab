@@ -2,23 +2,38 @@ import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import { AlertTriangle } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { Eye } from "lucide-react";
+import { ArrowRight, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MyTaskDialog } from "@/components/user/MyTaskDialog";
-import type {
-  TaskResponseMembers,
-} from "@/types/task";
+import type { TaskResponseMembers } from "@/types/task";
 import { useGetTasksForUser } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
 
+function getDeadlineUrgency(task: TaskResponseMembers) {
+  if (!task.deadline || task.status === "completed") return null;
+
+  const deadline = new Date(task.deadline);
+  const now = new Date();
+
+  if (Number.isNaN(deadline.getTime())) return null;
+  if (deadline < now) return "overdue" as const;
+
+  const dueIn48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  return deadline < dueIn48Hours ? ("soon" as const) : null;
+}
+
 export default function MyTask() {
   const { data: currentUser, isLoading: userLoading } = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<"All" | "Not Started" | "In Progress" | "Submitted" | "Completed">("All");
+  const [activeTab, setActiveTab] = useState<
+    "All" | "Not Started" | "In Progress" | "Submitted" | "Completed"
+  >("All");
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(null);
+  const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(
+    null,
+  );
 
   // Fetch tasks assigned to the current user
   const userId = currentUser?.id || "";
@@ -28,16 +43,21 @@ export default function MyTask() {
   // Include the original task object to avoid stale closure issues in onClick handlers
   const projectsWithTask = tasks.map((task) => {
     // Generate a tag from primary skill (take first letters of each word)
-    const tag = task.primary_skill
-      .replace(/\s+/g, " ")
-      .split(" ")
-      .map((word) => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 4) || "TASK";
+    const tag =
+      task.primary_skill
+        .replace(/\s+/g, " ")
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 4) || "TASK";
 
     // Convert task status to display format - handle undefined status
-    let displayStatus: "Not Started" | "In Progress" | "Submitted" | "Completed" = "Not Started";
+    let displayStatus:
+      | "Not Started"
+      | "In Progress"
+      | "Submitted"
+      | "Completed" = "Not Started";
     if (task.status) {
       switch (task.status) {
         case "not_started":
@@ -85,7 +105,9 @@ export default function MyTask() {
         icon: "file" as const,
       },
       assigned: task.assigned_members
-        .map((member) => `${member.first_name} ${member.last_name || ""}`.trim())
+        .map((member) =>
+          `${member.first_name} ${member.last_name || ""}`.trim(),
+        )
         .filter(Boolean),
       due: dueDate,
       task: task, // Include the original task object
@@ -98,12 +120,13 @@ export default function MyTask() {
       : projectsWithTask.filter((project) => project.status === activeTab);
 
   const countFor = (
-    status: "All" | "Not Started" | "In Progress" | "Submitted" | "Completed"
+    status: "All" | "Not Started" | "In Progress" | "Submitted" | "Completed",
   ) => {
     if (status === "All") {
       return projectsWithTask.length;
     }
-    return projectsWithTask.filter((project) => project.status === status).length;
+    return projectsWithTask.filter((project) => project.status === status)
+      .length;
   };
 
   // Show loading state while waiting for user data or tasks
@@ -190,68 +213,95 @@ export default function MyTask() {
             No tasks in this stage yet.
           </div>
         ) : (
-          filteredProjects.map((project) => (
-            <Card
-              key={project.id}
-              className="hover:shadow-md transition-shadow"
-              onClick={() => {
-                // Use the original task object we attached to avoid stale closures
-                if (project.task) {
-                  setSelectedTask(project.task);
-                  setOpenTaskDialog(true);
-                }
-              }}
-            >
-              <CardContent className="p-4 flex flex-col gap-3 cursor-pointer">
-                <div>
-                  <h3 className="font-semibold text-foreground leading-snug">
-                    {project.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+          filteredProjects.map((project) => {
+            const deadlineUrgency = getDeadlineUrgency(project.task);
+
+            return (
+              <Card
+                key={project.id}
+                className="gap-3 border border-border/70 py-0 transition-all hover:-translate-y-0.5 hover:border-(--maroon)/40 hover:shadow-md"
+                onClick={() => {
+                  // Use the original task object we attached to avoid stale closures
+                  if (project.task) {
+                    setSelectedTask(project.task);
+                    setOpenTaskDialog(true);
+                  }
+                }}
+              >
+                <CardHeader className="pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug">
+                        {project.title}
+                      </CardTitle>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 text-[10px] border-0">
+                      {deadlineUrgency ? (
+                        <TriangleAlert
+                          className={cn(
+                            "size-3.5",
+                            deadlineUrgency === "overdue"
+                              ? "text-red-600"
+                              : "text-yellow-600",
+                          )}
+                          aria-label={
+                            deadlineUrgency === "overdue"
+                              ? "Overdue"
+                              : "Due soon"
+                          }
+                        />
+                      ) : (
+                        project.status
+                      )}
+                    </Badge>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-3 pb-4">
+                  <p className="border-l-2 border-(--maroon) pl-3 text-sm italic leading-relaxed text-muted-foreground line-clamp-2">
                     {project.description}
                   </p>
-                </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge
+                      className={cn(
+                        "border-0",
+                        project.priority === "high"
+                          ? "bg-red-100 text-red-600"
+                          : project.priority === "medium"
+                            ? "bg-yellow-100 text-yellow-600"
+                            : "bg-gray-100 text-gray-500",
+                      )}
+                    >
+                      {project.priority}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {project.due}
+                    </span>
+                  </div>
+                </CardContent>
 
                 {project.attachment && (
-                  <Button
-                    variant="outline"
-                    className="w-full h-11 justify-between rounded-md border bg-muted/30 px-3 text-sm font-medium hover:bg-muted/50"
-                    onClick={e => {
-                      e.stopPropagation(); // Prevent triggering card click
-                      // Use the original task object we attached to avoid stale closures
-                      if (project.task) {
-                        setSelectedTask(project.task);
-                        setOpenTaskDialog(true);
-                      }
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span>View Task</span>
-                    </span>
-                    <Eye className="h-4 w-4 text-primary" />
-                  </Button>
+                  <div className="flex items-center justify-end border-t bg-muted/30 px-4 py-3">
+                    <Button
+                      variant="outline"
+                      className="w- rounded-md"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering card click
+                        // Use the original task object we attached to avoid stale closures
+                        if (project.task) {
+                          setSelectedTask(project.task);
+                          setOpenTaskDialog(true);
+                        }
+                      }}
+                    >
+                      View Task
+                      <ArrowRight className="size-3.5" />
+                    </Button>
+                  </div>
                 )}
-
-                <div className="flex items-center justify-between pt-1">
-                  <Badge
-                    className={cn(
-                      "border-0",
-                      project.priority === "high"
-                        ? "bg-red-100 text-red-600"
-                        : project.priority === "medium"
-                        ? "bg-yellow-100 text-yellow-600"
-                        : "bg-gray-100 text-gray-500"
-                    )}
-                  >
-                    {project.priority}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {project.due}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+              </Card>
+            );
+          })
         )}
       </div>
 

@@ -515,7 +515,7 @@ export default function InstructorDashboard() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
-      <div className="min-h-screen w-full px-4 py-0 font-sans antialiased">
+      <div className="min-h-screen w-full py-0 font-sans antialiased">
         <div className="mb-5">
           <h1 className="my-2 text-2xl font-bold text-foreground">Your projects</h1>
           <p className="mt-2 text-sm text-neutral-500 dark:text-semiforeground">

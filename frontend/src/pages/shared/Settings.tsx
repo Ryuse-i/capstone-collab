@@ -5,6 +5,8 @@ import { User, Palette, FolderKanban } from "lucide-react";
 import AccountSettings from "@/components/settings/AccountSettings";
 import AppearanceSettings from "@/components/settings/AppearanceSettings";
 import ProjectSettings from "@/components/settings/ProjectSettings";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetCurrentMember } from "@/hooks/useProjectMember";
 
 const tabs = [
   {
@@ -31,6 +33,20 @@ function getInitialTab() {
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState(getInitialTab);
+  const { data: user } = useCurrentUser();
+  const { data: currentMember } = useGetCurrentMember(user?.id ?? "");
+  const isProjectLeader =
+    currentMember?.project_role.toLowerCase() === "leader";
+
+  const visibleTabs = tabs.filter(
+    (tab) => tab.id !== "project" || isProjectLeader,
+  );
+
+  useEffect(() => {
+    if (!isProjectLeader && activeTab === "project") {
+      setActiveTab("account");
+    }
+  }, [activeTab, isProjectLeader]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, activeTab);
@@ -48,7 +64,7 @@ export default function Settings() {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {tabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <Button
             key={tab.id}
             variant={activeTab === tab.id ? "default" : "outline"}
@@ -63,7 +79,7 @@ export default function Settings() {
       </div>
 
       {/* Tab content */}
-      {activeTab === "project" && <ProjectSettings />}
+      {activeTab === "project" && isProjectLeader && <ProjectSettings />}
       {activeTab === "account" && <AccountSettings />}
       {activeTab === "appearance" && <AppearanceSettings />}
     </AppLayout>

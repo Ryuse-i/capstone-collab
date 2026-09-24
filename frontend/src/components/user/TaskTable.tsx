@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   Popover,
@@ -36,7 +37,6 @@ import {
 } from "@/components/ui/table";
 
 import { AddTaskDialog } from "@/components/user/AddTaskDialog";
-import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
 import EditTaskDialog from "@/components/user/EditTaskDialog";
 import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 
@@ -46,11 +46,12 @@ import type {
   TaskResponseMembers,
   TaskStatus,
 } from "@/types/task";
+import type { UserBase } from "@/types/user";
 
 const statusStyle: Record<TaskStatus, string> = {
   completed: "bg-green-100 text-green-700",
-  submitted: "bg-yellow-100 text-yellow-700",
-  in_progress: "bg-blue-100 text-blue-700",
+  submitted: "bg-blue-100 text-blue-700",
+  in_progress: "bg-yellow-100 text-yellow-700",
   not_started: "bg-gray-100 text-gray-500",
 };
 
@@ -75,12 +76,12 @@ const statusOptions = [
   {
     label: "Submitted",
     value: "submitted",
-    color: "#eab308",
+    color: "#3b82f6",
   },
   {
     label: "In Progress",
-    value: "in-progress",
-    color: "#3b82f6",
+    value: "in_progress",
+    color: "#eab308",
   },
   {
     label: "Not Started",
@@ -130,6 +131,69 @@ export function formatStatusLabel(status: string) {
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
+
+/* ------------------------------------------------------------------ */
+/* Assignees                                                           */
+/* ------------------------------------------------------------------ */
+
+function getAssignees(task: TaskResponseMembers): UserBase[] {
+  return task.assigned_members ?? [];
+}
+
+function getMemberName(member: UserBase): string {
+  const fullName = `${member.first_name} ${member.last_name}`.trim();
+  return fullName || member.email;
+}
+
+function getInitials(member: UserBase): string {
+  const first = member.first_name?.[0] ?? "";
+  const last = member.last_name?.[0] ?? "";
+  const initials = `${first}${last}`;
+  return initials || (member.email?.[0] ?? "?");
+}
+
+function AssigneeList({ members }: { members: UserBase[] }) {
+  if (members.length === 0) {
+    return <span className="text-xs text-neutral-400">—</span>;
+  }
+
+  const visible = members.slice(0, 3);
+  const extra = members.length - visible.length;
+
+  return (
+    <div className="flex items-center -space-x-2">
+      {visible.map((member) => (
+        <Avatar
+          key={member.id}
+          title={getMemberName(member)}
+          className="size-8 border-2 border-background"
+        >
+          <AvatarFallback className="rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground">
+            {getInitials(member)}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+
+      {extra > 0 && (
+        <Avatar
+          title={members
+            .slice(3)
+            .map((member) => getMemberName(member))
+            .join(", ")}
+          className="size-8 border-2 border-background"
+        >
+          <AvatarFallback className="rounded-full bg-muted text-10 font-medium text-muted-foreground">
+            +{extra}
+          </AvatarFallback>
+        </Avatar>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Faceted filter                                                      */
+/* ------------------------------------------------------------------ */
 
 type FacetedOption = {
   label: string;
@@ -269,6 +333,10 @@ function FacetedFilter({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Task table                                                          */
+/* ------------------------------------------------------------------ */
+
 interface TaskTableProps {
   tasks: TaskResponseMembers[];
   projectId: string;
@@ -287,10 +355,17 @@ export function TaskTable({
   const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
   const [selectValue, setSelectValue] = useState("all");
 
-  const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(
-    null,
+
+
+  // Build the member filter options from the members actually assigned
+  // to tasks, so the list never goes out of sync with the data.
+  const memberOptions = Array.from(
+    new Map(
+      tasks
+        .flatMap((task) => getAssignees(task))
+        .map((member) => [member.id, member] as const),
+    ).values(),
   );
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   const filteredTasks = tasks.filter((task) => {
     if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) {
@@ -312,26 +387,19 @@ export function TaskTable({
       return false;
     }
 
-    // Assigned member filtering is currently disabled because
-    // TaskResponse does not expose assignees yet.
-    // selectValue is still kept so the UI is ready for it later.
-    void selectValue;
+    if (
+      selectValue !== "all" &&
+      !getAssignees(task).some((member) => member.id === selectValue)
+    ) {
+      return false;
+    }
 
     return true;
   });
 
-  const handleViewTask = (task: TaskResponseMembers) => {
-    setSelectedTask(task);
-    setViewDialogOpen(true);
-  };
 
-  const handleViewDialogChange = (open: boolean) => {
-    setViewDialogOpen(open);
 
-    if (!open) {
-      setSelectedTask(null);
-    }
-  };
+
 
   return (
     <div className="mt-6 space-y-3">
@@ -371,13 +439,11 @@ export function TaskTable({
             <SelectContent position="popper" align="start" className="w-40">
               <SelectItem value="all">All Members</SelectItem>
 
-              <SelectItem value="JW">John Wesley</SelectItem>
-
-              <SelectItem value="DM">Dylan Mangaoang</SelectItem>
-
-              <SelectItem value="HG">Harry Guzman</SelectItem>
-
-              <SelectItem value="RM">Rommel</SelectItem>
+              {memberOptions.map((member) => (
+                <SelectItem key={member.id} value={member.id}>
+                  {getMemberName(member)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -465,11 +531,7 @@ export function TaskTable({
                         </TableCell>
                         {/* Assigned */}
                         <TableCell>
-                          {/* TODO:
-                              Replace this once TaskResponse
-                              contains assignee information.
-                          */}
-                          <span className="text-xs text-neutral-400">—</span>
+                          <AssigneeList members={getAssignees(task)} />
                         </TableCell>
                         {/* Due Date */}
                         <TableCell className="text-muted-foreground">
@@ -492,25 +554,16 @@ export function TaskTable({
                         {/* Actions */}
                         <TableCell>
                           <div className="flex items-center gap-2 whitespace-nowrap">
-                            {/* View */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewTask(task)}
-                            >
-                              View
-                            </Button>
-                            {/* Edit */}
+                            
                             <EditTaskDialog
                               task={task}
                               projectId={projectId}
                               trigger={
                                 <Button variant="outline" size="sm">
-                                  Edit
+                                  Open
                                 </Button>
                               }
                             />
-                            {/* Delete */}
                             <DeleteTaskDialog
                               task={task}
                               projectId={projectId}
@@ -527,12 +580,7 @@ export function TaskTable({
         </CardContent>
       </Card>
 
-      {/* View Task Dialog */}
-      <ViewTaskDialog
-        task={selectedTask}
-        open={viewDialogOpen}
-        onOpenChange={handleViewDialogChange}
-      />
+     
     </div>
   );
 }

@@ -1,32 +1,21 @@
 import AppLayout from "@/layouts/Applayout";
 import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Mail,
   AlertTriangle,
   Gauge,
   Repeat,
   ShieldAlert,
-  Check,
-  X,
 } from "lucide-react";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useUpdateMember } from "@/hooks/useProjectMember";
 import type {
   ProjectMemberUserSnapshot,
   ProjectRole,
-  Skill,
 } from "@/types/project_member";
 import type { MemberStatus } from "@/types/member_snapshot";
-import * as React from "react";
 
 const roleStyles: Record<ProjectRole, string> = {
   admin: "border-purple-400 text-purple-600 bg-purple-50 dark:bg-purple-950/20",
@@ -70,34 +59,6 @@ function capacityPercent(multiplier: number) {
   return Math.min(Math.max(multiplier * 100, 0), 200) / 2;
 }
 
-// Skill options matching the backend Skills enum — same value/label pairing
-// used by the Secondary Skill picker in AddTaskDialog.
-const SKILL_OPTIONS: { value: Skill; label: string }[] = [
-  { value: "Backend Development", label: "Backend Development" },
-  { value: "Frontend Development", label: "Frontend Development" },
-  { value: "Mobile Development", label: "Mobile Development" },
-  { value: "IOT Development", label: "IOT Development" },
-  { value: "Database Design", label: "Database Design" },
-  { value: "System Architecture", label: "System Architecture" },
-  { value: "UI/UX Design", label: "UI/UX Design" },
-  { value: "Testing and Quality Assurance", label: "Testing and QA" },
-  { value: "Literature Review", label: "Literature Review" },
-  { value: "Data Collection", label: "Data Collection" },
-  {
-    value: "Survey and Questionnaire Design",
-    label: "Survey/Questionnaire Design",
-  },
-  { value: "Interview and Observation", label: "Interview and Observation" },
-  { value: "Data Analysis", label: "Data Analysis" },
-  { value: "Technical Writing", label: "Technical Writing" },
-  { value: "Documentation", label: "Documentation" },
-  { value: "Diagram and Modeling", label: "Diagram and Modeling" },
-  { value: "Editing and Proofreading", label: "Editing and Proofreading" },
-  { value: "Financial Documentation", label: "Financial Documentation" },
-  { value: "Budget Planning", label: "Budget Planning" },
-  { value: "Resource Management", label: "Resource Management" },
-];
-
 function MemberCard({
   member,
   showWorkload = true,
@@ -107,12 +68,6 @@ function MemberCard({
 }) {
   const { user, project_role } = member;
   const snapshot = member.snapshots[0];
-  const { data: currentUser } = useCurrentUser();
-  const { mutate: updateMember, isPending } = useUpdateMember();
-  const [skillPopoverOpen, setSkillPopoverOpen] = React.useState(false);
-  const [pendingSkills, setPendingSkills] = React.useState<Skill[]>(
-    member.skills ?? [],
-  );
 
   // total_effective_points / capacity_multiplier come back from the API as
   // strings (Decimal serialization), so parse before doing any math/formatting.
@@ -127,64 +82,6 @@ function MemberCard({
 
   const workload = workloadStyles[snapshot?.workload_status ?? "normal"];
   const initials = getInitials(user.first_name, user.last_name);
-
-  // Skill editing is available on leader and member cards only — advisor and
-  // instructor cards are always rendered with showWorkload=false, so that
-  // check alone already excludes them, but we gate on the role explicitly
-  // too in case this card is ever reused elsewhere.
-  const canEditSkills =
-    !!currentUser &&
-    showWorkload &&
-    (member.project_role === "leader" || member.project_role === "member");
-
-  // Keep the draft selection in sync if the underlying member skills change
-  // out from under us (e.g. another user updates them, or a refetch lands).
-  React.useEffect(() => {
-    setPendingSkills(member.skills ?? []);
-  }, [member.skills]);
-
-  const toggleSkill = (skill: Skill) => {
-    setPendingSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill],
-    );
-  };
-
-  const handleCancel = () => {
-    setPendingSkills(member.skills ?? []);
-  };
-
-  const handleSave = (skills: Skill[]) => {
-    // Only update if the skills actually changed
-    const newSkills = skills.length > 0 ? skills : null;
-    if (!newSkills && !member.skills) {
-      // Both are null, no change
-      return;
-    }
-    if (
-      newSkills &&
-      member.skills &&
-      JSON.stringify([...newSkills].sort()) ===
-        JSON.stringify([...member.skills].sort())
-    ) {
-      // Arrays are equal when sorted
-      return;
-    }
-    updateMember(
-      {
-        id: member.id,
-        member: {
-          skills: newSkills,
-        } as const,
-      },
-      {
-        onError: (error) => {
-          console.error("Failed to update skill:", error);
-          // Optionally show an error toast here
-          setPendingSkills(member.skills ?? []);
-        },
-      },
-    );
-  };
 
   return (
     <Card className="shadow-sm border rounded-xl">
@@ -212,105 +109,6 @@ function MemberCard({
               >
                 {project_role}
               </span>
-              {/* Skill editor - leader and member cards only, never advisor/instructor */}
-              {canEditSkills && (
-                <div className="mt-2 flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 shrink-0">
-                      Skill:
-                    </span>
-
-                    <Popover
-                      open={skillPopoverOpen}
-                      onOpenChange={setSkillPopoverOpen}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={skillPopoverOpen}
-                          disabled={isPending}
-                          size="sm"
-                          className="h-7 flex-1 min-w-0 justify-between text-left text-xs font-normal"
-                        >
-                          <span className="truncate">Select skill</span>
-                        </Button>
-                      </PopoverTrigger>
-
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <div
-                          className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                          onWheel={(e) => e.stopPropagation()}
-                        >
-                          {SKILL_OPTIONS.map((option) => {
-                            const selected = pendingSkills.includes(
-                              option.value,
-                            );
-
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => toggleSkill(option.value)}
-                                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
-                              >
-                                <span>{option.label}</span>
-
-                                {selected && (
-                                  <Check className="h-4 w-4 text-[#7A0C2E]" />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-
-                    {pendingSkills.length > 0 && (
-                      <>
-                        {/* Confirm button */}
-                        <button
-                          onClick={() => handleSave(pendingSkills)}
-                          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 shrink-0"
-                          disabled={isPending}
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        {/* Cancel button */}
-                        <button
-                          onClick={handleCancel}
-                          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 shrink-0"
-                          disabled={isPending}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  {pendingSkills.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pl-8">
-                      {pendingSkills.map((skill) => (
-                        <span
-                          key={skill}
-                          className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
-                        >
-                          {SKILL_OPTIONS.find((o) => o.value === skill)
-                            ?.label ?? skill}
-
-                          <button
-                            type="button"
-                            onClick={() => toggleSkill(skill)}
-                            className="rounded-full hover:bg-[#7A0C2E]/10"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
@@ -413,22 +211,6 @@ function AdvisorPlaceholderCard({ message }: { message: string }) {
   );
 }
 
-function AdvisorSkeletonCard() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      <Card className="rounded-xl">
-        <CardContent className="p-5">
-          <div className="animate-pulse flex flex-col gap-4">
-            <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-800" />
-            <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
-            <div className="h-4 w-1/2 bg-gray-100 dark:bg-gray-900 rounded" />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 export default function Team() {
   const { data: user } = useCurrentUser();
 
@@ -489,8 +271,7 @@ export default function Team() {
               <h2 className="mb-3 text-lg font-semibold text-foreground">
                 Advisor
               </h2>
-
-              {advisorMembers.length > 0 && (
+              {advisorMembers.length > 0 ? (
                 <div className="w-full gap-4">
                   {advisorMembers.map((member) => (
                     <MemberCard
@@ -500,9 +281,7 @@ export default function Team() {
                     />
                   ))}
                 </div>
-              )}
-
-              {advisorMembers.length === 0 && (
+              ) : (
                 <AdvisorPlaceholderCard message="There is no advisor yet." />
               )}
             </div>
@@ -511,8 +290,7 @@ export default function Team() {
               <h2 className="mb-3 text-lg font-semibold text-foreground">
                 Instructor
               </h2>
-
-              {instructorMembers.length > 0 && (
+              {instructorMembers.length > 0 ? (
                 <div className="gap-4">
                   {instructorMembers.map((member) => (
                     <MemberCard
@@ -522,22 +300,18 @@ export default function Team() {
                     />
                   ))}
                 </div>
-              )}
-
-              {instructorMembers.length === 0 && (
+              ) : (
                 <AdvisorPlaceholderCard message="There is no instructor yet." />
               )}
             </div>
           </div>
 
           {/* Regular members section */}
-          {regularMembers.length === 0 && (
+          {regularMembers.length === 0 ? (
             <p className="text-sm text-gray-400">
               No regular team members found for this project.
             </p>
-          )}
-
-          {regularMembers.length > 0 && (
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {regularMembers.map((member) => (
                 <MemberCard key={member.id} member={member} />

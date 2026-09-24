@@ -1,21 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Eye, GraduationCap, ChevronsUpDown, Check, AlertTriangle } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Eye,
+  GraduationCap,
+  AlertTriangle,
+} from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetInstructorProjects } from "@/hooks/useProject";
 import type { ProjectWithSnapshot } from "@/types/project";
@@ -23,11 +15,6 @@ import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
 
 type RoleFilter = "all" | "instructor" | "advisor";
 
-const ROLE_OPTIONS: { value: RoleFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "instructor", label: "Instructor" },
-  { value: "advisor", label: "Advisor" },
-];
 
 function ProjectCard({
   project,
@@ -71,59 +58,6 @@ function ProjectCard({
   );
 }
 
-function RoleFilterDropdown({
-  value,
-  onChange,
-}: {
-  value: RoleFilter;
-  onChange: (value: RoleFilter) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = ROLE_OPTIONS.find((o) => o.value === value);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="flex items-center gap-2 rounded-xl border-neutral-200 bg-white px-3.5 py-2 text-sm font-medium text-[#231A2E] hover:bg-neutral-50"
-        >
-          <span className="text-neutral-500">Role:</span>
-          <Badge className="rounded-full bg-[#F3EFE6] text-[#7A0C2E] hover:bg-[#F3EFE6]">
-            {selected?.label}
-          </Badge>
-          <ChevronsUpDown size={14} className="text-neutral-400" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-44 p-0" align="start">
-        <Command>
-          <CommandList>
-            <CommandGroup>
-              {ROLE_OPTIONS.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  onSelect={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                  className="flex items-center justify-between"
-                >
-                  {option.label}
-                  {value === option.value && (
-                    <Check size={14} className="text-[#7A0C2E]" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 export default function ProjectsPage() {
   const location = useLocation();
   const { data: user, isLoading: isUserLoading } = useCurrentUser();
@@ -133,7 +67,7 @@ export default function ProjectsPage() {
     isError,
   } = useGetInstructorProjects(user?.id ?? "");
 
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [roleFilter] = useState<RoleFilter>("all");
 
   // Remember this path so the sidebar's "Projects" item can return here
   // after visiting other pages.
@@ -181,79 +115,63 @@ export default function ProjectsPage() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
-      {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-foreground dark:text-muted-foreground">Loading your projects...</p>
-          </div>
-        </div>
-      ) : isError ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-            </div>
-            <p className="text-foreground dark:text-muted-foreground">
-              We could not load your projects right now. Please try again.
+      <div className="min-h-screen w-full">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="my-2 text-2xl font-bold text-foreground">
+              Projects
+            </h1>
+            <p className="mt-2 text-sm text-neutral-500">
+              Projects connected to your instructor and advisor profile.
             </p>
           </div>
         </div>
+      </div>
+      {isLoading ? (
+        <div className="flex flex-1 just items-center">
+          <Spinner />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col justify-center items-center gap-4 h-screen">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <p className="text-foreground dark:text-muted-foreground">
+            Failed to load project data. Please try again later.
+          </p>
+        </div>
       ) : (
-        <div className="min-h-screen w-full px-4">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="my-2 text-2xl font-bold text-foreground">Projects</h1>
-              <p className="mt-2 text-sm text-neutral-500">
-                Projects connected to your instructor and advisor profile.
-              </p>
+        <Card className="border shadow-sm">
+          <div className="flex items-center justify-between border-b px-5 py-4">
+            <div className="flex items-center gap-2">
+              <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
+                <GraduationCap size={16} />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">
+                Projects
+              </h2>
             </div>
-            <RoleFilterDropdown value={roleFilter} onChange={setRoleFilter} />
+            <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600">
+              {filteredProjects.length}
+            </span>
           </div>
 
-          {isLoading ? (
-            <Card className="border border-neutral-200 p-6 text-sm text-neutral-500 shadow-sm">
-              Loading your projects...
-            </Card>
-          ) : isError ? (
-            <Card className="border border-neutral-200 p-6 text-sm text-red-600 shadow-sm">
-              We could not load your projects right now.
-            </Card>
-          ) : (
-            <Card className="border shadow-sm">
-              <div className="flex items-center justify-between border-b px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
-                    <GraduationCap size={16} />
-                  </div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Projects
-                  </h2>
-                </div>
-                <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600">
-                  {filteredProjects.length}
-                </span>
+          <div className="space-y-3 p-5 ">
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map(({ project, role }) => (
+                <ProjectCard
+                  key={`${role}-${project.id}`}
+                  project={project}
+                  role={role}
+                />
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
+                {emptyMessage}
               </div>
-
-              <div className="space-y-3 p-5 ">
-                {filteredProjects.length > 0 ? (
-                  filteredProjects.map(({ project, role }) => (
-                    <ProjectCard
-                      key={`${role}-${project.id}`}
-                      project={project}
-                      role={role}
-                    />
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
-                    {emptyMessage}
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
-        </div>
+            )}
+          </div>
+        </Card>
       )}
+      )
     </AppLayout>
   );
 }

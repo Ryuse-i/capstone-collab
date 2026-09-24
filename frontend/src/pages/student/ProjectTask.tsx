@@ -34,7 +34,6 @@ import { useGetCurrentProject } from "@/hooks/useProject";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { TaskTable } from "@/components/user/TaskTable";
 import { TaskGanttView } from "@/components/user/TaskGantt";
-import { ViewTaskDialog } from "@/components/user/ViewTaskDialog";
 import type { TaskResponseMembers } from "@/types/task";
 
 type BoardTask = {
@@ -431,16 +430,7 @@ export default function Task() {
         }}
       />
 
-      <ViewTaskDialog
-        task={selectedTimelineTask}
-        open={timelineDialogOpen}
-        onOpenChange={(open) => {
-          setTimelineDialogOpen(open);
-          if (!open) {
-            setSelectedTimelineTask(null);
-          }
-        }}
-      />
+     
     </AppLayout>
   );
 }

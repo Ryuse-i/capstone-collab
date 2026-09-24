@@ -148,6 +148,7 @@ const instructorNavMain = [
     // path the user last visited, instead of always resetting to the list.
     getLastVisited: getLastVisitedProjects,
   },
+  chatNavItem,
   capstoneSearchNavItem,
 ];
 
