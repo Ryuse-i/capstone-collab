@@ -13,9 +13,6 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useUpdateTask } from "@/hooks/useTask";
@@ -184,7 +181,7 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="ml-auto h-full w-full overflow-hidden rounded-none p-0 sm:max-w-[42rem]">
+      <DrawerContent className="ml-auto h-full w-full overflow-hidden rounded-none p-0 sm:max-w-2xl">
         <DrawerTitle className="absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0 [clip:rect(0,0,0,0)]">
           Task details
         </DrawerTitle>

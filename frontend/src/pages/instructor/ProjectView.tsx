@@ -279,7 +279,7 @@ export default function ProjectView() {
         { label: project?.name },
       ]}
     >
-      <div className="min-h-screen w-full px-4 py-6">
+      <div className="min-h-screen w-full py-2">
         <button
           onClick={() => navigate("/project-list")}
           className="mb-5 flex items-center gap-2 text-sm font-medium text-[#7A0C2E]"
@@ -710,7 +710,7 @@ export default function ProjectView() {
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {RESOURCES.map((resource) => {
                       const categoryMeta = {
-                        "Figma Links": {
+                        "Links": {
                           icon: Frame,
                           iconClass:
                             "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",

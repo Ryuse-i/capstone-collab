@@ -87,8 +87,8 @@ export default function Chat() {
   };
 
   const chatCard = (
-    <div className="-mx-4 flex-1 min-w-0">
-      <Card className="flex h-149 w-full flex-1 flex-col overflow-hidden pb-0">
+    <div className="flex-1 h-148 min-w-0">
+      <Card className="flex h-full w-full flex-1 flex-col overflow-hidden pb-0">
         <CardContent className="p-0 flex min-h-0 flex-1 flex-col">
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 pb-2 shrink-0">
@@ -312,7 +312,7 @@ export default function Chat() {
   );
 
   const content = isInstructor ? (
-    <div className="mt-2 flex h-145 min-h-0 w-full gap-6">
+    <div className="mt-2 flex h-full -mb-4 min-h-0 w-full gap-2">
       {instructorSidebar}
       {chatCard}
     </div>

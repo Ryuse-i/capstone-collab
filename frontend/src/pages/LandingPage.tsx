@@ -2,10 +2,12 @@ import { useEffect, useState, type ReactNode } from "react";
 // 1. Import Link from react-router-dom
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import workloadBalanceImage from "@/assets/landing page/workload balance.jpg";
+import dashboardImage from "@/assets/landing page/Dashboard.png";
 import {
   Activity,
   CheckCircle2,
+  ChevronDown,
   LayoutGridIcon,
   Menu,
   RefreshCw,
@@ -16,30 +18,27 @@ import {
 
 // ─── Types ───────────────────────────────────────────
 
-
 interface Feature {
   icon: ReactNode;
   title: string;
   desc: string;
+  image?: string;
 }
 
-
-
-
 // ─── Data ────────────────────────────────────────────
-
-
 
 const FEATURES: Feature[] = [
   {
     icon: <LayoutGridIcon />,
     title: "Project Health Dashboard",
     desc: "Real-time health scoring based on task completion, workload distribution, and deadline adherence.",
+    image: dashboardImage,
   },
   {
     icon: <Scale />,
     title: "Workload Balance Engine",
     desc: "Automatic workload calculation. Instantly spot overloaded and underutilized members.",
+    image: workloadBalanceImage,
   },
   {
     icon: <RefreshCw />,
@@ -63,8 +62,6 @@ const FEATURES: Feature[] = [
   },
 ];
 
-
-
 // ─── Sub-components ───────────────────────────────────
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -84,7 +81,6 @@ function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
@@ -108,7 +104,6 @@ function Navbar() {
         {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden mt-4 pb-4 space-y-3">
-            
             <div className="flex gap-2 pt-2">
               <Button variant="ghost" size="sm" className="w-full" asChild>
                 <Link to="/login" onClick={() => setMobileOpen(false)}>
@@ -172,6 +167,20 @@ function HeroSection() {
 }
 
 function FeatureSection() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [progressPaused, setProgressPaused] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateReducedMotion = () => setReducedMotion(mediaQuery.matches);
+
+    updateReducedMotion();
+    mediaQuery.addEventListener("change", updateReducedMotion);
+
+    return () => mediaQuery.removeEventListener("change", updateReducedMotion);
+  }, []);
+
   return (
     <section
       id="features"
@@ -189,33 +198,128 @@ function FeatureSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((feature, index) => (
-            <div
-              key={feature.title}
-              className="animate-on-scroll"
-              style={{ transitionDelay: `${index * 100}ms` }}
-            >
-              <Card className="border-2 border-gray-200 dark:border-gray-700 hover:border-amber-600 hover:shadow-lg transition-all h-full">
-                <CardHeader>
-                  <div className="text-4xl mb-3">{feature.icon}</div>
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {feature.desc}
-                  </p>
-                </CardContent>
-              </Card>
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
+          <div className="animate-on-scroll order-1">
+            {/* No padding here so the image can bleed off the edges */}
+            <div className="relative aspect-4/3 overflow-hidden rounded-3xl bg-amber-100 dark:bg-amber-950/40">
+              {FEATURES.map((feature, index) => {
+                const isActive = activeIndex === index;
+
+                return (
+                  <div
+                    key={feature.title}
+                    aria-hidden={!isActive}
+                    className={`absolute inset-0 transition duration-500 ease-out motion-reduce:transition-none ${
+                      isActive
+                        ? "scale-100 translate-y-0 opacity-100"
+                        : "pointer-events-none translate-y-2 scale-[0.98] opacity-0"
+                    }`}
+                  >
+                    {feature.image ? (
+                      // Cropped screenshot: starts near top-left, bleeds off right & bottom
+                      <img
+                        src={feature.image}
+                        alt={feature.title}
+                        className="absolute left-6 top-6 h-[125%] w-[125%] max-w-none rounded-tl-2xl object-cover object-top-left shadow-2xl ring-1 ring-black/5 sm:left-10 sm:top-10"
+                      />
+                    ) : (
+                      <div className="absolute inset-5 flex flex-col items-center justify-center gap-5 rounded-2xl bg-white text-center shadow-sm dark:bg-slate-800">
+                        <div className="flex size-20 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+                          <span className="[&>svg]:size-10">
+                            {feature.icon}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                            {feature.title}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">
+                            Image placeholder
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          </div>
+
+          <div
+            className="animate-on-scroll order-2"
+            onMouseEnter={() => setProgressPaused(true)}
+            onMouseLeave={() => setProgressPaused(false)}
+          >
+            {FEATURES.map((feature, index) => {
+              const isActive = activeIndex === index;
+              const descriptionId = `feature-description-${index}`;
+
+              return (
+                <div
+                  key={feature.title}
+                  className="relative border-b border-gray-200 dark:border-slate-700"
+                >
+                  <button
+                    type="button"
+                    aria-expanded={isActive}
+                    aria-controls={descriptionId}
+                    onClick={() => setActiveIndex(index)}
+                    className="flex w-full items-center justify-between gap-4 py-5 text-left"
+                  >
+                    <span className="text-xl font-semibold text-gray-900 dark:text-white">
+                      {feature.title}
+                    </span>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200">
+                      <ChevronDown
+                        className={`size-4 transition-transform duration-300 motion-reduce:transition-none ${
+                          isActive ? "rotate-180" : ""
+                        }`}
+                      />
+                    </span>
+                  </button>
+
+                  <div
+                    id={descriptionId}
+                    role="region"
+                    className={`grid transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:transition-none ${
+                      isActive
+                        ? "grid-rows-[1fr] opacity-100"
+                        : "grid-rows-[0fr] opacity-0"
+                    }`}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <p className="pb-5 pr-12 text-base leading-relaxed text-gray-600 dark:text-gray-400">
+                        {feature.desc}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isActive && !reducedMotion && (
+                    <span
+                      key={activeIndex}
+                      className="feature-progress absolute -bottom-px left-0 h-0.5 w-0 bg-gray-900 dark:bg-amber-200"
+                      style={{
+                        animationPlayState: progressPaused
+                          ? "paused"
+                          : "running",
+                      }}
+                      onAnimationEnd={() =>
+                        setActiveIndex(
+                          (currentIndex) =>
+                            (currentIndex + 1) % FEATURES.length,
+                        )
+                      }
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>
   );
 }
-
-
 
 function CTASection() {
   return (
@@ -408,7 +512,7 @@ export default function LandingPage() {
       <main>
         <HeroSection />
         <FeatureSection />
-        
+
         <CTASection />
       </main>
       <Footer />
