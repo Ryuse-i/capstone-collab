@@ -19,6 +19,242 @@
   animation: progress 10s linear forwards;
 }
 
+/* ─── Auth branding rings — always-on ambient animation ─── */
+
+@keyframes auth-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes auth-ring-spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes auth-ring-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.045);
+    opacity: 0.55;
+  }
+}
+
+.auth-ring {
+  position: relative;
+  will-change: transform, opacity;
+  animation: auth-ring-breathe 7s ease-in-out infinite;
+}
+
+/* Glowing comet arc that travels around the ring border */
+.auth-ring::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 9999px;
+  padding: 1px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 150deg,
+    rgba(201, 168, 76, 0.15) 220deg,
+    rgba(201, 168, 76, 0.55) 300deg,
+    rgba(240, 214, 130, 1) 360deg
+  );
+  /* Prefixed version (older Chrome/Safari) */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  /* Standard version, must come after the mask shorthand */
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.auth-ring--outer {
+  animation-duration: 8s;
+}
+
+.auth-ring--outer::before {
+  animation: auth-ring-spin 18s linear infinite;
+}
+
+/* Inner ring: opposite direction, faster, breathing out of phase */
+.auth-ring--inner {
+  animation-duration: 6s;
+  animation-delay: -3s;
+}
+
+.auth-ring--inner::before {
+  animation: auth-ring-spin-reverse 12s linear infinite;
+  background: conic-gradient(
+    from 0deg,
+    rgba(240, 214, 130, 1) 0deg,
+    rgba(201, 168, 76, 0.55) 24deg,
+    rgba(201, 168, 76, 0.15) 85deg,
+    transparent 170deg,
+    transparent 360deg
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-ring,
+  .auth-ring::before {
+    animation: none !important;
+  }
+}
+
+/* Auth form swap animation — panels stay fixed, only the form layers animate */
+.auth-form-layer {
+  position: absolute;
+  inset: 0;
+  transition:
+    opacity 250ms ease,
+    transform 250ms ease;
+  will-change: transform, opacity;
+}
+
+.auth-mode-signin .auth-form-layer--signin,
+.auth-mode-signup .auth-form-layer--signup {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.auth-mode-signin .auth-form-layer--signup {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(24px);
+}
+
+.auth-mode-signup .auth-form-layer--signin {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-24px);
+}
+
+.auth-mode-signup .auth-form-layer--signup {
+  transition-delay: 150ms;
+}
+
+.auth-page[data-transitioning="true"] a[href="/login"],
+.auth-page[data-transitioning="true"] a[href="/signup"] {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.auth-form-layer--signin [data-slot="field-group"] > *,
+.auth-form-layer--signup [data-slot="field-group"] > * {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 250ms ease,
+    transform 250ms ease;
+  transition-delay: 0ms;
+  will-change: transform, opacity;
+}
+
+.auth-mode-signup .auth-form-layer--signup [data-slot="field-group"] > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.auth-mode-signin .auth-form-layer--signin [data-slot="field-group"] > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.auth-mode-signin
+  .auth-form-layer--signin
+  [data-slot="field-group"]
+  > :nth-child(1) {
+  transition-delay: 150ms;
+}
+
+.auth-mode-signin
+  .auth-form-layer--signin
+  [data-slot="field-group"]
+  > :nth-child(2) {
+  transition-delay: 210ms;
+}
+
+.auth-mode-signin
+  .auth-form-layer--signin
+  [data-slot="field-group"]
+  > :nth-child(3) {
+  transition-delay: 270ms;
+}
+
+.auth-mode-signup
+  .auth-form-layer--signup
+  [data-slot="field-group"]
+  > :nth-child(1) {
+  transition-delay: 150ms;
+}
+
+.auth-mode-signup
+  .auth-form-layer--signup
+  [data-slot="field-group"]
+  > :nth-child(2) {
+  transition-delay: 210ms;
+}
+
+.auth-mode-signup
+  .auth-form-layer--signup
+  [data-slot="field-group"]
+  > :nth-child(3) {
+  transition-delay: 270ms;
+}
+
+.auth-mode-signup
+  .auth-form-layer--signup
+  [data-slot="field-group"]
+  > :nth-child(4) {
+  transition-delay: 330ms;
+}
+
+.auth-mode-signup
+  .auth-form-layer--signup
+  [data-slot="field-group"]
+  > :nth-child(5) {
+  transition-delay: 390ms;
+}
+
+@media (max-width: 767px) {
+  .auth-form-layer {
+    transition-delay: 0ms !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-form-layer,
+  .auth-form-layer--signin [data-slot="field-group"] > *,
+  .auth-form-layer--signup [data-slot="field-group"] > * {
+    transition-duration: 180ms !important;
+    transition-delay: 0ms !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-progress {
+    animation: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .feature-progress {
     animation: none !important;
