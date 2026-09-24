@@ -1,13 +1,7 @@
 import AppLayout from "@/layouts/Applayout";
 import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Mail,
-  AlertTriangle,
-  Gauge,
-  Repeat,
-  ShieldAlert,
-} from "lucide-react";
+import { Mail, AlertTriangle, Gauge, Repeat, ShieldAlert } from "lucide-react";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
@@ -269,25 +263,6 @@ export default function Team() {
           <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div>
               <h2 className="mb-3 text-lg font-semibold text-foreground">
-                Advisor
-              </h2>
-              {advisorMembers.length > 0 ? (
-                <div className="w-full gap-4">
-                  {advisorMembers.map((member) => (
-                    <MemberCard
-                      key={member.id}
-                      member={member}
-                      showWorkload={false}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <AdvisorPlaceholderCard message="There is no advisor yet." />
-              )}
-            </div>
-
-            <div>
-              <h2 className="mb-3 text-lg font-semibold text-foreground">
                 Instructor
               </h2>
               {instructorMembers.length > 0 ? (
@@ -302,6 +277,24 @@ export default function Team() {
                 </div>
               ) : (
                 <AdvisorPlaceholderCard message="There is no instructor yet." />
+              )}
+            </div>
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">
+                Advisor
+              </h2>
+              {advisorMembers.length > 0 ? (
+                <div className="w-full gap-4">
+                  {advisorMembers.map((member) => (
+                    <MemberCard
+                      key={member.id}
+                      member={member}
+                      showWorkload={false}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <AdvisorPlaceholderCard message="There is no advisor yet." />
               )}
             </div>
           </div>

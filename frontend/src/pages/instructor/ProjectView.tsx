@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Activity,
   ArrowLeft,
@@ -239,7 +240,9 @@ export default function ProjectView() {
               <ArrowLeft size={16} />
               Back to projects
             </button>
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <div className="flex flex-1 justify-center items-center">
+              <Spinner/>
+            </div>
             <p className="text-foreground dark:text-muted-foreground">Loading project details...</p>
           </div>
         </div>
