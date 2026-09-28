@@ -21,11 +21,13 @@ export interface Resource {
   updatedAt: string;
   pinned: boolean;
   uses: number;
+  sourceUrl?: string;
+  attachment?: File | null;
 }
 
 type ResourceCategory = "Links" | "Paper Files" | "Code";
 
-type ResourceFilter = "All" | "Pinned" | ResourceCategory;
+type ResourceFilter = "All" | ResourceCategory;
 
 interface CategoryConfig {
   name: ResourceCategory;
@@ -144,7 +146,6 @@ export const RESOURCES: Resource[] = [
 
 const FILTERS: { label: string; value: ResourceFilter; count: number }[] = [
   { label: "All", value: "All", count: 33 },
-  { label: "Pinned", value: "Pinned", count: 4 },
   ...CATEGORIES.map((category) => ({
     label: category.name,
     value: category.name,
@@ -158,13 +159,13 @@ function getCategory(category: ResourceCategory) {
 
 export default function Resources() {
   const [activeTab, setActiveTab] = useState<ResourceFilter>("All");
+  const [resources, setResources] = useState(RESOURCES);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(
     null,
   );
 
-  const filteredResources = RESOURCES.filter((resource) => {
+  const filteredResources = resources.filter((resource) => {
     if (activeTab === "All") return true;
-    if (activeTab === "Pinned") return resource.pinned;
     return resource.category === activeTab;
   });
 
@@ -185,17 +186,20 @@ export default function Resources() {
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as ResourceFilter)}
           >
-            <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0">
+            <TabsList
+              className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0"
+              indicatorClassName="rounded-full bg-(--maroon) dark:bg-(--maroon) shadow-sm"
+            >
               {FILTERS.map((filter) => (
                 <TabsTrigger
                   key={filter.label}
                   value={filter.value}
-                  className="h-8 gap-2 rounded-full px-3 text-xs hover:bg-muted data-active:bg-(--maroon)! data-active:text-white! data-active:hover:bg-(--maroon)! data-active:hover:text-white! data-active:shadow-sm"
+                  className="h-8 gap-2 rounded-full px-3 text-xs transition-colors duration-300 ease-out hover:bg-muted data-active:bg-transparent! data-active:text-white! data-active:shadow-none! data-active:hover:bg-transparent! data-active:hover:text-white! data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:hover:bg-transparent! data-[state=active]:hover:text-white!"
                 >
                   {filter.label}
                   <Badge
                     variant="secondary"
-                    className="h-5 rounded-full bg-transparent px-1.5 text-[10px] text-current"
+                    className="h-5 rounded-full bg-transparent px-1.5 text-[10px] text-current transition-colors duration-300"
                   >
                     {filter.count}
                   </Badge>
@@ -205,6 +209,9 @@ export default function Resources() {
           </Tabs>
 
           <AddResoourceDialog
+            onCreate={(resource) =>
+              setResources((current) => [resource, ...current])
+            }
             trigger={
               <Button size="sm" className="h-8">
                 <PlusCircle className="mr-2 h-4 w-4" />

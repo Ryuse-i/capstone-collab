@@ -3,6 +3,7 @@ import AppLayout from "@/layouts/Applayout";
 import { AlertTriangle } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { ArrowRight, TriangleAlert } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -134,7 +135,7 @@ export default function MyTask() {
     return (
       <AppLayout breadcrumbs={[{ label: "My Tasks", href: "/mytask" }]}>
         <div className="flex justify-center items-center flex-1">
-          <Spinner/>
+          <Spinner />
         </div>
       </AppLayout>
     );
@@ -143,12 +144,12 @@ export default function MyTask() {
   if (error) {
     return (
       <AppLayout breadcrumbs={[{ label: "My Tasks", href: "/mytask" }]}>
-          <div className="flex flex-col justify-center items-center gap-4 h-screen">
-    <AlertTriangle className="h-8 w-8 text-destructive" />
-    <p className="text-foreground dark:text-muted-foreground">
-      Failed to load project data. Please try again later.
-    </p>
-  </div>
+        <div className="flex flex-col justify-center items-center gap-4 h-screen">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <p className="text-foreground dark:text-muted-foreground">
+            Failed to load project data. Please try again later.
+          </p>
+        </div>
       </AppLayout>
     );
   }
@@ -170,40 +171,47 @@ export default function MyTask() {
       </div>
 
       {/* Tabs + actions */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1">
-          {[
-            { label: "All", status: "All" as const },
-            { label: "Not Started", status: "Not Started" as const },
-            { label: "In Progress", status: "In Progress" as const },
-            { label: "Submitted", status: "Submitted" as const },
-            { label: "Completed", status: "Completed" as const },
-          ].map((tab) => (
-            <button
-              key={tab.status}
-              onClick={() => setActiveTab(tab.status)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-                activeTab === tab.status
-                  ? "bg-background text-primary shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {tab.label}
-              <Badge
-                variant={activeTab === tab.status ? "secondary" : "default"}
-                className={cn(
-                  "px-1.5 py-0 text-xs font-semibold",
-                  activeTab === tab.status
-                    ? "text-secondary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {countFor(tab.status)}
-              </Badge>
-            </button>
-          ))}
-        </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) =>
+            setActiveTab(
+              value as
+                | "All"
+                | "Not Started"
+                | "In Progress"
+                | "Submitted"
+                | "Completed",
+            )
+          }
+        >
+          <TabsList
+            className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0"
+            indicatorClassName="rounded-full bg-(--maroon) dark:bg-(--maroon) shadow-sm"
+          >
+            {[
+              { label: "All", status: "All" as const },
+              { label: "Not Started", status: "Not Started" as const },
+              { label: "In Progress", status: "In Progress" as const },
+              { label: "Submitted", status: "Submitted" as const },
+              { label: "Completed", status: "Completed" as const },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.status}
+                value={tab.status}
+                 className="h-8 gap-2 rounded-full px-3 text-xs transition-colors duration-300 ease-out hover:bg-muted data-active:bg-transparent! data-active:text-white! data-active:shadow-none! data-active:hover:bg-transparent! data-active:hover:text-white! data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:hover:bg-transparent! data-[state=active]:hover:text-white!"
+                >
+                {tab.label}
+                <Badge
+                  variant="secondary"
+                  className="h-5 rounded-full bg-transparent px-1.5 text-[10px] text-current transition-colors duration-300"
+                >
+                  {countFor(tab.status)}
+                </Badge>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Task cards grid */}
@@ -235,21 +243,26 @@ export default function MyTask() {
                         {project.title}
                       </CardTitle>
                     </div>
-                    <Badge variant="outline" className="shrink-0 text-[10px] border-0">
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 border-0 bg-transparent p-0 text-[10px]"
+                    >
                       {deadlineUrgency ? (
-                        <TriangleAlert
-                          className={cn(
-                            "size-3.5",
-                            deadlineUrgency === "overdue"
-                              ? "text-red-600"
-                              : "text-yellow-600",
-                          )}
-                          aria-label={
-                            deadlineUrgency === "overdue"
-                              ? "Overdue"
-                              : "Due soon"
-                          }
-                        />
+                        <span className="flex items-center justify-center rounded-full bg-red-100/80 p-1.5 shadow-[0_0_12px_rgba(239,68,68,0.35)] ring-1 ring-red-200/80 dark:bg-red-500/10 dark:ring-red-400/30">
+                          <TriangleAlert
+                            className={cn(
+                              "size-3.5",
+                              deadlineUrgency === "overdue"
+                                ? "text-red-600"
+                                : "text-yellow-600",
+                            )}
+                            aria-label={
+                              deadlineUrgency === "overdue"
+                                ? "Overdue"
+                                : "Due soon"
+                            }
+                          />
+                        </span>
                       ) : (
                         project.status
                       )}
@@ -262,18 +275,23 @@ export default function MyTask() {
                     {project.description}
                   </p>
                   <div className="flex items-center justify-between gap-3">
-                    <Badge
-                      className={cn(
-                        "border-0",
-                        project.priority === "high"
-                          ? "bg-red-100 text-red-600"
-                          : project.priority === "medium"
-                            ? "bg-yellow-100 text-yellow-600"
-                            : "bg-gray-100 text-gray-500",
-                      )}
-                    >
-                      {project.priority}
-                    </Badge>
+                    <div className="flex items-center">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Priority·
+                      </p>
+                      <Badge
+                        className={cn(
+                          "border-0",
+                          project.priority === "high"
+                            ? "bg-red-100 text-red-600"
+                            : project.priority === "medium"
+                              ? "bg-yellow-100 text-yellow-600"
+                              : "bg-gray-100 text-gray-500",
+                        )}
+                      >
+                        {project.priority}
+                      </Badge>
+                    </div>
                     <span className="text-xs text-muted-foreground">
                       {project.due}
                     </span>
@@ -294,7 +312,7 @@ export default function MyTask() {
                         }
                       }}
                     >
-                      View Task
+                      Open
                       <ArrowRight className="size-3.5" />
                     </Button>
                   </div>

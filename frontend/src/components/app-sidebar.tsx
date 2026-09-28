@@ -152,7 +152,12 @@ const instructorNavMain = [
   capstoneSearchNavItem,
 ];
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  onReady,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  onReady?: (ready: boolean) => void;
+}) {
   const { data: user } = useCurrentUser();
   const { data: currentProject, isLoading: isProjectLoading } =
     useGetCurrentProject(user?.id ?? "");
@@ -163,6 +168,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Check if sidebar data is loaded (project and member data)
   const sidebarDataLoaded = !isProjectLoading && !isMemberLoading && !!user;
+
+  React.useEffect(() => {
+    onReady?.(sidebarDataLoaded);
+  }, [onReady, sidebarDataLoaded]);
 
   const role = user?.role?.toLowerCase();
   const hasProject = Boolean(currentProject);

@@ -29,7 +29,12 @@ import NotificationCard, {
 } from "./NotificationCard";
 
 export default function NotificationCenter() {
-  const { data: user, isLoading: userLoading, isError: userError } = useCurrentUser();
+  const {
+    data: user,
+    isLoading: userLoading,
+    isError: userError,
+  } = useCurrentUser();
+  const { mutate: markAsRead } = useMarkAsRead();
   const [selectedNotification, setSelectedNotification] =
     React.useState<NotificationResponse | null>(null);
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(
@@ -37,8 +42,9 @@ export default function NotificationCenter() {
   );
 
   // Only fetch notifications if we have a user and the user is loaded
-  const { data, isLoading: notificationLoading, isError: notificationError } =
-    useGetUserNotifications(user?.id ?? "");
+  const { data, isLoading: notificationLoading } = useGetUserNotifications(
+    user?.id ?? "",
+  );
 
   const notifications: NotificationResponse[] = data ?? [];
   const visibleNotifications = notifications.filter(
@@ -49,12 +55,10 @@ export default function NotificationCenter() {
   function getNotificationCardType(
     notification: NotificationResponse,
   ): NotificationCardType {
-    const searchableText = `${notification.title} ${notification.body}`.toLowerCase();
+    const searchableText =
+      `${notification.title} ${notification.body}`.toLowerCase();
 
-    if (
-      searchableText.includes("error") ||
-      searchableText.includes("fail")
-    ) {
+    if (searchableText.includes("error") || searchableText.includes("fail")) {
       return "error";
     }
     if (
@@ -64,6 +68,7 @@ export default function NotificationCenter() {
       return "task_completed";
     }
     if (
+      searchableText.includes("warning") ||
       notification.type === "project_invitation" ||
       searchableText.includes("need") ||
       searchableText.includes("attention")
@@ -104,7 +109,10 @@ export default function NotificationCenter() {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar">
+        <PopoverContent
+          align="end"
+          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
+        >
           <PopoverHeader className="sr-only">
             <PopoverTitle>Notifications</PopoverTitle>
             <PopoverDescription>Recent notifications</PopoverDescription>
@@ -131,7 +139,10 @@ export default function NotificationCenter() {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar">
+        <PopoverContent
+          align="end"
+          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
+        >
           <PopoverHeader className="sr-only">
             <PopoverTitle>Notifications</PopoverTitle>
             <PopoverDescription>Recent notifications</PopoverDescription>
@@ -159,7 +170,10 @@ export default function NotificationCenter() {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar">
+        <PopoverContent
+          align="end"
+          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
+        >
           <PopoverHeader className="sr-only">
             <PopoverTitle>Notifications</PopoverTitle>
             <PopoverDescription>Recent notifications</PopoverDescription>
@@ -207,32 +221,34 @@ export default function NotificationCenter() {
                 You currently have no notifications
               </div>
             ) : (
-              visibleNotifications.map((item) => (
-                <NotificationCard
-                  key={item.id}
-                  type={getNotificationCardType(item)}
-                  title={item.title}
-                  description={item.body}
-                  timestamp={formatTimestamp(item.created_at)}
-                  onDismiss={() => dismissNotification(item.id)}
-                  actions={[
-                    {
-                      label: "View details",
-                      onClick: () => handleNotificationClick(item),
-                    },
-                    {
-                      label: item.is_read ? "Dismiss" : "Mark as read",
-                      onClick: () => {
-                        if (item.is_read) {
-                          dismissNotification(item.id);
-                        } else {
-                          markAsRead(item.id);
-                        }
+              visibleNotifications.map((item) => {
+                const cardType = getNotificationCardType(item);
+
+                return (
+                  <NotificationCard
+                    key={item.id}
+                    type={cardType}
+                    title={item.title}
+                    description={item.body}
+                    timestamp={formatTimestamp(item.created_at)}
+                    isRead={item.is_read}
+                    showStatusIcon={
+                      cardType === "needs_info" &&
+                      item.type !== "project_invitation"
+                    }
+                    actions={[
+                      {
+                        label: "View details",
+                        onClick: () => handleNotificationClick(item),
                       },
-                    },
-                  ]}
-                />
-              ))
+                      {
+                        label: "Clear",
+                        onClick: () => dismissNotification(item.id),
+                      },
+                    ]}
+                  />
+                );
+              })
             )}
           </div>
         </PopoverContent>

@@ -3,7 +3,6 @@ import {
   CheckCircle2Icon,
   InfoIcon,
   OctagonAlertIcon,
-  XIcon,
 } from "lucide-react";
 import {
   Card,
@@ -11,7 +10,6 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type NotificationCardType =
@@ -30,8 +28,9 @@ export interface NotificationCardProps {
   title: string;
   description: string;
   timestamp: string;
+  isRead: boolean;
+  showStatusIcon: boolean;
   actions: NotificationCardAction[];
-  onDismiss: () => void;
 }
 
 const notificationStyles = {
@@ -65,8 +64,9 @@ export default function NotificationCard({
   title,
   description,
   timestamp,
+  isRead,
+  showStatusIcon,
   actions,
-  onDismiss,
 }: NotificationCardProps) {
   const {
     icon: StatusIcon,
@@ -83,30 +83,22 @@ export default function NotificationCard({
     >
       <CardContent className="relative z-10 p-4">
         <div className="flex items-start gap-3">
-          <span
-            className={cn(
-              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
-              iconClassName,
-            )}
-          >
-            <StatusIcon className="size-3.5" strokeWidth={2.5} />
-          </span>
+          {showStatusIcon && (
+            <span
+              className={cn(
+                "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
+                iconClassName,
+              )}
+            >
+              <StatusIcon className="size-3.5" strokeWidth={2.5} />
+            </span>
+          )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <CardTitle className="text-sm font-semibold leading-5 text-(--notification-card-foreground)">
                 {title}
               </CardTitle>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                className="-mr-1 -mt-1 shrink-0 text-zinc-500 hover:bg-white/10 hover:text-white"
-                aria-label={`Dismiss ${title}`}
-                onClick={onDismiss}
-              >
-                <XIcon className="size-3.5" />
-              </Button>
             </div>
 
             <CardDescription className="mt-1 line-clamp-2 text-xs leading-4 text-(--notification-card-muted)">

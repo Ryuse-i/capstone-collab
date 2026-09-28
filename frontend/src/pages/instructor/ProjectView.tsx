@@ -20,10 +20,26 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 
 import AppLayout from "@/layouts/Applayout";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TaskTable } from "@/components/user/TaskTable";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TaskTable, formatStatusLabel } from "@/components/user/TaskTable";
 import ResourceDialog from "@/components/user/ResourceDialog";
 import { RESOURCES, type Resource } from "@/pages/student/Resources";
 import { cn } from "@/lib/utils";
@@ -32,6 +48,8 @@ import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
+import type { TaskResponseMembers } from "@/types/task";
+import type { UserBase } from "@/types/user";
 
 type ProjectViewTab =
   | "overview"
@@ -72,6 +90,12 @@ const tabs: {
   },
 ];
 
+// Same badge colors used by TaskTable
+const submissionStatusStyle: Record<string, string> = {
+  completed: "bg-green-100 text-green-700",
+  submitted: "bg-blue-100 text-blue-700",
+};
+
 function getHealthClasses(status?: string) {
   switch (status) {
     case "healthy":
@@ -107,6 +131,65 @@ function formatPercentage(value?: number, digits = 1) {
   return formatted === "None" ? "None" : `${formatted}%`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Assignee helpers (same look as TaskTable)                           */
+/* ------------------------------------------------------------------ */
+
+function getAssignees(task: TaskResponseMembers): UserBase[] {
+  return task.assigned_members ?? [];
+}
+
+function getUserName(member: UserBase): string {
+  const fullName = `${member.first_name} ${member.last_name}`.trim();
+  return fullName || member.email;
+}
+
+function getInitials(member: UserBase): string {
+  const first = member.first_name?.[0] ?? "";
+  const last = member.last_name?.[0] ?? "";
+  const initials = `${first}${last}`;
+  return initials || (member.email?.[0] ?? "?");
+}
+
+function AssigneeList({ members }: { members: UserBase[] }) {
+  if (members.length === 0) {
+    return <span className="text-xs text-neutral-400">—</span>;
+  }
+
+  const visible = members.slice(0, 3);
+  const extra = members.length - visible.length;
+
+  return (
+    <div className="flex items-center -space-x-2">
+      {visible.map((member) => (
+        <Avatar
+          key={member.id}
+          title={getUserName(member)}
+          className="size-8 border-2 border-background"
+        >
+          <AvatarFallback className="rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground">
+            {getInitials(member)}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+
+      {extra > 0 && (
+        <Avatar
+          title={members
+            .slice(3)
+            .map((member) => getUserName(member))
+            .join(", ")}
+          className="size-8 border-2 border-background"
+        >
+          <AvatarFallback className="rounded-full bg-muted text-10 font-medium text-muted-foreground">
+            +{extra}
+          </AvatarFallback>
+        </Avatar>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectView() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -115,6 +198,10 @@ export default function ProjectView() {
   const [selectedResource, setSelectedResource] = useState<Resource | null>(
     null,
   );
+
+  // Submissions table filters
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState("all");
+  const [submissionMemberFilter, setSubmissionMemberFilter] = useState("all");
 
   const projectId = id ?? "";
 
@@ -218,15 +305,37 @@ export default function ProjectView() {
     },
   ];
 
+  // ---- Submissions: derived data ----
   const submittedTasks = (allProjectTasks ?? []).filter(
     (task) => task.status === "submitted" || task.status === "completed",
   );
-  const submittedCount = submittedTasks.filter(
-    (task) => task.status === "submitted",
-  ).length;
-  const completedCount = submittedTasks.filter(
-    (task) => task.status === "completed",
-  ).length;
+
+  // Member filter options come from members actually assigned to submissions
+  const submissionMemberOptions = Array.from(
+    new Map(
+      submittedTasks
+        .flatMap((task) => getAssignees(task))
+        .map((member) => [member.id, member] as const),
+    ).values(),
+  );
+
+  const filteredSubmissions = submittedTasks.filter((task) => {
+    if (
+      submissionStatusFilter !== "all" &&
+      task.status !== submissionStatusFilter
+    ) {
+      return false;
+    }
+
+    if (
+      submissionMemberFilter !== "all" &&
+      !getAssignees(task).some((member) => member.id === submissionMemberFilter)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 
   if (isLoading) {
     return (
@@ -473,173 +582,193 @@ export default function ProjectView() {
 
             {/* Submissions */}
             {activeTab === "submissions" && (
-              <div className="mt-6 space-y-6">
-                {isTasksLoading && (
-                  <Card className="border p-4 text-sm text-neutral-500">
-                    Loading submissions...
-                  </Card>
-                )}
+              <div className="mt-6 space-y-3">
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={submissionStatusFilter}
+                    onValueChange={setSubmissionStatusFilter}
+                  >
+                    <SelectTrigger className="h-8 w-40">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      className="w-40"
+                    >
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                {!isTasksLoading && isTasksError && (
-                  <Card className="border p-4">
-                    <p className="text-xs text-rose-600">
-                      Couldn't load project submissions.
-                    </p>
-                  </Card>
-                )}
+                  <Select
+                    value={submissionMemberFilter}
+                    onValueChange={setSubmissionMemberFilter}
+                  >
+                    <SelectTrigger className="h-8 w-40">
+                      <SelectValue placeholder="Assigned Member" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      className="w-40"
+                    >
+                      <SelectItem value="all">All Members</SelectItem>
+                      {submissionMemberOptions.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {getUserName(member)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                {!isTasksLoading && !isTasksError && (
-                  <>
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <Card className="border p-4">
-                        <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                          <ClipboardCheck className="h-5 w-5 text-[#7A0C2E]" />
-                          Submission summary
-                        </div>
-                        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-                          <div className="rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
-                            <p className="text-xs text-(--semi-foreground)">
-                              Total
-                            </p>
-                            <p className="mt-1 text-lg font-semibold text-foreground">
-                              {submittedTasks.length}
-                            </p>
-                          </div>
-                          <div className="rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
-                            <p className="text-xs text-(--semi-foreground)">
-                              Submitted
-                            </p>
-                            <p className="mt-1 text-lg font-semibold text-foreground">
-                              {submittedCount}
-                            </p>
-                          </div>
-                          <div className="rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
-                            <p className="text-xs text-(--semi-foreground)">
-                              Completed
-                            </p>
-                            <p className="mt-1 text-lg font-semibold text-foreground">
-                              {completedCount}
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    </div>
+                {/* Table */}
+                <Card className="p-0">
+                  <CardContent className="p-0">
+                    <div className="custom-scrollbar">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Task</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Assigned</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead>Completed At</TableHead>
+                            <TableHead>Attachments</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {isTasksLoading ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={7}
+                                className="py-8 text-center text-muted-foreground"
+                              >
+                                Loading submissions...
+                              </TableCell>
+                            </TableRow>
+                          ) : isTasksError ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={7}
+                                className="py-8 text-center text-rose-600"
+                              >
+                                Failed to load submissions.
+                              </TableCell>
+                            </TableRow>
+                          ) : filteredSubmissions.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={7}
+                                className="py-10 text-center text-muted-foreground"
+                              >
+                                No submissions yet.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredSubmissions.map((task) => {
+                              const status = task.status ?? "submitted";
+                              const submission = getTaskSubmission();
+                              const attachmentCount =
+                                (submission.files?.length ?? 0) +
+                                (submission.links?.length ?? 0);
 
-                    {submittedTasks.length === 0 ? (
-                      <Card className="border p-4">
-                        <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500 dark:border-(--semi-foreground) dark:bg-card">
-                          No submissions yet.
-                        </div>
-                      </Card>
-                    ) : (
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        {submittedTasks.map((task) => {
-                          const submission = getTaskSubmission();
-                          const attachmentCount =
-                            (submission.files?.length ?? 0) +
-                            (submission.links?.length ?? 0);
-
-                          return (
-                            <Card key={task.id} className="border p-4">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <h2 className="text-lg font-semibold text-foreground">
+                              return (
+                                <TableRow key={task.id}>
+                                  {/* Task */}
+                                  <TableCell className="font-medium text-gray-800 dark:text-gray-200">
                                     {task.name}
-                                  </h2>
-                                  <p className="mt-2 text-sm text-(--semi-foreground)">
-                                    {task.description ||
-                                      "No description provided."}
-                                  </p>
-                                </div>
-                                <div className="flex shrink-0 gap-2">
-                                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold capitalize text-neutral-700 dark:bg-(--semi-card) dark:text-foreground">
-                                    {task.category}
-                                  </span>
-                                  <span
-                                    className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-                                      task.status === "completed"
-                                        ? "bg-emerald-100 text-emerald-700 dark:text-emerald-100"
-                                        : "bg-blue-100 text-blue-700 dark:text-blue-100"
-                                    }`}
-                                  >
-                                    {task.status}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="mt-4 space-y-3 text-sm">
-                                <div className="flex flex-col gap-1 rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                                  <span className="text-xs text-(--semi-foreground)">
-                                    Assigned member(s)
-                                  </span>
-                                  <span>
-                                    {task.assigned_members.length > 0
-                                      ? task.assigned_members
-                                          .map((member) =>
-                                            `${member.first_name} ${member.last_name}`.trim(),
-                                          )
-                                          .join(", ")
-                                      : "No members assigned"}
-                                  </span>
-                                </div>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                  <div className="rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                                    <span className="block text-xs text-(--semi-foreground)">
-                                      Deadline
-                                    </span>
-                                    <span>{formatDate(task.deadline)}</span>
-                                  </div>
-                                  <div className="rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                                    <span className="block text-xs text-(--semi-foreground)">
-                                      Completed at
-                                    </span>
-                                    <span>{formatDate(task.completed_at)}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="mt-4 border-t pt-4">
-                                <p className="text-xs font-semibold text-(--semi-foreground)">
-                                  Attachments
-                                </p>
-                                {attachmentCount === 0 ? (
-                                  <p className="mt-2 text-sm text-neutral-500">
-                                    No attachments
-                                  </p>
-                                ) : (
-                                  <div className="mt-2 space-y-2 text-sm">
-                                    {submission.files?.map((file) => (
-                                      <a
-                                        key={file.url}
-                                        href={file.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block text-[#7A0C2E] underline underline-offset-2"
+                                  </TableCell>
+                                  {/* Category */}
+                                  <TableCell>
+                                    {task.category ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="capitalize"
                                       >
-                                        {file.name}
-                                      </a>
-                                    ))}
-                                    {submission.links?.map((link) => (
-                                      <a
-                                        key={link}
-                                        href={link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block truncate text-[#7A0C2E] underline underline-offset-2"
-                                      >
-                                        {getLinkLabel(link)}
-                                      </a>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                )}
+                                        {task.category}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-xs text-neutral-400">
+                                        —
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  {/* Status */}
+                                  <TableCell>
+                                    <Badge
+                                      className={`${
+                                        submissionStatusStyle[status] ??
+                                        "bg-gray-100 text-gray-500"
+                                      } border-0 capitalize`}
+                                    >
+                                      {formatStatusLabel(status)}
+                                    </Badge>
+                                  </TableCell>
+                                  {/* Assigned */}
+                                  <TableCell>
+                                    <AssigneeList
+                                      members={getAssignees(task)}
+                                    />
+                                  </TableCell>
+                                  {/* Due Date */}
+                                  <TableCell className="text-muted-foreground">
+                                    {task.deadline
+                                      ? formatDate(task.deadline)
+                                      : "No deadline"}
+                                  </TableCell>
+                                  {/* Completed At */}
+                                  <TableCell className="text-muted-foreground">
+                                    {task.completed_at
+                                      ? formatDate(task.completed_at)
+                                      : "—"}
+                                  </TableCell>
+                                  {/* Attachments */}
+                                  <TableCell>
+                                    {attachmentCount === 0 ? (
+                                      <span className="text-xs text-neutral-400">
+                                        No attachments
+                                      </span>
+                                    ) : (
+                                      <div className="flex flex-col gap-1 text-sm">
+                                        {submission.files?.map((file) => (
+                                          <a
+                                            key={file.url}
+                                            href={file.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[#7A0C2E] underline underline-offset-2"
+                                          >
+                                            {file.name}
+                                          </a>
+                                        ))}
+                                        {submission.links?.map((link) => (
+                                          <a
+                                            key={link}
+                                            href={link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="max-w-50 truncate text-[#7A0C2E] underline underline-offset-2"
+                                          >
+                                            {getLinkLabel(link)}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 

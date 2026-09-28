@@ -1,5 +1,14 @@
 import { useState, type ReactNode } from "react";
-import { Check, ChevronDown, PlusCircle } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Code2,
+  FileText,
+  FileUp,
+  Frame,
+  Link2,
+  PlusCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +39,8 @@ export type ResourceFormValues = {
   updatedAt: string;
   pinned: boolean;
   uses: number;
+  sourceUrl: string;
+  attachment: File | null;
 };
 
 const initialFormValues: ResourceFormValues = {
@@ -39,11 +50,24 @@ const initialFormValues: ResourceFormValues = {
   description: "",
   type: "Live link",
   size: "",
-  author: "",
+  author: "You",
   updatedAt: "Just now",
   pinned: false,
   uses: 0,
+  sourceUrl: "",
+  attachment: null,
 };
+
+const CATEGORY_OPTIONS = [
+  { name: "Links", icon: Frame },
+  { name: "Paper Files", icon: FileText },
+  { name: "Code", icon: Code2 },
+] as const;
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface AddResoourceDialogProps {
   trigger?: ReactNode;
@@ -78,8 +102,13 @@ export default function AddResoourceDialog({
     const trimmedTitle = formValues.title.trim();
     const trimmedDescription = formValues.description.trim();
     const trimmedAuthor = formValues.author.trim();
+    const sourceUrl = formValues.sourceUrl.trim();
 
-    if (!trimmedTitle || !trimmedDescription || !trimmedAuthor) {
+    if (
+      !trimmedTitle ||
+      !trimmedDescription ||
+      (!sourceUrl && !formValues.attachment)
+    ) {
       return;
     }
 
@@ -88,6 +117,13 @@ export default function AddResoourceDialog({
       title: trimmedTitle,
       description: trimmedDescription,
       author: trimmedAuthor,
+      type: formValues.attachment
+        ? formValues.attachment.name.split(".").pop()?.toUpperCase() || "File"
+        : "Live link",
+      size: formValues.attachment
+        ? formatFileSize(formValues.attachment.size)
+        : sourceUrl,
+      sourceUrl,
       updatedAt: formValues.updatedAt || "Just now",
       uses: Number(formValues.uses) || 0,
     };
@@ -111,8 +147,7 @@ export default function AddResoourceDialog({
         <DialogHeader>
           <DialogTitle>Add Resource</DialogTitle>
           <DialogDescription>
-            Create a new resource with the same fields used by the current mock
-            data.
+            Add a link or attach a file for your team.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,38 +186,89 @@ export default function AddResoourceDialog({
                   aria-expanded={categoryOpen}
                   className="w-full justify-between text-left font-normal"
                 >
-                  <span>{formValues.category || "Select category"}</span>
+                  {(() => {
+                    const CategoryIcon =
+                      CATEGORY_OPTIONS.find(
+                        (category) => category.name === formValues.category,
+                      )?.icon ?? Frame;
+                    return (
+                      <span className="flex items-center gap-2">
+                        <CategoryIcon className="size-4 text-muted-foreground" />
+                        {formValues.category || "Select category"}
+                      </span>
+                    );
+                  })()}
                   <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
 
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <div className="p-1">
-                  {(["Links", "Paper Files", "Code"] as const).map(
-                    (category) => {
-                      const selected = formValues.category === category;
+                  {CATEGORY_OPTIONS.map(({ name, icon: CategoryIcon }) => {
+                    const selected = formValues.category === name;
 
-                      return (
-                        <button
-                          key={category}
-                          type="button"
-                          onClick={() => {
-                            updateField("category", category);
-                            setCategoryOpen(false);
-                          }}
-                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
-                        >
-                          <span>{category}</span>
-                          {selected && (
-                            <Check className="h-4 w-4 text-[#7A0C2E]" />
-                          )}
-                        </button>
-                      );
-                    },
-                  )}
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => {
+                          updateField("category", name);
+                          setCategoryOpen(false);
+                        }}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                      >
+                        <span className="flex items-center gap-2">
+                          <CategoryIcon className="size-4 text-muted-foreground" />
+                          {name}
+                        </span>
+                        {selected && (
+                          <Check className="h-4 w-4 text-[#7A0C2E]" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </PopoverContent>
             </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="resource-link">Resource link</Label>
+            <div className="relative">
+              <Link2 className="pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground" />
+              <Input
+                id="resource-link"
+                type="url"
+                value={formValues.sourceUrl}
+                onChange={(event) =>
+                  updateField("sourceUrl", event.target.value)
+                }
+                placeholder="https://example.com"
+                className="pl-8"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="resource-attachment">Or attach a file</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                key={open ? "resource-file-open" : "resource-file-closed"}
+                id="resource-attachment"
+                type="file"
+                onChange={(event) =>
+                  updateField("attachment", event.target.files?.[0] ?? null)
+                }
+                className="h-10 pt-1.5"
+              />
+              <FileUp className="size-4 shrink-0 text-muted-foreground" />
+            </div>
+            {formValues.attachment && (
+              <p className="text-xs text-muted-foreground">
+                {formValues.attachment.name} ·{" "}
+                {formatFileSize(formValues.attachment.size)}
+              </p>
+            )}
           </div>
         </div>
 
