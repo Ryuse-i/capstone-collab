@@ -1,5 +1,5 @@
 import AppLayout from "@/layouts/Applayout";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Mail,
@@ -54,8 +54,6 @@ function getInitials(first: string, last: string) {
 }
 
 function capacityPercent(multiplier: number) {
-  // capacity_multiplier is expressed relative to 1.0 (baseline capacity).
-  // Clamp to a 0–200% visual range so bars stay readable.
   return Math.min(Math.max(multiplier * 100, 0), 200) / 2;
 }
 
@@ -69,12 +67,11 @@ function MemberCard({
   const { user, project_role } = member;
   const snapshot = member.snapshots[0];
 
-  // total_effective_points / capacity_multiplier come back from the API as
-  // strings (Decimal serialization), so parse before doing any math/formatting.
   const points =
     snapshot !== undefined
       ? parseFloat(snapshot.total_effective_points)
       : undefined;
+
   const capacity =
     snapshot !== undefined
       ? parseFloat(snapshot.capacity_multiplier)
@@ -84,28 +81,33 @@ function MemberCard({
   const initials = getInitials(user.first_name, user.last_name);
 
   return (
-    <Card className="shadow-sm border rounded-xl">
+    <Card className="rounded-xl border shadow-sm">
       <CardContent
-        className={`p-5 flex flex-col ${showWorkload ? "gap-4" : "gap-3"}`}
+        className={`flex flex-col p-5 ${
+          showWorkload ? "gap-4" : "gap-3"
+        }`}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 shrink-0 rounded-full border-2 border-gray-300 flex items-center justify-center bg-primary dark:bg-gray-800 dark:border-gray-600">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800">
               <span className="text-sm font-bold text-primary-foreground dark:text-foreground">
                 {initials}
               </span>
             </div>
-            <div className="flex flex-col gap-1 min-w-0">
-              <span className="font-semibold text-card-foreground text-sm truncate">
+
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="truncate text-sm font-semibold text-card-foreground">
                 {user.first_name.trim()} {user.last_name.trim()}
               </span>
-              <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 truncate">
-                <Mail className="w-3 h-3 shrink-0" />
+
+              <span className="flex items-center gap-1 truncate text-xs text-gray-400 dark:text-gray-500">
+                <Mail className="h-3 w-3 shrink-0" />
                 {user.email}
               </span>
+
               <span
-                className={`text-xs border rounded-full px-2 py-0.5 w-fit capitalize ${roleStyles[project_role]}`}
+                className={`w-fit rounded-full border px-2 py-0.5 text-xs capitalize ${roleStyles[project_role]}`}
               >
                 {project_role}
               </span>
@@ -115,9 +117,9 @@ function MemberCard({
           {!showWorkload && snapshot?.silence_warning && (
             <span
               title="No recent activity reported"
-              className="flex items-center gap-1 text-xs font-semibold border border-red-400 text-red-500 bg-white dark:bg-red-950/10 rounded px-2 py-1 shrink-0"
+              className="flex shrink-0 items-center gap-1 rounded border border-red-400 bg-white px-2 py-1 text-xs font-semibold text-red-500 dark:bg-red-950/10"
             >
-              <ShieldAlert className="w-3.5 h-3.5" />
+              <ShieldAlert className="h-3.5 w-3.5" />
               Silent
             </span>
           )}
@@ -130,7 +132,7 @@ function MemberCard({
                   type="button"
                   aria-label={`View ${user.first_name} ${user.last_name}`}
                 >
-                  <PenLineIcon className="w-4 h-4" />
+                  <PenLineIcon className="h-4 w-4" />
                 </button>
               }
             />
@@ -140,17 +142,19 @@ function MemberCard({
         {showWorkload && (
           <>
             {/* Workload status */}
-            <div className="bg-gray-50 dark:bg-card-foreground/5 rounded-lg px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 dark:bg-card-foreground/5">
               <div>
                 <p className="text-xs text-gray-400 dark:text-card-foreground">
                   Workload status
                 </p>
-                <p className="text-sm font-semibold text-gray-800 dark:text-card-foreground mt-0.5">
+
+                <p className="mt-0.5 text-sm font-semibold text-gray-800 dark:text-card-foreground">
                   {workload.label}
                 </p>
               </div>
+
               <span
-                className={`text-xs font-bold border rounded px-2 py-1 ${workload.badge}`}
+                className={`rounded border px-2 py-1 text-xs font-bold ${workload.badge}`}
               >
                 {workload.label.toUpperCase()}
               </span>
@@ -160,18 +164,21 @@ function MemberCard({
             <div className="grid grid-cols-3 gap-2 border-b pb-4">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-1 text-blue-500">
-                  <Gauge className="w-3.5 h-3.5" />
+                  <Gauge className="h-3.5 w-3.5" />
                   <span className="text-xs text-gray-400">Points</span>
                 </div>
+
                 <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
                   {points !== undefined ? points : "—"}
                 </span>
               </div>
+
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-1 text-gray-400">
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <AlertTriangle className="h-3.5 w-3.5" />
                   <span className="text-xs text-gray-400">Capacity</span>
                 </div>
+
                 <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
                   {capacity !== undefined ? `${capacity.toFixed(1)}x` : "—"}
                 </span>
@@ -182,17 +189,21 @@ function MemberCard({
             <div className="flex flex-col gap-1">
               <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
                 <span>Capacity multiplier</span>
+
                 <span>
                   {capacity !== undefined
                     ? `${capacity.toFixed(2)}x`
                     : "No data"}
                 </span>
               </div>
-              <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                 <div
                   className={`h-full rounded-full ${workload.bar}`}
                   style={{
-                    width: `${capacity !== undefined ? capacityPercent(capacity) : 0}%`,
+                    width: `${
+                      capacity !== undefined ? capacityPercent(capacity) : 0
+                    }%`,
                   }}
                 />
               </div>
@@ -204,14 +215,116 @@ function MemberCard({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Loading Skeleton
+// ---------------------------------------------------------------------------
+
+function MemberCardSkeleton({ showWorkload = true }: { showWorkload?: boolean }) {
+  return (
+    <Card className="rounded-xl border shadow-sm">
+      <CardContent
+        className={`flex flex-col p-5 ${
+          showWorkload ? "gap-4" : "gap-3"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
+
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-40 max-w-full" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          </div>
+
+          <Skeleton className="h-4 w-4 shrink-0 rounded" />
+        </div>
+
+        {showWorkload && (
+          <>
+            {/* Workload status */}
+            <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 dark:bg-card-foreground/5">
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-0.5 h-4 w-20" />
+              </div>
+
+              <Skeleton className="h-6 w-20 rounded" />
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2 border-b pb-4">
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-8 w-12" />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-8 w-12" />
+              </div>
+            </div>
+
+            {/* Capacity */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AdvisorPlaceholderCard({ message }: { message: string }) {
   return (
-    <div className="grid grid-cols-1 gap-4 h-34.5">
-      <Card className="shadow-sm border rounded-xl">
-        <CardContent className="p-5 flex min-h-full items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400">
+    <div className="grid h-34.5 grid-cols-1 gap-4">
+      <Card className="rounded-xl border shadow-sm">
+        <CardContent className="flex min-h-full items-center justify-center p-5 text-center text-sm text-gray-500 dark:text-gray-400">
           {message}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function TeamSkeleton() {
+  return (
+    <div>
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <div className="mb-2 flex items-center justify-between">
+        <Skeleton className="h-8 w-96 max-w-full" />
+        <Skeleton className="h-4 w-28" />
+      </div>
+
+      {/* ── Instructor / Advisor ─────────────────────────────────── */}
+      <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div>
+          <Skeleton className="mb-3 h-6 w-24" />
+
+          <MemberCardSkeleton showWorkload={false} />
+        </div>
+
+        <div>
+          <Skeleton className="mb-3 h-6 w-20" />
+
+          <MemberCardSkeleton showWorkload={false} />
+        </div>
+      </div>
+
+      {/* ── Regular Members ──────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((item) => (
+          <MemberCardSkeleton key={item} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -224,6 +337,7 @@ export default function Team() {
     isLoading: isProjectLoading,
     isError: isProjectError,
   } = useGetCurrentProject(user?.id ?? "");
+
   const {
     data: members = [],
     isLoading: isMembersLoading,
@@ -249,33 +363,36 @@ export default function Team() {
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
       {isError ? (
-        <div className="flex flex-col justify-center items-center gap-4 h-screen">
+        <div className="flex h-screen flex-col items-center justify-center gap-4">
           <AlertTriangle className="h-8 w-8 text-destructive" />
+
           <p className="text-foreground dark:text-muted-foreground">
             Failed to load project data. Please try again later.
           </p>
         </div>
       ) : isLoading ? (
-        <div className="flex flex-1 justify-center items-center">
-          <Spinner />
-        </div>
+        <TeamSkeleton />
       ) : (
         <div>
-          <div className="flex items-center justify-between mb-2">
+          {/* Header */}
+          <div className="mb-2 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">
               Manage members and monitor activities
             </h1>
+
             <span className="text-sm text-gray-400 dark:text-gray-500">
               {regularMembers.length} regular member
               {regularMembers.length !== 1 ? "s" : ""}
             </span>
           </div>
 
-          <div className="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {/* Instructor / Advisor */}
+          <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div>
               <h2 className="mb-3 text-lg font-semibold text-foreground">
                 Instructor
               </h2>
+
               {instructorMembers.length > 0 ? (
                 <div className="gap-4">
                   {instructorMembers.map((member) => (
@@ -290,10 +407,12 @@ export default function Team() {
                 <AdvisorPlaceholderCard message="There is no instructor yet." />
               )}
             </div>
+
             <div>
               <h2 className="mb-3 text-lg font-semibold text-foreground">
                 Advisor
               </h2>
+
               {advisorMembers.length > 0 ? (
                 <div className="w-full gap-4">
                   {advisorMembers.map((member) => (
@@ -316,7 +435,7 @@ export default function Team() {
               No regular team members found for this project.
             </p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {regularMembers.map((member) => (
                 <MemberCard key={member.id} member={member} />
               ))}

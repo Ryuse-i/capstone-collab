@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
-import { Spinner } from "@/components/ui/spinner";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   BarChart3,
@@ -16,21 +17,14 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
 
 import AppLayout from "@/layouts/Applayout";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -39,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import { TaskTable, formatStatusLabel } from "@/components/user/TaskTable";
 import ResourceDialog from "@/components/user/ResourceDialog";
 import { RESOURCES, type Resource } from "@/pages/student/Resources";
@@ -48,6 +43,7 @@ import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
+
 import type { TaskResponseMembers } from "@/types/task";
 import type { UserBase } from "@/types/user";
 
@@ -90,7 +86,6 @@ const tabs: {
   },
 ];
 
-// Same badge colors used by TaskTable
 const submissionStatusStyle: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
   submitted: "bg-blue-100 text-blue-700",
@@ -132,7 +127,7 @@ function formatPercentage(value?: number, digits = 1) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Assignee helpers (same look as TaskTable)                           */
+/* Assignee helpers                                                    */
 /* ------------------------------------------------------------------ */
 
 function getAssignees(task: TaskResponseMembers): UserBase[] {
@@ -141,6 +136,7 @@ function getAssignees(task: TaskResponseMembers): UserBase[] {
 
 function getUserName(member: UserBase): string {
   const fullName = `${member.first_name} ${member.last_name}`.trim();
+
   return fullName || member.email;
 }
 
@@ -148,6 +144,7 @@ function getInitials(member: UserBase): string {
   const first = member.first_name?.[0] ?? "";
   const last = member.last_name?.[0] ?? "";
   const initials = `${first}${last}`;
+
   return initials || (member.email?.[0] ?? "?");
 }
 
@@ -190,24 +187,108 @@ function AssigneeList({ members }: { members: UserBase[] }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Project View Skeleton                                               */
+/* ------------------------------------------------------------------ */
+
+function ProjectViewSkeleton() {
+  return (
+    <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
+      <div className="min-h-screen w-full py-2">
+        <Skeleton className="mb-5 h-5 w-32" />
+
+        <Card className="overflow-hidden border shadow-sm">
+          {/* Project Header */}
+          <div className="m-2 rounded-lg border-4 border-neutral-200 p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-72" />
+
+                <Skeleton className="h-4 w-[32rem] max-w-full" />
+
+                <Skeleton className="h-4 w-80 max-w-full" />
+              </div>
+
+              <div className="flex gap-2">
+                <Skeleton className="h-7 w-20 rounded-full" />
+                <Skeleton className="h-7 w-28 rounded-full" />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {/* Tabs */}
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton
+                  key={index}
+                  className="h-9 w-24 rounded-md"
+                />
+              ))}
+            </div>
+
+            {/* Overview */}
+            <div className="mt-6 space-y-6">
+              {/* Overview cards */}
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="rounded-2xl border bg-card p-4"
+                  >
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="mt-4 h-8 w-24" />
+                    <Skeleton className="mt-2 h-4 w-32" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Details + Contacts */}
+              <div className="grid gap-4 lg:grid-cols-2">
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <Card key={index} className="border p-4">
+                    <Skeleton className="h-6 w-32" />
+
+                    <div className="mt-4 space-y-3">
+                      {Array.from({ length: 3 }).map((_, rowIndex) => (
+                        <div
+                          key={rowIndex}
+                          className="flex items-center justify-between rounded-lg bg-neutral-50 p-2 dark:bg-(--semi-card)"
+                        >
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-4 w-24" />
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </AppLayout>
+  );
+}
+
 export default function ProjectView() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [activeTab, setActiveTab] = useState<ProjectViewTab>("overview");
-  const [selectedResource, setSelectedResource] = useState<Resource | null>(
-    null,
-  );
+  const [activeTab, setActiveTab] =
+    useState<ProjectViewTab>("overview");
 
-  // Submissions table filters
-  const [submissionStatusFilter, setSubmissionStatusFilter] = useState("all");
-  const [submissionMemberFilter, setSubmissionMemberFilter] = useState("all");
+  const [selectedResource, setSelectedResource] =
+    useState<Resource | null>(null);
+
+  const [submissionStatusFilter, setSubmissionStatusFilter] =
+    useState("all");
+
+  const [submissionMemberFilter, setSubmissionMemberFilter] =
+    useState("all");
 
   const projectId = id ?? "";
 
-  // Remember this project's view page so the sidebar's "Projects" item
-  // returns here after visiting other pages, instead of resetting to
-  // the project list.
   useEffect(() => {
     if (projectId) {
       rememberLastVisitedProjects(`/view-project/${projectId}`);
@@ -222,14 +303,12 @@ export default function ProjectView() {
 
   const snapshot = project?.snapshot;
 
-  // ---- Tasks: live data ----
   const {
     data: allProjectTasks,
     isLoading: isTasksLoading,
     isError: isTasksError,
   } = useGetAllTaskAssignedMembers(projectId);
 
-  // ---- Members: leader / advisor / instructor ----
   const {
     data: projectMembersData,
     isLoading: isMembersLoading,
@@ -242,7 +321,9 @@ export default function ProjectView() {
         projectMember.project_role === role && projectMember.users,
     );
 
-    if (!member || !member.users) return "None";
+    if (!member || !member.users) {
+      return "None";
+    }
 
     const fullName = `${member.users.first_name ?? ""} ${
       member.users.last_name ?? ""
@@ -305,12 +386,11 @@ export default function ProjectView() {
     },
   ];
 
-  // ---- Submissions: derived data ----
   const submittedTasks = (allProjectTasks ?? []).filter(
-    (task) => task.status === "submitted" || task.status === "completed",
+    (task) =>
+      task.status === "submitted" || task.status === "completed",
   );
 
-  // Member filter options come from members actually assigned to submissions
   const submissionMemberOptions = Array.from(
     new Map(
       submittedTasks
@@ -329,7 +409,9 @@ export default function ProjectView() {
 
     if (
       submissionMemberFilter !== "all" &&
-      !getAssignees(task).some((member) => member.id === submissionMemberFilter)
+      !getAssignees(task).some(
+        (member) => member.id === submissionMemberFilter,
+      )
     ) {
       return false;
     }
@@ -338,32 +420,15 @@ export default function ProjectView() {
   });
 
   if (isLoading) {
-    return (
-      <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <button
-              onClick={() => navigate("/project-list")}
-              className="mb-4 flex items-center gap-2 text-sm font-medium text-[#7A0C2E]"
-            >
-              <ArrowLeft size={16} />
-              Back to projects
-            </button>
-            <div className="flex flex-1 justify-center items-center">
-              <Spinner/>
-            </div>
-            <p className="text-foreground dark:text-muted-foreground">Loading project details...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
+    return <ProjectViewSkeleton />;
   }
 
-  // Error state
   if (isError || !project) {
     return (
-      <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
-        <div className="min-h-screen flex items-center justify-center">
+      <AppLayout
+        breadcrumbs={[{ label: "Projects", href: "/project-list" }]}
+      >
+        <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
             <button
               onClick={() => navigate("/project-list")}
@@ -372,9 +437,11 @@ export default function ProjectView() {
               <ArrowLeft size={16} />
               Back to projects
             </button>
-            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
+
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border-b-2 border-destructive">
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
+
             <p className="text-foreground dark:text-muted-foreground">
               Failed to load project details. Please try again.
             </p>
@@ -388,7 +455,7 @@ export default function ProjectView() {
     <AppLayout
       breadcrumbs={[
         { label: "Projects", href: "/project-list" },
-        { label: project?.name },
+        { label: project.name },
       ]}
     >
       <div className="min-h-screen w-full py-2">
@@ -402,7 +469,7 @@ export default function ProjectView() {
 
         <Card className="overflow-hidden border shadow-sm">
           {/* Project Header */}
-          <div className="border-4 rounded-lg border-neutral-200 p-6 m-2">
+          <div className="m-2 rounded-lg border-4 border-neutral-200 p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="mt-2 text-2xl font-bold text-foreground">
@@ -416,13 +483,16 @@ export default function ProjectView() {
 
               <div className="flex flex-wrap gap-2">
                 <span
-                  className={`rounded-full px-3 py-1 text-sm font-semibold bg-card dark:ring-1 ring-foreground/10${getHealthClasses(snapshot?.health_status)}`}
+                  className={`rounded-full px-3 py-1 text-sm font-semibold bg-card dark:ring-1 ring-foreground/10${getHealthClasses(
+                    snapshot?.health_status,
+                  )}`}
                 >
                   {snapshot?.health_status
                     ? snapshot.health_status.replace(/_/g, " ")
                     : "Unknown"}
                 </span>
-                <span className="rounded-full bg-white dark:bg-card dark:ring-1 ring-foreground/10 px-3 py-1 text-sm font-semibold text-[#7A0C2E] shadow-sm">
+
+                <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-[#7A0C2E] shadow-sm dark:bg-card dark:ring-1 ring-foreground/10">
                   {formatPercentage(snapshot?.progress_percentage)} progress
                 </span>
               </div>
@@ -435,7 +505,9 @@ export default function ProjectView() {
               {tabs.map((tab) => (
                 <Button
                   key={tab.id}
-                  variant={activeTab === tab.id ? "default" : "outline"}
+                  variant={
+                    activeTab === tab.id ? "default" : "outline"
+                  }
                   size="sm"
                   className="flex items-center gap-2"
                   onClick={() => setActiveTab(tab.id)}
@@ -459,9 +531,11 @@ export default function ProjectView() {
                         {card.icon}
                         {card.label}
                       </div>
+
                       <p className="mt-3 text-2xl font-bold text-foreground">
                         {card.value}
                       </p>
+
                       <p className="mt-1 text-sm text-neutral-500">
                         {card.caption}
                       </p>
@@ -474,21 +548,30 @@ export default function ProjectView() {
                     <h2 className="text-lg font-semibold text-foreground">
                       Details
                     </h2>
+
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
                       <div className="flex justify-between gap-3 text-foreground">
                         <span>Expected score</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.expected_score)}
                         </span>
                       </div>
+
                       <div className="flex justify-between gap-3 text-foreground">
                         <span>Workload points</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
-                          {formatNumber(snapshot?.total_workload_points, 0)}
+                          {formatNumber(
+                            snapshot?.total_workload_points,
+                            0,
+                          )}
                         </span>
                       </div>
+
                       <div className="flex justify-between gap-3 text-foreground">
                         <span>Schedule variance</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.schedule_variance)}
                         </span>
@@ -500,21 +583,27 @@ export default function ProjectView() {
                     <h2 className="text-lg font-semibold text-foreground">
                       Project contacts
                     </h2>
+
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card) dark:text-foreground">
                         <span>Project leader</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {leaderName}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
+
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card) dark:text-foreground">
                         <span>Instructor</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {instructorName}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) dark:text-foreground px-3 py-2">
+
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card) dark:text-foreground">
                         <span>Advisor</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {advisorName}
                         </span>
@@ -534,21 +623,27 @@ export default function ProjectView() {
                       <Target className="h-5 w-5 text-[#7A0C2E]" />
                       Task progress
                     </div>
+
                     <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2 text-foreground">
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
                         <span>Completed tasks</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {formatCount(snapshot?.completed_tasks)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2 text-foreground">
+
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
                         <span>Expected score</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.expected_score)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2 text-foreground">
+
+                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
                         <span>Schedule variance</span>
+
                         <span className="font-semibold text-(--semi-foreground)">
                           {formatNumber(snapshot?.schedule_variance)}
                         </span>
@@ -561,8 +656,10 @@ export default function ProjectView() {
                       <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
                       Timeline insight
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) px-3 py-2">
+
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
                       <span>Expected score</span>
+
                       <span className="font-semibold text-(--semi-foreground)">
                         {formatNumber(snapshot?.expected_score)}
                       </span>
@@ -570,7 +667,6 @@ export default function ProjectView() {
                   </Card>
                 </div>
 
-                {/* Extracted TaskTable */}
                 <TaskTable
                   tasks={allProjectTasks ?? []}
                   projectId={projectId}
@@ -583,7 +679,6 @@ export default function ProjectView() {
             {/* Submissions */}
             {activeTab === "submissions" && (
               <div className="mt-6 space-y-3">
-                {/* Toolbar */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Select
                     value={submissionStatusFilter}
@@ -592,14 +687,23 @@ export default function ProjectView() {
                     <SelectTrigger className="h-8 w-40">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
+
                     <SelectContent
                       position="popper"
                       align="start"
                       className="w-40"
                     >
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="submitted">Submitted</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="all">
+                        All Status
+                      </SelectItem>
+
+                      <SelectItem value="submitted">
+                        Submitted
+                      </SelectItem>
+
+                      <SelectItem value="completed">
+                        Completed
+                      </SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -610,12 +714,16 @@ export default function ProjectView() {
                     <SelectTrigger className="h-8 w-40">
                       <SelectValue placeholder="Assigned Member" />
                     </SelectTrigger>
+
                     <SelectContent
                       position="popper"
                       align="start"
                       className="w-40"
                     >
-                      <SelectItem value="all">All Members</SelectItem>
+                      <SelectItem value="all">
+                        All Members
+                      </SelectItem>
+
                       {submissionMemberOptions.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {getUserName(member)}
@@ -625,7 +733,6 @@ export default function ProjectView() {
                   </Select>
                 </div>
 
-                {/* Table */}
                 <Card className="p-0">
                   <CardContent className="p-0">
                     <div className="custom-scrollbar">
@@ -641,6 +748,7 @@ export default function ProjectView() {
                             <TableHead>Attachments</TableHead>
                           </TableRow>
                         </TableHeader>
+
                         <TableBody>
                           {isTasksLoading ? (
                             <TableRow>
@@ -673,17 +781,17 @@ export default function ProjectView() {
                             filteredSubmissions.map((task) => {
                               const status = task.status ?? "submitted";
                               const submission = getTaskSubmission();
+
                               const attachmentCount =
                                 (submission.files?.length ?? 0) +
                                 (submission.links?.length ?? 0);
 
                               return (
                                 <TableRow key={task.id}>
-                                  {/* Task */}
                                   <TableCell className="font-medium text-gray-800 dark:text-gray-200">
                                     {task.name}
                                   </TableCell>
-                                  {/* Category */}
+
                                   <TableCell>
                                     {task.category ? (
                                       <Badge
@@ -698,7 +806,7 @@ export default function ProjectView() {
                                       </span>
                                     )}
                                   </TableCell>
-                                  {/* Status */}
+
                                   <TableCell>
                                     <Badge
                                       className={`${
@@ -709,25 +817,25 @@ export default function ProjectView() {
                                       {formatStatusLabel(status)}
                                     </Badge>
                                   </TableCell>
-                                  {/* Assigned */}
+
                                   <TableCell>
                                     <AssigneeList
                                       members={getAssignees(task)}
                                     />
                                   </TableCell>
-                                  {/* Due Date */}
+
                                   <TableCell className="text-muted-foreground">
                                     {task.deadline
                                       ? formatDate(task.deadline)
                                       : "No deadline"}
                                   </TableCell>
-                                  {/* Completed At */}
+
                                   <TableCell className="text-muted-foreground">
                                     {task.completed_at
                                       ? formatDate(task.completed_at)
                                       : "—"}
                                   </TableCell>
-                                  {/* Attachments */}
+
                                   <TableCell>
                                     {attachmentCount === 0 ? (
                                       <span className="text-xs text-neutral-400">
@@ -746,6 +854,7 @@ export default function ProjectView() {
                                             {file.name}
                                           </a>
                                         ))}
+
                                         {submission.links?.map((link) => (
                                           <a
                                             key={link}
@@ -775,31 +884,38 @@ export default function ProjectView() {
             {/* Members */}
             {activeTab === "members" && (
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <Card className="border  p-4">
+                <Card className="border p-4">
                   <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                     <Users className="h-5 w-5 text-[#3F3350]" />
                     Assigned members
                   </div>
+
                   <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
                       <span>Project leader</span>
+
                       <span className="font-semibold text-(--semi-foreground)">
                         {leaderName}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
+
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
                       <span>Instructor</span>
+
                       <span className="font-semibold text-(--semi-foreground)">
                         {instructorName}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--semi-card) text-foreground px-3 py-2">
+
+                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
                       <span>Advisor</span>
+
                       <span className="font-semibold text-(--semi-foreground)">
                         {advisorName}
                       </span>
                     </div>
                   </div>
+
                   {isMembersError && (
                     <p className="mt-3 text-xs text-rose-600">
                       Couldn't load project members.
@@ -811,6 +927,7 @@ export default function ProjectView() {
                   <h2 className="text-lg font-semibold text-foreground">
                     Team status
                   </h2>
+
                   <p className="mt-4 text-sm text-(--semi-foreground)">
                     Member details can be expanded here as the project grows.
                     For now, the view highlights the assigned instructor,
@@ -836,7 +953,7 @@ export default function ProjectView() {
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {RESOURCES.map((resource) => {
                       const categoryMeta = {
-                        "Links": {
+                        Links: {
                           icon: Frame,
                           iconClass:
                             "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
@@ -873,11 +990,13 @@ export default function ProjectView() {
                               >
                                 <Icon className="size-4" />
                               </span>
+
                               <div className="min-w-0 flex-1">
                                 <CardTitle className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug">
                                   {resource.title}
                                 </CardTitle>
                               </div>
+
                               <Badge
                                 variant="outline"
                                 className="shrink-0 text-[10px]"
@@ -896,6 +1015,7 @@ export default function ProjectView() {
                             >
                               {resource.description}
                             </p>
+
                             <p className="truncate text-xs text-muted-foreground">
                               {resource.type} · {resource.size} ·{" "}
                               {resource.updatedAt}
@@ -906,11 +1026,14 @@ export default function ProjectView() {
                             <p className="truncate text-xs text-muted-foreground">
                               By {resource.author}
                             </p>
+
                             <Button
                               variant="outline"
                               size="sm"
                               type="button"
-                              onClick={() => setSelectedResource(resource)}
+                              onClick={() =>
+                                setSelectedResource(resource)
+                              }
                             >
                               Open
                               <ArrowRight className="size-3.5" />
@@ -926,11 +1049,14 @@ export default function ProjectView() {
           </div>
         </Card>
       </div>
+
       <ResourceDialog
         resource={selectedResource}
         open={selectedResource !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedResource(null);
+          if (!open) {
+            setSelectedResource(null);
+          }
         }}
       />
     </AppLayout>
@@ -956,7 +1082,10 @@ function formatDate(value?: string) {
   if (!value) return "No date set";
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString();
 }
 
 function getLinkLabel(link: string) {

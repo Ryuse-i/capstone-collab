@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CalendarClock,
   ExternalLink,
@@ -34,34 +34,155 @@ function formatTime(iso: string) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Chat Skeleton
+// ---------------------------------------------------------------------------
+
+function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
+  const messageWidths = [
+    "w-64",
+    "w-80",
+    "w-52",
+    "w-72",
+    "w-60",
+    "w-96",
+  ];
+
+  return (
+    <div
+      className={`mt-2 flex min-h-0 w-full flex-1 gap-2 ${
+        isInstructor ? "-mb-4" : ""
+      }`}
+    >
+      {/* ── Instructor Project Sidebar ─────────────────────────────── */}
+      {isInstructor && (
+        <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
+          <div className="border-b px-4 py-3">
+            <Skeleton className="h-4 w-20" />
+          </div>
+
+          <div className="flex-1 space-y-2 overflow-hidden p-2">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <div key={item} className="rounded-md px-3 py-2">
+                <Skeleton
+                  className={`h-4 ${
+                    item % 2 === 0 ? "w-40" : "w-32"
+                  }`}
+                />
+              </div>
+            ))}
+          </div>
+        </aside>
+      )}
+
+      {/* ── Chat Card ───────────────────────────────────────────────── */}
+      <div className="h-full min-w-0 flex-1">
+        <Card className="flex h-full w-full flex-1 flex-col overflow-hidden pb-0">
+          <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between border-b px-4 pb-2">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-6 w-40" />
+              </div>
+
+              <Skeleton className="h-9 w-36 rounded-md" />
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 min-h-0 overflow-hidden bg-white p-6 dark:bg-[#101014]">
+              <div className="flex flex-col gap-5">
+                {messageWidths.map((width, index) => {
+                  const isRight = index % 2 === 1;
+
+                  return (
+                    <div
+                      key={index}
+                      className={`flex ${
+                        isRight ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      {!isRight && (
+                        <Skeleton className="mr-3 mt-7 h-8 w-8 shrink-0 rounded-full" />
+                      )}
+
+                      <div
+                        className={`flex max-w-[70%] flex-col gap-2 rounded-lg p-3 ${
+                          isRight ? "items-end" : "items-start"
+                        }`}
+                      >
+                        {!isRight && <Skeleton className="h-3 w-24" />}
+
+                        <Skeleton
+                          className={`h-4 ${width} max-w-[45vw]`}
+                        />
+
+                        {index === 1 || index === 4 ? (
+                          <Skeleton className="h-4 w-48 max-w-[40vw]" />
+                        ) : null}
+
+                        <Skeleton className="h-3 w-12 self-end" />
+                      </div>
+
+                      {isRight && (
+                        <Skeleton className="ml-3 mt-7 h-8 w-8 shrink-0 rounded-full" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Input */}
+            <Separator className="shrink-0" />
+
+            <div className="flex shrink-0 items-center gap-3 p-2">
+              <Skeleton className="h-10 flex-1 rounded-md" />
+              <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function Chat() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const isInstructor = user?.role?.toLowerCase() === "instructor";
+
   const {
     data: currentProject,
     isLoading: projectLoading,
     isError: projectError,
   } = useGetCurrentProject(user?.id ?? "");
+
   const {
     data: instructorProjects = [],
     isLoading: instructorProjectsLoading,
     isError: instructorProjectsError,
   } = useGetInstructorProjects(isInstructor ? (user?.id ?? "") : "");
+
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
+
   const projectId = isInstructor
     ? (selectedProjectId ?? instructorProjects[0]?.id ?? "")
     : (currentProject?.id ?? "");
+
   const selectedProject = instructorProjects.find(
     (project) => project.id === projectId,
   );
+
   const { data: currentMember, isLoading: memberLoading } =
     useGetCurrentMember(user?.id ?? "");
+
   const currentMemberRole = currentMember?.project_role.toLowerCase();
+
   const canManageMeetings =
     user?.role?.toLowerCase() === "admin" ||
     ["leader", "advisor", "instructor"].includes(currentMemberRole ?? "");
+
   const {
     data: meetings = [],
     isLoading: meetingsLoading,
@@ -73,23 +194,21 @@ export default function Chat() {
     isLoading: messagesLoading,
     isFetching,
   } = useGetProjectMessages(projectId);
-  const { mutate: sendMessage, isPending: sending } = useSendMessage(projectId);
+
+  const { mutate: sendMessage, isPending: sending } =
+    useSendMessage(projectId);
 
   const [input, setInput] = useState("");
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [meetingProvider] = useState<MeetingProvider>("google_meet");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Page-level loading/error. Meetings and messages are handled inline inside
-  // the chat card, and the instructor project list has its own sidebar states,
-  // so they don't block the whole page.
   const isLoading =
     userLoading ||
     projectLoading ||
     memberLoading ||
     (isInstructor && instructorProjectsLoading);
-  // Instructors don't own a "current project", so that request failing is
-  // expected for them and shouldn't take down the page.
+
   const isError = !isInstructor && projectError;
 
   useEffect(() => {
@@ -100,6 +219,7 @@ export default function Chat() {
 
   const handleSend = () => {
     if (!input.trim() || !projectId) return;
+
     sendMessage(input.trim(), {
       onSuccess: () => setInput(""),
     });
@@ -111,17 +231,19 @@ export default function Chat() {
   };
 
   const chatCard = (
-    <div className="flex-1 h-full min-w-0">
+    <div className="h-full min-w-0 flex-1">
       <Card className="flex h-full w-full flex-1 flex-col overflow-hidden pb-0">
-        <CardContent className="p-0 flex min-h-0 flex-1 flex-col">
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0">
           {/* Header */}
-          <div className="flex items-center justify-between border-b px-4 pb-2 shrink-0">
+          <div className="flex shrink-0 items-center justify-between border-b px-4 pb-2">
             <div className="flex items-center gap-3">
               <div className="text-lg font-medium">
-                {(isInstructor ? selectedProject?.name : currentProject?.name) ||
-                  "Project chat"}
+                {(isInstructor
+                  ? selectedProject?.name
+                  : currentProject?.name) || "Project chat"}
               </div>
             </div>
+
             {canManageMeetings && (
               <div className="flex items-center gap-2">
                 <Button
@@ -137,10 +259,11 @@ export default function Chat() {
               </div>
             )}
           </div>
+
           {/* Messages area */}
           <div
             ref={scrollRef}
-            className="p-6 flex-1 min-h-0 overflow-auto bg-white dark:bg-[#101014] custom-scrollbar"
+            className="custom-scrollbar flex-1 min-h-0 overflow-auto bg-white p-6 dark:bg-[#101014]"
           >
             {isFetching && messagesLoading ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -153,11 +276,13 @@ export default function Chat() {
                     Loading meeting details...
                   </div>
                 )}
+
                 {meetingsError && (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100">
                     Unable to load meeting details.
                   </div>
                 )}
+
                 {meetings
                   .filter((meeting) => meeting.status === "scheduled")
                   .map((meeting) => (
@@ -171,28 +296,32 @@ export default function Chat() {
                     >
                       <div className="flex max-w-[85%] items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50">
                         <CalendarClock className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+
                         <div className="min-w-0">
                           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
                             Meeting available
                           </p>
+
                           <p className="truncate font-semibold">
                             {meeting.topic}
                           </p>
+
                           <p className="text-xs text-emerald-800/80 dark:text-emerald-200/80">
                             {meeting.provider === "google_meet"
                               ? "Google Meet"
                               : "Zoom"}
+
                             {meeting.start_time
-                              ? ` · ${new Date(meeting.start_time).toLocaleString(
-                                  [],
-                                  {
-                                    dateStyle: "medium",
-                                    timeStyle: "short",
-                                  },
-                                )}`
+                              ? ` · ${new Date(
+                                  meeting.start_time,
+                                ).toLocaleString([], {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })}`
                               : ""}
                           </p>
                         </div>
+
                         <Button
                           type="button"
                           size="sm"
@@ -211,46 +340,61 @@ export default function Chat() {
                       </div>
                     </div>
                   ))}
+
                 {messages?.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
                   const sender = msg.sender;
+
                   return (
                     <div
                       key={msg.id}
-                      className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                      className={`flex ${
+                        isMe ? "justify-end" : "justify-start"
+                      }`}
                     >
                       {!isMe && (
-                        <div className="mr-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                          {getInitials(sender?.first_name, sender?.last_name)}
+                        <div className="mr-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
+                          {getInitials(
+                            sender?.first_name,
+                            sender?.last_name,
+                          )}
                         </div>
                       )}
+
                       <div
-                        className={`max-w-[70%] p-3 rounded-lg ${
+                        className={`max-w-[70%] rounded-lg p-3 ${
                           isMe
                             ? "bg-[#800000] text-white dark:bg-[#6a0101]"
-                            : "bg-gray-100 dark:bg-[#16161a] text-foreground"
+                            : "bg-gray-100 text-foreground dark:bg-[#16161a]"
                         }`}
                       >
                         {!isMe && (
-                          <div className="text-xs font-semibold mb-1 opacity-80">
+                          <div className="mb-1 text-xs font-semibold opacity-80">
                             {sender
                               ? `${sender.first_name} ${sender.last_name}`
                               : "Unknown"}
                           </div>
                         )}
+
                         <div className="text-sm">{msg.content}</div>
-                        <div className="text-[11px] text-muted-foreground mt-1 text-right">
+
+                        <div className="mt-1 text-right text-[11px] text-muted-foreground">
                           {formatTime(msg.created_at)}
                         </div>
                       </div>
+
                       {isMe && (
-                        <div className="ml-3 mt-7 h-8 w-8 rounded-full bg-primary dark:bg-gray-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                          {getInitials(user?.first_name, user?.last_name)}
+                        <div className="ml-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
+                          {getInitials(
+                            user?.first_name,
+                            user?.last_name,
+                          )}
                         </div>
                       )}
                     </div>
                   );
                 })}
+
                 {!messages?.length && (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                     No messages yet — say hello.
@@ -259,15 +403,17 @@ export default function Chat() {
               </div>
             )}
           </div>
+
           <Separator className="shrink-0" />
+
           {/* Input */}
-          <div className="p-2 flex items-center gap-3 shrink-0">
+          <div className="flex shrink-0 items-center gap-3 p-2">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               rows={1}
               disabled={!projectId || sending}
-              className="flex-1 resize-none rounded-md border px-3 py-2 bg-transparent text-sm focus:outline-none disabled:opacity-50"
+              className="flex-1 resize-none rounded-md border bg-transparent px-3 py-2 text-sm focus:outline-none disabled:opacity-50"
               placeholder="Type your message"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -276,6 +422,7 @@ export default function Chat() {
                 }
               }}
             />
+
             <Button
               onClick={handleSend}
               disabled={!projectId || sending || !input.trim()}
@@ -294,6 +441,7 @@ export default function Chat() {
       <div className="border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Projects</h2>
       </div>
+
       <div className="custom-scrollbar flex-1 overflow-y-auto p-2">
         {instructorProjectsLoading ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
@@ -311,6 +459,7 @@ export default function Chat() {
           <div className="space-y-1">
             {instructorProjects.map((project) => {
               const id = project.id;
+
               if (!id) return null;
 
               return (
@@ -346,19 +495,18 @@ export default function Chat() {
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
       {isError ? (
-        <div className="flex flex-col justify-center items-center gap-4 h-screen">
+        <div className="flex h-screen flex-col items-center justify-center gap-4">
           <AlertTriangle className="h-8 w-8 text-destructive" />
           <p className="text-foreground dark:text-muted-foreground">
             Failed to load chat data. Please try again later.
           </p>
         </div>
       ) : isLoading ? (
-        <div className="flex flex-1 justify-center items-center">
-          <Spinner />
-        </div>
+        <ChatSkeleton isInstructor={isInstructor} />
       ) : (
         content
       )}
+
       <MeetingDialog
         key={meetingProvider}
         open={meetingDialogOpen}

@@ -12,11 +12,11 @@ import {
   Layers,
   ListChecks,
   User,
-  Users,
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -33,10 +33,6 @@ import {
 // ---------------------------------------------------------------------------
 // Stage model
 // ---------------------------------------------------------------------------
-// Capstone projects move through four stages. Ownership of "who's primarily
-// watching this project right now" shifts from instructor to advisor as the
-// project matures. This is the single source of truth that drives sorting,
-// badges, and the "needs your attention" section below.
 
 type Role = "instructor" | "advisor";
 type HealthStatus = "healthy" | "at_risk" | "critical";
@@ -88,7 +84,7 @@ type MockProject = {
 };
 
 // ---------------------------------------------------------------------------
-// Mock data — swap for useGetInstructorProjects / useGetAdvisorProjects
+// Mock data
 // ---------------------------------------------------------------------------
 
 const MOCK_PROJECTS: MockProject[] = [
@@ -201,7 +197,7 @@ type MockDeadline = {
   title: string;
   studentName: string;
   note: string;
-  daysFromNow: number; // negative = overdue, 0 = due today
+  daysFromNow: number;
 };
 
 const MOCK_DEADLINES: MockDeadline[] = [
@@ -311,25 +307,207 @@ const URGENCY_STYLES: Record<
 function formatDeadlineDate(daysFromNow: number): string {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function stageOf(stageId: number): Stage {
   return STAGES.find((s) => s.id === stageId) ?? STAGES[0];
 }
 
-// The max number of rows shown inline in each card before it's capped and
-// a "View all" dialog takes over. Kept equal so both cards land at a
-// similar height instead of one stretching to fill empty space.
 const ATTENTION_VISIBLE_LIMIT = 4;
 const DEADLINE_VISIBLE_LIMIT = 3;
 
 // ---------------------------------------------------------------------------
-// Small presentational bits
+// Skeleton
+// ---------------------------------------------------------------------------
+
+function InstructorDashboardSkeleton() {
+  return (
+    <div className="min-h-screen w-full py-0 font-sans antialiased">
+      {/* Page heading */}
+      <div className="mb-5">
+        <Skeleton className="h-8 w-52" />
+        <Skeleton className="mt-3 h-4 w-96 max-w-full" />
+      </div>
+
+      {/* Summary strip */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((item) => (
+          <Card key={item} className="border p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-7 w-7 rounded-full" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+
+            <Skeleton className="mt-3 h-8 w-12" />
+
+            <Skeleton className="mt-2 h-4 w-32" />
+          </Card>
+        ))}
+      </div>
+
+      {/* Needs attention + deadlines */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-stretch">
+        {/* Needs attention */}
+        <Card className="flex h-full flex-col border shadow-sm">
+          <div className="flex items-center justify-between border-b px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-5 w-40" />
+            </div>
+
+            <Skeleton className="h-4 w-40" />
+          </div>
+
+          <div className="flex-1 divide-y">
+            {[1, 2, 3, 4].map((item) => (
+              <div
+                key={item}
+                className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+
+                  <Skeleton className="mt-2 h-5 w-3/4" />
+                  <Skeleton className="mt-2 h-4 w-56" />
+                </div>
+
+                <div className="flex items-center gap-2 sm:shrink-0">
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-9 w-20 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t px-5 py-3">
+            <Skeleton className="mx-auto h-8 w-32" />
+          </div>
+        </Card>
+
+        {/* Upcoming deadlines */}
+        <Card className="flex h-full flex-col border shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-5 w-44" />
+            </div>
+
+            <div className="flex gap-1.5">
+              <Skeleton className="h-7 w-12 rounded-full" />
+              <Skeleton className="h-7 w-24 rounded-full" />
+              <Skeleton className="h-7 w-24 rounded-full" />
+            </div>
+          </div>
+
+          <div className="flex-1 px-5 py-4">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+
+                  {item < 3 && (
+                    <Skeleton className="mt-1 w-px flex-1 rounded-none" />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1 pb-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+
+                  <Skeleton className="mt-2 h-5 w-3/4" />
+                  <Skeleton className="mt-2 h-4 w-2/3" />
+                  <Skeleton className="mt-2 h-4 w-32" />
+                  <Skeleton className="mt-2 h-4 w-full" />
+                  <Skeleton className="mt-1 h-4 w-4/5" />
+                </div>
+
+                <Skeleton className="hidden h-9 w-28 shrink-0 sm:block" />
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t px-5 py-3">
+            <Skeleton className="mx-auto h-8 w-32" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Stage distribution + activity */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {/* Stage distribution */}
+        <Card className="p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-5 rounded-full" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+
+          <div className="mt-4 h-65 w-full">
+            <div className="flex h-full items-end justify-around gap-6 px-6 pb-6">
+              {[1, 2, 3, 4].map((item, index) => (
+                <div
+                  key={item}
+                  className="flex h-full flex-1 items-end justify-center"
+                >
+                  <Skeleton
+                    className={`w-10 rounded-t-md ${
+                      index === 0
+                        ? "h-[35%]"
+                        : index === 1
+                          ? "h-[70%]"
+                          : index === 2
+                            ? "h-[50%]"
+                            : "h-[85%]"
+                    }`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        {/* Recent activity */}
+        <Card className="border p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-5 rounded-full" />
+            <Skeleton className="h-5 w-36" />
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <div key={item} className="flex items-start gap-3">
+                <Skeleton className="mt-1 h-8 w-8 shrink-0 rounded-full" />
+
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="mt-2 h-3 w-2/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Presentational components
 // ---------------------------------------------------------------------------
 
 function HealthBadge({ health }: { health: HealthStatus }) {
   const info = HEALTH[health] ?? HEALTH.healthy;
+
   return (
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${info.className}`}
@@ -372,23 +550,23 @@ function StatCard({
         <span className={`rounded-full p-1.5 ${accent}`}>{icon}</span>
         {label}
       </div>
+
       <p className="mt-3 text-2xl font-bold tabular-nums text-foreground">
         {value}
       </p>
+
       <p className="mt-1 text-sm text-neutral-500">{caption}</p>
     </Card>
   );
 }
 
-// Full-detail row used inside the "View all" dialog — same data as the
-// inline row, just with more breathing room since it's not space-constrained.
 function AttentionDetailRow({
   project,
 }: {
   project: MockProject & { stage: Stage; isPrimary: boolean };
 }) {
   return (
-    <div className="rounded-xl border p-4 bg-card">
+    <div className="rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <RoleBadge role={project.role} />
         <HealthBadge health={project.health} />
@@ -396,14 +574,18 @@ function AttentionDetailRow({
           {project.stage.label}
         </span>
       </div>
+
       <h3 className="mt-2 text-base font-semibold text-foreground">
         {project.name}
       </h3>
+
       <p className="mt-1 text-sm text-neutral-500">
         {project.lastActivity} · {project.lastActivityTime}
       </p>
+
       <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-neutral-600">
         <span>{project.progress}% complete</span>
+
         {project.pendingSubmissions > 0 && (
           <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
             {project.pendingSubmissions} pending
@@ -414,7 +596,6 @@ function AttentionDetailRow({
   );
 }
 
-// Full-detail row used inside the deadlines "View all" dialog.
 function DeadlineDetailRow({
   deadline,
   stageLabel,
@@ -424,32 +605,39 @@ function DeadlineDetailRow({
 }) {
   const urgency = urgencyOf(deadline.daysFromNow);
   const style = URGENCY_STYLES[urgency];
+
   return (
-    <div className="rounded-xl border p-4 bg-card">
+    <div className="rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <RoleBadge role={deadline.role} />
+
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-semibold ${style.dateClass}`}
         >
           {style.label(deadline.daysFromNow)} ·{" "}
           {formatDeadlineDate(deadline.daysFromNow)}
         </span>
+
         {stageLabel && (
           <span className="text-xs font-medium text-neutral-400">
             {stageLabel}
           </span>
         )}
       </div>
+
       <h3 className="mt-2 text-base font-semibold text-foreground">
         {deadline.title}
       </h3>
+
       <p className="mt-1 text-sm font-medium text-neutral-600">
         {deadline.projectName}
       </p>
+
       <div className="mt-2 flex items-center gap-1.5 text-sm text-neutral-500">
         <User size={13} />
         {deadline.studentName}
       </div>
+
       <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
         {deadline.note}
       </p>
@@ -466,6 +654,21 @@ export default function InstructorDashboard() {
   const [attentionDialogOpen, setAttentionDialogOpen] = useState(false);
   const [deadlineDialogOpen, setDeadlineDialogOpen] = useState(false);
 
+  /*
+   * Replace this with the actual instructor/advisor project query later.
+   *
+   * Example:
+   *
+   * const {
+   *   data: projects,
+   *   isLoading,
+   *   isError,
+   * } = useGetInstructorProjects();
+   *
+   * For now, the mock data is synchronous, so loading is false.
+   */
+  const isLoading = false;
+
   const projects = useMemo(
     () =>
       MOCK_PROJECTS.map((p) => ({
@@ -480,25 +683,40 @@ export default function InstructorDashboard() {
     (d) => filter === "all" || d.role === filter,
   ).sort((a, b) => a.daysFromNow - b.daysFromNow);
 
-  const visibleDeadlines = filteredDeadlines.slice(0, DEADLINE_VISIBLE_LIMIT);
-  const hasMoreDeadlines = filteredDeadlines.length > DEADLINE_VISIBLE_LIMIT;
+  const visibleDeadlines = filteredDeadlines.slice(
+    0,
+    DEADLINE_VISIBLE_LIMIT,
+  );
+
+  const hasMoreDeadlines =
+    filteredDeadlines.length > DEADLINE_VISIBLE_LIMIT;
 
   const needsAttentionAll = [...projects]
     .filter((p) => p.isPrimary)
     .sort((a, b) => {
       const healthDiff =
         (HEALTH[b.health]?.rank ?? 0) - (HEALTH[a.health]?.rank ?? 0);
+
       if (healthDiff !== 0) return healthDiff;
+
       return b.pendingSubmissions - a.pendingSubmissions;
     });
 
-  const needsAttention = needsAttentionAll.slice(0, ATTENTION_VISIBLE_LIMIT);
-  const hasMoreAttention = needsAttentionAll.length > ATTENTION_VISIBLE_LIMIT;
+  const needsAttention = needsAttentionAll.slice(
+    0,
+    ATTENTION_VISIBLE_LIMIT,
+  );
+
+  const hasMoreAttention =
+    needsAttentionAll.length > ATTENTION_VISIBLE_LIMIT;
 
   const stats = {
     total: projects.length,
     atRisk: projects.filter((p) => p.health !== "healthy").length,
-    pendingReviews: projects.reduce((sum, p) => sum + p.pendingSubmissions, 0),
+    pendingReviews: projects.reduce(
+      (sum, p) => sum + p.pendingSubmissions,
+      0,
+    ),
     yourTurn: projects.filter((p) => p.isPrimary).length,
   };
 
@@ -513,317 +731,368 @@ export default function InstructorDashboard() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
-      <div className="min-h-screen w-full py-0 font-sans antialiased">
-        <div className="mb-5">
-          <h1 className="my-2 text-2xl font-bold text-foreground">
-            Your projects
-          </h1>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-semiforeground">
-            A portfolio view across everything you're instructing or advising.
-          </p>
-        </div>
+      {isLoading ? (
+        <InstructorDashboardSkeleton />
+      ) : (
+        <div className="min-h-screen w-full py-0 font-sans antialiased">
+          <div className="mb-5">
+            <h1 className="my-2 text-2xl font-bold text-foreground">
+              Your projects
+            </h1>
 
-        {/* Summary strip */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard
-            icon={<Layers size={16} className="text-[#7A0C2E]" />}
-            label="Active projects"
-            value={stats.total}
-            caption="Across both roles"
-            accent="bg-[#F3EFE6]"
-          />
-          <StatCard
-            icon={<AlertTriangle size={16} className="text-rose-600" />}
-            label="At risk or critical"
-            value={stats.atRisk}
-            caption="Need a closer look"
-            accent="bg-rose-50"
-          />
-          <StatCard
-            icon={<ClipboardCheck size={16} className="text-[#C9A84C]" />}
-            label="Pending submissions"
-            value={stats.pendingReviews}
-            caption="Waiting on your review"
-            accent="bg-[#FBF3E7]"
-          />
-          <StatCard
-            icon={<Clock size={16} className="text-[#3F3350]" />}
-            label="Currently your turn"
-            value={stats.yourTurn}
-            caption="Primary reviewer by stage"
-            accent="bg-[#EFEAF6]"
-          />
-        </div>
+            <p className="mt-2 text-sm text-neutral-500 dark:text-semiforeground">
+              A portfolio view across everything you're instructing or advising.
+            </p>
+          </div>
 
-        {/* Needs your attention + deadline timeline, side by side */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-stretch">
-          <Card className="flex h-full flex-col shadow-sm border">
-            <div className="flex items-center justify-between border-b border-neutral px-5 py-4">
-              <div className="flex items-center gap-2">
-                <div className="rounded-full bg-rose-50 p-2 text-rose-600">
-                  <AlertTriangle size={16} />
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Needs your attention
-                </h2>
-              </div>
-              <span className="text-sm text-neutral-500 dark:text-semiforeground">
-                Sorted by health, then pending items
-              </span>
-            </div>
+          {/* Summary strip */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard
+              icon={<Layers size={16} className="text-[#7A0C2E]" />}
+              label="Active projects"
+              value={stats.total}
+              caption="Across both roles"
+              accent="bg-[#F3EFE6]"
+            />
 
-            <div className="flex-1 divide-y">
-              {needsAttention.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <RoleBadge role={p.role} />
-                      <HealthBadge health={p.health} />
-                      <span className="text-xs font-medium text-neutral-400">
-                        {p.stage.label}
-                      </span>
-                    </div>
-                    <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
-                      {p.name}
-                    </h3>
-                    <p className="mt-0.5 text-sm text-neutral-500">
-                      {p.lastActivity} · {p.lastActivityTime}
-                    </p>
+            <StatCard
+              icon={<AlertTriangle size={16} className="text-rose-600" />}
+              label="At risk or critical"
+              value={stats.atRisk}
+              caption="Need a closer look"
+              accent="bg-rose-50"
+            />
+
+            <StatCard
+              icon={<ClipboardCheck size={16} className="text-[#C9A84C]" />}
+              label="Pending submissions"
+              value={stats.pendingReviews}
+              caption="Waiting on your review"
+              accent="bg-[#FBF3E7]"
+            />
+
+            <StatCard
+              icon={<Clock size={16} className="text-[#3F3350]" />}
+              label="Currently your turn"
+              value={stats.yourTurn}
+              caption="Primary reviewer by stage"
+              accent="bg-[#EFEAF6]"
+            />
+          </div>
+
+          {/* Needs your attention + deadlines */}
+          <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-stretch">
+            <Card className="flex h-full flex-col border shadow-sm">
+              <div className="flex items-center justify-between border-b border-neutral px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-full bg-rose-50 p-2 text-rose-600">
+                    <AlertTriangle size={16} />
                   </div>
 
-                  <div className="flex items-center gap-2 sm:shrink-0">
-                    {p.pendingSubmissions > 0 && (
-                      <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
-                        {p.pendingSubmissions} pending
-                      </span>
-                    )}
-                    <Button size="sm" variant="outline" className="gap-1.5">
-                      Review
-                      <ChevronRight size={14} />
-                    </Button>
-                  </div>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Needs your attention
+                  </h2>
                 </div>
-              ))}
 
-              {needsAttention.length === 0 && (
-                <div className="px-5 py-8 text-center text-sm text-neutral-500">
-                  Nothing needs your attention right now.
-                </div>
-              )}
-            </div>
-
-            {hasMoreAttention && (
-              <div className="border-t px-5 py-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-center gap-1.5  text-[#7A0C2E] hover:text-[#7A0C2E] dark:text-[#c82659] dark:hover:text-[#7A0C2E]"
-                  onClick={() => setAttentionDialogOpen(true)}
-                >
-                  View all {needsAttentionAll.length}
-                  <ChevronRight size={14} />
-                </Button>
+                <span className="text-sm text-neutral-500 dark:text-semiforeground">
+                  Sorted by health, then pending items
+                </span>
               </div>
-            )}
-          </Card>
 
-          {/* Deadline timeline, filterable by role */}
-          <Card className="flex h-full flex-col border  shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
-              <div className="flex items-center gap-2">
-                <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
-                  <CalendarClock size={16} />
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Upcoming deadlines
-                </h2>
-              </div>
-              <div className="flex gap-1.5">
-                {(
-                  [
-                    { id: "all", label: "All" },
-                    { id: "instructor", label: "As instructor" },
-                    { id: "advisor", label: "As advisor" },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setFilter(tab.id)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      filter === tab.id
-                        ? "bg-[#7A0C2E] text-white"
-                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                    }`}
+              <div className="flex-1 divide-y">
+                {needsAttention.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <RoleBadge role={p.role} />
+                        <HealthBadge health={p.health} />
 
-            <div className="flex-1 px-5 py-4">
-              {visibleDeadlines.map((d, i) => {
-                const urgency = urgencyOf(d.daysFromNow);
-                const style = URGENCY_STYLES[urgency];
-                const stageLabel = projects.find((p) => p.id === d.projectId)
-                  ?.stage.label;
-                return (
-                  <div key={d.id} className="flex gap-4">
-                    {/* date badge + connecting line */}
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl text-xs font-semibold tabular-nums ${style.dateClass}`}
-                      >
-                        {formatDeadlineDate(d.daysFromNow)}
+                        <span className="text-xs font-medium text-neutral-400">
+                          {p.stage.label}
+                        </span>
                       </div>
-                      {i < visibleDeadlines.length - 1 && (
-                        <div className="w-px flex-1 bg-neutral-200" />
-                      )}
+
+                      <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
+                        {p.name}
+                      </h3>
+
+                      <p className="mt-0.5 text-sm text-neutral-500">
+                        {p.lastActivity} · {p.lastActivityTime}
+                      </p>
                     </div>
 
-                    <div className="flex min-w-0 flex-1 items-start justify-between gap-4 pb-6">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <RoleBadge role={d.role} />
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.dateClass}`}
-                          >
-                            {style.label(d.daysFromNow)}
-                          </span>
-                          {stageLabel && (
-                            <span className="text-xs text-neutral-400">
-                              {stageLabel}
-                            </span>
-                          )}
-                        </div>
+                    <div className="flex items-center gap-2 sm:shrink-0">
+                      {p.pendingSubmissions > 0 && (
+                        <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
+                          {p.pendingSubmissions} pending
+                        </span>
+                      )}
 
-                        <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
-                          {d.title}
-                        </h3>
-                        <p className="mt-0.5 text-sm font-medium text-neutral-600">
-                          {d.projectName}
-                        </p>
-
-                        <div className="mt-2 flex items-center gap-1.5 text-sm text-neutral-500">
-                          <User size={13} />
-                          {d.studentName}
-                        </div>
-                        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-500">
-                          {d.note}
-                        </p>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0 gap-1.5"
-                      >
-                        View project
+                      <Button size="sm" variant="outline" className="gap-1.5">
+                        Review
                         <ChevronRight size={14} />
                       </Button>
                     </div>
                   </div>
-                );
-              })}
+                ))}
 
-              {filteredDeadlines.length === 0 && (
-                <div className="py-8 text-center text-sm text-neutral-500">
-                  No upcoming deadlines in this view.
+                {needsAttention.length === 0 && (
+                  <div className="px-5 py-8 text-center text-sm text-neutral-500">
+                    Nothing needs your attention right now.
+                  </div>
+                )}
+              </div>
+
+              {hasMoreAttention && (
+                <div className="border-t px-5 py-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-center gap-1.5 text-[#7A0C2E] hover:text-[#7A0C2E] dark:text-[#c82659] dark:hover:text-[#7A0C2E]"
+                    onClick={() => setAttentionDialogOpen(true)}
+                  >
+                    View all {needsAttentionAll.length}
+                    <ChevronRight size={14} />
+                  </Button>
                 </div>
               )}
-            </div>
+            </Card>
 
-            {hasMoreDeadlines && (
-              <div className="border-t px-5 py-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-center gap-1.5 text-[#7A0C2E] hover:text-[#7A0C2E] dark:text-[#c82659] dark:hover:text-[#7A0C2E]"
-                  onClick={() => setDeadlineDialogOpen(true)}
-                >
-                  View all {filteredDeadlines.length}
-                  <ChevronRight size={14} />
-                </Button>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* Stage distribution + activity feed, side by side */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <Card className="p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <ListChecks size={18} className="text-[#7A0C2E]" />
-              Projects by stage
-            </div>
-            <ChartContainer
-              config={{ count: { label: "Projects", color: "#7A0C2E" } }}
-              className="mt-4 h-65 w-full"
-            >
-              <BarChart
-                data={stageChartData}
-                layout="vertical"
-                margin={{ left: 0 }}
-              >
-                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                <XAxis type="number" hide allowDecimals={false} />
-                <YAxis
-                  dataKey="stage"
-                  type="category"
-                  tickLine={false}
-                  axisLine={false}
-                  width={130}
-                  tick={{ fontSize: 13 }}
-                  tickFormatter={(v) => v}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent hideLabel />}
-                />
-                <Bar dataKey="count" fill="#7A0C2E" radius={5} barSize={28} />
-              </BarChart>
-            </ChartContainer>
-          </Card>
-
-          <Card className="border p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <Activity size={18} className="text-[#C9A84C]" />
-              Recent activity
-            </div>
-            <div className="mt-4 space-y-4">
-              {activityFeed.map((p) => (
-                <div key={p.id} className="flex items-start gap-3">
-                  <div className="mt-1 rounded-full bg-neutral-100 p-2 text-neutral-500">
-                    {p.pendingSubmissions > 0 ? (
-                      <FileText size={14} />
-                    ) : (
-                      <CheckCircle2 size={14} />
-                    )}
+            {/* Upcoming deadlines */}
+            <Card className="flex h-full flex-col border shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
+                    <CalendarClock size={16} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {p.name}
-                    </p>
-                    <p className="mt-0.5 text-xs text-neutral-500">
-                      {p.lastActivity} · {p.lastActivityTime}
-                    </p>
-                  </div>
+
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Upcoming deadlines
+                  </h2>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
 
-      {/* Full "needs your attention" list, only reachable when there are
-          more items than the inline card shows */}
-      <Dialog open={attentionDialogOpen} onOpenChange={setAttentionDialogOpen}>
+                <div className="flex gap-1.5">
+                  {(
+                    [
+                      { id: "all", label: "All" },
+                      { id: "instructor", label: "As instructor" },
+                      { id: "advisor", label: "As advisor" },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setFilter(tab.id)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        filter === tab.id
+                          ? "bg-[#7A0C2E] text-white"
+                          : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex-1 px-5 py-4">
+                {visibleDeadlines.map((d, i) => {
+                  const urgency = urgencyOf(d.daysFromNow);
+                  const style = URGENCY_STYLES[urgency];
+
+                  const stageLabel = projects.find(
+                    (p) => p.id === d.projectId,
+                  )?.stage.label;
+
+                  return (
+                    <div key={d.id} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl text-xs font-semibold tabular-nums ${style.dateClass}`}
+                        >
+                          {formatDeadlineDate(d.daysFromNow)}
+                        </div>
+
+                        {i < visibleDeadlines.length - 1 && (
+                          <div className="w-px flex-1 bg-neutral-200" />
+                        )}
+                      </div>
+
+                      <div className="flex min-w-0 flex-1 items-start justify-between gap-4 pb-6">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <RoleBadge role={d.role} />
+
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.dateClass}`}
+                            >
+                              {style.label(d.daysFromNow)}
+                            </span>
+
+                            {stageLabel && (
+                              <span className="text-xs text-neutral-400">
+                                {stageLabel}
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
+                            {d.title}
+                          </h3>
+
+                          <p className="mt-0.5 text-sm font-medium text-neutral-600">
+                            {d.projectName}
+                          </p>
+
+                          <div className="mt-2 flex items-center gap-1.5 text-sm text-neutral-500">
+                            <User size={13} />
+                            {d.studentName}
+                          </div>
+
+                          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-500">
+                            {d.note}
+                          </p>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-1.5"
+                        >
+                          View project
+                          <ChevronRight size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredDeadlines.length === 0 && (
+                  <div className="py-8 text-center text-sm text-neutral-500">
+                    No upcoming deadlines in this view.
+                  </div>
+                )}
+              </div>
+
+              {hasMoreDeadlines && (
+                <div className="border-t px-5 py-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-center gap-1.5 text-[#7A0C2E] hover:text-[#7A0C2E] dark:text-[#c82659] dark:hover:text-[#7A0C2E]"
+                    onClick={() => setDeadlineDialogOpen(true)}
+                  >
+                    View all {filteredDeadlines.length}
+                    <ChevronRight size={14} />
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Stage distribution + activity feed */}
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <Card className="p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <ListChecks size={18} className="text-[#7A0C2E]" />
+                Projects by stage
+              </div>
+
+              <ChartContainer
+                config={{
+                  count: {
+                    label: "Projects",
+                    color: "#7A0C2E",
+                  },
+                }}
+                className="mt-4 h-65 w-full"
+              >
+                <BarChart
+                  data={stageChartData}
+                  layout="vertical"
+                  margin={{ left: 0 }}
+                >
+                  <CartesianGrid
+                    horizontal={false}
+                    strokeDasharray="3 3"
+                  />
+
+                  <XAxis
+                    type="number"
+                    hide
+                    allowDecimals={false}
+                  />
+
+                  <YAxis
+                    dataKey="stage"
+                    type="category"
+                    tickLine={false}
+                    axisLine={false}
+                    width={130}
+                    tick={{ fontSize: 13 }}
+                    tickFormatter={(v) => v}
+                  />
+
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel />}
+                  />
+
+                  <Bar
+                    dataKey="count"
+                    fill="#7A0C2E"
+                    radius={5}
+                    barSize={28}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </Card>
+
+            <Card className="border p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <Activity size={18} className="text-[#C9A84C]" />
+                Recent activity
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {activityFeed.map((p) => (
+                  <div key={p.id} className="flex items-start gap-3">
+                    <div className="mt-1 rounded-full bg-neutral-100 p-2 text-neutral-500">
+                      {p.pendingSubmissions > 0 ? (
+                        <FileText size={14} />
+                      ) : (
+                        <CheckCircle2 size={14} />
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {p.name}
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-neutral-500">
+                        {p.lastActivity} · {p.lastActivityTime}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Attention dialog */}
+      <Dialog
+        open={attentionDialogOpen}
+        onOpenChange={setAttentionDialogOpen}
+      >
         <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl custom-scrollbar">
           <DialogHeader>
             <DialogTitle>Needs your attention</DialogTitle>
+
             <DialogDescription>
               All {needsAttentionAll.length} projects where you're the primary
               reviewer this stage, sorted by health then pending items.
@@ -838,12 +1107,15 @@ export default function InstructorDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Full deadlines list, respects the current instructor/advisor filter
-          and only reachable when there are more than the inline card shows */}
-      <Dialog open={deadlineDialogOpen} onOpenChange={setDeadlineDialogOpen}>
+      {/* Deadline dialog */}
+      <Dialog
+        open={deadlineDialogOpen}
+        onOpenChange={setDeadlineDialogOpen}
+      >
         <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl custom-scrollbar">
           <DialogHeader>
             <DialogTitle>Upcoming deadlines</DialogTitle>
+
             <DialogDescription>
               All {filteredDeadlines.length} deadlines
               {filter !== "all" ? ` as ${filter}` : ""}, soonest first.

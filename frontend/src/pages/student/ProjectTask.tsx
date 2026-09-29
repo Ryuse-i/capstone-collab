@@ -1,6 +1,5 @@
 import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
-import { Spinner } from "@/components/ui/spinner";
 import {
   AlertTriangle,
   CheckSquare,
@@ -12,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogClose,
@@ -56,7 +56,8 @@ const boardSupertasks: BoardSupertask[] = [
       {
         id: "task-1",
         title: "Implement login flow",
-        description: "Build the login form, validation, and session handling.",
+        description:
+          "Build the login form, validation, and session handling.",
       },
       {
         id: "task-2",
@@ -139,7 +140,7 @@ function BoardCardDialog({
         </DialogHeader>
 
         {card && (
-          <p className="text-sm text-foreground leading-relaxed">
+          <p className="text-sm leading-relaxed text-foreground">
             {card.description}
           </p>
         )}
@@ -156,14 +157,87 @@ function BoardCardDialog({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Loading Skeleton
+// ---------------------------------------------------------------------------
+
+function ProjectTaskSkeleton() {
+  return (
+    <div className="min-w-0 w-full">
+      {/* Mirrors page heading */}
+      <Skeleton className="my-2 h-8 w-72" />
+
+      {/* ── Stat Cards ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[1, 2, 3, 4].map((item) => (
+          <Card key={item}>
+            <CardContent className="flex flex-col gap-2 p-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-6 w-6 rounded-md" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+
+              <Skeleton className="h-9 w-14" />
+
+              <Skeleton className="h-3 w-28" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* ── View Switcher ────────────────────────────────────────── */}
+      <div className="mt-6">
+        <Skeleton className="h-10 w-40 rounded-md" />
+      </div>
+
+      {/* ── Task Table Skeleton ──────────────────────────────────── */}
+      <Card className="mt-4 overflow-hidden">
+        <CardContent className="p-0">
+          {/* Table header */}
+          <div className="flex items-center gap-4 border-b px-4 py-3">
+            <Skeleton className="h-4 w-8" />
+            <Skeleton className="h-4 w-44" />
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="ml-auto h-4 w-16" />
+          </div>
+
+          {/* Table rows */}
+          <div className="divide-y">
+            {[1, 2, 3, 4, 5, 6, 7].map((item) => (
+              <div
+                key={item}
+                className="flex min-h-14 items-center gap-4 px-4 py-3"
+              >
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="ml-auto h-4 w-16" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function Task() {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  const [selectedBoardCard, setSelectedBoardCard] = useState<BoardTask | null>(
-    null,
-  );
+  const [selectedBoardCard, setSelectedBoardCard] =
+    useState<BoardTask | null>(null);
+
   const [selectedTimelineTask, setSelectedTimelineTask] =
     useState<TaskResponseMembers | null>(null);
+
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
 
   const [boardDialogOpen, setBoardDialogOpen] = useState(false);
@@ -265,16 +339,15 @@ export default function Task() {
       ]}
     >
       {isError ? (
-        <div className="flex flex-col justify-center items-center gap-4 h-screen">
+        <div className="flex h-screen flex-col items-center justify-center gap-4">
           <AlertTriangle className="h-8 w-8 text-destructive" />
+
           <p className="text-foreground dark:text-muted-foreground">
             Failed to load project data. Please try again later.
           </p>
         </div>
       ) : isLoading ? (
-        <div className="flex justify-center items-center flex-1">
-          <Spinner />
-        </div>
+        <ProjectTaskSkeleton />
       ) : (
         <div className="min-w-0 w-full">
           <h1 className="my-2 text-2xl font-bold text-foreground">
@@ -313,7 +386,7 @@ export default function Task() {
           {/* Unassigned task warning */}
           {typeof snapshot?.unassigned_tasks === "number" &&
             snapshot.unassigned_tasks > 0 && (
-              <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 mt-4">
+              <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
 
                 <span>
@@ -335,6 +408,7 @@ export default function Task() {
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Select view" />
               </SelectTrigger>
+
               <SelectContent>
                 {viewTabs.map((tab) => (
                   <SelectItem key={tab.id} value={tab.id}>
@@ -417,6 +491,7 @@ export default function Task() {
           )}
         </div>
       )}
+
       {/* Mock board card dialog */}
       <BoardCardDialog
         card={selectedBoardCard}
@@ -429,8 +504,6 @@ export default function Task() {
           }
         }}
       />
-
-     
     </AppLayout>
   );
 }

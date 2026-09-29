@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
   BookOpen,
@@ -11,23 +12,133 @@ import {
   Sparkles,
   Layers,
   ListChecks,
+  AlertTriangle,
 } from "lucide-react";
 import { results } from "@/types/capstoneresults";
 import { rememberLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
-import { AlertTriangle } from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Capstone View Skeleton
+// ---------------------------------------------------------------------------
+
+function CapstoneViewSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* ── Back Button ─────────────────────────────────────────────── */}
+      <Skeleton className="h-8 w-28" />
+
+      {/* ── Title & Meta Card ──────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6">
+        <div className="flex items-start gap-3">
+          <Skeleton className="mt-1 h-6 w-6 shrink-0 rounded-sm" />
+
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-6 w-4/5" />
+            <Skeleton className="h-6 w-2/5" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 pl-9">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+        </div>
+
+        <div className="flex flex-wrap gap-2 pl-9">
+          <Skeleton className="h-5 w-28 rounded-full" />
+          <Skeleton className="h-5 w-36 rounded-full" />
+          <Skeleton className="h-5 w-24 rounded-full" />
+          <Skeleton className="h-5 w-32 rounded-full" />
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-border pl-9 pt-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Abstract ───────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded-sm" />
+          <Skeleton className="h-5 w-20" />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-11/12" />
+          <Skeleton className="h-4 w-4/5" />
+        </div>
+      </div>
+
+      {/* ── Tech Stack ─────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded-sm" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-5 w-28 rounded-full" />
+          <Skeleton className="h-5 w-24 rounded-full" />
+          <Skeleton className="h-5 w-32 rounded-full" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-5 w-28 rounded-full" />
+        </div>
+      </div>
+
+      {/* ── Key Features ──────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded-sm" />
+          <Skeleton className="h-5 w-28" />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3, 4, 5].map((item) => (
+            <div key={item} className="flex items-start gap-2">
+              <Skeleton className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
+              <Skeleton
+                className={`h-4 ${
+                  item % 2 === 0 ? "w-4/5" : "w-11/12"
+                }`}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export default function CapstoneView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
 
   useEffect(() => {
-    // Simulate loading delay for consistency with other pages
+    // Simulate loading delay for consistency with other pages.
     const timer = setTimeout(() => {
       try {
         const foundResult = results.find((r) => r.id === id);
+
         if (foundResult) {
           setResult(foundResult);
           setLoading(false);
@@ -39,11 +150,8 @@ export default function CapstoneView() {
         setError("Failed to load capstone data. Please try again.");
         setLoading(false);
       }
-    }, 300); // 300ms delay to show loading state
+    }, 300);
 
-    // Remember this project's view page so the sidebar's "Capstone Search"
-    // item returns here after visiting other pages, instead of resetting
-    // to the search list.
     if (id) {
       rememberLastVisitedCapstone(`/capstone-view/${id}`);
     }
@@ -59,11 +167,12 @@ export default function CapstoneView() {
           { label: "Error", href: "#" },
         ]}
       >
-        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
+        <div className="flex min-h-screen items-center justify-center bg-background dark:bg-muted">
           <div className="text-center">
-            <div className="rounded-full h-12 w-12 border-b-2 border-destructive mb-4">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border-b-2 border-destructive">
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
+
             <p className="text-foreground dark:text-muted-foreground">
               {error}
             </p>
@@ -81,14 +190,7 @@ export default function CapstoneView() {
           { label: "Loading", href: "#" },
         ]}
       >
-        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-muted">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-            <p className="text-foreground dark:text-muted-foreground">
-              Loading capstone data...
-            </p>
-          </div>
-        </div>
+        <CapstoneViewSkeleton />
       </AppLayout>
     );
   }
@@ -105,8 +207,12 @@ export default function CapstoneView() {
           <p className="text-muted-foreground">
             We couldn't find that capstone project.
           </p>
-          <Button variant="outline" onClick={() => navigate("/capstone-search")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+
+          <Button
+            variant="outline"
+            onClick={() => navigate("/capstone-search")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Search
           </Button>
         </div>
@@ -128,66 +234,73 @@ export default function CapstoneView() {
           onClick={() => navigate("/capstone-search")}
           className="-ml-2 w-fit"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Search
         </Button>
 
         {/* Title & meta card */}
-        <div className="bg-card border border-border rounded-lg p-6 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6">
           <div className="flex items-start gap-3">
-            <BookOpen className="h-6 w-6 text-muted-foreground mt-1 shrink-0" />
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-card-foreground leading-snug">
+            <BookOpen className="mt-1 h-6 w-6 shrink-0 text-muted-foreground" />
+
+            <h1 className="text-xl font-semibold leading-snug text-gray-900 dark:text-card-foreground">
               {result.title}
             </h1>
           </div>
 
-          <p className="text-sm text-muted-foreground pl-9">
+          <p className="pl-9 text-sm text-muted-foreground">
             {result.description}
           </p>
 
           <div className="flex flex-wrap gap-2 pl-9">
-            {result.tags.map((tag) => (
+            {result.tags.map((tag: string) => (
               <Badge key={tag} variant="outline" className="text-xs">
                 {tag}
               </Badge>
             ))}
           </div>
 
-          <div className="flex flex-col gap-2 pl-9 pt-4 border-t border-border text-sm">
+          <div className="flex flex-col gap-2 border-t border-border pl-9 pt-4 text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <LucideCalendarDays className="h-4 w-4" />
               Year: <span className="text-foreground">{result.year}</span>
             </span>
+
             <span className="flex items-center gap-2 text-muted-foreground">
               <Users className="h-4 w-4" />
-              Authors: <span className="text-foreground">{result.authors}</span>
+              Authors:{" "}
+              <span className="text-foreground">{result.authors}</span>
             </span>
           </div>
         </div>
 
         {/* Abstract */}
-        <div className="bg-card border border-border rounded-lg p-6 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-muted-foreground" />
+
             <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
               Abstract
             </h2>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {result.abstract}
           </p>
         </div>
 
         {/* Tech Stack */}
-        <div className="bg-card border border-border rounded-lg p-6 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-muted-foreground" />
+
             <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
               Tech Stack
             </h2>
           </div>
+
           <div className="flex flex-wrap gap-2">
-            {result.techStack.map((tech) => (
+            {result.techStack.map((tech: string) => (
               <Badge key={tech} variant="secondary" className="text-xs">
                 {tech}
               </Badge>
@@ -196,20 +309,22 @@ export default function CapstoneView() {
         </div>
 
         {/* Key Features */}
-        <div className="bg-card border border-border rounded-lg p-6 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-muted-foreground" />
+
             <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
               Key Features
             </h2>
           </div>
+
           <ul className="flex flex-col gap-2">
-            {result.keyFeatures.map((feature, i) => (
+            {result.keyFeatures.map((feature: string, i: number) => (
               <li
                 key={i}
                 className="flex items-start gap-2 text-sm text-muted-foreground"
               >
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                 {feature}
               </li>
             ))}

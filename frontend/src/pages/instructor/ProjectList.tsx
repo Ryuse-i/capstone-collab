@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Eye,
   GraduationCap,
@@ -8,6 +7,7 @@ import {
 } from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetInstructorProjects } from "@/hooks/useProject";
 import type { ProjectWithSnapshot } from "@/types/project";
@@ -15,6 +15,9 @@ import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
 
 type RoleFilter = "all" | "instructor" | "advisor";
 
+// ---------------------------------------------------------------------------
+// Project Card
+// ---------------------------------------------------------------------------
 
 function ProjectCard({
   project,
@@ -24,25 +27,34 @@ function ProjectCard({
   role: "instructor" | "advisor";
 }) {
   const navigate = useNavigate();
+
   const slug = project.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+
   const projectRouteId = project.id ?? slug;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border bg-card dark:bg-(--semi-card) p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm dark:bg-(--semi-card) sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-[#F3EFE6] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A0C2E]">
             {role}
           </span>
-          <span className="text-xs text-neutral-400">{project.created_by}</span>
+
+          <span className="text-xs text-neutral-400">
+            {project.created_by}
+          </span>
         </div>
-        <h3 className="mt-2 text-base font-semibold text-foregrond">
+
+        <h3 className="mt-2 text-base font-semibold text-foreground">
           {project.name}
         </h3>
-        <p className="mt-1 text-sm text-neutral-500">{project.description}</p>
+
+        <p className="mt-1 text-sm text-neutral-500">
+          {project.description}
+        </p>
       </div>
 
       <div className="flex items-center gap-2">
@@ -58,9 +70,79 @@ function ProjectCard({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Projects Skeleton
+// ---------------------------------------------------------------------------
+
+function ProjectsSkeleton() {
+  return (
+    <Card className="border shadow-sm">
+      {/* Card header */}
+      <div className="flex items-center justify-between border-b px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+
+        <Skeleton className="h-7 w-10 rounded-full" />
+      </div>
+
+      {/* Project rows */}
+      <div className="space-y-3 p-5">
+        {[1, 2, 3, 4].map((item) => (
+          <div
+            key={item}
+            className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-(--semi-card)"
+          >
+            <div className="min-w-0 flex-1">
+              {/* Role + creator */}
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+
+              {/* Project name */}
+              <Skeleton className="mt-3 h-5 w-3/4 max-w-md" />
+
+              {/* Description */}
+              <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+              <Skeleton className="mt-1 h-4 w-2/3 max-w-lg" />
+            </div>
+
+            {/* View button */}
+            <Skeleton className="h-9 w-20 shrink-0 rounded-xl" />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Error state
+// ---------------------------------------------------------------------------
+
+function ProjectsError() {
+  return (
+    <div className="flex min-h-80 flex-col items-center justify-center gap-4">
+      <AlertTriangle className="h-8 w-8 text-destructive" />
+
+      <p className="text-foreground dark:text-muted-foreground">
+        Failed to load project data. Please try again later.
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export default function ProjectsPage() {
   const location = useLocation();
+
   const { data: user, isLoading: isUserLoading } = useCurrentUser();
+
   const {
     data: projects,
     isLoading: isProjectsLoading,
@@ -80,20 +162,24 @@ export default function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     const instructorProjects =
       projects?.filter((p) => p.instructor === user?.id) ?? [];
+
     const advisorProjects =
       projects?.filter((p) => p.advisor === user?.id) ?? [];
+
     if (roleFilter === "instructor") {
       return instructorProjects.map((project) => ({
         project,
         role: "instructor" as const,
       }));
     }
+
     if (roleFilter === "advisor") {
       return advisorProjects.map((project) => ({
         project,
         role: "advisor" as const,
       }));
     }
+
     return [
       ...instructorProjects.map((project) => ({
         project,
@@ -115,46 +201,46 @@ export default function ProjectsPage() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
+      {/* Page heading stays visible while data loads */}
       <div className="min-h-20 w-full">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="my-2 text-2xl font-bold text-foreground">
               Projects
             </h1>
+
             <p className="mt-2 text-sm text-neutral-500">
               Projects connected to your instructor and advisor profile.
             </p>
           </div>
         </div>
       </div>
+
       {isLoading ? (
-        <div className="flex flex-1 just items-center">
-          <Spinner />
-        </div>
+        <ProjectsSkeleton />
       ) : isError ? (
-        <div className="flex flex-col justify-center items-center gap-4 h-screen">
-          <AlertTriangle className="h-8 w-8 text-destructive" />
-          <p className="text-foreground dark:text-muted-foreground">
-            Failed to load project data. Please try again later.
-          </p>
-        </div>
+        <ProjectsError />
       ) : (
         <Card className="border shadow-sm">
+          {/* Card header */}
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div className="flex items-center gap-2">
               <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
                 <GraduationCap size={16} />
               </div>
+
               <h2 className="text-lg font-semibold text-foreground">
                 Projects
               </h2>
             </div>
+
             <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600">
               {filteredProjects.length}
             </span>
           </div>
 
-          <div className="space-y-3 p-5 ">
+          {/* Project list */}
+          <div className="space-y-3 p-5">
             {filteredProjects.length > 0 ? (
               filteredProjects.map(({ project, role }) => (
                 <ProjectCard
