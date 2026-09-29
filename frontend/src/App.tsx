@@ -10,7 +10,6 @@ import { AdminRoutes } from "@/routes/AdminRoutes";
 import { ROLES } from "./constants/roles";
 import { useQueryClient } from "@tanstack/react-query";
 import LoginPage from "@/pages/LoginPage";
-import SignupPage from "@/pages/SignupPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
@@ -34,7 +33,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/signup" element={<LoginPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/" element={<LandingPage />} />
 
