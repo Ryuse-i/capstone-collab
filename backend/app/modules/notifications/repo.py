@@ -8,7 +8,11 @@ class NotificationRepo(BaseRepo):
         super().__init__(db, Notification)
 
     async def get_user_notifications(self, user_id: UUID) -> list[Notification]:
-        query = select(Notification).where(Notification.user_id == user_id)
+        query = (
+            select(Notification)
+            .where(Notification.user_id == user_id)
+            .order_by(Notification.created_at.desc())
+        )
         notification = await self.db.execute(query)
 
         return list(notification.scalars().all())

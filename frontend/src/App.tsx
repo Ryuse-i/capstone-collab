@@ -6,6 +6,7 @@ import RoleBasedDashboard from "@/components/RoleBasedDashboard";
 import RoleRoute from "./components/RoleRoute";
 import { StudentRoutes } from "@/routes/StudentRoutes";
 import { InstructorRoutes } from "@/routes/InstructorRoutes";
+import GuestRoute from "./components/GuestRoute";
 import { AdminRoutes } from "@/routes/AdminRoutes";
 import { ROLES } from "./constants/roles";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,8 +33,10 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<LoginPage />} />
+      <Route element={<GuestRoute/>}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<LoginPage />} />
+      </Route>
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="/" element={<LandingPage />} />
 

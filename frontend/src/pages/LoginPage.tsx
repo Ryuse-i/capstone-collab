@@ -1,12 +1,22 @@
 import psuLogo from "@/assets/psu-logo.jpg";
 import { LoginForm } from "@/components/login-form";
 import { SignupForm } from "@/components/signup-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function LoginPage() {
   const [activeMode, setActiveMode] = useState<"signin" | "signup">(() =>
     window.location.pathname === "/signup" ? "signup" : "signin",
   );
+  const [isEntering, setIsEntering] = useState(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setIsEntering(false);
+    }, 1400);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   function handleModeToggle(event: React.MouseEvent<HTMLDivElement>) {
     const target = event.target;
@@ -37,13 +47,13 @@ export default function LoginPage() {
 
   return (
     <div
-      className={`auth-page auth-mode-${activeMode} flex h-svh max-h-svh w-full flex-col overflow-hidden md:flex-row`}
+      className={`auth-page auth-mode-${activeMode} ${isEntering ? 'auth-entering' : ''} flex h-svh max-h-svh w-full flex-col overflow-hidden md:flex-row`}
       onClick={handleModeToggle}
     >
       {/* LEFT — BRANDING PANEL (static) */}
       <div className="auth-brand-panel relative hidden w-full flex-col items-center justify-center gap-2 overflow-hidden bg-[#7A0C2E] px-10 py-16 md:flex md:w-1/2 md:max-w-[50%] md:min-w-0 md:shrink-0 md:grow-0 md:basis-1/2">
         {/* seal motif — animated rings */}
-        <div className="auth-brand-motif pointer-events-none absolute inset-0 grid place-items-center">
+        <div className={`auth-brand-motif pointer-events-none absolute inset-0 grid place-items-center ${isEntering ? 'auth-enter-logo' : ''}`}>
           <div className="auth-ring auth-ring--outer col-start-1 row-start-1 size-104 shrink-0 rounded-full border border-[#C9A84C]/20" />
           <div className="auth-ring auth-ring--inner auth-brand-motif-secondary col-start-1 row-start-1 size-80 shrink-0 rounded-full border border-[#C9A84C]/15" />
         </div>
@@ -56,7 +66,7 @@ export default function LoginPage() {
               className="auth-brand-logo size-16 rounded-full object-cover"
             />
           </div>
-          <div className="flex flex-col gap-2">
+          <div className={`flex flex-col gap-2 ${isEntering ? 'auth-enter-title' : ''}`}>
             <p className="text-[1.75rem] leading-tight text-white">
               PAMPANGA STATE UNIVERSITY
             </p>
@@ -66,7 +76,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="relative w-80 text-center text-sm text-white/70">
+        <p className={`relative w-80 text-center text-sm text-white/70 ${isEntering ? 'auth-enter-tagline' : ''}`}>
           Track proposals, tasks, and team workload in one shared workspace
           built for capstone groups and advisers.
         </p>

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useCurrentUser, useLogin } from "@/hooks/useAuth";
+import { useLogin } from "@/hooks/useAuth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +25,8 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
 
   const login = useLogin();
-  const { data: user } = useCurrentUser();
 
   // If already logged in, redirect away from login page
-  useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
-  }, [user, navigate]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

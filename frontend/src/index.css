@@ -233,7 +233,90 @@
   transition-delay: 390ms;
 }
 
-@media (max-width: 767px) {
+/* ─── Mount animation ─── */
+@keyframes auth-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes auth-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes auth-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+/* Scope everything under .auth-entering */
+.auth-entering .auth-brand-motif {
+  animation: auth-fade-in 900ms ease-out;
+}
+
+.auth-entering .auth-enter-logo {
+  animation: auth-pop 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-delay: 100ms;
+}
+
+.auth-entering .auth-enter-title {
+  animation: auth-rise 550ms ease-out;
+  animation-delay: 250ms;
+}
+
+.auth-entering .auth-enter-tagline {
+  animation: auth-rise 550ms ease-out;
+  animation-delay: 400ms;
+}
+
+.auth-entering .auth-form-layer {
+  animation: auth-slide-in 450ms ease-out;
+}
+
+.auth-entering .auth-form-layer [data-slot="field-group"] > * {
+  animation: auth-rise 500ms ease-out;
+}
+
+/* Stagger delays for field-group children */
+.auth-entering .auth-form-layer [data-slot="field-group"] > :nth-child(1) {
+  animation-delay: 150ms;
+}
+.auth-entering .auth-form-layer [data-slot="field-group"] > :nth-child(2) {
+  animation-delay: 210ms;
+}
+.auth-entering .auth-form-layer [data-slot="field-group"] > :nth-child(3) {
+  animation-delay: 270ms;
+}
+.auth-entering .auth-form-layer [data-slot="field-group"] > :nth-child(4) {
+  animation-delay: 330ms;
+}
+.auth-entering .auth-form-layer [data-slot="field-group"] > :nth-child(5) {
+  animation-delay: 390ms;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .auth-entering .auth-brand-motif,
+  .auth-entering .auth-enter-logo,
+  .auth-entering .auth-enter-title,
+  .auth-entering .auth-enter-tagline,
+  .auth-entering .auth-form-layer,
+  .auth-entering .auth-form-layer [data-slot="field-group"] > * {
+    animation: none !important;
+  }
+}@media (max-width: 767px) {
   .auth-form-layer {
     transition-delay: 0ms !important;
   }

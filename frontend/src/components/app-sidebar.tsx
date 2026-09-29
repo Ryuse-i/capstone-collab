@@ -3,6 +3,7 @@
 import { NavSecondary } from "@/components/nav-secondary";
 import * as React from "react";
 
+import { Spinner } from "./ui/spinner";
 import { NavMain } from "@/components/nav-main";
 import { NavMain as NavShortcut } from "@/components/nav-shortcut";
 import { NavUser } from "@/components/nav-user";
@@ -269,17 +270,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarContent className="flex-1">
             {/* Loading state for nav content */}
             <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400 text-sm animate-pulse">
-                Loading navigation…
-              </p>
+              <Spinner/>
             </div>
           </SidebarContent>
           <SidebarFooter>
             {/* Loading state for user info */}
             <div className="flex items-center justify-center py-4">
-              <p className="text-gray-400 text-sm animate-pulse">
-                Loading user info…
-              </p>
+              <Spinner/>
             </div>
           </SidebarFooter>
           <SidebarRail />
