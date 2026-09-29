@@ -1,0 +1,197 @@
+WORKLOAD CALCULATION FILES - PSU-COLLAB CAPSTONE PROJECT
+========================================================
+
+CORE CALCULATION LOGIC:
+-----------------------
+backend/app/modules/redistribution_recommendations/workload_calculation.py
+    - Single source of truth for all workload math and decisions
+    - Implements: effective_points, member aggregates, baseline_points, expected_load
+    - Functions:
+        * complexity_to_points() - Convert complexity enum to points (Low=1, Medium=2, High=3)
+        * calculate_urgency_multiplier() - Deadline-based urgency multiplier
+        * calculate_effective_points() - Task-level effective points (weighted by urgency)
+        * calculate_member_workload_totals() - Member-level raw and effective points
+        * determine_workload_status() - Determine OVERLOADED/UNDERUTILIZED/NORMAL status
+        * recompute_workload_state() - Project-level workload calculation for all members
+        * validate_task_deadline() - Minimum deadline validation
+        * create_or_update_member_snapshots() - Persistence helper
+
+MEMBER SNAPSHOT MODEL:
+----------------------
+backend/app/modules/member_snapshots/model.py
+    - MemberSnapshot table stores:
+        * total_effective_points (Numeric) - Urgency-weighted workload
+        * capacity_multiplier (Numeric) - Personal expected load multiplier
+        * workload_status (Enum) - NORMAL/UNDERUTILIZED/OVERLOADED
+        * silence_warning (Boolean) - Hides overload warning
+        * consecutive_fallback_count (Integer) - Fallback tracking
+        * snapshot_date (Date) - Date of snapshot
+        * Unique constraint on (member_id, snapshot_date)
+
+PROJECT SNAPSHOT MODEL:
+-----------------------
+backend/app/modules/project_snapshots/model.py
+    - ProjectSnapshot table stores:
+        * total_workload_points (Integer) - Sum of member workloads
+        * avg_workload (Numeric) - Average workload per member
+        * progress_score, progress_percentage - Task completion metrics
+        * expected_score, expected_percentage - Expected progress
+        * schedule_variance (Numeric) - Schedule performance
+        * workload_balance (Nullable Numeric) - Workload distribution balance
+        * imbalance_severity (Enum) - LOW/MEDIUM/HIGH
+        * health_score (Numeric) - Overall project health
+        * health_status (Enum) - GOOD/WARNING/BAD
+        * unassigned_tasks (Integer) - Count of unassigned tasks
+        * snapshot_date (Date) - Date of snapshot
+        * Unique constraint on (project_id, snapshot_date)
+
+SERVICE LAYERS:
+---------------
+backend/app/modules/member_snapshots/services.py
+    - MemberSnapshotService:
+        * get_latest_snapshot() - Get most recent member snapshot
+        * upsert_today_member_snapshot() - Create/update today's snapshot
+        * get_latest_member_snapshot() - Get latest snapshot for member
+        * check_workload_status() - Check workload status using median baseline
+        * calculate_member_workload() - Calculate workload for single member and update snapshot
+
+backend/app/modules/project_snapshots/services.py
+    - ProjectSnapshotService:
+        * get_latest_snapshot() - Get latest project snapshot
+        * upsert_today_snapshot() - Create/update today's project snapshot
+        * calculate_project_workload() - Calculate and update project workload
+        * sync_unassigned_tasks() - Sync unassigned task count
+
+REDISTRIBUTION LOGIC:
+---------------------
+backend/app/modules/redistribution_recommendations/redistribution_logic.py
+    - Uses workload_calculation.py functions to generate redistribution options
+    - Identifies most overloaded member
+    - Generates Move, Share, Split, and Move Deadline options
+    - Scores options by impact (reduction in overload)
+    - Eligibility based on primary skill and 75% of secondary skills
+
+TEST FILES:
+-----------
+backend/test/unit/test_workload_calculation.py - Unit tests for core logic
+backend/test/integration/test_member_workload.py - Integration test for member workload
+backend/test/integration/test_project_snapshots.py - Project snapshot endpoint tests
+backend/test/unit/test_project_workload.py - Project workload tests
+backend/test/unit/test_project_workload_simple.py - Simple project workload tests
+
+API ROUTES:
+-----------
+backend/app/modules/member_snapshots/routes.py
+    - GET /member_snapshots/ - Get all member snapshots
+    - GET /member_snapshots/{id} - Get specific snapshot
+    - GET /member_snapshots/{member_id}/latest - Get latest for member
+    - PATCH /member_snapshots/{id} - Update snapshot
+    - POST /member_snapshots/{member_id}/upsert - Upsert today's snapshot
+    - DELETE /member_snapshots/{id} - Delete snapshot
+
+backend/app/modules/project_snapshots/routes.py
+    - GET /project_snapshots/{id} - Get specific snapshot
+    - POST /project_snapshots/{project_id}/upsert - Upsert today's snapshot
+    - GET /project_snapshots/latest/{project_id} - Get latest for project
+
+WORKLOAD CALCULATION FLOW:
+=========================
+
+1. TASK-LEVEL CALCULATIONS (in workload_calculation.py):
+   -----------------------------------------------------
+   a. complexity_to_points() converts Task.complexity enum to points:
+      - LOW → 1, MEDIUM → 2, HIGH → 3, None → 0
+
+   b. calculate_urgency_multiplier() determines deadline urgency:
+      - Overdue or ≤3 days → 1.5
+      - ≤7 days → 1.25
+      - ≤14 days → 1.0
+      - >14 days → 0.75
+      - No deadline → 1.0 (treated as ≤14 days bucket)
+
+   c. calculate_effective_points() computes task weight by status:
+      - NOT_STARTED: complexity_points × urgency_multiplier
+      - IN_PROGRESS: complexity_points × 1.0 (no urgency scaling)
+      - SUBMITTED/COMPLETED: 0 points
+      - No status treated as NOT_STARTED
+
+2. MEMBER-LEVEL CALCULATIONS (in workload_calculation.py):
+   -------------------------------------------------------
+   a. calculate_member_workload_totals() computes for each member:
+      - total_points: Sum of raw complexity points (excludes SUBMITTED/COMPLETED)
+      - total_effective_points: Sum of effective points (excludes SUBMITTED/COMPLETED)
+
+   b. determine_workload_status() compares member load to expected load:
+      - OVERLOADED: total_effective_points > expected_load
+      - UNDERUTILIZED: total_effective_points < expected_load × 0.5
+      - NORMAL: Otherwise
+      - Edge case: when expected_load=0, any points → OVERLOADED, zero points → NORMAL
+
+3. PROJECT-LEVEL CALCULATIONS (in workload_calculation.py):
+   --------------------------------------------------------
+   a. recompute_workload_state() calculates for entire project:
+      - Step 1: Compute each member's total_points and total_effective_points
+      - Step 2: baseline_points = MEDIAN of WORKING members' total_effective_points
+                (WORKING_ROLES = LEADER, MEMBER; None treated as MEMBER)
+                Excludes ADVISOR/INSTRUCTOR from baseline calculation
+      - Step 3: expected_load = baseline_points × capacity_multiplier
+                (capacity_multiplier from latest member snapshot, default 1.0)
+                Clamped to range (0.01, 2.0]
+      - Step 4: Determine is_overloaded and workload_status per member
+                Non-working members always get is_overloaded=False and status=NORMAL
+      - Returns list of dictionaries with member workload state
+
+4. PERSISTENCE (in workload_calculation.py):
+   ----------------------------------------
+   a. create_or_update_member_snapshots() persists workload data:
+      - For each member in recompute_workload_state() results:
+        * If snapshot exists for today: update totals, capacity_multiplier, status
+        * Else: create new snapshot for today
+      - Quantizes Decimal values to 2 decimal places using ROUND_HALF_UP
+      - Commits transaction and returns saved snapshots
+
+5. SERVICE INTEGRATION:
+   ---------------------
+   a. MemberSnapshotService.calculate_member_workload():
+      - Validates task deadlines using validate_task_deadline()
+      - Calculates member workload using calculate_member_workload_totals()
+      - Updates project total workload via ProjectSnapshotService
+      - Checks workload status using check_workload_status()
+      - Upserts member snapshot with new values
+
+   b. ProjectSnapshotService.calculate_project_workload():
+      - Recalculates workload for each member (updates their snapshots)
+      - Computes average workload and updates project snapshot
+
+6. REDISTRIBUTION USAGE:
+   ----------------------
+   a. redistribution_logic.py calls recompute_workload_state() to get current state
+   b. Identifies most overloaded member (highest points over expected_load)
+   c. For each task of overloaded member, generates redistribution options:
+      - Move: Full task to eligible recipient
+      - Share: Split task 50/50 with recipient
+      - Split: Divide task into subtasks based on complexity points
+      - Move Deadline: Extend deadline if no eligible recipients
+   d. Options scored by impact (reduction in overload), ranked, negatives filtered
+
+7. DATA FLOW EXAMPLE:
+   ------------------
+   When a task is assigned to a member:
+   1. AssignedMember record created
+   2. MemberSnapshotService.calculate_member_workload() called (via assigned_members routes)
+   3. Validates task deadline
+   4. Calculates member's workload totals from assigned tasks
+   5. Updates project total workload
+   6. Determines member's workload status
+   7. Persists member snapshot for today
+   8. Project snapshot may be updated via separate process
+
+KEY DESIGN PRINCIPLES:
+----------------------
+- Single source of truth: All workload math in workload_calculation.py
+- Services only handle DB I/O and call calculation functions
+- Working members (LEADER/MEMBER) contribute to baseline; ADVISOR/INSTRUCTOR excluded
+- Overload based on effective points (urgency-weighted), not raw points
+- Capacity multiplier allows personalizing expected load per member
+- Median baseline prevents outliers from skewing expectations
+- Decimal quantization ensures consistent precision in storage

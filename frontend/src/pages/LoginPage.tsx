@@ -5,7 +5,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-svh flex-col md:flex-row">
       {/* LEFT — BRANDING PANEL */}
-      <div className="relative hidden w-full flex-col items-center justify-center gap-8 overflow-hidden bg-[#7A0C2E] px-10 py-16 md:flex md:w-1/2">
+      <div className="relative hidden w-full flex-col items-center justify-center gap-8 overflow-hidden bg-primary px-10 py-16 md:flex md:w-1/2">
         {/* seal motif */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="h-104 w-104 rounded-full border border-[#C9A84C]/20" />

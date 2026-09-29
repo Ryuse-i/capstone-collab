@@ -3,7 +3,8 @@ Unit tests for workload calculation logic.
 
 Covers: complexity points, urgency multipliers, effective points (incl. SUBMITTED),
 member totals, median baseline, capacity multiplier, overload detection,
-role filtering for the median (bug 8), and minimum-deadline validation.
+role filtering for the median (bug 8), underutilized threshold, decimal
+quantization on persistence, and minimum-deadline validation.
 
 Requires: pytest, pytest-asyncio, freezegun (>=1.3)
 """
@@ -12,8 +13,10 @@ import pytest
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+from decimal import Decimal, ROUND_HALF_UP
 
 from freezegun import freeze_time
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.redistribution_recommendations.workload_calculation import (
     complexity_to_points,
@@ -23,16 +26,15 @@ from app.modules.redistribution_recommendations.workload_calculation import (
     recompute_workload_state,
     validate_task_deadline,
     is_working_member,
+    create_or_update_member_snapshots,
 )
 from app.modules.tasks.model import Task
 from app.modules.tasks.enums import Status as TaskStatus, Complexity
-from app.modules.project_members.model import ProjectMember
+from app.modules.project_members.model import ProjectMember, ProjectRole
 from app.modules.projects.model import Project
-from app.modules.member_snapshots.model import MemberStatus
+from app.modules.member_snapshots.model import MemberStatus, MemberSnapshot
 
 MODULE = "app.modules.redistribution_recommendations.workload_calculation"
-
-from app.modules.project_members.model import ProjectRole
 
 
 # --------------------------------------------------------------------------- #
@@ -346,9 +348,6 @@ class TestRecomputeWorkloadState:
         assert results[0]["capacity_multiplier"] == clamped
 
     # ----- Bug 8: only LEADER and MEMBER (and None) count toward the median ----- #
-    # This test FAILS on current code (median includes advisors/instructors).
-    # It is marked xfail(strict=True) so the suite stays green now and turns red
-    # the moment bug 8 is fixed. When that happens, delete the marker.
     @pytest.mark.asyncio
     async def test_median_excludes_advisor_and_instructor(self, monkeypatch):
         leader = make_member(ProjectRole.LEADER)
@@ -435,6 +434,131 @@ class TestRecomputeWorkloadState:
         assert r[advisor2.id]["is_overloaded"] is False
         assert r[advisor1.id]["workload_status"] == MemberStatus.NORMAL
         assert r[advisor2.id]["workload_status"] == MemberStatus.NORMAL
+
+
+# --------------------------------------------------------------------------- #
+# Underutilized threshold (UNDERUTILIZED_FRACTION = 0.8)
+# --------------------------------------------------------------------------- #
+
+class TestUnderutilizedThreshold:
+    """Verifies the UNDERUTILIZED threshold through the full recompute_workload_state() pipeline."""
+
+    @pytest.mark.asyncio
+    async def test_underutilized_boundary(self, monkeypatch):
+        # Four anchor members fixed at 10.0 effective points each, all with
+        # capacity_multiplier 1.0 (via the shared snapshot mock). With five
+        # working members total (odd count), the median -- and therefore
+        # expected_load, since capacity_multiplier is fixed -- stays pinned
+        # at 10.0 no matter what test_member's value is: test_member only
+        # ever sits at one end of the sorted list, never displacing the
+        # anchors from the 3rd-of-5 (middle) position.
+        #
+        # (An earlier version of this test used just two members --
+        # baseline_member + test_member -- assuming the baseline would stay
+        # fixed at baseline_member's value. That's wrong: with two members,
+        # median is their AVERAGE, so the baseline moved with test_member on
+        # every case, and the 7.9 case actually evaluated against a baseline
+        # of 8.95 instead of 10.0, silently passing/failing for the wrong
+        # reason. Pinning the median with fixed anchors avoids that.)
+        anchors = [make_member() for _ in range(4)]
+        test_member = make_member()
+        members = anchors + [test_member]
+
+        snapshot = make_snapshot(1.0)  # fixed capacity_multiplier for every member
+
+        test_cases = [
+            (8.0, MemberStatus.NORMAL),        # exactly 80% of expected_load (10.0) -> NORMAL, boundary is not underutilized
+            (7.9, MemberStatus.UNDERUTILIZED), # just below 80% -> UNDERUTILIZED
+            (8.1, MemberStatus.NORMAL),        # just above 80% -> NORMAL
+            (4.0, MemberStatus.UNDERUTILIZED), # well below 80% -> UNDERUTILIZED
+        ]
+
+        for total_effective, expected_status in test_cases:
+            totals_by_id = {anchor.id: (0.0, 10.0) for anchor in anchors}
+            totals_by_id[test_member.id] = (0.0, total_effective)
+
+            patch_recompute(monkeypatch, members, totals_by_id, snapshot=snapshot)
+
+            results = await recompute_workload_state(AsyncMock(), uuid4())
+            r = by_member_id(results)
+
+            # Prove the baseline actually stayed pinned at 10.0 for this case,
+            # not just that the final status happened to match.
+            assert r[test_member.id]["expected_load"] == 10.0, (
+                f"Baseline shifted: expected_load should stay pinned at 10.0 "
+                f"regardless of test_member's value, got "
+                f"{r[test_member.id]['expected_load']} for total_effective={total_effective}"
+            )
+
+            actual_status = r[test_member.id]["workload_status"]
+            assert actual_status == expected_status, (
+                f"For total_effective={total_effective}, expected status "
+                f"{expected_status}, got {actual_status}"
+            )
+
+
+# --------------------------------------------------------------------------- #
+# Decimal quantization before persisting snapshots
+# --------------------------------------------------------------------------- #
+
+class TestQuantization:
+    """Test that total_effective_points and capacity_multiplier are quantized to 2 decimal places before persisting."""
+
+    @pytest.mark.asyncio
+    async def test_quantization_in_create_or_update_member_snapshots(self, monkeypatch):
+        # Mock db session
+        db = AsyncMock(spec=AsyncSession)
+
+        # First, test the update branch (when a snapshot for today exists)
+        existing_snapshot = MagicMock(spec=MemberSnapshot)
+        existing_snapshot.member_id = uuid4()
+        existing_snapshot.snapshot_date = date.today()
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = existing_snapshot
+        db.execute.return_value = mock_result
+
+        # Mock recompute_workload_state to return data with long decimals
+        test_member_id = uuid4()
+        workload_data = [{
+            "member_id": test_member_id,
+            "total_effective_points": 123.456,  # 3 decimal places
+            "capacity_multiplier": 1.234,       # 3 decimal places
+            "workload_status": MemberStatus.NORMAL,
+            "is_working": True,
+            "total_points": 0.0,
+        }]
+
+        monkeypatch.setattr(
+            f"{MODULE}.recompute_workload_state",
+            AsyncMock(return_value=workload_data),
+        )
+
+        await create_or_update_member_snapshots(db, uuid4())
+
+        # ROUND_HALF_UP: 123.456 -> 123.46 (third decimal 6 >= 5, rounds up)
+        #                1.234   -> 1.23   (third decimal 4 < 5, stays down)
+        assert existing_snapshot.total_effective_points == Decimal("123.46")
+        assert existing_snapshot.capacity_multiplier == Decimal("1.23")
+        assert existing_snapshot.workload_status == MemberStatus.NORMAL
+
+        # Now the create branch (no snapshot exists for today)
+        db.execute.return_value.scalar_one_or_none.return_value = None
+        monkeypatch.setattr(
+            f"{MODULE}.get_latest_member_snapshot",
+            AsyncMock(return_value=None),
+        )
+
+        await create_or_update_member_snapshots(db, uuid4())
+
+        db.add.assert_called()
+        added_snapshot = db.add.call_args[0][0]
+        assert isinstance(added_snapshot, MemberSnapshot)
+        assert added_snapshot.total_effective_points == Decimal("123.46")
+        assert added_snapshot.capacity_multiplier == Decimal("1.23")
+        assert added_snapshot.workload_status == MemberStatus.NORMAL
+        assert added_snapshot.silence_warning is False
+        assert added_snapshot.consecutive_fallback_count == 0
 
 
 # --------------------------------------------------------------------------- #
