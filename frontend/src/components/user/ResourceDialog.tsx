@@ -20,7 +20,7 @@ interface CategoryStyle {
 }
 
 const CATEGORY_STYLES: Record<Resource["category"], CategoryStyle> = {
-  "Links": {
+  Links: {
     icon: Frame,
     iconClass:
       "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
@@ -123,6 +123,17 @@ export default function ResourceDialog({
           </Button>
           <Button
             type="button"
+            disabled={!resource.sourceUrl && !resource.attachment}
+            onClick={() => {
+              const resourceUrl =
+                resource.sourceUrl ||
+                (resource.attachment
+                  ? URL.createObjectURL(resource.attachment)
+                  : null);
+              if (resourceUrl) {
+                window.open(resourceUrl, "_blank", "noopener,noreferrer");
+              }
+            }}
             className="bg-(--maroon) text-white hover:bg-(--maroon)/90"
           >
             Open resource

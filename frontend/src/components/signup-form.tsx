@@ -27,7 +27,6 @@ export function SignupForm({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [localError, setLocalError] = useState("");
 
   const register = useRegister();
@@ -173,7 +172,7 @@ export function SignupForm({
               <div className="relative">
                 <Input
                   id="confirm-password"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showPassword ? "text" : "password"}
                   required
                   autoComplete="new-password"
                   disabled={register.isPending}
@@ -184,14 +183,14 @@ export function SignupForm({
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  onClick={() => setShowPassword((prev) => !prev)}
                   aria-label={
-                    showConfirmPassword
+                    showPassword
                       ? "Hide confirm password"
                       : "Show confirm password"
                   }
                 >
-                  {showConfirmPassword ? (
+                  {showPassword ? (
                     <EyeOff className="h-4 w-4" />
                   ) : (
                     <Eye className="h-4 w-4" />

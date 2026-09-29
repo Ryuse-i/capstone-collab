@@ -375,9 +375,7 @@ function StatCard({
       <p className="mt-3 text-2xl font-bold tabular-nums text-foreground">
         {value}
       </p>
-      <p className="mt-1 text-sm text-neutral-500">
-        {caption}
-      </p>
+      <p className="mt-1 text-sm text-neutral-500">{caption}</p>
     </Card>
   );
 }
@@ -517,7 +515,9 @@ export default function InstructorDashboard() {
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
       <div className="min-h-screen w-full py-0 font-sans antialiased">
         <div className="mb-5">
-          <h1 className="my-2 text-2xl font-bold text-foreground">Your projects</h1>
+          <h1 className="my-2 text-2xl font-bold text-foreground">
+            Your projects
+          </h1>
           <p className="mt-2 text-sm text-neutral-500 dark:text-semiforeground">
             A portfolio view across everything you're instructing or advising.
           </p>
@@ -815,16 +815,6 @@ export default function InstructorDashboard() {
               ))}
             </div>
           </Card>
-        </div>
-
-        <div className="mt-6 flex items-start gap-2 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-accent p-4 text-xs text-neutral-500">
-          <Users size={14} className="mt-0.5 shrink-0" />
-          <p>
-            Same dashboard for instructors and advisors. "Your call this stage"
-            marks projects where you're the primary reviewer given the current
-            stage — you can still open any project you're attached to regardless
-            of whose turn it is.
-          </p>
         </div>
       </div>
 

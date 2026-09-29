@@ -23,7 +23,7 @@ import type {
   TaskPriority,
   TaskResponseMembers,
 } from "@/types/task";
-import { formatDistanceToNow, isBefore, subHours } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { formatStatusLabel } from "@/components/user/TaskTable";
 
 // Soft pill badges (outline-tinted, like the reference "In Research" / "Low" pills)
@@ -150,25 +150,24 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
 
     const deadline = new Date(task.deadline);
     const now = new Date();
+    const msUntilDeadline = deadline.getTime() - now.getTime();
 
-    if (isBefore(deadline, now)) {
-      // Overdue
-      const daysOverdue = Math.floor(
-        (now.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24),
+    if (msUntilDeadline < 0) {
+      const overdueDays = Math.floor(
+        Math.abs(msUntilDeadline) / (1000 * 60 * 60 * 24),
       );
-      return {
-        type: "overdue" as const,
-        message: `Overdue by ${daysOverdue} day${daysOverdue !== 1 ? "s" : ""}`,
-        days: Math.abs(daysOverdue),
-      };
+
+      if (overdueDays >= 1) {
+        return {
+          type: "overdue" as const,
+          message: `Overdue by ${overdueDays} day${overdueDays !== 1 ? "s" : ""}`,
+          days: overdueDays,
+        };
+      }
     }
 
-    const dueIn48h = subHours(now, -48); // 48 hours ago
-    if (isBefore(deadline, dueIn48h)) {
-      // Due within 48 hours
-      const hoursUntil = Math.ceil(
-        (deadline.getTime() - now.getTime()) / (1000 * 60 * 60),
-      );
+    if (msUntilDeadline > 0 && msUntilDeadline <= 48 * 60 * 60 * 1000) {
+      const hoursUntil = Math.ceil(msUntilDeadline / (1000 * 60 * 60));
       return {
         type: "soon" as const,
         message: `Due in ${hoursUntil} hour${hoursUntil !== 1 ? "s" : ""}`,
@@ -235,6 +234,35 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                 </p>
               </div>
             )}
+
+            {/* Assigned members */}
+            {task?.assigned_members?.length ? (
+              <div className="mt-4 rounded-lg border border-border/60 bg-muted/10 p-4">
+                <p className="mb-3 text-sm font-semibold text-foreground">
+                  Assigned Members
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {task.assigned_members.map((member) => {
+                    const memberName =
+                      [member.first_name, member.last_name]
+                        .filter(Boolean)
+                        .join(" ") ||
+                      member.email ||
+                      "Member";
+
+                    return (
+                      <Badge
+                        key={member.id}
+                        variant="secondary"
+                        className="bg-background text-foreground ring-1 ring-border/60"
+                      >
+                        {memberName}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             {/* Meta rows */}
             <div className="divide-y divide-border/60">

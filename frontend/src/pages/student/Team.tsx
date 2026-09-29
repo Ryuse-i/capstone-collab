@@ -1,15 +1,24 @@
 import AppLayout from "@/layouts/Applayout";
 import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mail, AlertTriangle, Gauge, Repeat, ShieldAlert } from "lucide-react";
+import {
+  Mail,
+  AlertTriangle,
+  Gauge,
+  ShieldAlert,
+  PenLineIcon,
+} from "lucide-react";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
+import MemberDetailDrawer from "@/components/user/MemberDetailDrawer";
 import type {
   ProjectMemberUserSnapshot,
   ProjectRole,
 } from "@/types/project_member";
 import type { MemberStatus } from "@/types/member_snapshot";
+
+type WorkloadStyle = { label: string; badge: string; bar: string };
 
 const roleStyles: Record<ProjectRole, string> = {
   admin: "border-purple-400 text-purple-600 bg-purple-50 dark:bg-purple-950/20",
@@ -21,10 +30,7 @@ const roleStyles: Record<ProjectRole, string> = {
   member: "border-gray-400 text-gray-600 bg-gray-50 dark:bg-gray-800/40",
 };
 
-const workloadStyles: Record<
-  MemberStatus,
-  { label: string; badge: string; bar: string }
-> = {
+const workloadStyles: Record<MemberStatus, WorkloadStyle> = {
   overloaded: {
     label: "Overloaded",
     badge: "border-red-400 text-red-500 bg-red-50 dark:bg-red-950/20",
@@ -115,6 +121,20 @@ function MemberCard({
               Silent
             </span>
           )}
+
+          {project_role === "member" && (
+            <MemberDetailDrawer
+              member={member}
+              trigger={
+                <button
+                  type="button"
+                  aria-label={`View ${user.first_name} ${user.last_name}`}
+                >
+                  <PenLineIcon className="w-4 h-4" />
+                </button>
+              }
+            />
+          )}
         </div>
 
         {showWorkload && (
@@ -145,15 +165,6 @@ function MemberCard({
                 </div>
                 <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
                   {points !== undefined ? points : "—"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1 text-yellow-500">
-                  <Repeat className="w-3.5 h-3.5" />
-                  <span className="text-xs text-gray-400">Fallbacks</span>
-                </div>
-                <span className="text-2xl font-bold text-gray-800 dark:text-card-foreground">
-                  {snapshot ? snapshot.consecutive_fallback_count : "—"}
                 </span>
               </div>
               <div className="flex flex-col gap-1">

@@ -10,7 +10,7 @@ import GuestRoute from "./components/GuestRoute";
 import { AdminRoutes } from "@/routes/AdminRoutes";
 import { ROLES } from "./constants/roles";
 import { useQueryClient } from "@tanstack/react-query";
-import LoginPage from "@/pages/LoginPage";
+import LoginPage from "@/pages/AuthPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";

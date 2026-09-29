@@ -115,7 +115,7 @@ export default function ProjectsPage() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
-      <div className="min-h-screen w-full">
+      <div className="min-h-20 w-full">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="my-2 text-2xl font-bold text-foreground">
@@ -171,7 +171,6 @@ export default function ProjectsPage() {
           </div>
         </Card>
       )}
-      )
     </AppLayout>
   );
 }

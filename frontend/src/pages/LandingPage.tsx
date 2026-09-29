@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import workloadBalanceImage from "@/assets/landing page/workload balance.jpg";
 import dashboardImage from "@/assets/landing page/Dashboard.png";
+import psuLogo from "@/assets/psu-logo.jpg";
 import {
   Activity,
   CheckCircle2,
@@ -43,7 +44,7 @@ const FEATURES: Feature[] = [
   {
     icon: <RefreshCw />,
     title: "Smart Task Redistribution",
-    desc: "System suggests actionable fixes — transfer, split, or convert tasks with impact previews.",
+    desc: "System suggests actionable fixes transfer, split, or convert tasks with impact previews.",
   },
   {
     icon: <Trophy />,
@@ -72,6 +73,13 @@ function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
+            <div>
+              <img
+                    src={psuLogo}
+                    alt="PSU Logo"
+                    className="size-8 object-cover rounded-full"
+                  />
+            </div>
             <Link
               to="/"
               className="text-2xl font-bold text-amber-700 dark:text-amber-400"
@@ -129,7 +137,7 @@ function HeroSection() {
       <div className="max-w-4xl mx-auto text-center">
         {/* Title */}
         <div className="animate-on-scroll">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
             Manage team workload with
             <span className="text-amber-700 dark:text-amber-400 block">
               perfect visibility
@@ -156,14 +164,11 @@ function HeroSection() {
               <a href="#features">Learn more</a>
             </Button>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-6">
-            No credit card required · Free forever on Starter
-          </p>
         </div>
       </div>
     </section>
   );
-  ``;
+  
 }
 
 function FeatureSection() {
@@ -189,11 +194,11 @@ function FeatureSection() {
       <div className="max-w-6xl mx-auto">
         {/* Title fades up */}
         <div className="text-center mb-12 animate-on-scroll">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             Everything your team needs
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Built around the real complexity of managing teams — not just
+            Built around the real complexity of managing teams not just
             tracking tasks.
           </p>
         </div>
@@ -266,7 +271,7 @@ function FeatureSection() {
                     onClick={() => setActiveIndex(index)}
                     className="flex w-full items-center justify-between gap-4 py-5 text-left"
                   >
-                    <span className="text-xl font-semibold text-gray-900 dark:text-white">
+                    <span className="text-xl font-semibold text-foreground">
                       {feature.title}
                     </span>
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200">
@@ -349,15 +354,13 @@ function CTASection() {
           <Button
             size="lg"
             variant="outline"
-            className="text-black border-amber-300 hover:bg-white/10"
+            className="text-foreground border-amber-300 hover:bg-white/10"
             asChild
           >
             <a href="#features">Learn more</a>
           </Button>
         </div>
-        <p className="text-sm text-amber-100 mt-6">
-          No credit card required · Free forever on Starter
-        </p>
+
       </div>
     </section>
   );
@@ -369,7 +372,7 @@ function Footer() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
           <div className="animate-on-scroll" style={{ transitionDelay: "0ms" }}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="font-semibold text-foreground mb-4">
               Product
             </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -396,7 +399,7 @@ function Footer() {
             className="animate-on-scroll"
             style={{ transitionDelay: "100ms" }}
           >
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="font-semibold text-foreground mb-4">
               Company
             </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -423,7 +426,7 @@ function Footer() {
             className="animate-on-scroll"
             style={{ transitionDelay: "200ms" }}
           >
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="font-semibold text-foreground mb-4">
               Legal
             </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -450,7 +453,7 @@ function Footer() {
             className="animate-on-scroll"
             style={{ transitionDelay: "300ms" }}
           >
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="font-semibold text-foreground mb-4">
               Connect
             </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">

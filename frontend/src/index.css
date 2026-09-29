@@ -55,15 +55,19 @@
   position: relative;
   will-change: transform, opacity;
   animation: auth-ring-breathe 7s ease-in-out infinite;
+  box-shadow:
+    0 0 0 1px rgba(201, 168, 76, 0.38),
+    0 0 20px rgba(240, 214, 130, 0.22),
+    inset 0 0 14px rgba(255, 255, 255, 0.05);
 }
 
 /* Glowing comet arc that travels around the ring border */
 .auth-ring::before {
   content: "";
   position: absolute;
-  inset: -1px;
+  inset: -2px;
   border-radius: 9999px;
-  padding: 1px;
+  padding: 2px;
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
@@ -82,10 +86,11 @@
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
-}
+  }
 
 .auth-ring--outer {
   animation-duration: 8s;
+  border-color: rgba(201, 168, 76, 0.75);
 }
 
 .auth-ring--outer::before {
@@ -96,6 +101,7 @@
 .auth-ring--inner {
   animation-duration: 6s;
   animation-delay: -3s;
+  border-color: rgba(255, 222, 120, 0.72);
 }
 
 .auth-ring--inner::before {

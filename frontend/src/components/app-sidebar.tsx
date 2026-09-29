@@ -21,6 +21,7 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
   SidebarHeader,
   SidebarRail,
   SidebarMenuButton,
@@ -153,7 +154,62 @@ const instructorNavMain = [
   capstoneSearchNavItem,
 ];
 
-const skeletonRowWidths = [24, 20, 28, 22, 26];
+// Static class names so Tailwind can generate them (dynamic `w-${n}` gets purged)
+const skeletonRowWidths = ["w-20", "w-16", "w-24", "w-20", "w-24"];
+
+function AppSidebarSkeleton() {
+  return (
+    <>
+      <SidebarContent>
+        {/* Mirrors NavMain: SidebarGroup > SidebarMenu > item (h-8, px-2, gap-2) */}
+        <SidebarGroup>
+          <SidebarMenu>
+            {skeletonRowWidths.map((width, index) => (
+              <SidebarMenuItem key={index}>
+                <div className="flex h-8 items-center gap-2 rounded-md px-2">
+                  <Skeleton className="size-4 shrink-0 rounded-md" />
+                  <Skeleton
+                    className={`h-4 ${width} group-data-[collapsible=icon]:hidden`}
+                  />
+                </div>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        {/* Mirrors NavSecondary (Settings), pinned to the bottom */}
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <div className="flex h-8 items-center gap-2 rounded-md px-2">
+                <Skeleton className="size-4 shrink-0 rounded-md" />
+                <Skeleton className="h-4 w-16 group-data-[collapsible=icon]:hidden" />
+              </div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* Mirrors NavUser: size="lg" button, avatar + two text lines + chevron */}
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex h-12 items-center gap-2 rounded-md p-2 group-data-[collapsible=icon]:p-0">
+              <Skeleton className="size-8 shrink-0 rounded-lg" />
+              <div className="grid flex-1 gap-1.5 group-data-[collapsible=icon]:hidden">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="ml-auto size-4 rounded-md group-data-[collapsible=icon]:hidden" />
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+
+      <SidebarRail />
+    </>
+  );
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
@@ -267,31 +323,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       {!sidebarDataLoaded ? (
-        <div className="flex flex-col h-full">
-          <SidebarContent className="flex-1">
-            <SidebarMenu className="space-y-2">
-              {skeletonRowWidths.map((width, index) => (
-                <SidebarMenuItem key={index} className="flex items-center">
-                  <Skeleton className="size-4 rounded-md" />
-                  <Skeleton className={`ml-3 h-4 w-${width} group-data-[collapsible=icon]:hidden`} />
-                </SidebarMenuItem>
-              ))}
-              {/* Settings item skeleton */}
-              <SidebarMenuItem className="mt-auto flex items-center">
-                <Skeleton className="size-4 rounded-md" />
-                <Skeleton className="ml-3 h-4 w-20 group-data-[collapsible=icon]:hidden" />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarContent>
-          <SidebarFooter className="flex items-center">
-            <Skeleton className="size-8 rounded-full" />
-            <div className="ml-3 space-y-1">
-              <Skeleton className="h-4 w-20 group-data-[collapsible=icon]:hidden" />
-              <Skeleton className="h-4 w-16 group-data-[collapsible=icon]:hidden" />
-            </div>
-          </SidebarFooter>
-          <SidebarRail />
-        </div>
+        <AppSidebarSkeleton />
       ) : (
         <>
           <SidebarContent>
