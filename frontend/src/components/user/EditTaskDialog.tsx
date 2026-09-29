@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
 import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 import {
-  useGetTaskMembers,
   useGetAllAssignedMembers,
   useCreateAssignedMember,
   useDeleteAssignedMember,
@@ -49,11 +48,9 @@ import type {
 } from "@/types/task";
 
 /**
- * Mirrors AddTaskDialog's AssignableMember shape — member_id is the
- * project_members row id, which is what actually gets persisted /
- * FK-checked on the backend. `id` (the user id) is kept only for
- * display/avatar-initial purposes — do NOT use it for equality checks
- * against assigned members.
+ * member_id is the project_members row id, which is what actually gets
+ * persisted / FK-checked on the backend. `id` (the user id) is kept only
+ * for display purposes.
  */
 type AssignableMember = {
   member_id: string;
@@ -70,7 +67,6 @@ type TaskFormState = {
   deadline: string;
   primary_skill: Skill | "";
   secondary_skills: Skill[];
-  assigned_members: AssignableMember[];
 };
 
 const PRIORITY_OPTIONS: {
@@ -95,7 +91,7 @@ const SKILL_OPTIONS: {
   { value: "Backend Development", label: "Backend Development" },
   { value: "Frontend Development", label: "Frontend Development" },
   { value: "Mobile Development", label: "Mobile Development" },
-  { value: "Iot Development", label: "IoT Development" },
+  { value: "IOT Development", label: "IOT Development" },
   { value: "Database Design", label: "Database Design" },
   { value: "System Architecture", label: "System Architecture" },
   { value: "UI/UX Design", label: "UI/UX Design" },
@@ -129,17 +125,7 @@ const SKILL_OPTIONS: {
   { value: "Resource Management", label: "Resource Management" },
 ];
 
-// NOTE: `member.member_id` below assumes useGetTaskMembers's return type
-// exposes a `member_id` field (the project_members row id) alongside
-// `id`/`first_name`/`last_name`, matching AddTaskDialog's convention.
-// I haven't seen that hook's actual return type — if it doesn't have
-// member_id (e.g. it's nested under a joined `project_member` object,
-// or absent entirely), this mapping and the `assigned_members` fallback
-// below both need adjusting to match its real shape.
-function formStateFromTask(
-  task: TaskResponseMembers,
-  assignedMembers?: AssignableMember[],
-): TaskFormState {
+function formStateFromTask(task: TaskResponseMembers): TaskFormState {
   return {
     name: task.name ?? "",
     description: task.description ?? "",
@@ -148,14 +134,6 @@ function formStateFromTask(
     deadline: task.deadline ?? "",
     primary_skill: (task.primary_skill as Skill) ?? "",
     secondary_skills: (task.secondary_skills as Skill[]) ?? [],
-    assigned_members:
-      assignedMembers ??
-      (task.assigned_members ?? []).map((member) => ({
-        member_id: (member as { member_id?: string }).member_id ?? "",
-        id: member.id,
-        first_name: member.first_name,
-        last_name: member.last_name,
-      })),
   };
 }
 
@@ -178,6 +156,16 @@ export default function EditTaskDialog({
     formStateFromTask(task),
   );
 
+  /**
+   * The member selection is stored as a list of project_members ids.
+   * `null` means "the user hasn't touched it yet", in which case the
+   * selection is whatever is currently assigned in the database. This
+   * avoids any timing issue with data loading after the drawer opens.
+   */
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[] | null>(
+    null,
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
@@ -192,11 +180,10 @@ export default function EditTaskDialog({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const { data: currentAssignedMembers, isLoading: currentMembersLoading } =
-    useGetTaskMembers(open ? task.id : "");
+  const { data: allAssignedMembers, isLoading: assignedLoading } =
+    useGetAllAssignedMembers();
 
-  const { data: allAssignedMembers } = useGetAllAssignedMembers();
-
+  // The real assignment rows for this task (source of truth for what's saved).
   const taskAssignmentRows = useMemo(
     () => (allAssignedMembers ?? []).filter((row) => row.task_id === task.id),
     [allAssignedMembers, task.id],
@@ -224,32 +211,29 @@ export default function EditTaskDialog({
       }));
   }, [projectMembersData]);
 
+  // Effective selection: user's edits if any, otherwise what's already saved.
+  const currentSelectedIds: string[] = useMemo(
+    () =>
+      selectedMemberIds ??
+      taskAssignmentRows.map((row) => String(row.member_id)),
+    [selectedMemberIds, taskAssignmentRows],
+  );
+
+  const selectedMembers = useMemo(
+    () =>
+      assignableMembers.filter((member) =>
+        currentSelectedIds.includes(member.member_id),
+      ),
+    [assignableMembers, currentSelectedIds],
+  );
+
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     setError(null);
 
     if (nextOpen) {
-      const liveMembers =
-        currentAssignedMembers?.map((member) => ({
-          member_id: (member as { member_id?: string }).member_id ?? "",
-          id: member.id,
-          first_name: member.first_name,
-          last_name: member.last_name,
-        })) ?? [];
-
-      setTaskForm(
-        formStateFromTask(
-          task,
-          liveMembers.length > 0
-            ? liveMembers
-            : (task.assigned_members ?? []).map((member) => ({
-                member_id: (member as { member_id?: string }).member_id ?? "",
-                id: member.id,
-                first_name: member.first_name,
-                last_name: member.last_name,
-              })),
-        ),
-      );
+      setTaskForm(formStateFromTask(task));
+      setSelectedMemberIds(null);
     }
   };
 
@@ -290,27 +274,15 @@ export default function EditTaskDialog({
   };
 
   const toggleAssignedMember = (member: AssignableMember) => {
-    setTaskForm((prev) => {
-      const exists = prev.assigned_members.some(
-        (assigned) =>
-          (assigned.member_id && assigned.member_id === member.member_id) ||
-          assigned.id === member.id,
-      );
+    // Always start from the effective selection so existing assignees
+    // are kept and the new pick is added on top of them.
+    const base = currentSelectedIds;
 
-      return {
-        ...prev,
-        assigned_members: exists
-          ? prev.assigned_members.filter(
-              (assigned) =>
-                !(
-                  (assigned.member_id &&
-                    assigned.member_id === member.member_id) ||
-                  assigned.id === member.id
-                ),
-            )
-          : [...prev.assigned_members, member],
-      };
-    });
+    setSelectedMemberIds(
+      base.includes(member.member_id)
+        ? base.filter((id) => id !== member.member_id)
+        : [...base, member.member_id],
+    );
   };
 
   const handleSubmit = async () => {
@@ -346,7 +318,7 @@ export default function EditTaskDialog({
       return;
     }
 
-    if (taskForm.assigned_members.length === 0) {
+    if (currentSelectedIds.length === 0) {
       setError("At least one assigned member is required.");
       return;
     }
@@ -367,30 +339,28 @@ export default function EditTaskDialog({
         task: payload,
       });
 
+      // Compare by project_members id, as strings on both sides.
       const originalMemberIds = new Set(
-        taskAssignmentRows.map((row) => row.member_id),
+        taskAssignmentRows.map((row) => String(row.member_id)),
       );
+      const currentMemberIds = new Set(currentSelectedIds);
 
-      const currentMemberIds = new Set(
-        taskForm.assigned_members.map((member) => member.member_id),
-      );
-
-      const toAdd = taskForm.assigned_members.filter(
-        (member) => !originalMemberIds.has(member.member_id),
+      const toAdd = currentSelectedIds.filter(
+        (memberId) => !originalMemberIds.has(memberId),
       );
 
       const toRemove = taskAssignmentRows.filter(
-        (row) => !currentMemberIds.has(row.member_id),
+        (row) => !currentMemberIds.has(String(row.member_id)),
       );
 
       if (toAdd.length > 0 || toRemove.length > 0) {
         try {
           await Promise.all([
-            ...toAdd.map((member) =>
+            ...toAdd.map((memberId) =>
               createAssignedMemberMutation.mutateAsync({
                 projectId: projectId,
                 member: {
-                  member_id: member.member_id,
+                  member_id: memberId,
                   task_id: task.id,
                 },
               }),
@@ -762,23 +732,21 @@ export default function EditTaskDialog({
                       variant="outline"
                       role="combobox"
                       aria-expanded={assignedMembersOpen}
-                      disabled={
-                        !projectId || membersLoading || currentMembersLoading
-                      }
+                      disabled={!projectId || membersLoading || assignedLoading}
                       className="w-full justify-between text-left font-normal"
                     >
                       <span
                         className={cn(
-                          taskForm.assigned_members.length === 0 &&
+                          currentSelectedIds.length === 0 &&
                             "text-muted-foreground",
                         )}
                       >
-                        {membersLoading || currentMembersLoading
+                        {membersLoading || assignedLoading
                           ? "Loading members..."
-                          : taskForm.assigned_members.length === 0
+                          : currentSelectedIds.length === 0
                             ? "Select members"
-                            : `${taskForm.assigned_members.length} member${
-                                taskForm.assigned_members.length > 1 ? "s" : ""
+                            : `${currentSelectedIds.length} member${
+                                currentSelectedIds.length > 1 ? "s" : ""
                               } selected`}
                       </span>
                     </Button>
@@ -804,11 +772,8 @@ export default function EditTaskDialog({
                         )}
 
                       {assignableMembers.map((member) => {
-                        const selected = taskForm.assigned_members.some(
-                          (assigned) =>
-                            (assigned.member_id &&
-                              assigned.member_id === member.member_id) ||
-                            assigned.id === member.id,
+                        const selected = currentSelectedIds.includes(
+                          member.member_id,
                         );
 
                         return (
@@ -839,9 +804,9 @@ export default function EditTaskDialog({
                   </PopoverContent>
                 </Popover>
 
-                {taskForm.assigned_members.length > 0 && (
+                {selectedMembers.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {taskForm.assigned_members.map((member) => (
+                    {selectedMembers.map((member) => (
                       <span
                         key={member.member_id}
                         className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
@@ -924,7 +889,10 @@ export default function EditTaskDialog({
             Cancel
           </Button>
 
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || assignedLoading || membersLoading}
+          >
             {isSubmitting ? "Saving..." : "Save changes"}
           </Button>
         </DrawerFooter>

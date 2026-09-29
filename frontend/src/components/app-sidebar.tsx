@@ -3,7 +3,7 @@
 import { NavSecondary } from "@/components/nav-secondary";
 import * as React from "react";
 
-import { Spinner } from "./ui/spinner";
+import { Skeleton } from "./ui/skeleton";
 import { NavMain } from "@/components/nav-main";
 import { NavMain as NavShortcut } from "@/components/nav-shortcut";
 import { NavUser } from "@/components/nav-user";
@@ -153,6 +153,8 @@ const instructorNavMain = [
   capstoneSearchNavItem,
 ];
 
+const skeletonRowWidths = [24, 20, 28, 22, 26];
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
   const { data: currentProject, isLoading: isProjectLoading } =
@@ -265,18 +267,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       {!sidebarDataLoaded ? (
-        // Loading state for sidebar body
         <div className="flex flex-col h-full">
           <SidebarContent className="flex-1">
-            {/* Loading state for nav content */}
-            <div className="flex items-center justify-center h-full">
-              <Spinner/>
-            </div>
+            <SidebarMenu className="space-y-2">
+              {skeletonRowWidths.map((width, index) => (
+                <SidebarMenuItem key={index} className="flex items-center">
+                  <Skeleton className="size-4 rounded-md" />
+                  <Skeleton className={`ml-3 h-4 w-${width} group-data-[collapsible=icon]:hidden`} />
+                </SidebarMenuItem>
+              ))}
+              {/* Settings item skeleton */}
+              <SidebarMenuItem className="mt-auto flex items-center">
+                <Skeleton className="size-4 rounded-md" />
+                <Skeleton className="ml-3 h-4 w-20 group-data-[collapsible=icon]:hidden" />
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter>
-            {/* Loading state for user info */}
-            <div className="flex items-center justify-center py-4">
-              <Spinner/>
+          <SidebarFooter className="flex items-center">
+            <Skeleton className="size-8 rounded-full" />
+            <div className="ml-3 space-y-1">
+              <Skeleton className="h-4 w-20 group-data-[collapsible=icon]:hidden" />
+              <Skeleton className="h-4 w-16 group-data-[collapsible=icon]:hidden" />
             </div>
           </SidebarFooter>
           <SidebarRail />

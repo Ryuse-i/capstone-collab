@@ -156,11 +156,17 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: ({ id, task }: { id: string; task: UpdateTask }) =>
       api.updateTask(id, task),
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: taskKeys.list() });
       queryClient.invalidateQueries({
         queryKey: taskKeys.detail(variables.id),
       });
+      // Invalidate the project tasks list for the project of this task
+      if (result.project_id) {
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.listProject(result.project_id),
+        });
+      }
       // Need to get the project_id to invalidate assigned members query
       // Since we don't have it in the variables, we'll rely on list invalidation
       // which will trigger a refetch, and the assigned members query will
