@@ -109,6 +109,9 @@ export const taskKeys = {
   byProject: (id: string) => [...taskKeys.all, id, "project"] as const,
   details: () => [...taskKeys.all, "details"] as const,
   detail: (id: string) => [...taskKeys.details(), id] as const,
+  assignedMembersAll: () => [...taskKeys.all, "assignedMembers"] as const,
+  assignedMembers: (project_id: string) =>
+    [...taskKeys.assignedMembersAll(), project_id] as const,
 };
 
 export function useGetOneTask(id: string) {
@@ -145,7 +148,7 @@ export function useCreateTask() {
       });
       // Invalidate assigned members queries for the project
       queryClient.invalidateQueries({
-        queryKey: ["tasks", "assignedMembers", result.project_id],
+        queryKey: taskKeys.assignedMembers(result.project_id),
       });
     },
   });
@@ -167,12 +170,9 @@ export function useUpdateTask() {
           queryKey: taskKeys.listProject(result.project_id),
         });
       }
-      // Need to get the project_id to invalidate assigned members query
-      // Since we don't have it in the variables, we'll rely on list invalidation
-      // which will trigger a refetch, and the assigned members query will
-      // also be invalidated through the list invalidation in the query key structure
+      // Invalidate assigned members queries
       queryClient.invalidateQueries({
-        queryKey: ["tasks", "assignedMembers"],
+        queryKey: taskKeys.assignedMembersAll(),
       });
     },
   });
@@ -187,7 +187,7 @@ export function useDeleteTask() {
       queryClient.removeQueries({ queryKey: taskKeys.detail(id) });
       // Invalidate assigned members queries
       queryClient.invalidateQueries({
-        queryKey: ["tasks", "assignedMembers"],
+        queryKey: taskKeys.assignedMembersAll(),
       });
     },
   });
@@ -195,7 +195,7 @@ export function useDeleteTask() {
 
 export function useGetAllTaskAssignedMembers(id: string) {
   return useQuery({
-    queryKey: ["tasks", "assignedMembers", id],
+    queryKey: taskKeys.assignedMembers(id),
     queryFn: () => api.getAllTaskAssignedMembers(id),
     enabled: !!id,
   });

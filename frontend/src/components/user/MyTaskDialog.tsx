@@ -127,6 +127,7 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
       id: task.id,
       task: {
         started_at: new Date().toISOString(),
+        status: "in_progress",
       },
     });
   };
@@ -452,7 +453,7 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
         <div className="border-t px-6 py-3 shrink-0 flex justify-end bg-muted/50">
           {task && (
             <>
-              {isNotStarted && !task.started_at ? (
+              {isNotStarted ? (
                 <>
                   <DrawerClose asChild>
                     <Button variant="outline" className="min-w-24 mr-2">

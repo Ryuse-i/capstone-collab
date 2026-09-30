@@ -7,6 +7,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserBase } from "@/types/user";
 import { projectKeys } from "./useProject";
+import { taskKeys } from "./useTask";
 
 const url = "/assigned_members";
 const api = {
@@ -99,7 +100,7 @@ const api = {
 };
 
 export const assignedMemberKeys = {
-  all: "assigned_members" as const,
+  all: ["assigned_members"] as const,
   list: () => [...assignedMemberKeys.all, "list"] as const,
   task_list: (id: string) =>
     [...assignedMemberKeys.list(), "task", id] as const,
@@ -143,6 +144,7 @@ export function useCreateAssignedMember() {
       queryClient.invalidateQueries({
         queryKey: projectKeys.detailSnapshot(variables.projectId),
       });
+      queryClient.invalidateQueries({ queryKey: taskKeys.assignedMembers(variables.projectId) });
     },
   });
 }
@@ -153,6 +155,7 @@ export function useBatchCreateMembers() {
     mutationFn: api.batchCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assignedMemberKeys.list() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.assignedMembersAll() });
     },
   });
 }
@@ -172,6 +175,7 @@ export function useUpdateAssignedMember() {
         queryKey: assignedMemberKeys.detail(variables.id),
       });
       queryClient.invalidateQueries({ queryKey: assignedMemberKeys.list() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.assignedMembersAll() });
     },
   });
 }
@@ -191,6 +195,7 @@ export function useDeleteAssignedMember() {
       queryClient.invalidateQueries({
         queryKey: projectKeys.detailSnapshot(variables.projectId),
       });
+      queryClient.invalidateQueries({ queryKey: taskKeys.assignedMembers(variables.projectId) });
     },
   });
 }

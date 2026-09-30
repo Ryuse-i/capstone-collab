@@ -354,6 +354,7 @@ export default function EditTaskDialog({
       );
 
       if (toAdd.length > 0 || toRemove.length > 0) {
+        let syncFailed = false;
         try {
           await Promise.all([
             ...toAdd.map((memberId) =>
@@ -372,54 +373,34 @@ export default function EditTaskDialog({
               }),
             ),
           ]);
-
-          queryClient.invalidateQueries({
-            queryKey: assignedMemberKeys.task_list(task.id),
-          });
-
-          queryClient.invalidateQueries({
-            queryKey: assignedMemberKeys.list(),
-          });
-
-          // Invalidate project snapshot to update unassigned_tasks count
-          queryClient.invalidateQueries({
-            queryKey: projectKeys.detailSnapshot(projectId),
-          });
         } catch (assignErr) {
           console.error("Failed to sync assigned members", assignErr);
-
           setError(
             "Task was updated, but syncing assigned members failed. You can adjust them from the task detail page.",
           );
-
-          // Some adds/removes in the Promise.all may have already
-          // succeeded before the failure — refresh assignment-related
-          // caches too, not just the task list, so anything that did
-          // go through isn't left stale.
-          queryClient.invalidateQueries({
-            queryKey: assignedMemberKeys.task_list(task.id),
-          });
-
-          queryClient.invalidateQueries({
-            queryKey: assignedMemberKeys.list(),
-          });
-
-          queryClient.invalidateQueries({
-            queryKey: taskKeys.byProject(projectId),
-          });
-
-          onUpdated?.();
-          handleOpenChange(false);
-          return;
+          syncFailed = true;
+        } finally {
+          // Invalidate assignment-related queries regardless of success or failure
+          queryClient.invalidateQueries({ queryKey: taskKeys.assignedMembers(projectId) });
+          queryClient.invalidateQueries({ queryKey: assignedMemberKeys.task_list(task.id) });
+          queryClient.invalidateQueries({ queryKey: assignedMemberKeys.list() });
+          queryClient.invalidateQueries({ queryKey: projectKeys.detailSnapshot(projectId) });
         }
+
+        // Always refresh the project task list and notify parent
+        queryClient.invalidateQueries({ queryKey: taskKeys.listProject(projectId) });
+        onUpdated?.();
+        if (!syncFailed) {
+          // Only close the drawer if assignment sync succeeded
+          handleOpenChange(false);
+        }
+        // If syncFailed is true, leave drawer open so user can see the error
+      } else {
+        // No assignment changes, just refresh the project task list
+        queryClient.invalidateQueries({ queryKey: taskKeys.listProject(projectId) });
+        onUpdated?.();
+        handleOpenChange(false);
       }
-
-      queryClient.invalidateQueries({
-        queryKey: taskKeys.listProject(projectId),
-      });
-
-      onUpdated?.();
-      handleOpenChange(false);
     } catch (err) {
       setError(
         err instanceof Error
