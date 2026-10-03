@@ -9,11 +9,15 @@ import {
   useCreateAssignedMember,
   assignedMemberKeys,
 } from "@/hooks/useAssignedMember";
+import {
+  useCreateAssignedReviewer,
+} from "@/hooks/useCreateAssignedReviewer";
 import { projectKeys } from "@/hooks/useProject";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -82,6 +86,23 @@ type SupertaskFormState = {
   deadline: string;
 };
 
+const initialTaskForm: TaskFormState = {
+  name: "",
+  description: "",
+  priority: "medium",
+  category: "document",
+  deadline: "",
+  primary_skill: "",
+  secondary_skills: [],
+  assigned_members: [],
+};
+
+const initialSupertaskForm: SupertaskFormState = {
+  name: "",
+  description: "",
+  deadline: "",
+};
+
 const PRIORITY_OPTIONS: {
   value: TaskPriority;
   label: string;
@@ -118,23 +139,6 @@ const SKILL_OPTIONS: { value: Skill; label: string }[] = [
   { value: "Resource Management", label: "Resource Management" },
 ];
 
-const initialTaskForm: TaskFormState = {
-  name: "",
-  description: "",
-  priority: "medium",
-  category: "document",
-  deadline: "",
-  primary_skill: "",
-  secondary_skills: [],
-  assigned_members: [],
-};
-
-const initialSupertaskForm: SupertaskFormState = {
-  name: "",
-  description: "",
-  deadline: "",
-};
-
 export interface AddTaskDialogProps {
   projectId?: string;
   onCreated?: () => void;
@@ -155,28 +159,31 @@ export function AddTaskDialog({
   const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
+  const [reviewerOpen, setReviewerOpen] = useState(false);
+  const [selectedReviewerId, setSelectedReviewerId] = useState<string | null>(
+    null,
+  );
 
   const createTaskMutation = useCreateTask();
   const createAssignedMemberMutation = useCreateAssignedMember();
+  const createAssignedReviewerMutation = useCreateAssignedReviewer();
   const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  // Only fetch once we actually have a project to scope the members to,
-  // and only while the dialog is open (no point fetching in the background).
   const {
     data: projectMembersData,
     isLoading: membersLoading,
     isError: membersError,
   } = useGetMembersWithUserInfo(projectId ?? "");
 
-  // Show project members with role "member" or "leader" — leaders can be assigned tasks and carry workload
   const assignableMembers: AssignableMember[] = useMemo(() => {
     return (projectMembersData ?? [])
       .filter(
         (projectMember) =>
-          (projectMember.project_role === "member" || projectMember.project_role === "leader") && projectMember.users,
+          (projectMember.project_role === "member" ||
+            projectMember.project_role === "leader") &&
+          projectMember.users,
       )
       .map((projectMember) => ({
         member_id: projectMember.id.toString(),
@@ -186,6 +193,28 @@ export function AddTaskDialog({
       }));
   }, [projectMembersData]);
 
+  const eligibleReviewers: AssignableMember[] = useMemo(() => {
+    return (projectMembersData ?? [])
+      .filter(
+        (projectMember) =>
+          (projectMember.project_role === "leader" ||
+            projectMember.project_role === "advisor" ||
+            projectMember.project_role === "instructor") &&
+          projectMember.users,
+      )
+      .map((projectMember) => ({
+        member_id: projectMember.id.toString(),
+        id: projectMember.user_id,
+        first_name: projectMember.users.first_name,
+        last_name: projectMember.users.last_name,
+      }));
+  }, [projectMembersData]);
+
+  const selectedReviewer = useMemo(
+    () => eligibleReviewers.find((m) => m.member_id === selectedReviewerId) ?? null,
+    [eligibleReviewers, selectedReviewerId],
+  );
+
   const resetForms = () => {
     setTaskForm(initialTaskForm);
     setSupertaskForm(initialSupertaskForm);
@@ -194,6 +223,8 @@ export function AddTaskDialog({
     setPrimarySkillOpen(false);
     setAssignedMembersOpen(false);
     setSecondarySkillOpen(false);
+    setReviewerOpen(false);
+    setSelectedReviewerId(null);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -261,6 +292,12 @@ export function AddTaskDialog({
           : [...prev.assigned_members, member],
       };
     });
+  };
+
+  const toggleReviewer = (member: AssignableMember) => {
+    setSelectedReviewerId(
+      selectedReviewerId === member.member_id ? null : member.member_id,
+    );
   };
 
   const handleSupertaskFieldChange = (
@@ -367,9 +404,25 @@ export function AddTaskDialog({
             // The task itself was created successfully — don't roll that
             // back, just surface that assignment partially/fully failed.
             console.error("Failed to assign one or more members", assignErr);
-            setError(
-              "Task was created, but assigning some members failed. You can add them from the task detail page.",
-            );
+            toast.error("Task was created, but assigning some members failed. You can add them from the task detail page.");
+            onCreated?.();
+            handleOpenChange(false);
+            return;
+          }
+        }
+
+        // Handle assigned reviewer (only one allowed)
+        if (selectedReviewerId) {
+          try {
+            await createAssignedReviewerMutation.mutateAsync({
+              member_id: selectedReviewerId,
+              task_id: String(createdTask.id),
+            });
+          } catch (reviewerErr) {
+            // The task itself was created successfully — don't roll that
+            // back, just surface that reviewer assignment failed.
+            console.error("Failed to assign reviewer", reviewerErr);
+            toast.error("Task was created, but assigning the reviewer failed. You can add them from the task detail page.");
             onCreated?.();
             handleOpenChange(false);
             return;
@@ -399,7 +452,8 @@ export function AddTaskDialog({
   };
 
   const isSubmitting =
-    createTaskMutation.isPending || createAssignedMemberMutation.isPending;
+    createTaskMutation.isPending || createAssignedMemberMutation.isPending ||
+    createAssignedReviewerMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -610,7 +664,7 @@ export function AddTaskDialog({
                           SKILL_OPTIONS.find(
                             (o) => o.value === taskForm.primary_skill,
                           )?.label
-                        }
+                        },
 
                         <button
                           type="button"
@@ -697,7 +751,7 @@ export function AddTaskDialog({
                           key={skill}
                           className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                         >
-                          {SKILL_OPTIONS.find((o) => o.value === skill)?.label}
+                          {SKILL_OPTIONS.find((o) => o.value === skill)?.label},
 
                           <button
                             type="button"
@@ -810,7 +864,7 @@ export function AddTaskDialog({
                           key={member.member_id}
                           className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                         >
-                          {member.first_name} {member.last_name}
+                          {member.first_name} {member.last_name},
                           <button
                             type="button"
                             onClick={() => toggleAssignedMember(member)}
@@ -822,10 +876,117 @@ export function AddTaskDialog({
                         </span>
                       ))}
                     </div>
+                  )
+                  }
+                  <p className="text-xs text-muted-foreground">
+                    Select the members who will be assigned to this task.
+                  </p>
+                </div>
+
+                {/* Assigned Reviewer */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    Assigned Reviewer
+                  </Label>
+
+                  <Popover
+                    open={reviewerOpen}
+                    onOpenChange={setReviewerOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={reviewerOpen}
+                        disabled={!projectId || membersLoading}
+                        className="w-full justify-between text-left font-normal"
+                      >
+                        <span
+                          className={cn(
+                            !selectedReviewerId && "text-muted-foreground",
+                          )}
+                        >
+                          {membersLoading
+                            ? "Loading members..."
+                            : !selectedReviewerId
+                              ? "Select reviewer"
+                              : `${selectedReviewer ? "1" : "0"} reviewer selected`}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <div
+                        className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                        onWheel={(e) => e.stopPropagation()}
+                      >
+                        {membersError && (
+                          <p className="px-2 py-2 text-sm text-rose-600">
+                            Couldn't load members.
+                          </p>
+                        )}
+
+                        {!membersError &&
+                          !membersLoading &&
+                          eligibleReviewers.length === 0 && (
+                            <p className="px-2 py-2 text-sm text-neutral-500">
+                              No eligible reviewers (leader, advisor, instructor) on this project.
+                            </p>
+                          )}
+
+                        {eligibleReviewers.map((member) => {
+                          const selected =
+                            selectedReviewerId === member.member_id;
+
+                          return (
+                            <button
+                              key={member.member_id}
+                              type="button"
+                              onClick={() => toggleReviewer(member)}
+                              className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
+                                  {member.first_name?.charAt(0)}
+                                  {member.last_name?.charAt(0)}
+                                </div>
+
+                                <span>
+                                  {member.first_name} {member.last_name}
+                                </span>
+                              </div>
+
+                              {selected && (
+                                <Check className="h-4 w-4 text-[#7A0C2E]" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {selectedReviewer && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span
+                        className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
+                      >
+                        {selectedReviewer.first_name} {selectedReviewer.last_name}
+                        <button
+                          type="button"
+                          onClick={() => toggleReviewer(selectedReviewer)}
+                          className="rounded-full hover:bg-[#7A0C2E]/10"
+                          aria-label={`Remove ${selectedReviewer.first_name} ${selectedReviewer.last_name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    </div>
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    Select the members who will be assigned to this task.
+                    Select the reviewer for this task (leader, advisor, or instructor only).
                   </p>
                 </div>
 

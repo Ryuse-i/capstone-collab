@@ -25,6 +25,7 @@ import type {
 } from "@/types/task";
 import { formatDistanceToNow } from "date-fns";
 import { formatStatusLabel } from "@/components/user/TaskTable";
+import { TaskComments } from "./TaskComments";
 
 // Soft pill badges (outline-tinted, like the reference "In Research" / "Low" pills)
 // rather than solid-fill badges — reserved for the header meta rows.
@@ -447,6 +448,16 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
           <div className="flex-1 flex items-center justify-center px-6 pb-6 text-sm text-muted-foreground">
             <Clock className="size-4 mr-2" />
             No task selected.
+          </div>
+        )}
+
+        {/* Task Comments Section */}
+        {task && (
+          <div className="mt-6 border-t pt-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Task Comments
+            </h3>
+            <TaskComments taskId={task.id} />
           </div>
         )}
 

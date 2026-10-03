@@ -4,19 +4,25 @@ from app.core.db import get_async_session
 from app.modules.task_comments.schema import TaskCommentCreate, TaskCommentUpdate, TaskCommentResponse
 from app.modules.task_comments.services import TaskCommentService
 from typing import List
+from uuid import UUID
 
 # Standardizing on task_comment_router
 task_comment_router = APIRouter()
 
 
 @task_comment_router.get("/", response_model=List[TaskCommentResponse])
-async def get_all_task_comments(db: AsyncSession = Depends(get_async_session)):
-    """Fetch all task comments from the database."""
+async def get_task_comments(
+    task_id: UUID | None = None,
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Fetch task comments, optionally filtered by task_id."""
+    if task_id:
+        return await TaskCommentService.get_task_comments_by_task_id(db, task_id)
     return await TaskCommentService.get_all_task_comments(db)
 
 
 @task_comment_router.get("/{task_comment_id}", response_model=TaskCommentResponse)
-async def get_one_task_comment(task_comment_id: int, db: AsyncSession = Depends(get_async_session)):
+async def get_one_task_comment(task_comment_id: UUID, db: AsyncSession = Depends(get_async_session)):
     """Fetch a single task comment by its ID."""
     db_item = await TaskCommentService.get_one_task_comment(db, task_comment_id)
     if not db_item:
@@ -35,7 +41,7 @@ async def create_task_comment(task_comment: TaskCommentCreate, db: AsyncSession 
 
 @task_comment_router.patch("/{task_comment_id}", response_model=TaskCommentResponse)
 async def update_task_comment(
-    task_comment_id: int,
+    task_comment_id: UUID,
     task_comment: TaskCommentUpdate,
     db: AsyncSession = Depends(get_async_session),
 ):
@@ -50,7 +56,7 @@ async def update_task_comment(
 
 @task_comment_router.delete("/{task_comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task_comment(
-    task_comment_id: int,
+    task_comment_id: UUID,
     db: AsyncSession = Depends(get_async_session),
 ):
     """Delete a task comment. Returns 204 No Content on success."""

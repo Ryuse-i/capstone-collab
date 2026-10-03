@@ -4,6 +4,7 @@ from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, ForeignKey, UUID as PG_UUID, text
 from sqlalchemy.dialects.postgresql import ARRAY
+from app.modules.assigned_reviewer.model import AssignedReviewer
 import enum
 from sqlalchemy import Enum as SAEnum
 from typing import TYPE_CHECKING, List
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from app.modules.member_activities.model import MemberActivity
     from app.modules.users.model import User
     from app.modules.assigned_members.model import AssignedMember
+    from app.modules.assigned_reviewer.model import AssignedReviewer
 
 
 class ProjectRole(str, enum.Enum):
@@ -128,6 +130,12 @@ class ProjectMember(Base):
 
     assigned_members: Mapped[list["AssignedMember"]] = relationship(
         "AssignedMember",
+        back_populates="members",
+        cascade="all, delete-orphan",
+    )
+
+    assigned_reviewers: Mapped[list["AssignedReviewer"]] = relationship(
+        "AssignedReviewer",
         back_populates="members",
         cascade="all, delete-orphan",
     )

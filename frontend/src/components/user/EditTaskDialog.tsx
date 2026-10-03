@@ -11,6 +11,12 @@ import {
   useDeleteAssignedMember,
   assignedMemberKeys,
 } from "@/hooks/useAssignedMember";
+import {
+  useGetTaskReviewers,
+  useCreateAssignedReviewer,
+  useUpdateAssignedReviewer,
+  useDeleteAssignedReviewer,
+} from "@/hooks/useCreateAssignedReviewer";
 import { projectKeys } from "@/hooks/useProject";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,15 +172,25 @@ export default function EditTaskDialog({
     null,
   );
 
+  // Selected reviewer ID (only one allowed)
+  // undefined = untouched (use DB value), null = explicitly cleared, string = chosen member_id
+  const [selectedReviewerId, setSelectedReviewerId] = useState<string | null | undefined>(
+    undefined,
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
+  const [reviewerOpen, setReviewerOpen] = useState(false);
 
   const updateTaskMutation = useUpdateTask();
   const createAssignedMemberMutation = useCreateAssignedMember();
   const deleteAssignedMemberMutation = useDeleteAssignedMember();
+  const createAssignedReviewerMutation = useCreateAssignedReviewer();
+  const updateAssignedReviewerMutation = useUpdateAssignedReviewer();
+  const deleteAssignedReviewerMutation = useDeleteAssignedReviewer();
   const queryClient = useQueryClient();
 
   const today = new Date();
@@ -189,18 +205,43 @@ export default function EditTaskDialog({
     [allAssignedMembers, task.id],
   );
 
+  // Get current reviewer for this task
+  const {
+    data: taskReviewers = [],
+    isLoading: reviewerLoading,
+  } = useGetTaskReviewers(task.id.toString());
+
   const {
     data: projectMembersData,
     isLoading: membersLoading,
     isError: membersError,
   } = useGetMembersWithUserInfo(projectId ?? "");
 
+  // Assignable members (member or leader roles for task assignment)
   const assignableMembers: AssignableMember[] = useMemo(() => {
     return (projectMembersData ?? [])
       .filter(
         (projectMember) =>
           (projectMember.project_role === "member" ||
             projectMember.project_role === "leader") &&
+          projectMember.users,
+      )
+      .map((projectMember) => ({
+        member_id: projectMember.id.toString(),
+        id: projectMember.user_id,
+        first_name: projectMember.users.first_name,
+        last_name: projectMember.users.last_name,
+      }));
+  }, [projectMembersData]);
+
+  // Eligible reviewers (leader, advisor, instructor roles)
+  const eligibleReviewers: AssignableMember[] = useMemo(() => {
+    return (projectMembersData ?? [])
+      .filter(
+        (projectMember) =>
+          (projectMember.project_role === "leader" ||
+            projectMember.project_role === "advisor" ||
+            projectMember.project_role === "instructor") &&
           projectMember.users,
       )
       .map((projectMember) => ({
@@ -227,6 +268,23 @@ export default function EditTaskDialog({
     [assignableMembers, currentSelectedIds],
   );
 
+  const dbReviewerRow = taskReviewers[0];
+  const dbReviewerMemberId = dbReviewerRow ? String(dbReviewerRow.member_id) : null;
+
+  const effectiveReviewerId: string | null =
+    selectedReviewerId === undefined ? dbReviewerMemberId : selectedReviewerId;
+
+  const currentReviewer: AssignableMember | null = useMemo(() => {
+    if (!effectiveReviewerId) return null;
+    const member = projectMembersData?.find((m) => m.id.toString() === effectiveReviewerId);
+    if (!member?.users) return null;
+    return {
+      member_id: member.id.toString(),
+      id: member.user_id,
+      first_name: member.users.first_name,
+      last_name: member.users.last_name,
+    };
+  }, [projectMembersData, effectiveReviewerId]);
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     setError(null);
@@ -234,6 +292,7 @@ export default function EditTaskDialog({
     if (nextOpen) {
       setTaskForm(formStateFromTask(task));
       setSelectedMemberIds(null);
+      setSelectedReviewerId(undefined); // Reset reviewer selection when opening
     }
   };
 
@@ -283,6 +342,10 @@ export default function EditTaskDialog({
         ? base.filter((id) => id !== member.member_id)
         : [...base, member.member_id],
     );
+  };
+
+  const toggleReviewer = (member: AssignableMember) => {
+    setSelectedReviewerId(effectiveReviewerId === member.member_id ? null : member.member_id);
   };
 
   const handleSubmit = async () => {
@@ -353,8 +416,36 @@ export default function EditTaskDialog({
         (row) => !currentMemberIds.has(String(row.member_id)),
       );
 
+      let reviewerSyncFailed = false;
+      if (dbReviewerMemberId !== effectiveReviewerId) {
+        try {
+          if (dbReviewerRow && effectiveReviewerId) {
+            // reviewer changed: update the existing row
+            await updateAssignedReviewerMutation.mutateAsync({
+              id: dbReviewerRow.id,
+              assignedReviewer: { member_id: effectiveReviewerId },
+            });
+          } else if (dbReviewerRow) {
+            // reviewer cleared: delete by ROW id, not member_id
+            await deleteAssignedReviewerMutation.mutateAsync(dbReviewerRow.id);
+          } else if (effectiveReviewerId) {
+            // no reviewer before, one chosen now
+            await createAssignedReviewerMutation.mutateAsync({
+              member_id: effectiveReviewerId,
+              task_id: String(task.id),
+            });
+          }
+        } catch (reviewerErr) {
+          console.error("Failed to sync assigned reviewer", reviewerErr);
+          setError(
+            "Task was updated, but syncing the assigned reviewer failed. You can adjust it from the task detail page.",
+          );
+          reviewerSyncFailed = true;
+        }
+      }
+
+      let memberSyncFailed = false;
       if (toAdd.length > 0 || toRemove.length > 0) {
-        let syncFailed = false;
         try {
           await Promise.all([
             ...toAdd.map((memberId) =>
@@ -378,7 +469,7 @@ export default function EditTaskDialog({
           setError(
             "Task was updated, but syncing assigned members failed. You can adjust them from the task detail page.",
           );
-          syncFailed = true;
+          memberSyncFailed = true;
         } finally {
           // Invalidate assignment-related queries regardless of success or failure
           queryClient.invalidateQueries({ queryKey: taskKeys.assignedMembers(projectId) });
@@ -390,16 +481,19 @@ export default function EditTaskDialog({
         // Always refresh the project task list and notify parent
         queryClient.invalidateQueries({ queryKey: taskKeys.listProject(projectId) });
         onUpdated?.();
-        if (!syncFailed) {
-          // Only close the drawer if assignment sync succeeded
+        if (!reviewerSyncFailed && !memberSyncFailed) {
+          // Only close the drawer if both syncs succeeded
           handleOpenChange(false);
         }
-        // If syncFailed is true, leave drawer open so user can see the error
+        // If either sync failed, leave drawer open so user can see the error
       } else {
         // No assignment changes, just refresh the project task list
         queryClient.invalidateQueries({ queryKey: taskKeys.listProject(projectId) });
         onUpdated?.();
-        handleOpenChange(false);
+        if (!reviewerSyncFailed) {
+          handleOpenChange(false);
+        }
+        // If reviewerSyncFailed is true, leave drawer open so user can see the error
       }
     } catch (err) {
       setError(
@@ -413,7 +507,10 @@ export default function EditTaskDialog({
   const isSubmitting =
     updateTaskMutation.isPending ||
     createAssignedMemberMutation.isPending ||
-    deleteAssignedMemberMutation.isPending;
+    deleteAssignedMemberMutation.isPending ||
+    createAssignedReviewerMutation.isPending ||
+    updateAssignedReviewerMutation.isPending ||
+    deleteAssignedReviewerMutation.isPending;
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
@@ -722,13 +819,13 @@ export default function EditTaskDialog({
                             "text-muted-foreground",
                         )}
                       >
-                        {membersLoading || assignedLoading
-                          ? "Loading members..."
-                          : currentSelectedIds.length === 0
-                            ? "Select members"
-                            : `${currentSelectedIds.length} member${
-                                currentSelectedIds.length > 1 ? "s" : ""
-                              } selected`}
+                      {membersLoading || assignedLoading
+                        ? "Loading members..."
+                        : currentSelectedIds.length === 0
+                          ? "Select members"
+                          : `${currentSelectedIds.length} member${
+                              currentSelectedIds.length > 1 ? "s" : ""
+                            } selected`}
                       </span>
                     </Button>
                   </PopoverTrigger>
@@ -811,6 +908,119 @@ export default function EditTaskDialog({
                 </p>
               </div>
 
+              {/* Assigned Reviewer */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Assigned Reviewer
+                </Label>
+
+                <Popover
+                  open={reviewerOpen}
+                  onOpenChange={setReviewerOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={reviewerOpen}
+                      disabled={
+                        !projectId ||
+                        membersLoading ||
+                        assignedLoading ||
+                        reviewerLoading
+                      }
+                      className="w-full justify-between text-left font-normal"
+                    >
+                      <span
+                        className={cn(
+                          !effectiveReviewerId && "text-muted-foreground",
+                        )}
+                      >
+                      {membersLoading || assignedLoading || reviewerLoading
+                        ? "Loading members..."
+                        : !effectiveReviewerId
+                          ? "Select reviewer"
+                          : "1 reviewer selected"}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {membersError && (
+                        <p className="px-2 py-2 text-sm text-rose-600">
+                          Couldn't load members.
+                        </p>
+                      )}
+
+                      {!membersError &&
+                        !membersLoading &&
+                        eligibleReviewers.length === 0 && (
+                          <p className="px-2 py-2 text-sm text-neutral-500">
+                            No eligible reviewers (leader, advisor, instructor) on this project.
+                          </p>
+                        )}
+
+                      {eligibleReviewers.map((member) => {
+                        const selected =
+                          effectiveReviewerId === member.member_id;
+
+                        return (
+                          <button
+                            key={member.member_id}
+                            type="button"
+                            onClick={() => toggleReviewer(member)}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
+                                {member.first_name?.charAt(0)}
+                                {member.last_name?.charAt(0)}
+                              </div>
+
+                              <span>
+                                {member.first_name} {member.last_name}
+                              </span>
+                            </div>
+
+                            {selected && (
+                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {currentReviewer && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span
+                      key={currentReviewer.member_id}
+                      className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
+                    >
+                      {currentReviewer.first_name} {currentReviewer.last_name}
+                      <button
+                        type="button"
+                        onClick={() => toggleReviewer(currentReviewer)}
+                        className="rounded-full hover:bg-[#7A0C2E]/10"
+                        aria-label={`Remove ${currentReviewer.first_name} ${currentReviewer.last_name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Select the reviewer for this task (leader, advisor, or instructor only).
+                </p>
+              </div>
+
               {/* Deadline */}
               <div className="space-y-2">
                 <Label>Deadline (required)</Label>
@@ -872,7 +1082,7 @@ export default function EditTaskDialog({
 
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || assignedLoading || membersLoading}
+            disabled={isSubmitting || assignedLoading || membersLoading || reviewerLoading}
           >
             {isSubmitting ? "Saving..." : "Save changes"}
           </Button>

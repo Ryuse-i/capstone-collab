@@ -38,4 +38,4 @@ class BaseRepo:
         await self.db.delete(db_item)
         await self.db.flush()
 
-        return {"message": "Deleted succesfully"}
+        return {"message": "Deleted successfully"}

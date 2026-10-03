@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.task_comments.model import TaskComment
 from app.modules.task_comments.repo import TaskCommentRepo
 from app.modules.task_comments.schema import TaskCommentCreate, TaskCommentUpdate
+from typing import List
 
 
 class TaskCommentService:
@@ -16,12 +17,17 @@ class TaskCommentService:
         return await repo.get_all()
 
     @staticmethod
+    async def get_task_comments_by_task_id(db: AsyncSession, task_id):
+        repo = TaskCommentRepo(db)
+        return await repo.get_by_task_id(task_id)
+
+    @staticmethod
     async def create_task_comment(db: AsyncSession, task_comment: TaskCommentCreate):
         repo = TaskCommentRepo(db)
         return await repo.create(task_comment)
 
     @staticmethod
-    async def update_task_comment(db: AsyncSession, db_item: TaskCommentUpdate, task_comment: TaskCommentUpdate):
+    async def update_task_comment(db: AsyncSession, db_item: TaskComment, task_comment: TaskCommentUpdate):
         repo = TaskCommentRepo(db)
         return await repo.update(db_item, task_comment)
 

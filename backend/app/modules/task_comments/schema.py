@@ -16,7 +16,7 @@ class TaskCommentUpdate(BaseModel):
 
 
 class TaskCommentResponse(BaseModel):
-    id: int
+    id: UUID
     task_id: UUID
     author_id: UUID
     content: str

@@ -15,8 +15,10 @@ if TYPE_CHECKING:
     from app.modules.task_relations.model import TaskRelation
     from app.modules.task_tags.model import TaskTag
     from app.modules.assigned_members.model import AssignedMember
+    from app.modules.assigned_reviewer.model import AssignedReviewer
     from app.modules.peer_evaluations.model import PeerEvaluation
     from app.modules.projects.model import Project
+
 
 task_skills_enum = SAENUM(
     Skills,
@@ -108,6 +110,13 @@ class Task(Base):
         cascade="all, delete-orphan",
         foreign_keys="PeerEvaluation.task_id",
     )
+
+    assigned_reviewers: Mapped[list["AssignedReviewer"]] = relationship(
+        "AssignedReviewer",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+
     # supertask_id: Mapped[UUID | None] = mapped_column(
     #    PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), default=None, nullable=True
     # )

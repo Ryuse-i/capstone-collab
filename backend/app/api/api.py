@@ -6,6 +6,7 @@ from app.modules.tasks.routes import task_router
 from app.modules.supertasks.routes import supertask_router
 from app.modules.task_contents.routes import task_content_router
 from app.modules.assigned_members.routes import assigned_member_router
+from app.modules.assigned_reviewer.routes import assigned_reviewer_router
 from app.modules.peer_evaluations.routes import peer_evaluation_router
 from app.modules.task_comments.routes import task_comment_router
 from app.modules.task_relations.routes import task_relation_router
@@ -34,6 +35,8 @@ api_router.include_router(
 api_router.include_router(
     assigned_member_router, prefix="/assigned_members", tags=["assigned_members"]
 )
+api_router.include_router(
+    assigned_reviewer_router, prefix="/assigned_reviewer", tags=["assigned_reviewer"])
 api_router.include_router(
     peer_evaluation_router, prefix="/peer_evaluations", tags=["peer_evaluations"]
 )
