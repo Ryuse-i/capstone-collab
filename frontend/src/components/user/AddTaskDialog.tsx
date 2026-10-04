@@ -1,23 +1,29 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Check, Layers, ListTodo, Users, X } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, Layers, ListTodo, Users, X } from "lucide-react";
 import { format } from "date-fns";
+
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useCreateTask } from "@/hooks/useTask";
+import { useCreateTask, taskKeys } from "@/hooks/useTask";
+import {
+  useCreateSupertask,
+  useGetAllProjectSupertasks,
+  supertaskKeys,
+} from "@/hooks/useSupertask";
 import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 import {
   useCreateAssignedMember,
   assignedMemberKeys,
 } from "@/hooks/useAssignedMember";
-import {
-  useCreateAssignedReviewer,
-} from "@/hooks/useCreateAssignedReviewer";
+import { useCreateAssignedReviewer } from "@/hooks/useCreateAssignedReviewer";
 import { projectKeys } from "@/hooks/useProject";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+
 import {
   Select,
   SelectContent,
@@ -25,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import {
   Dialog,
   DialogContent,
@@ -34,36 +41,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 import { Calendar } from "@/components/ui/calendar";
+
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
 import { cn } from "@/lib/utils";
+
 import type { Skill } from "@/types/project_member";
 import type {
   CreateTask as CreateTaskPayload,
   TaskCategory,
   TaskPriority,
 } from "@/types/task";
-import { taskKeys } from "@/hooks/useTask";
+
 import { PendingAttachments } from "@/components/user/TaskAttachments";
 import { useUploadTaskAttachment } from "@/hooks/useTaskAttachment";
 
+// NOTE: adjust this import path to wherever your TaskLinks file lives.
+import { PendingLinks, type PendingLink } from "@/components/user/TaskLinks";
+import { useCreateTaskLink } from "@/hooks/useTaskLink";
+
 type TaskType = "task" | "supertask";
 
-/**
- * Local shape used for the "Assigned Members" picker.
- *
- * `member_id` is the project_member row id — this is what actually gets
- * sent to the API when creating an AssignedMember, and it's the field
- * FK-checked against project_members.id on the backend.
- *
- * `id` is the underlying user's id — kept around for display/key purposes
- * only. Do NOT use `id` for equality checks against assigned members;
- * always compare on `member_id`.
- */
 type AssignableMember = {
   member_id: string;
   id: string;
@@ -72,6 +76,7 @@ type AssignableMember = {
 };
 
 type TaskFormState = {
+  supertask_id: string | null;
   name: string;
   description: string;
   priority: TaskPriority;
@@ -85,10 +90,10 @@ type TaskFormState = {
 type SupertaskFormState = {
   name: string;
   description: string;
-  deadline: string;
 };
 
 const initialTaskForm: TaskFormState = {
+  supertask_id: null,
   name: "",
   description: "",
   priority: "medium",
@@ -102,7 +107,6 @@ const initialTaskForm: TaskFormState = {
 const initialSupertaskForm: SupertaskFormState = {
   name: "",
   description: "",
-  deadline: "",
 };
 
 const PRIORITY_OPTIONS: {
@@ -154,25 +158,45 @@ export function AddTaskDialog({
 }: AddTaskDialogProps) {
   const [open, setOpen] = useState(false);
   const [taskType, setTaskType] = useState<TaskType>("task");
-  const [taskForm, setTaskForm] = useState<TaskFormState>(initialTaskForm);
+
+  const [taskForm, setTaskForm] =
+    useState<TaskFormState>(initialTaskForm);
+
   const [supertaskForm, setSupertaskForm] =
     useState<SupertaskFormState>(initialSupertaskForm);
+
   const [error, setError] = useState<string | null>(null);
+
   const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
   const [reviewerOpen, setReviewerOpen] = useState(false);
+  const [supertaskOpen, setSupertaskOpen] = useState(false);
+
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [selectedReviewerId, setSelectedReviewerId] = useState<string | null>(
-    null,
-  );
+  const [pendingLinks, setPendingLinks] = useState<PendingLink[]>([]);
+
+  const [selectedReviewerId, setSelectedReviewerId] =
+    useState<string | null>(null);
 
   const createTaskMutation = useCreateTask();
-  const createAssignedMemberMutation = useCreateAssignedMember();
-  const createAssignedReviewerMutation = useCreateAssignedReviewer();
-  const uploadAttachmentMutation = useUploadTaskAttachment();
+  const createSupertaskMutation = useCreateSupertask();
+
+  const createAssignedMemberMutation =
+    useCreateAssignedMember();
+
+  const createAssignedReviewerMutation =
+    useCreateAssignedReviewer();
+
+  const uploadAttachmentMutation =
+    useUploadTaskAttachment();
+
+  const createTaskLinkMutation = useCreateTaskLink();
+
   const queryClient = useQueryClient();
+
   const { data: user } = useCurrentUser();
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -181,6 +205,12 @@ export function AddTaskDialog({
     isLoading: membersLoading,
     isError: membersError,
   } = useGetMembersWithUserInfo(projectId ?? "");
+
+  const {
+    data: projectSupertasks = [],
+    isLoading: supertasksLoading,
+    isError: supertasksError,
+  } = useGetAllProjectSupertasks(projectId ?? "");
 
   const assignableMembers: AssignableMember[] = useMemo(() => {
     return (projectMembersData ?? [])
@@ -217,9 +247,19 @@ export function AddTaskDialog({
 
   const selectedReviewer = useMemo(
     () =>
-      eligibleReviewers.find((m) => m.member_id === selectedReviewerId) ??
-      null,
+      eligibleReviewers.find(
+        (member) => member.member_id === selectedReviewerId,
+      ) ?? null,
     [eligibleReviewers, selectedReviewerId],
+  );
+
+  const selectedSupertask = useMemo(
+    () =>
+      projectSupertasks.find(
+        (supertask) =>
+          String(supertask.id) === taskForm.supertask_id,
+      ) ?? null,
+    [projectSupertasks, taskForm.supertask_id],
   );
 
   const resetForms = () => {
@@ -227,12 +267,16 @@ export function AddTaskDialog({
     setSupertaskForm(initialSupertaskForm);
     setTaskType("task");
     setError(null);
+
     setPrimarySkillOpen(false);
     setAssignedMembersOpen(false);
     setSecondarySkillOpen(false);
     setReviewerOpen(false);
+    setSupertaskOpen(false);
+
     setSelectedReviewerId(null);
     setPendingFiles([]);
+    setPendingLinks([]);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -247,25 +291,29 @@ export function AddTaskDialog({
     field: K,
     value: TaskFormState[K],
   ) => {
-    setTaskForm((prev) => ({ ...prev, [field]: value }));
+    setTaskForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handlePrimarySkillChange = (value: Skill) => {
     setTaskForm((prev) => ({
       ...prev,
       primary_skill: value,
-      // If the newly picked primary skill was already chosen as a
-      // secondary skill, drop it from secondary skills so a skill
-      // can't be both primary and secondary at the same time.
       secondary_skills: prev.secondary_skills.filter(
         (skill) => skill !== value,
       ),
     }));
+
     setPrimarySkillOpen(false);
   };
 
   const clearPrimarySkill = () => {
-    setTaskForm((prev) => ({ ...prev, primary_skill: "" }));
+    setTaskForm((prev) => ({
+      ...prev,
+      primary_skill: "",
+    }));
   };
 
   const toggleSecondarySkill = (skill: Skill) => {
@@ -281,21 +329,21 @@ export function AddTaskDialog({
     });
   };
 
-  // FIX: previously compared `assigned.id === member.member_id` for the
-  // existence check but `assigned.id !== member.id` for the removal filter —
-  // two different fields, so add/remove could desync. Now both consistently
-  // key off `member_id`, which is the field that actually gets persisted.
-  const toggleAssignedMember = (member: AssignableMember) => {
+  const toggleAssignedMember = (
+    member: AssignableMember,
+  ) => {
     setTaskForm((prev) => {
       const exists = prev.assigned_members.some(
-        (assigned) => assigned.member_id === member.member_id,
+        (assigned) =>
+          assigned.member_id === member.member_id,
       );
 
       return {
         ...prev,
         assigned_members: exists
           ? prev.assigned_members.filter(
-              (assigned) => assigned.member_id !== member.member_id,
+              (assigned) =>
+                assigned.member_id !== member.member_id,
             )
           : [...prev.assigned_members, member],
       };
@@ -304,22 +352,44 @@ export function AddTaskDialog({
 
   const toggleReviewer = (member: AssignableMember) => {
     setSelectedReviewerId(
-      selectedReviewerId === member.member_id ? null : member.member_id,
+      selectedReviewerId === member.member_id
+        ? null
+        : member.member_id,
     );
+
+    setReviewerOpen(false);
   };
 
   const handleSupertaskFieldChange = (
     field: keyof SupertaskFormState,
     value: string,
   ) => {
-    setSupertaskForm((prev) => ({ ...prev, [field]: value }));
+    setSupertaskForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSupertaskChange = (
+    supertaskId: string | null,
+  ) => {
+    setTaskForm((prev) => ({
+      ...prev,
+      supertask_id: supertaskId,
+    }));
+
+    setSupertaskOpen(false);
+  };
+
+  const clearSupertask = () => {
+    handleSupertaskChange(null);
   };
 
   const handleSubmit = async () => {
     setError(null);
 
     if (!projectId?.trim()) {
-      setError("Project ID is required to create this task.");
+      setError("Project ID is required to create this item.");
       return;
     }
 
@@ -350,7 +420,9 @@ export function AddTaskDialog({
       }
 
       if (!user?.id) {
-        setError("Could not determine the current user. Please sign in again.");
+        setError(
+          "Could not determine the current user. Please sign in again.",
+        );
         return;
       }
     }
@@ -363,6 +435,13 @@ export function AddTaskDialog({
 
       if (!supertaskForm.description.trim()) {
         setError("Supertask description is required.");
+        return;
+      }
+
+      if (!user?.id) {
+        setError(
+          "Could not determine the current user. Please sign in again.",
+        );
         return;
       }
     }
@@ -379,9 +458,13 @@ export function AddTaskDialog({
           deadline: taskForm.deadline,
           primary_skill: taskForm.primary_skill as Skill,
           secondary_skills: taskForm.secondary_skills,
+
+          // Important: send the selected supertask to the backend.
+          supertask_id: taskForm.supertask_id ?? undefined,
         };
 
-        const createdTask = await createTaskMutation.mutateAsync(payload);
+        const createdTask =
+          await createTaskMutation.mutateAsync(payload);
 
         queryClient.invalidateQueries({
           queryKey: taskKeys.listProject(projectId),
@@ -408,12 +491,34 @@ export function AddTaskDialog({
           }
         }
 
+        // Links are only created once the task exists (same as attachments).
+        if (pendingLinks.length > 0) {
+          const results = await Promise.allSettled(
+            pendingLinks.map((link) =>
+              createTaskLinkMutation.mutateAsync({
+                task_id: String(createdTask.id),
+                link: { url: link.url, title: link.title },
+              }),
+            ),
+          );
+
+          const failed = results.filter(
+            (result) => result.status === "rejected",
+          ).length;
+
+          if (failed > 0) {
+            toast.error(
+              `Task was created, but ${failed} of ${pendingLinks.length} link(s) failed to save. You can add them by editing the task.`,
+            );
+          }
+        }
+
         if (taskForm.assigned_members.length > 0) {
           try {
             await Promise.all(
               taskForm.assigned_members.map((member) =>
                 createAssignedMemberMutation.mutateAsync({
-                  projectId: projectId ?? "",
+                  projectId: projectId,
                   member: {
                     member_id: member.member_id,
                     task_id: createdTask.id,
@@ -423,27 +528,30 @@ export function AddTaskDialog({
             );
 
             queryClient.invalidateQueries({
-              queryKey: assignedMemberKeys.task_list(createdTask.id),
+              queryKey: assignedMemberKeys.task_list(
+                createdTask.id,
+              ),
             });
 
-            // Invalidate project snapshot to update unassigned_tasks count
             queryClient.invalidateQueries({
-              queryKey: projectKeys.detailSnapshot(projectId ?? ""),
+              queryKey: projectKeys.detailSnapshot(projectId),
             });
           } catch (assignErr) {
-            // The task itself was created successfully — don't roll that
-            // back, just surface that assignment partially/fully failed.
-            console.error("Failed to assign one or more members", assignErr);
+            console.error(
+              "Failed to assign one or more members",
+              assignErr,
+            );
+
             toast.error(
               "Task was created, but assigning some members failed. You can add them from the task detail page.",
             );
+
             onCreated?.();
             handleOpenChange(false);
             return;
           }
         }
 
-        // Handle assigned reviewer (only one allowed)
         if (selectedReviewerId) {
           try {
             await createAssignedReviewerMutation.mutateAsync({
@@ -451,30 +559,39 @@ export function AddTaskDialog({
               task_id: String(createdTask.id),
             });
           } catch (reviewerErr) {
-            // The task itself was created successfully — don't roll that
-            // back, just surface that reviewer assignment failed.
-            console.error("Failed to assign reviewer", reviewerErr);
+            console.error(
+              "Failed to assign reviewer",
+              reviewerErr,
+            );
+
             toast.error(
               "Task was created, but assigning the reviewer failed. You can add them from the task detail page.",
             );
+
             onCreated?.();
             handleOpenChange(false);
             return;
           }
         }
+
+        toast.success("Task created successfully.");
       } else {
-        console.log("creating supertask:", {
+        const payload = {
           project_id: projectId.trim(),
           name: supertaskForm.name.trim(),
           description: supertaskForm.description.trim(),
-          deadline: supertaskForm.deadline
-            ? new Date(supertaskForm.deadline).toISOString()
-            : null,
+        };
+
+        await createSupertaskMutation.mutateAsync(payload);
+
+        queryClient.invalidateQueries({
+          queryKey: supertaskKeys.listProject(projectId),
         });
+
+        toast.success("Supertask created successfully.");
       }
 
       onCreated?.();
-
       handleOpenChange(false);
     } catch (err) {
       setError(
@@ -487,28 +604,33 @@ export function AddTaskDialog({
 
   const isSubmitting =
     createTaskMutation.isPending ||
+    createSupertaskMutation.isPending ||
     createAssignedMemberMutation.isPending ||
     createAssignedReviewerMutation.isPending ||
-    uploadAttachmentMutation.isPending;
+    uploadAttachmentMutation.isPending ||
+    createTaskLinkMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={handleOpenChange}
+    >
       <DialogTrigger asChild>
         {trigger ?? <Button>+ Add Task</Button>}
       </DialogTrigger>
 
       <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden bg-card p-0 sm:max-w-2xl">
-        {/* Header */}
         <DialogHeader className="shrink-0 border-b px-6 py-5">
-          <DialogTitle>Create item for this project</DialogTitle>
+          <DialogTitle>
+            Create item for this project
+          </DialogTitle>
 
           <DialogDescription>
-            Supertasks are milestones. Tasks are the individual units of work
-            that actually drive project progress.
+            Supertasks are milestones. Tasks are the individual
+            units of work that actually drive project progress.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Scrollable body */}
         <div className="custom-scrollbar overflow-y-auto px-6 py-6">
           <div className="space-y-6">
             <div>
@@ -564,7 +686,9 @@ export function AddTaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-name">Name</Label>
+              <Label htmlFor="item-name">
+                Name
+              </Label>
 
               <Input
                 id="item-name"
@@ -574,12 +698,20 @@ export function AddTaskDialog({
                     : "e.g. MVP backend complete"
                 }
                 value={
-                  taskType === "task" ? taskForm.name : supertaskForm.name
+                  taskType === "task"
+                    ? taskForm.name
+                    : supertaskForm.name
                 }
                 onChange={(e) =>
                   taskType === "task"
-                    ? handleTaskFieldChange("name", e.target.value)
-                    : handleSupertaskFieldChange("name", e.target.value)
+                    ? handleTaskFieldChange(
+                        "name",
+                        e.target.value,
+                      )
+                    : handleSupertaskFieldChange(
+                        "name",
+                        e.target.value,
+                      )
                 }
               />
             </div>
@@ -600,7 +732,10 @@ export function AddTaskDialog({
                 }
                 onChange={(e) =>
                   taskType === "task"
-                    ? handleTaskFieldChange("description", e.target.value)
+                    ? handleTaskFieldChange(
+                        "description",
+                        e.target.value,
+                      )
                     : handleSupertaskFieldChange(
                         "description",
                         e.target.value,
@@ -629,12 +764,19 @@ export function AddTaskDialog({
 
                     <SelectContent>
                       {PRIORITY_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
+                        <SelectItem
+                          key={option.value}
+                          value={option.value}
+                        >
                           <span className="flex items-center gap-2">
                             <span
                               className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: option.color }}
+                              style={{
+                                backgroundColor:
+                                  option.color,
+                              }}
                             />
+
                             {option.label}
                           </span>
                         </SelectItem>
@@ -643,7 +785,106 @@ export function AddTaskDialog({
                   </Select>
                 </div>
 
-                {/* Primary Skill */}
+                <div className="space-y-2">
+                  <Label>Supertask</Label>
+
+                  <Popover
+                    open={supertaskOpen}
+                    onOpenChange={setSupertaskOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={supertaskOpen}
+                        className="w-full justify-between text-left font-normal"
+                      >
+                        <span
+                          className={cn(
+                            !selectedSupertask &&
+                              "text-muted-foreground",
+                          )}
+                        >
+                          {selectedSupertask
+                            ? selectedSupertask.name
+                            : "No supertask"}
+                        </span>
+
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <div className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1">
+                        <button
+                          type="button"
+                          onClick={clearSupertask}
+                          className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                        >
+                          <span>No supertask</span>
+
+                          {!taskForm.supertask_id && (
+                            <Check className="h-4 w-4 text-[#7A0C2E]" />
+                          )}
+                        </button>
+
+                        {supertasksError && (
+                          <p className="px-2 py-2 text-sm text-rose-600">
+                            Couldn't load supertasks.
+                          </p>
+                        )}
+
+                        {supertasksLoading && (
+                          <p className="px-2 py-2 text-sm text-neutral-500">
+                            Loading supertasks...
+                          </p>
+                        )}
+
+                        {!supertasksLoading &&
+                          !supertasksError &&
+                          projectSupertasks.length === 0 && (
+                            <p className="px-2 py-2 text-sm text-neutral-500">
+                              No supertasks created yet.
+                            </p>
+                          )}
+
+                        {!supertasksLoading &&
+                          !supertasksError &&
+                          projectSupertasks.map(
+                            (supertask) => {
+                              const selected =
+                                String(supertask.id) ===
+                                taskForm.supertask_id;
+
+                              return (
+                                <button
+                                  key={supertask.id}
+                                  type="button"
+                                  onClick={() =>
+                                    handleSupertaskChange(
+                                      String(
+                                        supertask.id,
+                                      ),
+                                    )
+                                  }
+                                  className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                                >
+                                  <span>
+                                    {supertask.name}
+                                  </span>
+
+                                  {selected && (
+                                    <Check className="h-4 w-4 text-[#7A0C2E]" />
+                                  )}
+                                </button>
+                              );
+                            },
+                          )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Primary Skill</Label>
 
@@ -666,7 +907,9 @@ export function AddTaskDialog({
                         >
                           {taskForm.primary_skill
                             ? SKILL_OPTIONS.find(
-                                (o) => o.value === taskForm.primary_skill,
+                                (o) =>
+                                  o.value ===
+                                  taskForm.primary_skill,
                               )?.label
                             : "Select skill"}
                         </span>
@@ -676,21 +919,28 @@ export function AddTaskDialog({
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <div
                         className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                        onWheel={(e) => e.stopPropagation()}
+                        onWheel={(e) =>
+                          e.stopPropagation()
+                        }
                       >
                         {SKILL_OPTIONS.filter(
                           (option) =>
-                            !taskForm.secondary_skills.includes(option.value),
+                            !taskForm.secondary_skills.includes(
+                              option.value,
+                            ),
                         ).map((option) => {
                           const selected =
-                            taskForm.primary_skill === option.value;
+                            taskForm.primary_skill ===
+                            option.value;
 
                           return (
                             <button
                               key={option.value}
                               type="button"
                               onClick={() =>
-                                handlePrimarySkillChange(option.value)
+                                handlePrimarySkillChange(
+                                  option.value,
+                                )
                               }
                               className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
                             >
@@ -711,7 +961,9 @@ export function AddTaskDialog({
                       <span className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]">
                         {
                           SKILL_OPTIONS.find(
-                            (o) => o.value === taskForm.primary_skill,
+                            (o) =>
+                              o.value ===
+                              taskForm.primary_skill,
                           )?.label
                         }
 
@@ -727,9 +979,8 @@ export function AddTaskDialog({
                   )}
                 </div>
 
-                {/* Secondary Skill */}
                 <div className="space-y-2">
-                  <Label>Secondary Skill</Label>
+                  <Label>Secondary Skills</Label>
 
                   <Popover
                     open={secondarySkillOpen}
@@ -739,22 +990,34 @@ export function AddTaskDialog({
                       <Button
                         variant="outline"
                         role="combobox"
-                        aria-expanded={secondarySkillOpen}
-                        disabled={!taskForm.primary_skill}
+                        aria-expanded={
+                          secondarySkillOpen
+                        }
+                        disabled={
+                          !taskForm.primary_skill
+                        }
                         className="w-full justify-between text-left font-normal"
                       >
                         <span
                           className={cn(
-                            taskForm.secondary_skills.length === 0 &&
+                            taskForm.secondary_skills
+                              .length === 0 &&
                               "text-muted-foreground",
                           )}
                         >
                           {!taskForm.primary_skill
                             ? "Select a primary skill first"
-                            : taskForm.secondary_skills.length === 0
+                            : taskForm.secondary_skills
+                                  .length === 0
                               ? "Select skills"
-                              : `${taskForm.secondary_skills.length} skill${
-                                  taskForm.secondary_skills.length > 1
+                              : `${
+                                  taskForm
+                                    .secondary_skills
+                                    .length
+                                } skill${
+                                  taskForm
+                                    .secondary_skills
+                                    .length > 1
                                     ? "s"
                                     : ""
                                 } selected`}
@@ -765,21 +1028,28 @@ export function AddTaskDialog({
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <div
                         className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                        onWheel={(e) => e.stopPropagation()}
+                        onWheel={(e) =>
+                          e.stopPropagation()
+                        }
                       >
                         {SKILL_OPTIONS.filter(
                           (option) =>
-                            option.value !== taskForm.primary_skill,
+                            option.value !==
+                            taskForm.primary_skill,
                         ).map((option) => {
                           const selected =
-                            taskForm.secondary_skills.includes(option.value);
+                            taskForm.secondary_skills.includes(
+                              option.value,
+                            );
 
                           return (
                             <button
                               key={option.value}
                               type="button"
                               onClick={() =>
-                                toggleSecondarySkill(option.value)
+                                toggleSecondarySkill(
+                                  option.value,
+                                )
                               }
                               className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
                             >
@@ -795,29 +1065,40 @@ export function AddTaskDialog({
                     </PopoverContent>
                   </Popover>
 
-                  {taskForm.secondary_skills.length > 0 && (
+                  {taskForm.secondary_skills.length >
+                    0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {taskForm.secondary_skills.map((skill) => (
-                        <span
-                          key={skill}
-                          className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
-                        >
-                          {SKILL_OPTIONS.find((o) => o.value === skill)?.label}
-
-                          <button
-                            type="button"
-                            onClick={() => toggleSecondarySkill(skill)}
-                            className="rounded-full hover:bg-[#7A0C2E]/10"
+                      {taskForm.secondary_skills.map(
+                        (skill) => (
+                          <span
+                            key={skill}
+                            className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                           >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
+                            {
+                              SKILL_OPTIONS.find(
+                                (o) =>
+                                  o.value === skill,
+                              )?.label
+                            }
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleSecondarySkill(
+                                  skill,
+                                )
+                              }
+                              className="rounded-full hover:bg-[#7A0C2E]/10"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ),
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Assigned Members */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5" />
@@ -826,28 +1107,42 @@ export function AddTaskDialog({
 
                   <Popover
                     open={assignedMembersOpen}
-                    onOpenChange={setAssignedMembersOpen}
+                    onOpenChange={
+                      setAssignedMembersOpen
+                    }
                   >
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         role="combobox"
-                        aria-expanded={assignedMembersOpen}
-                        disabled={!projectId || membersLoading}
+                        aria-expanded={
+                          assignedMembersOpen
+                        }
+                        disabled={
+                          !projectId || membersLoading
+                        }
                         className="w-full justify-between text-left font-normal"
                       >
                         <span
                           className={cn(
-                            taskForm.assigned_members.length === 0 &&
+                            taskForm.assigned_members
+                              .length === 0 &&
                               "text-muted-foreground",
                           )}
                         >
                           {membersLoading
                             ? "Loading members..."
-                            : taskForm.assigned_members.length === 0
+                            : taskForm.assigned_members
+                                  .length === 0
                               ? "Select members"
-                              : `${taskForm.assigned_members.length} member${
-                                  taskForm.assigned_members.length > 1
+                              : `${
+                                  taskForm
+                                    .assigned_members
+                                    .length
+                                } member${
+                                  taskForm
+                                    .assigned_members
+                                    .length > 1
                                     ? "s"
                                     : ""
                                 } selected`}
@@ -858,7 +1153,9 @@ export function AddTaskDialog({
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <div
                         className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                        onWheel={(e) => e.stopPropagation()}
+                        onWheel={(e) =>
+                          e.stopPropagation()
+                        }
                       >
                         {membersError && (
                           <p className="px-2 py-2 text-sm text-rose-600">
@@ -868,74 +1165,98 @@ export function AddTaskDialog({
 
                         {!membersError &&
                           !membersLoading &&
-                          assignableMembers.length === 0 && (
+                          assignableMembers.length ===
+                            0 && (
                             <p className="px-2 py-2 text-sm text-neutral-500">
-                              No members with the "member" role on this
+                              No members with the
+                              "member" role on this
                               project.
                             </p>
                           )}
 
-                        {assignableMembers.map((member) => {
-                          const selected = taskForm.assigned_members.some(
-                            (assigned) =>
-                              assigned.member_id === member.member_id,
-                          );
+                        {assignableMembers.map(
+                          (member) => {
+                            const selected =
+                              taskForm.assigned_members.some(
+                                (assigned) =>
+                                  assigned.member_id ===
+                                  member.member_id,
+                              );
 
-                          return (
-                            <button
-                              key={member.member_id}
-                              type="button"
-                              onClick={() => toggleAssignedMember(member)}
-                              className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
-                                  {member.first_name?.charAt(0)}
-                                  {member.last_name?.charAt(0)}
+                            return (
+                              <button
+                                key={member.member_id}
+                                type="button"
+                                onClick={() =>
+                                  toggleAssignedMember(
+                                    member,
+                                  )
+                                }
+                                className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
+                                    {member.first_name?.charAt(
+                                      0,
+                                    )}
+                                    {member.last_name?.charAt(
+                                      0,
+                                    )}
+                                  </div>
+
+                                  <span>
+                                    {member.first_name}{" "}
+                                    {member.last_name}
+                                  </span>
                                 </div>
 
-                                <span>
-                                  {member.first_name} {member.last_name}
-                                </span>
-                              </div>
-
-                              {selected && (
-                                <Check className="h-4 w-4 text-[#7A0C2E]" />
-                              )}
-                            </button>
-                          );
-                        })}
+                                {selected && (
+                                  <Check className="h-4 w-4 text-[#7A0C2E]" />
+                                )}
+                              </button>
+                            );
+                          },
+                        )}
                       </div>
                     </PopoverContent>
                   </Popover>
 
-                  {taskForm.assigned_members.length > 0 && (
+                  {taskForm.assigned_members.length >
+                    0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {taskForm.assigned_members.map((member) => (
-                        <span
-                          key={member.member_id}
-                          className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
-                        >
-                          {member.first_name} {member.last_name},
-                          <button
-                            type="button"
-                            onClick={() => toggleAssignedMember(member)}
-                            className="rounded-full hover:bg-[#7A0C2E]/10"
-                            aria-label={`Remove ${member.first_name} ${member.last_name}`}
+                      {taskForm.assigned_members.map(
+                        (member) => (
+                          <span
+                            key={member.member_id}
+                            className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                           >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
+                            {member.first_name}{" "}
+                            {member.last_name}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleAssignedMember(
+                                  member,
+                                )
+                              }
+                              className="rounded-full hover:bg-[#7A0C2E]/10"
+                              aria-label={`Remove ${member.first_name} ${member.last_name}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ),
+                      )}
                     </div>
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    Select the members who will be assigned to this task.
+                    Select the members who will be assigned
+                    to this task.
                   </p>
                 </div>
 
-                {/* Assigned Reviewer */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5" />
@@ -951,19 +1272,22 @@ export function AddTaskDialog({
                         variant="outline"
                         role="combobox"
                         aria-expanded={reviewerOpen}
-                        disabled={!projectId || membersLoading}
+                        disabled={
+                          !projectId || membersLoading
+                        }
                         className="w-full justify-between text-left font-normal"
                       >
                         <span
                           className={cn(
-                            !selectedReviewerId && "text-muted-foreground",
+                            !selectedReviewerId &&
+                              "text-muted-foreground",
                           )}
                         >
                           {membersLoading
                             ? "Loading members..."
-                            : !selectedReviewerId
-                              ? "Select reviewer"
-                              : `${selectedReviewer ? "1" : "0"} reviewer selected`}
+                            : selectedReviewer
+                              ? `${selectedReviewer.first_name} ${selectedReviewer.last_name}`
+                              : "Select reviewer"}
                         </span>
                       </Button>
                     </PopoverTrigger>
@@ -971,7 +1295,9 @@ export function AddTaskDialog({
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <div
                         className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
-                        onWheel={(e) => e.stopPropagation()}
+                        onWheel={(e) =>
+                          e.stopPropagation()
+                        }
                       >
                         {membersError && (
                           <p className="px-2 py-2 text-sm text-rose-600">
@@ -981,41 +1307,56 @@ export function AddTaskDialog({
 
                         {!membersError &&
                           !membersLoading &&
-                          eligibleReviewers.length === 0 && (
+                          eligibleReviewers.length ===
+                            0 && (
                             <p className="px-2 py-2 text-sm text-neutral-500">
-                              No eligible reviewers (leader, advisor,
-                              instructor) on this project.
+                              No eligible reviewers
+                              (leader, advisor,
+                              instructor) on this
+                              project.
                             </p>
                           )}
 
-                        {eligibleReviewers.map((member) => {
-                          const selected =
-                            selectedReviewerId === member.member_id;
+                        {eligibleReviewers.map(
+                          (member) => {
+                            const selected =
+                              selectedReviewerId ===
+                              member.member_id;
 
-                          return (
-                            <button
-                              key={member.member_id}
-                              type="button"
-                              onClick={() => toggleReviewer(member)}
-                              className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
-                                  {member.first_name?.charAt(0)}
-                                  {member.last_name?.charAt(0)}
+                            return (
+                              <button
+                                key={member.member_id}
+                                type="button"
+                                onClick={() =>
+                                  toggleReviewer(
+                                    member,
+                                  )
+                                }
+                                className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
+                                    {member.first_name?.charAt(
+                                      0,
+                                    )}
+                                    {member.last_name?.charAt(
+                                      0,
+                                    )}
+                                  </div>
+
+                                  <span>
+                                    {member.first_name}{" "}
+                                    {member.last_name}
+                                  </span>
                                 </div>
 
-                                <span>
-                                  {member.first_name} {member.last_name}
-                                </span>
-                              </div>
-
-                              {selected && (
-                                <Check className="h-4 w-4 text-[#7A0C2E]" />
-                              )}
-                            </button>
-                          );
-                        })}
+                                {selected && (
+                                  <Check className="h-4 w-4 text-[#7A0C2E]" />
+                                )}
+                              </button>
+                            );
+                          },
+                        )}
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -1025,9 +1366,14 @@ export function AddTaskDialog({
                       <span className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]">
                         {selectedReviewer.first_name}{" "}
                         {selectedReviewer.last_name}
+
                         <button
                           type="button"
-                          onClick={() => toggleReviewer(selectedReviewer)}
+                          onClick={() =>
+                            toggleReviewer(
+                              selectedReviewer,
+                            )
+                          }
                           className="rounded-full hover:bg-[#7A0C2E]/10"
                           aria-label={`Remove ${selectedReviewer.first_name} ${selectedReviewer.last_name}`}
                         >
@@ -1038,8 +1384,8 @@ export function AddTaskDialog({
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    Select the reviewer for this task (leader, advisor, or
-                    instructor only).
+                    Select the reviewer for this task
+                    (leader, advisor, or instructor only).
                   </p>
                 </div>
 
@@ -1052,13 +1398,19 @@ export function AddTaskDialog({
                         variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
-                          !taskForm.deadline && "text-muted-foreground",
+                          !taskForm.deadline &&
+                            "text-muted-foreground",
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
 
                         {taskForm.deadline
-                          ? format(new Date(taskForm.deadline), "PPP")
+                          ? format(
+                              new Date(
+                                taskForm.deadline,
+                              ),
+                              "PPP",
+                            )
                           : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
@@ -1068,16 +1420,25 @@ export function AddTaskDialog({
                         mode="single"
                         selected={
                           taskForm.deadline
-                            ? new Date(taskForm.deadline)
+                            ? new Date(
+                                taskForm.deadline,
+                              )
                             : undefined
                         }
                         onSelect={(date) => {
                           handleTaskFieldChange(
                             "deadline",
-                            date ? format(date, "yyyy-MM-dd") : "",
+                            date
+                              ? format(
+                                  date,
+                                  "yyyy-MM-dd",
+                                )
+                              : "",
                           );
                         }}
-                        disabled={{ before: today }}
+                        disabled={{
+                          before: today,
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -1090,48 +1451,16 @@ export function AddTaskDialog({
                     disabled={isSubmitting}
                   />
                 </div>
+
+                <div className="sm:col-span-2">
+                  <PendingLinks
+                    links={pendingLinks}
+                    onChange={setPendingLinks}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="supertask-deadline">Deadline</Label>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !supertaskForm.deadline && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-
-                      {supertaskForm.deadline
-                        ? format(new Date(supertaskForm.deadline), "PPP")
-                        : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={
-                        supertaskForm.deadline
-                          ? new Date(supertaskForm.deadline)
-                          : undefined
-                      }
-                      onSelect={(date) => {
-                        handleSupertaskFieldChange(
-                          "deadline",
-                          date ? format(date, "yyyy-MM-dd") : "",
-                        );
-                      }}
-                      disabled={{ before: today }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+            ) : null}
 
             {error && (
               <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -1141,17 +1470,21 @@ export function AddTaskDialog({
           </div>
         </div>
 
-        {/* Footer */}
         <DialogFooter className="shrink-0 gap-2 border-t bg-muted/40 px-6 py-2 pb-6">
           <Button
             variant="outline"
-            onClick={() => handleOpenChange(false)}
+            onClick={() =>
+              handleOpenChange(false)
+            }
             disabled={isSubmitting}
           >
             Cancel
           </Button>
 
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
             {isSubmitting
               ? "Creating..."
               : taskType === "task"

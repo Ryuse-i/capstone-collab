@@ -516,7 +516,7 @@ export function PendingAttachments({
       ) : null}
 
       <p className="text-xs text-muted-foreground">
-        Files are uploaded after the task is created.
+        Upload Files related towards the task.
       </p>
     </section>
   );

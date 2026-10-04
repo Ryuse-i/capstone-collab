@@ -28,6 +28,7 @@ import { formatDistanceToNow } from "date-fns";
 import { formatStatusLabel } from "@/components/user/TaskTable";
 import { TaskComments } from "./TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
+import { TaskLinks } from "./TaskLinks";
 
 // Soft pill badges (outline-tinted, like the reference "In Research" / "Low" pills)
 // rather than solid-fill badges — reserved for the header meta rows.
@@ -461,8 +462,9 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
             </div>
 
             <div className="border-t pt-6">
-              <TaskComments taskId={task.id} />
+              <TaskLinks taskId={task.id} />
             </div>
+
 
             {/* Comments (inside the scroll area so the footer stays pinned) */}
             <div className="mt-6 border-t pt-6">

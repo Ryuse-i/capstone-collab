@@ -12,12 +12,14 @@ if TYPE_CHECKING:
     from app.modules.task_comments.model import TaskComment
     from app.modules.task_submissions.model import TaskSubmission
     from app.modules.task_attachments.model import TaskAttachment 
+    from app.modules.task_links.model import TaskLink
     from app.modules.task_relations.model import TaskRelation
     from app.modules.task_tags.model import TaskTag
     from app.modules.assigned_members.model import AssignedMember
     from app.modules.assigned_reviewer.model import AssignedReviewer
     from app.modules.peer_evaluations.model import PeerEvaluation
     from app.modules.projects.model import Project
+    from app.modules.supertasks.model import Supertask
 
 
 task_skills_enum = SAENUM(
@@ -47,6 +49,11 @@ class Task(Base):
     project_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
     )
+    supertask_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("supertasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     started_at: Mapped[date] = mapped_column(Date, nullable=True)
     completed_at: Mapped[date] = mapped_column(Date, nullable=True)
@@ -56,6 +63,12 @@ class Task(Base):
         "Project",
         back_populates="tasks",
         foreign_keys=[project_id],
+    )
+
+    supertask: Mapped["Supertask | None"] = relationship(
+        "Supertask",
+        back_populates="tasks",
+        foreign_keys=[supertask_id],
     )
 
     comments: Mapped[list["TaskComment"]] = relationship(
@@ -72,6 +85,12 @@ class Task(Base):
 
     attachments: Mapped[list["TaskAttachment"]] = relationship(
         "TaskAttachment",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+
+    links: Mapped[list["TaskLink"]] = relationship(
+        "TaskLink",
         back_populates="task",
         cascade="all, delete-orphan",
     )

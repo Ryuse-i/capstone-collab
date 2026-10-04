@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskComments } from "@/components/user/TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
+import { TaskLinks } from "./TaskLinks";
 
 import {
   Drawer,
@@ -176,9 +177,9 @@ export default function EditTaskDialog({
 
   // Selected reviewer ID (only one allowed)
   // undefined = untouched (use DB value), null = explicitly cleared, string = chosen member_id
-  const [selectedReviewerId, setSelectedReviewerId] = useState<string | null | undefined>(
-    undefined,
-  );
+  const [selectedReviewerId, setSelectedReviewerId] = useState<
+    string | null | undefined
+  >(undefined);
 
   const [error, setError] = useState<string | null>(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
@@ -208,10 +209,8 @@ export default function EditTaskDialog({
   );
 
   // Get current reviewer for this task
-  const {
-    data: taskReviewers = [],
-    isLoading: reviewerLoading,
-  } = useGetTaskReviewers(task.id.toString());
+  const { data: taskReviewers = [], isLoading: reviewerLoading } =
+    useGetTaskReviewers(task.id.toString());
 
   const {
     data: projectMembersData,
@@ -271,14 +270,18 @@ export default function EditTaskDialog({
   );
 
   const dbReviewerRow = taskReviewers[0];
-  const dbReviewerMemberId = dbReviewerRow ? String(dbReviewerRow.member_id) : null;
+  const dbReviewerMemberId = dbReviewerRow
+    ? String(dbReviewerRow.member_id)
+    : null;
 
   const effectiveReviewerId: string | null =
     selectedReviewerId === undefined ? dbReviewerMemberId : selectedReviewerId;
 
   const currentReviewer: AssignableMember | null = useMemo(() => {
     if (!effectiveReviewerId) return null;
-    const member = projectMembersData?.find((m) => m.id.toString() === effectiveReviewerId);
+    const member = projectMembersData?.find(
+      (m) => m.id.toString() === effectiveReviewerId,
+    );
     if (!member?.users) return null;
     return {
       member_id: member.id.toString(),
@@ -347,7 +350,9 @@ export default function EditTaskDialog({
   };
 
   const toggleReviewer = (member: AssignableMember) => {
-    setSelectedReviewerId(effectiveReviewerId === member.member_id ? null : member.member_id);
+    setSelectedReviewerId(
+      effectiveReviewerId === member.member_id ? null : member.member_id,
+    );
   };
 
   const handleSubmit = async () => {
@@ -474,14 +479,24 @@ export default function EditTaskDialog({
           memberSyncFailed = true;
         } finally {
           // Invalidate assignment-related queries regardless of success or failure
-          queryClient.invalidateQueries({ queryKey: taskKeys.assignedMembers(projectId) });
-          queryClient.invalidateQueries({ queryKey: assignedMemberKeys.task_list(task.id) });
-          queryClient.invalidateQueries({ queryKey: assignedMemberKeys.list() });
-          queryClient.invalidateQueries({ queryKey: projectKeys.detailSnapshot(projectId) });
+          queryClient.invalidateQueries({
+            queryKey: taskKeys.assignedMembers(projectId),
+          });
+          queryClient.invalidateQueries({
+            queryKey: assignedMemberKeys.task_list(task.id),
+          });
+          queryClient.invalidateQueries({
+            queryKey: assignedMemberKeys.list(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.detailSnapshot(projectId),
+          });
         }
 
         // Always refresh the project task list and notify parent
-        queryClient.invalidateQueries({ queryKey: taskKeys.listProject(projectId) });
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.listProject(projectId),
+        });
         onUpdated?.();
         if (!reviewerSyncFailed && !memberSyncFailed) {
           // Only close the drawer if both syncs succeeded
@@ -490,7 +505,9 @@ export default function EditTaskDialog({
         // If either sync failed, leave drawer open so user can see the error
       } else {
         // No assignment changes, just refresh the project task list
-        queryClient.invalidateQueries({ queryKey: taskKeys.listProject(projectId) });
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.listProject(projectId),
+        });
         onUpdated?.();
         if (!reviewerSyncFailed) {
           handleOpenChange(false);
@@ -822,13 +839,13 @@ export default function EditTaskDialog({
                             "text-muted-foreground",
                         )}
                       >
-                      {membersLoading || assignedLoading
-                        ? "Loading members..."
-                        : currentSelectedIds.length === 0
-                          ? "Select members"
-                          : `${currentSelectedIds.length} member${
-                              currentSelectedIds.length > 1 ? "s" : ""
-                            } selected`}
+                        {membersLoading || assignedLoading
+                          ? "Loading members..."
+                          : currentSelectedIds.length === 0
+                            ? "Select members"
+                            : `${currentSelectedIds.length} member${
+                                currentSelectedIds.length > 1 ? "s" : ""
+                              } selected`}
                       </span>
                     </Button>
                   </PopoverTrigger>
@@ -918,10 +935,7 @@ export default function EditTaskDialog({
                   Assigned Reviewer
                 </Label>
 
-                <Popover
-                  open={reviewerOpen}
-                  onOpenChange={setReviewerOpen}
-                >
+                <Popover open={reviewerOpen} onOpenChange={setReviewerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -940,11 +954,11 @@ export default function EditTaskDialog({
                           !effectiveReviewerId && "text-muted-foreground",
                         )}
                       >
-                      {membersLoading || assignedLoading || reviewerLoading
-                        ? "Loading members..."
-                        : !effectiveReviewerId
-                          ? "Select reviewer"
-                          : "1 reviewer selected"}
+                        {membersLoading || assignedLoading || reviewerLoading
+                          ? "Loading members..."
+                          : !effectiveReviewerId
+                            ? "Select reviewer"
+                            : "1 reviewer selected"}
                       </span>
                     </Button>
                   </PopoverTrigger>
@@ -964,7 +978,8 @@ export default function EditTaskDialog({
                         !membersLoading &&
                         eligibleReviewers.length === 0 && (
                           <p className="px-2 py-2 text-sm text-neutral-500">
-                            No eligible reviewers (leader, advisor, instructor) on this project.
+                            No eligible reviewers (leader, advisor, instructor)
+                            on this project.
                           </p>
                         )}
 
@@ -1020,7 +1035,8 @@ export default function EditTaskDialog({
                 )}
 
                 <p className="text-xs text-muted-foreground">
-                  Select the reviewer for this task (leader, advisor, or instructor only).
+                  Select the reviewer for this task (leader, advisor, or
+                  instructor only).
                 </p>
               </div>
 
@@ -1077,6 +1093,11 @@ export default function EditTaskDialog({
               <TaskAttachments taskId={task.id} />
             </div>
 
+            {/* Links */}
+            <div className="border-t pt-6">
+              <TaskLinks taskId={task.id} />
+            </div>
+
             {/* Comments: saved immediately, independent of "Save changes" */}
             <div className="border-t pt-6">
               <TaskComments taskId={task.id} />
@@ -1095,7 +1116,12 @@ export default function EditTaskDialog({
 
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || assignedLoading || membersLoading || reviewerLoading}
+            disabled={
+              isSubmitting ||
+              assignedLoading ||
+              membersLoading ||
+              reviewerLoading
+            }
           >
             {isSubmitting ? "Saving..." : "Save changes"}
           </Button>

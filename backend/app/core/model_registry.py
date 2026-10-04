@@ -22,7 +22,8 @@ modules = [
     "app.modules.meetings.model",
     "app.modules.messages.model",
     "app.modules.assigned_reviewer.model",
-    "app.modules.files.model"
+    "app.modules.files.model",
+    "app.modules.task_links.model"
 ]
 
 
