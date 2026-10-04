@@ -4,14 +4,19 @@ import type {
   CreateTaskComment,
   UpdateTaskComment,
   TaskCommentResponse,
+  TaskCommentResponseWithAuthor,
 } from "@/types/taskComment";
 
 const url = "/task_comments";
 
 const api = {
-  getOneTaskComment: async (task_comment_id: string): Promise<TaskCommentResponse> => {
+  getOneTaskComment: async (
+    task_comment_id: string,
+  ): Promise<TaskCommentResponseWithAuthor> => {
     try {
-      const response = await apiClient.get<TaskCommentResponse>(`${url}/${task_comment_id}`);
+      const response = await apiClient.get<TaskCommentResponseWithAuthor>(
+        `${url}/${task_comment_id}`,
+      );
       return response.data;
     } catch (error) {
       console.error("Failed to get task comment", error);
@@ -19,9 +24,9 @@ const api = {
     }
   },
 
-  getAllTaskComments: async (): Promise<TaskCommentResponse[]> => {
+  getAllTaskComments: async (): Promise<TaskCommentResponseWithAuthor[]> => {
     try {
-      const response = await apiClient.get<TaskCommentResponse[]>(url);
+      const response = await apiClient.get<TaskCommentResponseWithAuthor[]>(url);
       return response.data;
     } catch (error) {
       console.error("Failed to get all task comments", error);
@@ -29,10 +34,12 @@ const api = {
     }
   },
 
-  getTaskCommentsByTask: async (taskId: string): Promise<TaskCommentResponse[]> => {
+  getTaskCommentsByTask: async (
+    taskId: string,
+  ): Promise<TaskCommentResponseWithAuthor[]> => {
     try {
-      const response = await apiClient.get<TaskCommentResponse[]>(url, {
-        params: { task_id: taskId }
+      const response = await apiClient.get<TaskCommentResponseWithAuthor[]>(url, {
+        params: { task_id: taskId },
       });
       return response.data;
     } catch (error) {
@@ -41,9 +48,14 @@ const api = {
     }
   },
 
-  createTaskComment: async (task_comment: CreateTaskComment): Promise<TaskCommentResponse> => {
+  createTaskComment: async (
+    task_comment: CreateTaskComment,
+  ): Promise<TaskCommentResponse> => {
     try {
-      const response = await apiClient.post<TaskCommentResponse>(url, task_comment);
+      const response = await apiClient.post<TaskCommentResponse>(
+        url,
+        task_comment,
+      );
       return response.data;
     } catch (error) {
       console.error("Failed to create task comment", error);
@@ -51,7 +63,10 @@ const api = {
     }
   },
 
-  updateTaskComment: async (id: string, task_comment: UpdateTaskComment): Promise<TaskCommentResponse> => {
+  updateTaskComment: async (
+    id: string,
+    task_comment: UpdateTaskComment,
+  ): Promise<TaskCommentResponse> => {
     try {
       const response = await apiClient.patch<TaskCommentResponse>(
         `${url}/${id}`,
@@ -77,15 +92,17 @@ const api = {
 export const taskCommentKeys = {
   all: ["taskComments"] as const,
   list: () => [...taskCommentKeys.all, "list"] as const,
+  listByTask: (taskId: string) =>
+    [...taskCommentKeys.list(), "listByTask", taskId] as const,
   details: () => [...taskCommentKeys.all, "details"] as const,
   detail: (id: string) => [...taskCommentKeys.details(), id] as const,
-  listByTask: (taskId: string) => [...taskCommentKeys.all, "listByTask", taskId] as const,
 };
 
 export function useGetOneTaskComment(id: string) {
   return useQuery({
     queryKey: taskCommentKeys.detail(id),
     queryFn: () => api.getOneTaskComment(id),
+    enabled: !!id,
   });
 }
 
@@ -108,11 +125,13 @@ export function useCreateTaskComment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.createTaskComment,
-    onSuccess: (data) => {
-      // Invalidate task comment lists
+    onSuccess: (result) => {
+      // listByTask is nested under list(), so this covers both the global
+      // list and the per-task list.
       queryClient.invalidateQueries({ queryKey: taskCommentKeys.list() });
-      // Invalidate task-specific comment lists
-      queryClient.invalidateQueries({ queryKey: taskCommentKeys.listByTask(data.task_id) });
+      queryClient.invalidateQueries({
+        queryKey: taskCommentKeys.listByTask(String(result.task_id)),
+      });
     },
   });
 }
@@ -120,15 +139,24 @@ export function useCreateTaskComment() {
 export function useUpdateTaskComment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, task_comment }: { id: string; task_comment: UpdateTaskComment }) =>
-      api.updateTaskComment(id, task_comment),
-    onSuccess: (data) => {
+    mutationFn: ({
+      id,
+      task_comment,
+    }: {
+      id: string;
+      task_comment: UpdateTaskComment;
+    }) => api.updateTaskComment(id, task_comment),
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: taskCommentKeys.list() });
       queryClient.invalidateQueries({
-        queryKey: taskCommentKeys.detail(data.id)
+        queryKey: taskCommentKeys.detail(variables.id),
       });
-      // Invalidate task-specific comment lists
-      queryClient.invalidateQueries({ queryKey: taskCommentKeys.listByTask(data.task_id) });
+      // Invalidate the comment list for the task this comment belongs to
+      if (result.task_id) {
+        queryClient.invalidateQueries({
+          queryKey: taskCommentKeys.listByTask(String(result.task_id)),
+        });
+      }
     },
   });
 }
@@ -136,13 +164,19 @@ export function useUpdateTaskComment() {
 export function useDeleteTaskComment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id }: { id: string }) => api.deleteTaskComment(id),
-    onSuccess: (_, variables: { id: string; taskId?: string }) => {
+    // taskId is optional and only used to refresh that task's comment list;
+    // the API call itself only needs the comment id.
+    mutationFn: ({ id }: { id: string; taskId?: string }) =>
+      api.deleteTaskComment(id),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: taskCommentKeys.list() });
-      queryClient.removeQueries({ queryKey: taskCommentKeys.detail(variables.id) });
-      // Invalidate task-specific comment lists if taskId is provided
+      queryClient.removeQueries({
+        queryKey: taskCommentKeys.detail(variables.id),
+      });
       if (variables.taskId) {
-        queryClient.invalidateQueries({ queryKey: taskCommentKeys.listByTask(variables.taskId) });
+        queryClient.invalidateQueries({
+          queryKey: taskCommentKeys.listByTask(variables.taskId),
+        });
       }
     },
   });

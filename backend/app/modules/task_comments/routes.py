@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
-from app.modules.task_comments.schema import TaskCommentCreate, TaskCommentUpdate, TaskCommentResponse
+from app.modules.task_comments.schema import TaskCommentCreate, TaskCommentUpdate, TaskCommentResponse, TaskCommentWithAuthor
 from app.modules.task_comments.services import TaskCommentService
 from typing import List
 from uuid import UUID
@@ -10,7 +10,7 @@ from uuid import UUID
 task_comment_router = APIRouter()
 
 
-@task_comment_router.get("/", response_model=List[TaskCommentResponse])
+@task_comment_router.get("/", response_model=List[TaskCommentWithAuthor])
 async def get_task_comments(
     task_id: UUID | None = None,
     db: AsyncSession = Depends(get_async_session)
@@ -21,7 +21,7 @@ async def get_task_comments(
     return await TaskCommentService.get_all_task_comments(db)
 
 
-@task_comment_router.get("/{task_comment_id}", response_model=TaskCommentResponse)
+@task_comment_router.get("/{task_comment_id}", response_model=TaskCommentWithAuthor)
 async def get_one_task_comment(task_comment_id: UUID, db: AsyncSession = Depends(get_async_session)):
     """Fetch a single task comment by its ID."""
     db_item = await TaskCommentService.get_one_task_comment(db, task_comment_id)

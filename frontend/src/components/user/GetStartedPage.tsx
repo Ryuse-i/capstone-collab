@@ -80,7 +80,7 @@ export default function GetStarted() {
                 return (
                   <div
                     key={step.id}
-                    className="flex items-center gap-3 p-2 rounded-md hover:bg-(--muted)/50 transition-colors "
+                    className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors "
                   >
                     {isCompleted ? (
                       <CheckCircle2 className="w-5 h-5 text-[#701D0B] shrink-0 " />

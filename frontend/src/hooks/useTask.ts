@@ -150,6 +150,8 @@ export function useCreateTask() {
       queryClient.invalidateQueries({
         queryKey: taskKeys.assignedMembers(result.project_id),
       });
+      // Invalidate tasks for all users to refetch MyTask page
+      queryClient.invalidateQueries({ queryKey: ["tasks", "forUser"] });
     },
   });
 }
@@ -174,6 +176,8 @@ export function useUpdateTask() {
       queryClient.invalidateQueries({
         queryKey: taskKeys.assignedMembersAll(),
       });
+      // Invalidate tasks for all users to refetch MyTask page
+      queryClient.invalidateQueries({ queryKey: ["tasks", "forUser"] });
     },
   });
 }
@@ -189,6 +193,8 @@ export function useDeleteTask() {
       queryClient.invalidateQueries({
         queryKey: taskKeys.assignedMembersAll(),
       });
+      // Invalidate tasks for all users to refetch MyTask page
+      queryClient.invalidateQueries({ queryKey: ["tasks", "forUser"] });
     },
   });
 }

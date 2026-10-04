@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.modules.tasks.model import Task
+    from app.modules.users.model import User
 
 """
     This is the comments of each tasks
@@ -32,6 +33,10 @@ class TaskComment(Base):
         "Task",
         back_populates="comments",
         foreign_keys=[task_id],
+    )
+    author: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[author_id],
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

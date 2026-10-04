@@ -120,8 +120,7 @@ export default function MyTask() {
 
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
 
-  const [selectedTask, setSelectedTask] =
-    useState<TaskResponseMembers | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Fetch tasks assigned to the current user
   const userId = currentUser?.id || "";
@@ -329,7 +328,7 @@ export default function MyTask() {
                     className="gap-3 border border-border/70 py-0 transition-all hover:-translate-y-0.5 hover:border-(--maroon)/40 hover:shadow-md"
                     onClick={() => {
                       if (project.task) {
-                        setSelectedTask(project.task);
+                        setSelectedTaskId(project.task.id);
                         setOpenTaskDialog(true);
                       }
                     }}
@@ -432,7 +431,7 @@ export default function MyTask() {
                               e.stopPropagation();
 
                               if (project.task) {
-                                setSelectedTask(project.task);
+                                setSelectedTaskId(project.task.id);
                                 setOpenTaskDialog(true);
                               }
                             }}
@@ -453,12 +452,12 @@ export default function MyTask() {
             open={openTaskDialog}
             onOpenChange={(open) => {
               if (!open) {
-                setSelectedTask(null);
+                setSelectedTaskId(null);
               }
 
               setOpenTaskDialog(open);
             }}
-            task={selectedTask}
+            task={tasks.find(task => task.id === selectedTaskId) ?? null}
           />
         </>
       )}

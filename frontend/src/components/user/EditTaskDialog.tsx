@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TaskComments } from "@/components/user/TaskComments";
 
 import {
   Drawer,
@@ -540,7 +541,8 @@ export default function EditTaskDialog({
           </div>
         </DrawerHeader>
 
-        <div className="custom-scrollbar overflow-y-auto px-6 py-6">
+        {/* min-h-0 + flex-1 lets this area scroll while the footer stays pinned */}
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-6">
             {/* Name */}
             <div className="space-y-2">
@@ -1068,6 +1070,11 @@ export default function EditTaskDialog({
                 {error}
               </p>
             )}
+
+            {/* Comments: saved immediately, independent of "Save changes" */}
+            <div className="border-t pt-6">
+              <TaskComments taskId={task.id} />
+            </div>
           </div>
         </div>
 

@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
 
+from app.modules.users.schema import UserResponse
+
 
 class TaskCommentCreate(BaseModel):
     task_id: UUID
@@ -25,3 +27,7 @@ class TaskCommentResponse(BaseModel):
 
     class ConfigDict:
         from_attributes = True
+
+
+class TaskCommentWithAuthor(TaskCommentResponse):
+    author: UserResponse
