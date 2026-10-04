@@ -4,6 +4,10 @@ import { CalendarIcon, Check, ChevronDown, Users, X } from "lucide-react";
 import { format } from "date-fns";
 
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
+import {
+  useGetAllProjectSupertasks,
+  supertaskKeys,
+} from "@/hooks/useSupertask";
 import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
 import {
   useGetAllAssignedMembers,
@@ -69,6 +73,7 @@ type AssignableMember = {
 };
 
 type TaskFormState = {
+  supertask_id: string | null;
   name: string;
   description: string;
   priority: TaskPriority;
@@ -135,7 +140,12 @@ const SKILL_OPTIONS: {
 ];
 
 function formStateFromTask(task: TaskResponseMembers): TaskFormState {
+  const rawSupertaskId = (
+    task as { supertask_id?: string | number | null }
+  ).supertask_id;
+
   return {
+    supertask_id: rawSupertaskId != null ? String(rawSupertaskId) : null,
     name: task.name ?? "",
     description: task.description ?? "",
     priority: task.priority,
@@ -183,6 +193,7 @@ export default function EditTaskDialog({
 
   const [error, setError] = useState<string | null>(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
+  const [supertaskOpen, setSupertaskOpen] = useState(false);
   const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
@@ -217,6 +228,20 @@ export default function EditTaskDialog({
     isLoading: membersLoading,
     isError: membersError,
   } = useGetMembersWithUserInfo(projectId ?? "");
+
+  const {
+    data: projectSupertasks = [],
+    isLoading: supertasksLoading,
+    isError: supertasksError,
+  } = useGetAllProjectSupertasks(projectId ?? "");
+
+  const selectedSupertask = useMemo(
+    () =>
+      projectSupertasks.find(
+        (supertask) => String(supertask.id) === taskForm.supertask_id,
+      ) ?? null,
+    [projectSupertasks, taskForm.supertask_id],
+  );
 
   // Assignable members (member or leader roles for task assignment)
   const assignableMembers: AssignableMember[] = useMemo(() => {
@@ -298,6 +323,7 @@ export default function EditTaskDialog({
       setTaskForm(formStateFromTask(task));
       setSelectedMemberIds(null);
       setSelectedReviewerId(undefined); // Reset reviewer selection when opening
+      setSupertaskOpen(false);
     }
   };
 
@@ -309,6 +335,11 @@ export default function EditTaskDialog({
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handleSupertaskChange = (supertaskId: string | null) => {
+    handleTaskFieldChange("supertask_id", supertaskId);
+    setSupertaskOpen(false);
   };
 
   const handlePrimarySkillChange = (value: Skill) => {
@@ -394,6 +425,9 @@ export default function EditTaskDialog({
     }
 
     try {
+      const originalSupertaskId = formStateFromTask(task).supertask_id;
+      const supertaskChanged = originalSupertaskId !== taskForm.supertask_id;
+
       const payload: UpdateTask = {
         name: taskForm.name.trim(),
         description: taskForm.description.trim(),
@@ -402,12 +436,20 @@ export default function EditTaskDialog({
         deadline: taskForm.deadline,
         primary_skill: taskForm.primary_skill as Skill,
         secondary_skills: taskForm.secondary_skills,
+        // null explicitly removes the task from its supertask.
+        supertask_id: taskForm.supertask_id ?? "",
       };
 
       await updateTaskMutation.mutateAsync({
         id: task.id,
         task: payload,
       });
+
+      if (supertaskChanged) {
+        queryClient.invalidateQueries({
+          queryKey: supertaskKeys.listProject(projectId),
+        });
+      }
 
       // Compare by project_members id, as strings on both sides.
       const originalMemberIds = new Set(
@@ -660,6 +702,93 @@ export default function EditTaskDialog({
                           </button>
                         );
                       })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Supertask */}
+              <div className="space-y-2">
+                <Label>Supertask</Label>
+
+                <Popover open={supertaskOpen} onOpenChange={setSupertaskOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={supertaskOpen}
+                      disabled={!projectId || supertasksLoading}
+                      className="w-full justify-between text-left font-normal"
+                    >
+                      <span
+                        className={cn(
+                          !selectedSupertask && "text-muted-foreground",
+                        )}
+                      >
+                        {supertasksLoading
+                          ? "Loading supertasks..."
+                          : selectedSupertask
+                            ? selectedSupertask.name
+                            : "No supertask"}
+                      </span>
+
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSupertaskChange(null)}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                      >
+                        <span>No supertask</span>
+
+                        {!taskForm.supertask_id && (
+                          <Check className="h-4 w-4 text-[#7A0C2E]" />
+                        )}
+                      </button>
+
+                      {supertasksError && (
+                        <p className="px-2 py-2 text-sm text-rose-600">
+                          Couldn't load supertasks.
+                        </p>
+                      )}
+
+                      {!supertasksLoading &&
+                        !supertasksError &&
+                        projectSupertasks.length === 0 && (
+                          <p className="px-2 py-2 text-sm text-neutral-500">
+                            No supertasks created yet.
+                          </p>
+                        )}
+
+                      {!supertasksError &&
+                        projectSupertasks.map((supertask) => {
+                          const selected =
+                            String(supertask.id) === taskForm.supertask_id;
+
+                          return (
+                            <button
+                              key={supertask.id}
+                              type="button"
+                              onClick={() =>
+                                handleSupertaskChange(String(supertask.id))
+                              }
+                              className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                            >
+                              <span>{supertask.name}</span>
+
+                              {selected && (
+                                <Check className="h-4 w-4 text-[#7A0C2E]" />
+                              )}
+                            </button>
+                          );
+                        })}
                     </div>
                   </PopoverContent>
                 </Popover>
