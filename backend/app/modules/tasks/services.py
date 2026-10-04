@@ -69,8 +69,11 @@ class TaskService:
 
     @staticmethod
     async def delete_task(db: AsyncSession, db_item: Task):
+        from app.modules.task_attachments.services import TaskAttachmentService
         repo = TaskRepo(db)
         project_id = db_item.project_id
+        for att in await TaskAttachmentService.get_by_task(db, db_item.id):
+            await TaskAttachmentService.delete(db, att.id)
         result = await repo.delete(db_item)
         await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
         return result

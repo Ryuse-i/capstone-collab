@@ -4,7 +4,7 @@ from app.modules.projects.routes import project_router
 from app.modules.project_members.routes import project_member_router
 from app.modules.tasks.routes import task_router
 from app.modules.supertasks.routes import supertask_router
-from app.modules.task_contents.routes import task_content_router
+from app.modules.task_attachments.routes import task_attachment_router
 from app.modules.assigned_members.routes import assigned_member_router
 from app.modules.assigned_reviewer.routes import assigned_reviewer_router
 from app.modules.peer_evaluations.routes import peer_evaluation_router
@@ -20,6 +20,8 @@ from app.modules.notifications.routes import notification_router
 from app.modules.invitations.route import project_invitation_router
 from app.modules.meetings.routes import meeting_router
 from app.modules.messages.routes import message_router
+from app.modules.files.routes import files_router
+
 
 api_router = APIRouter()
 api_router.include_router(users_router)
@@ -30,7 +32,7 @@ api_router.include_router(
 api_router.include_router(task_router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(supertask_router, prefix="/supertasks", tags=["supertasks"])
 api_router.include_router(
-    task_content_router, prefix="/task_contents", tags=["task_contents"]
+    task_attachment_router, prefix="/task_attachments", tags=["task_attachments"]
 )
 api_router.include_router(
     assigned_member_router, prefix="/assigned_members", tags=["assigned_members"]
@@ -71,3 +73,4 @@ api_router.include_router(
 )
 api_router.include_router(meeting_router, prefix="/meetings", tags=["meetings"])
 api_router.include_router(message_router, prefix="/messages", tags=["messages"])
+api_router.include_router(files_router, prefix="/files", tags=["files"])

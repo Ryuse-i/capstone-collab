@@ -29,6 +29,9 @@ class Settings:
     ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID")
     ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID")
     ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
+    #file upload
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
 
 settings = Settings()

@@ -6,7 +6,7 @@ modules = [
     "app.modules.project_members.model",
     "app.modules.project_snapshots.model",
     "app.modules.supertasks.model",
-    "app.modules.task_contents.model",
+    "app.modules.task_attachments.model",
     "app.modules.assigned_members.model",
     "app.modules.peer_evaluations.model",
     "app.modules.task_comments.model",
@@ -21,7 +21,8 @@ modules = [
     "app.modules.invitations.model",
     "app.modules.meetings.model",
     "app.modules.messages.model",
-    "app.modules.assigned_reviewer.model"
+    "app.modules.assigned_reviewer.model",
+    "app.modules.files.model"
 ]
 
 

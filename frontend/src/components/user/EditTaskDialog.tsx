@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskComments } from "@/components/user/TaskComments";
+import { TaskAttachments } from "./TaskAttachments";
 
 import {
   Drawer,
@@ -1070,6 +1071,11 @@ export default function EditTaskDialog({
                 {error}
               </p>
             )}
+
+            {/* Attachments: saved immediately, independent of "Save changes" */}
+            <div className="border-t pt-6">
+              <TaskAttachments taskId={task.id} />
+            </div>
 
             {/* Comments: saved immediately, independent of "Save changes" */}
             <div className="border-t pt-6">

@@ -48,6 +48,8 @@ import type {
   TaskPriority,
 } from "@/types/task";
 import { taskKeys } from "@/hooks/useTask";
+import { PendingAttachments } from "@/components/user/TaskAttachments";
+import { useUploadTaskAttachment } from "@/hooks/useTaskAttachment";
 
 type TaskType = "task" | "supertask";
 
@@ -160,6 +162,7 @@ export function AddTaskDialog({
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
   const [reviewerOpen, setReviewerOpen] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [selectedReviewerId, setSelectedReviewerId] = useState<string | null>(
     null,
   );
@@ -167,10 +170,12 @@ export function AddTaskDialog({
   const createTaskMutation = useCreateTask();
   const createAssignedMemberMutation = useCreateAssignedMember();
   const createAssignedReviewerMutation = useCreateAssignedReviewer();
+  const uploadAttachmentMutation = useUploadTaskAttachment();
   const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
   const {
     data: projectMembersData,
     isLoading: membersLoading,
@@ -211,7 +216,9 @@ export function AddTaskDialog({
   }, [projectMembersData]);
 
   const selectedReviewer = useMemo(
-    () => eligibleReviewers.find((m) => m.member_id === selectedReviewerId) ?? null,
+    () =>
+      eligibleReviewers.find((m) => m.member_id === selectedReviewerId) ??
+      null,
     [eligibleReviewers, selectedReviewerId],
   );
 
@@ -225,6 +232,7 @@ export function AddTaskDialog({
     setSecondarySkillOpen(false);
     setReviewerOpen(false);
     setSelectedReviewerId(null);
+    setPendingFiles([]);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -379,6 +387,27 @@ export function AddTaskDialog({
           queryKey: taskKeys.listProject(projectId),
         });
 
+        if (pendingFiles.length > 0) {
+          const results = await Promise.allSettled(
+            pendingFiles.map((file) =>
+              uploadAttachmentMutation.mutateAsync({
+                task_id: String(createdTask.id),
+                file,
+              }),
+            ),
+          );
+
+          const failed = results.filter(
+            (result) => result.status === "rejected",
+          ).length;
+
+          if (failed > 0) {
+            toast.error(
+              `Task was created, but ${failed} of ${pendingFiles.length} attachment(s) failed to upload. You can add them by editing the task.`,
+            );
+          }
+        }
+
         if (taskForm.assigned_members.length > 0) {
           try {
             await Promise.all(
@@ -396,6 +425,7 @@ export function AddTaskDialog({
             queryClient.invalidateQueries({
               queryKey: assignedMemberKeys.task_list(createdTask.id),
             });
+
             // Invalidate project snapshot to update unassigned_tasks count
             queryClient.invalidateQueries({
               queryKey: projectKeys.detailSnapshot(projectId ?? ""),
@@ -404,7 +434,9 @@ export function AddTaskDialog({
             // The task itself was created successfully — don't roll that
             // back, just surface that assignment partially/fully failed.
             console.error("Failed to assign one or more members", assignErr);
-            toast.error("Task was created, but assigning some members failed. You can add them from the task detail page.");
+            toast.error(
+              "Task was created, but assigning some members failed. You can add them from the task detail page.",
+            );
             onCreated?.();
             handleOpenChange(false);
             return;
@@ -422,7 +454,9 @@ export function AddTaskDialog({
             // The task itself was created successfully — don't roll that
             // back, just surface that reviewer assignment failed.
             console.error("Failed to assign reviewer", reviewerErr);
-            toast.error("Task was created, but assigning the reviewer failed. You can add them from the task detail page.");
+            toast.error(
+              "Task was created, but assigning the reviewer failed. You can add them from the task detail page.",
+            );
             onCreated?.();
             handleOpenChange(false);
             return;
@@ -452,8 +486,10 @@ export function AddTaskDialog({
   };
 
   const isSubmitting =
-    createTaskMutation.isPending || createAssignedMemberMutation.isPending ||
-    createAssignedReviewerMutation.isPending;
+    createTaskMutation.isPending ||
+    createAssignedMemberMutation.isPending ||
+    createAssignedReviewerMutation.isPending ||
+    uploadAttachmentMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -493,7 +529,9 @@ export function AddTaskDialog({
                   <ListTodo className="mt-0.5 h-5 w-5 text-[#7A0C2E]" />
 
                   <div>
-                    <p className="text-sm font-semibold text-[#231A2E]">Task</p>
+                    <p className="text-sm font-semibold text-[#231A2E]">
+                      Task
+                    </p>
 
                     <p className="text-xs text-neutral-500">
                       A concrete, trackable unit of work.
@@ -535,7 +573,9 @@ export function AddTaskDialog({
                     ? "e.g. Set up auth routes"
                     : "e.g. MVP backend complete"
                 }
-                value={taskType === "task" ? taskForm.name : supertaskForm.name}
+                value={
+                  taskType === "task" ? taskForm.name : supertaskForm.name
+                }
                 onChange={(e) =>
                   taskType === "task"
                     ? handleTaskFieldChange("name", e.target.value)
@@ -545,7 +585,9 @@ export function AddTaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-description">Description (required)</Label>
+              <Label htmlFor="item-description">
+                Description (required)
+              </Label>
 
               <Textarea
                 id="item-description"
@@ -559,7 +601,10 @@ export function AddTaskDialog({
                 onChange={(e) =>
                   taskType === "task"
                     ? handleTaskFieldChange("description", e.target.value)
-                    : handleSupertaskFieldChange("description", e.target.value)
+                    : handleSupertaskFieldChange(
+                        "description",
+                        e.target.value,
+                      )
                 }
               />
             </div>
@@ -572,7 +617,10 @@ export function AddTaskDialog({
                   <Select
                     value={taskForm.priority}
                     onValueChange={(value) =>
-                      handleTaskFieldChange("priority", value as TaskPriority)
+                      handleTaskFieldChange(
+                        "priority",
+                        value as TaskPriority,
+                      )
                     }
                   >
                     <SelectTrigger>
@@ -612,7 +660,8 @@ export function AddTaskDialog({
                       >
                         <span
                           className={cn(
-                            !taskForm.primary_skill && "text-muted-foreground",
+                            !taskForm.primary_skill &&
+                              "text-muted-foreground",
                           )}
                         >
                           {taskForm.primary_skill
@@ -664,7 +713,7 @@ export function AddTaskDialog({
                           SKILL_OPTIONS.find(
                             (o) => o.value === taskForm.primary_skill,
                           )?.label
-                        },
+                        }
 
                         <button
                           type="button"
@@ -719,17 +768,19 @@ export function AddTaskDialog({
                         onWheel={(e) => e.stopPropagation()}
                       >
                         {SKILL_OPTIONS.filter(
-                          (option) => option.value !== taskForm.primary_skill,
+                          (option) =>
+                            option.value !== taskForm.primary_skill,
                         ).map((option) => {
-                          const selected = taskForm.secondary_skills.includes(
-                            option.value,
-                          );
+                          const selected =
+                            taskForm.secondary_skills.includes(option.value);
 
                           return (
                             <button
                               key={option.value}
                               type="button"
-                              onClick={() => toggleSecondarySkill(option.value)}
+                              onClick={() =>
+                                toggleSecondarySkill(option.value)
+                              }
                               className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
                             >
                               <span>{option.label}</span>
@@ -751,7 +802,7 @@ export function AddTaskDialog({
                           key={skill}
                           className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
                         >
-                          {SKILL_OPTIONS.find((o) => o.value === skill)?.label},
+                          {SKILL_OPTIONS.find((o) => o.value === skill)?.label}
 
                           <button
                             type="button"
@@ -819,7 +870,8 @@ export function AddTaskDialog({
                           !membersLoading &&
                           assignableMembers.length === 0 && (
                             <p className="px-2 py-2 text-sm text-neutral-500">
-                              No members with the "member" role on this project.
+                              No members with the "member" role on this
+                              project.
                             </p>
                           )}
 
@@ -876,8 +928,8 @@ export function AddTaskDialog({
                         </span>
                       ))}
                     </div>
-                  )
-                  }
+                  )}
+
                   <p className="text-xs text-muted-foreground">
                     Select the members who will be assigned to this task.
                   </p>
@@ -931,7 +983,8 @@ export function AddTaskDialog({
                           !membersLoading &&
                           eligibleReviewers.length === 0 && (
                             <p className="px-2 py-2 text-sm text-neutral-500">
-                              No eligible reviewers (leader, advisor, instructor) on this project.
+                              No eligible reviewers (leader, advisor,
+                              instructor) on this project.
                             </p>
                           )}
 
@@ -969,10 +1022,9 @@ export function AddTaskDialog({
 
                   {selectedReviewer && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      <span
-                        className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
-                      >
-                        {selectedReviewer.first_name} {selectedReviewer.last_name}
+                      <span className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]">
+                        {selectedReviewer.first_name}{" "}
+                        {selectedReviewer.last_name}
                         <button
                           type="button"
                           onClick={() => toggleReviewer(selectedReviewer)}
@@ -986,7 +1038,8 @@ export function AddTaskDialog({
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    Select the reviewer for this task (leader, advisor, or instructor only).
+                    Select the reviewer for this task (leader, advisor, or
+                    instructor only).
                   </p>
                 </div>
 
@@ -1024,10 +1077,18 @@ export function AddTaskDialog({
                             date ? format(date, "yyyy-MM-dd") : "",
                           );
                         }}
-                        disabled={{before: today}}
+                        disabled={{ before: today }}
                       />
                     </PopoverContent>
                   </Popover>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <PendingAttachments
+                    files={pendingFiles}
+                    onChange={setPendingFiles}
+                    disabled={isSubmitting}
+                  />
                 </div>
               </div>
             ) : (

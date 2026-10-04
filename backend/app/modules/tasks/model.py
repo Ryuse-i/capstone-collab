@@ -11,7 +11,7 @@ from app.modules.project_members.model import Skills
 if TYPE_CHECKING:
     from app.modules.task_comments.model import TaskComment
     from app.modules.task_submissions.model import TaskSubmission
-    from app.modules.task_contents.model import TaskContent
+    from app.modules.task_attachments.model import TaskAttachment 
     from app.modules.task_relations.model import TaskRelation
     from app.modules.task_tags.model import TaskTag
     from app.modules.assigned_members.model import AssignedMember
@@ -70,8 +70,8 @@ class Task(Base):
         cascade="all, delete-orphan",
     )
 
-    contents: Mapped[list["TaskContent"]] = relationship(
-        "TaskContent",
+    attachments: Mapped[list["TaskAttachment"]] = relationship(
+        "TaskAttachment",
         back_populates="task",
         cascade="all, delete-orphan",
     )
