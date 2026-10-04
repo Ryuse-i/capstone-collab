@@ -12,8 +12,6 @@ import { MyTaskDialog } from "@/components/user/MyTaskDialog";
 import type { TaskResponseMembers } from "@/types/task";
 import { useGetTasksForUser } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
-import apiClient from "@/services/apiClient";
-import { useQueryClient } from "@tanstack/react-query";
 
 function getDeadlineUrgency(task: TaskResponseMembers) {
   if (!task.deadline || task.status === "completed") return null;
@@ -112,7 +110,6 @@ function MyTaskSkeleton() {
 
 export default function MyTask() {
   const { data: currentUser, isLoading: userLoading } = useCurrentUser();
-  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<
     "All" | "Not Started" | "In Progress" | "Submitted" | "Completed"
@@ -182,7 +179,7 @@ export default function MyTask() {
           day: "numeric",
           year: "2-digit",
         });
-      } catch (e) {
+      } catch {
         // Keep default if date parsing fails
       }
     }
@@ -326,12 +323,6 @@ export default function MyTask() {
                   <Card
                     key={project.id}
                     className="gap-3 border border-border/70 py-0 transition-all hover:-translate-y-0.5 hover:border-(--maroon)/40 hover:shadow-md"
-                    onClick={() => {
-                      if (project.task) {
-                        setSelectedTaskId(project.task.id);
-                        setOpenTaskDialog(true);
-                      }
-                    }}
                   >
                     <CardHeader className="pt-4">
                       <div className="flex items-start gap-3">
@@ -399,49 +390,23 @@ export default function MyTask() {
                       </div>
                     </CardContent>
 
-                    {project.attachment && (
-                      <div className="flex items-center justify-end border-t bg-muted/30 px-4 py-3">
-                        {project.status === "Not Started" ? (
-                          <Button
-                            variant="default"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                    <div className="flex items-center justify-end border-t bg-muted/30 px-4 py-3">
+                      <Button
+                        variant="outline"
+                        className="w- rounded-md"
+                        onClick={(e) => {
+                          e.stopPropagation();
 
-                              // Directly update the task to in_progress status
-                              apiClient.patch<TaskResponseMembers>(`/tasks/${project.task.id}`, {
-                                started_at: new Date().toISOString(),
-                                status: "in_progress",
-                              }).then(() => {
-                                // Refetch tasks to update the UI
-                                queryClient.invalidateQueries({ queryKey: ["tasks", "forUser", userId] });
-                              }).catch((error: Error) => {
-                                console.error("Failed to start task:", error);
-                              });
-                            }}
-                            className="w- rounded-md"
-                          >
-                            Start Task
-                            <ArrowRight className="size-3.5 ms-2" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            className="w- rounded-md"
-                            onClick={(e) => {
-                              e.stopPropagation();
-
-                              if (project.task) {
-                                setSelectedTaskId(project.task.id);
-                                setOpenTaskDialog(true);
-                              }
-                            }}
-                          >
-                            Open
-                            <ArrowRight className="size-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                          if (project.task) {
+                            setSelectedTaskId(project.task.id);
+                            setOpenTaskDialog(true);
+                          }
+                        }}
+                      >
+                        Open
+                        <ArrowRight className="size-3.5" />
+                      </Button>
+                    </div>
                   </Card>
                 );
               })

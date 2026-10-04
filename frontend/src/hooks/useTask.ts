@@ -178,6 +178,8 @@ export function useUpdateTask() {
       });
       // Invalidate tasks for all users to refetch MyTask page
       queryClient.invalidateQueries({ queryKey: ["tasks", "forUser"] });
+      // Also invalidate with prefix match to cover ["tasks", "forUser", userId]
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }

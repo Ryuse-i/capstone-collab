@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "../ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import {
   Drawer,
@@ -111,9 +112,13 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
   // Reset the submission form whenever the selected task changes (or the
   // dialog closes) so stale state from a previous task can't leak through.
   useEffect(() => {
-    setSubmissionOpen(false);
-    setSubmissionNotes("");
-    setSubmissionLink("");
+    const resetSubmissionForm = () => {
+      setSubmissionOpen(false);
+      setSubmissionNotes("");
+      setSubmissionLink("");
+    };
+
+    resetSubmissionForm();
   }, [task?.id, open]);
 
   const normalizedStatus = normalizeStatus(task?.status);
@@ -437,8 +442,12 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                     disabled={updateTaskMutation.isPending}
                   >
                     {updateTaskMutation.isPending
-                      ? "Submitting..."
-                      : "Submit Task"}
+                      ? (
+                        <>
+                          <Spinner className="mr-2 size-4" />
+                          Submitting...
+                        </>
+                      ) : "Submit Task"}
                   </Button>
                 </div>
               </div>
@@ -473,8 +482,12 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                     disabled={updateTaskMutation.isPending}
                   >
                     {updateTaskMutation.isPending
-                      ? "Starting..."
-                      : "Start Task"}
+                      ? (
+                        <>
+                          <Spinner className="mr-2 size-4" />
+                          Starting...
+                        </>
+                      ) : "Start Task"}
                   </Button>
                 </>
               ) : isInProgress ? (
@@ -484,16 +497,15 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                       Close
                     </Button>
                   </DrawerClose>
-                  <Button
-                    variant="default"
-                    onClick={() => setSubmissionOpen(true)}
-                    className="min-w-24"
-                    disabled={updateTaskMutation.isPending}
-                  >
-                    {updateTaskMutation.isPending
-                      ? "Submitting..."
-                      : "Submit Task"}
-                  </Button>
+                  {!submissionOpen && (
+                    <Button
+                      variant="default"
+                      onClick={() => setSubmissionOpen(true)}
+                      className="min-w-24"
+                    >
+                      Submit Task
+                    </Button>
+                  )}
                 </>
               ) : isSubmitted ? (
                 <>
