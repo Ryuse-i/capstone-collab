@@ -38,6 +38,7 @@ import {
   LucideLayers,
   FolderKanban,
   FolderOpen,
+  UserRoundCog,
 } from "lucide-react";
 
 const data = {
@@ -151,6 +152,19 @@ const instructorNavMain = [
   },
   chatNavItem,
   capstoneSearchNavItem,
+];
+
+const adminNavMain = [
+  {
+    title: "Overview",
+    url: "/dashboard",
+    icon: <LayoutGridIcon />,
+  },
+  {
+    title: "User management",
+    url: "/admin/users",
+    icon: <UserRoundCog />,
+  },
 ];
 
 // Static class names so Tailwind can generate them (dynamic `w-${n}` gets purged)
@@ -270,11 +284,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     } else {
       navMain = isLeaderOrAbove ? studentLeaderNavMain : studentMemberNavMain;
     }
-  } else if (
-    role === ROLES.ADMIN ||
-    role === ROLES.INSTRUCTOR ||
-    role === ROLES.ADVISOR
-  ) {
+  } else if (role === ROLES.ADMIN) {
+    navMain = adminNavMain;
+  } else if (role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) {
     navMain = instructorNavMain;
   } else {
     navMain = commonNavMain;

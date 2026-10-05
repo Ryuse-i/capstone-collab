@@ -53,7 +53,6 @@ async def test_user(db_session: AsyncSession) -> dict:
         "email": f"test_user_{unique_suffix}@example.com",
         "first_name": "Test",
         "last_name": "User",
-        "role": "student",
         "password": "securepassword123",
     }
 
@@ -80,7 +79,6 @@ async def test_another_user(db_session: AsyncSession) -> dict:
         "email": f"test_another_user_{unique_suffix}@example.com",
         "first_name": "Another",
         "last_name": "User",
-        "role": "student",
         "password": "securepassword123",
     }
 
@@ -150,6 +148,7 @@ async def test_task(ac: AsyncClient, test_user: dict, test_project: dict) -> dic
         "complexity": "low",
         "complexity_points": 0,
         "category": "development",
+        "primary_skill": "Backend Development",
         "deadline": "2099-01-01T00:00:00Z",
     }
     response = await ac.post("/tasks/", json=payload)

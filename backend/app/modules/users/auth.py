@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
@@ -156,9 +156,13 @@ async def rotate_refresh_token(old_token_id: int, db: AsyncSession) -> str:
     return new_plain_token
 
 
-async def revoke_refresh_tokens_for_user(user_id: str, db: AsyncSession) -> None:
-    """Revoke all refresh tokens for a user (e.g., on logout)."""
-    # We can delete them or mark them as revoked. For simplicity, delete.
+async def delete_refresh_tokens_for_user(user_id: str, db: AsyncSession) -> None:
+    """Delete all refresh tokens for the given user to invalidate sessions immediately."""
     stmt = delete(RefreshToken).where(RefreshToken.user_id == user_id)
     await db.execute(stmt)
     await db.commit()
+
+
+async def revoke_refresh_tokens_for_user(user_id: str, db: AsyncSession) -> None:
+    """Revoke all refresh tokens for a user (e.g., on logout)."""
+    await delete_refresh_tokens_for_user(user_id, db)

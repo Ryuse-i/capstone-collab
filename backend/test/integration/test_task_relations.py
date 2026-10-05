@@ -8,6 +8,7 @@ TASK_PAYLOAD_DEFAULTS = {
     "complexity": "low",
     "complexity_points": 0,
     "category": "development",
+    "primary_skill": "Backend Development",
     "deadline": "2099-01-01T00:00:00Z",
 }
 

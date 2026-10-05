@@ -12,6 +12,8 @@ from uuid import UUID
 from typing import List
 from app.modules.users.services import current_active_user
 from app.modules.users.model import User
+from app.modules.admin.activity_service import ActivityLogService
+from app.modules.tasks.enums import Status
 
 # Standardizing on task_router
 task_router = APIRouter()
@@ -48,9 +50,22 @@ async def get_one_task(task_id: UUID, db: AsyncSession = Depends(get_async_sessi
 
 
 @task_router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-async def create_task(task: TaskCreate, db: AsyncSession = Depends(get_async_session)):
+async def create_task(
+    task: TaskCreate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
     """Create a new task. Returns 201 Created on success."""
-    return await TaskService.create_task(db, task)
+    created = await TaskService.create_task(db, task)
+    await ActivityLogService.record(
+        db,
+        event_type="task_created",
+        actor_id=current_user.id,
+        target_type="task",
+        target_id=created.id,
+        details={"target_label": created.name},
+    )
+    return created
 
 
 @task_router.patch("/{task_id}", response_model=TaskResponse)
@@ -58,6 +73,7 @@ async def update_task(
     task_id: UUID,
     task: TaskUpdate,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     """Partially update an existing task."""
     db_item = await TaskService.get_one_task(db, task_id)
@@ -65,13 +81,29 @@ async def update_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
-    return await TaskService.update_task(db, db_item, task)
+    previous_status = db_item.status
+    updated = await TaskService.update_task(db, db_item, task)
+    event_type = "task_updated"
+    if previous_status != updated.status and updated.status == Status.SUBMITTED:
+        event_type = "task_submitted"
+    elif previous_status != updated.status and updated.status == Status.COMPLETED:
+        event_type = "task_completed"
+    await ActivityLogService.record(
+        db,
+        event_type=event_type,
+        actor_id=current_user.id,
+        target_type="task",
+        target_id=updated.id,
+        details={"target_label": updated.name},
+    )
+    return updated
 
 
 @task_router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: UUID,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
     """Delete a task. Returns 204 No Content on success."""
     # 1. Fetch the item to verify existence
@@ -84,7 +116,16 @@ async def delete_task(
         )
 
     # 3. Perform the delete and AWAIT the service call
+    task_name = db_item.name
     await TaskService.delete_task(db, db_item)
+    await ActivityLogService.record(
+        db,
+        event_type="task_deleted",
+        actor_id=current_user.id,
+        target_type="task",
+        target_id=task_id,
+        details={"target_label": task_name},
+    )
     return None
 
 
