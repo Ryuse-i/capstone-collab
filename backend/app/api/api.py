@@ -23,11 +23,13 @@ from app.modules.meetings.routes import meeting_router
 from app.modules.messages.routes import message_router
 from app.modules.files.routes import files_router
 from app.modules.task_links.routes import task_link_router 
+from app.modules.resources.routes import resources_router
 
 
 api_router = APIRouter()
 api_router.include_router(users_router)
 api_router.include_router(admin_router)
+api_router.include_router(resources_router, prefix="/resources", tags=["resources"])
 api_router.include_router(project_router, prefix="/projects", tags=["project"])
 api_router.include_router(
     project_member_router, prefix="/project_members", tags=["project_member"]

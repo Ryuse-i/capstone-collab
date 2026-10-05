@@ -52,7 +52,7 @@ export default function LoginPage() {
       onClick={handleModeToggle}
     >
       {/* LEFT — BRANDING PANEL (static) */}
-      <div className="auth-brand-panel relative hidden w-full flex-col items-center justify-center gap-2 overflow-hidden bg-[#7A0C2E] px-10 py-16 md:flex md:w-1/2 md:max-w-[50%] md:min-w-0 md:shrink-0 md:grow-0 md:basis-1/2">
+      <div className="auth-brand-panel relative hidden w-full flex-col items-center justify-center gap-2 overflow-hidden bg-primary px-10 py-16 md:flex md:w-1/2 md:max-w-[50%] md:min-w-0 md:shrink-0 md:grow-0 md:basis-1/2">
         {/* seal motif — animated rings */}
         <div className="auth-brand-motif pointer-events-none absolute inset-0 grid place-items-center">
           <div className="auth-ring auth-ring--outer col-start-1 row-start-1 size-104 shrink-0 rounded-full border border-[#C9A84C]/20" />

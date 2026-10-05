@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { ArrowRight, Code2, FileText, Frame } from "lucide-react";
-import type { Resource } from "@/pages/student/Resources";
+import type { ProjectResource, ResourceCategory } from "@/types/resource";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,7 @@ interface CategoryStyle {
   barClass: string;
 }
 
-const CATEGORY_STYLES: Record<Resource["category"], CategoryStyle> = {
+const CATEGORY_STYLES: Record<ResourceCategory, CategoryStyle> = {
   Links: {
     icon: Frame,
     iconClass:
@@ -41,20 +41,32 @@ const CATEGORY_STYLES: Record<Resource["category"], CategoryStyle> = {
 };
 
 interface ResourceDialogProps {
-  resource: Resource | null;
+  resource: ProjectResource | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenResource: (resourceId: string) => void;
+  isOpening?: boolean;
 }
 
 export default function ResourceDialog({
   resource,
   open,
   onOpenChange,
+  onOpenResource,
+  isOpening = false,
 }: ResourceDialogProps) {
   if (!resource) return null;
 
   const category = CATEGORY_STYLES[resource.category];
   const Icon = category.icon;
+  const author = resource.creator
+    ? `${resource.creator.first_name} ${resource.creator.last_name}`.trim() || resource.creator.email
+    : "Former member";
+  const fileSize = resource.file
+    ? resource.file.size < 1024 * 1024
+      ? `${(resource.file.size / 1024).toFixed(0)} KB`
+      : `${(resource.file.size / (1024 * 1024)).toFixed(1)} MB`
+    : resource.source_url ?? "External link";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,19 +101,23 @@ export default function ResourceDialog({
         <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/20 p-3 text-sm">
           <div>
             <p className="text-xs text-muted-foreground">Type</p>
-            <p className="font-medium">{resource.type}</p>
+            <p className="font-medium">
+              {resource.file?.content_type ?? "Live link"}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Size/Source</p>
-            <p className="font-medium">{resource.size}</p>
+            <p className="font-medium break-all">{fileSize}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Author</p>
-            <p className="font-medium">{resource.author}</p>
+            <p className="font-medium">{author}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Last updated</p>
-            <p className="font-medium">{resource.updatedAt}</p>
+            <p className="font-medium">
+              {new Date(resource.updated_at).toLocaleDateString()}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Times used</p>
@@ -123,20 +139,11 @@ export default function ResourceDialog({
           </Button>
           <Button
             type="button"
-            disabled={!resource.sourceUrl && !resource.attachment}
-            onClick={() => {
-              const resourceUrl =
-                resource.sourceUrl ||
-                (resource.attachment
-                  ? URL.createObjectURL(resource.attachment)
-                  : null);
-              if (resourceUrl) {
-                window.open(resourceUrl, "_blank", "noopener,noreferrer");
-              }
-            }}
+            disabled={(!resource.source_url && !resource.file) || isOpening}
+            onClick={() => onOpenResource(resource.id)}
             className="bg-(--maroon) text-white hover:bg-(--maroon)/90"
           >
-            Open resource
+            {isOpening ? "Opening..." : "Open resource"}
             <ArrowRight className="size-3.5" />
           </Button>
         </DialogFooter>

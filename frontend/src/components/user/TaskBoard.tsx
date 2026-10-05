@@ -30,6 +30,13 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   completed: "Completed",
 };
 
+const STATUS_STYLE: Record<TaskStatus, string> = {
+  completed: "bg-green-100 text-green-700",
+  submitted: "bg-blue-100 text-blue-700",
+  in_progress: "bg-yellow-100 text-yellow-700",
+  not_started: "bg-gray-100 text-gray-500",
+};
+
 type BoardColumn = {
   id: string;
   title: string;
@@ -128,7 +135,10 @@ function SupertaskDialog({
                         {task.name}
                       </span>
 
-                      <Badge variant="secondary" className="shrink-0">
+                      <Badge
+                        variant="secondary"
+                        className={`shrink-0 border-0 capitalize ${STATUS_STYLE[task.status ?? "not_started"]}`}
+                      >
                         {STATUS_LABEL[task.status ?? "not_started"]}
                       </Badge>
                     </li>
@@ -169,7 +179,7 @@ function ColumnHeader({
       </h3>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Badge variant="secondary">{column.tasks.length}</Badge>
+        <Badge variant="default">{column.tasks.length}</Badge>
 
         <Button
           variant="ghost"
@@ -221,7 +231,10 @@ function TaskCard({
       </p>
 
       <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <Badge variant="secondary">
+        <Badge
+          variant="secondary"
+          className={`border-0 capitalize ${STATUS_STYLE[task.status ?? "not_started"]}`}
+        >
           {STATUS_LABEL[task.status ?? "not_started"]}
         </Badge>
 

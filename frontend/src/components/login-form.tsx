@@ -128,7 +128,7 @@ export function LoginForm({
           <Field>
             <Button
               type="submit"
-              className="h-11 w-full bg-[#7A0C2E] text-white hover:bg-[#701d0b]"
+              className="h-11 w-full bg-primary text-white hover:bg-[#701d0b] "
               disabled={login.isPending}
             >
               {login.isPending ? (
