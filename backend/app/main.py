@@ -12,6 +12,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://psu-collab.vercel.app",
+        "https://psu-collab.railway.internal",
         "http://localhost:5173",
         "http://127.0.0.1:8000",
     ],
