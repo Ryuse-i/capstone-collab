@@ -124,7 +124,7 @@ function MemberCard({
             </span>
           )}
 
-          {project_role === "member" && (
+          {(project_role === "member" || project_role === "leader") &&(
             <MemberDetailDrawer
               member={member}
               trigger={

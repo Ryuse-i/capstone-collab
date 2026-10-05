@@ -86,7 +86,7 @@
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
-  }
+}
 
 .auth-ring--outer {
   animation-duration: 8s;
@@ -267,32 +267,39 @@
   }
 }
 
-/* Scope everything under .auth-entering */
+/*
+  Scope everything under .auth-entering.
+  IMPORTANT: every entrance animation uses `both` fill-mode so the element
+  stays at its "from" state (hidden) during its animation-delay, instead of
+  showing in its final state and then snapping back to hidden.
+
+  Sequence: rings + seal (0ms) -> title (600ms) -> tagline (850ms)
+*/
 .auth-entering .auth-brand-motif {
-  animation: auth-fade-in 900ms ease-out;
+  animation: auth-fade-in 900ms ease-out both;
 }
 
-.auth-entering .auth-enter-logo {
-  animation: auth-pop 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation-delay: 100ms;
+.auth-entering .auth-enter-seal {
+  animation: auth-pop 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: 0ms;
 }
 
 .auth-entering .auth-enter-title {
-  animation: auth-rise 550ms ease-out;
-  animation-delay: 250ms;
+  animation: auth-rise 600ms ease-out both;
+  animation-delay: 600ms;
 }
 
 .auth-entering .auth-enter-tagline {
-  animation: auth-rise 550ms ease-out;
-  animation-delay: 400ms;
+  animation: auth-rise 600ms ease-out both;
+  animation-delay: 850ms;
 }
 
 .auth-entering .auth-form-layer {
-  animation: auth-slide-in 450ms ease-out;
+  animation: auth-slide-in 450ms ease-out both;
 }
 
 .auth-entering .auth-form-layer [data-slot="field-group"] > * {
-  animation: auth-rise 500ms ease-out;
+  animation: auth-rise 500ms ease-out both;
 }
 
 /* Stagger delays for field-group children */
@@ -315,14 +322,16 @@
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .auth-entering .auth-brand-motif,
-  .auth-entering .auth-enter-logo,
+  .auth-entering .auth-enter-seal,
   .auth-entering .auth-enter-title,
   .auth-entering .auth-enter-tagline,
   .auth-entering .auth-form-layer,
   .auth-entering .auth-form-layer [data-slot="field-group"] > * {
     animation: none !important;
   }
-}@media (max-width: 767px) {
+}
+
+@media (max-width: 767px) {
   .auth-form-layer {
     transition-delay: 0ms !important;
   }
@@ -335,12 +344,6 @@
     transition-duration: 180ms !important;
     transition-delay: 0ms !important;
     transform: none !important;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .feature-progress {
-    animation: none !important;
   }
 }
 
@@ -716,4 +719,56 @@
   height: auto !important;
   top: 0 !important;
   bottom: 0 !important;
+}
+
+/* ─── Page switch fade-in (upwards) ─────────────────────── */
+
+@keyframes page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+  `backwards` fill-mode (not `both`/`forwards`): once the animation ends the
+  transform is removed entirely, so it doesn't create a containing block that
+  would break position: fixed dialogs/popovers inside the page.
+*/
+.page-slide-in {
+  animation: page-slide-in 350ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-slide-in {
+    animation: none !important;
+  }
+}
+
+/* ─── Sidebar active-item highlight: smooth color transition ───
+  shadcn's SidebarMenuButton only transitions width/height/padding, so the
+  colored active background snaps instantly. This adds background-color and
+  color to the transition so the highlight fades between items.
+  Unlayered CSS wins over Tailwind's layered utilities, so no !important needed.
+*/
+[data-sidebar="menu-button"],
+[data-sidebar="menu-sub-button"] {
+  transition:
+    background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 200ms linear,
+    height 200ms linear,
+    padding 200ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sidebar="menu-button"],
+  [data-sidebar="menu-sub-button"] {
+    transition-duration: 0ms !important;
+  }
 }

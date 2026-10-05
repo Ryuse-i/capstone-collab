@@ -23,7 +23,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
-  SidebarRail,
   SidebarMenuButton,
   SidebarMenu,
   SidebarMenuItem,
@@ -160,7 +159,7 @@ const skeletonRowWidths = ["w-20", "w-16", "w-24", "w-20", "w-24"];
 function AppSidebarSkeleton() {
   return (
     <>
-      <SidebarContent>
+      <SidebarContent className="relative isolate">
         {/* Mirrors NavMain: SidebarGroup > SidebarMenu > item (h-8, px-2, gap-2) */}
         <SidebarGroup>
           <SidebarMenu>
@@ -205,8 +204,6 @@ function AppSidebarSkeleton() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-
-      <SidebarRail />
     </>
   );
 }
@@ -337,8 +334,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarFooter>
             <NavUser user={sidebarUser} />
           </SidebarFooter>
-
-          <SidebarRail />
         </>
       )}
     </Sidebar>

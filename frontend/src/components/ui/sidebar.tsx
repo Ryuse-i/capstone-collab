@@ -51,6 +51,17 @@ function useSidebar() {
   return context;
 }
 
+// Reads the persisted sidebar state from the cookie (exact name match).
+function readSidebarCookie(fallback: boolean): boolean {
+  if (typeof document === "undefined") return fallback;
+  const prefix = `${SIDEBAR_COOKIE_NAME}=`;
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(prefix));
+  if (!cookie) return fallback;
+  return cookie.slice(prefix.length) === "true";
+}
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -67,22 +78,12 @@ function SidebarProvider({
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
 
-  // Get initial state from cookie if available
-  const getInitialState = () => {
-    if (typeof document === "undefined") return defaultOpen;
-    const cookie = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith(SIDEBAR_COOKIE_NAME));
-    if (cookie) {
-      const value = cookie.split("=")[1];
-      return value === "true";
-    }
-    return defaultOpen;
-  };
-
   // This is the internal state of the sidebar.
+  // Lazy initializer: the cookie is read once, not on every render.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(getInitialState());
+  const [_open, _setOpen] = React.useState<boolean>(() =>
+    readSidebarCookie(defaultOpen),
+  );
   const open = openProp ?? _open;
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -94,7 +95,7 @@ function SidebarProvider({
       }
 
       // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}; SameSite=Lax`;
     },
     [setOpenProp, open],
   );
@@ -300,7 +301,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
+        "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:inset-s-1/2 after:w-0.5 hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",

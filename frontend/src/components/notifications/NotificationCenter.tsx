@@ -27,6 +27,10 @@ import NotificationDialogContent from "./NotificationDialogContent";
 import NotificationCard, {
   type NotificationCardType,
 } from "./NotificationCard";
+import { getMockNotifications } from "./notificationFixtures"; // adjust path to where your mock file lives
+
+// Flip to false to use real notifications from the API.
+const USE_MOCK_NOTIFICATIONS = true;
 
 export default function NotificationCenter() {
   const {
@@ -40,17 +44,39 @@ export default function NotificationCenter() {
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(
     () => new Set(),
   );
+  // Used only in mock mode, since mock IDs don't exist on the backend.
+  const [localReadIds, setLocalReadIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
 
   // Only fetch notifications if we have a user and the user is loaded
-  const { data, isLoading: notificationLoading } = useGetUserNotifications(
+  const { data, isLoading: apiNotificationLoading } = useGetUserNotifications(
     user?.id ?? "",
   );
 
-  const notifications: NotificationResponse[] = data ?? [];
+  // Memoized so mock timestamps stay stable between renders.
+  const mockNotifications = React.useMemo(
+    () => (USE_MOCK_NOTIFICATIONS ? getMockNotifications(user?.id) : []),
+    [user?.id],
+  );
+
+  const notificationLoading = USE_MOCK_NOTIFICATIONS
+    ? false
+    : apiNotificationLoading;
+
+  const notifications: NotificationResponse[] = USE_MOCK_NOTIFICATIONS
+    ? mockNotifications.map((item) => ({
+        ...item,
+        is_read: item.is_read || localReadIds.has(item.id),
+      }))
+    : (data ?? []);
+
   const visibleNotifications = notifications.filter(
     (item) => !dismissedIds.has(item.id),
   );
   const hasUnread = visibleNotifications.some((item) => !item.is_read);
+
+  const activeUserId = user?.id ?? (USE_MOCK_NOTIFICATIONS ? "mock-user" : "");
 
   function getNotificationCardType(
     notification: NotificationResponse,
@@ -60,6 +86,13 @@ export default function NotificationCenter() {
 
     if (searchableText.includes("error") || searchableText.includes("fail")) {
       return "error";
+    }
+    // Checked before "needs_info" so overdue/missed items show red, not amber.
+    if (
+      searchableText.includes("overdue") ||
+      searchableText.includes("missed")
+    ) {
+      return "overdue";
     }
     if (
       searchableText.includes("complete") ||
@@ -78,6 +111,16 @@ export default function NotificationCenter() {
     return "context_updated";
   }
 
+  function shouldShowStatusIcon(
+    cardType: NotificationCardType,
+    notification: NotificationResponse,
+  ) {
+    if (cardType === "task_completed" || cardType === "overdue") return true;
+    return (
+      cardType === "needs_info" && notification.type !== "project_invitation"
+    );
+  }
+
   function dismissNotification(id: string) {
     setDismissedIds((current) => new Set(current).add(id));
   }
@@ -94,11 +137,17 @@ export default function NotificationCenter() {
 
   function handleNotificationClick(item: NotificationResponse) {
     setSelectedNotification(item);
-    if (!item.is_read) markAsRead(item.id);
+    if (!item.is_read) {
+      if (USE_MOCK_NOTIFICATIONS) {
+        setLocalReadIds((current) => new Set(current).add(item.id));
+      } else {
+        markAsRead(item.id);
+      }
+    }
   }
 
   // If there's an error loading the user, show an error message.
-  if (userError) {
+  if (!USE_MOCK_NOTIFICATIONS && userError) {
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -128,7 +177,7 @@ export default function NotificationCenter() {
   }
 
   // If the user is still loading, show a loading indicator in the popover.
-  if (userLoading) {
+  if (!USE_MOCK_NOTIFICATIONS && userLoading) {
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -159,7 +208,7 @@ export default function NotificationCenter() {
   }
 
   // If we don't have a user (e.g., not logged in), show an empty state.
-  if (!user) {
+  if (!USE_MOCK_NOTIFICATIONS && !user) {
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -188,7 +237,7 @@ export default function NotificationCenter() {
     );
   }
 
-  // Now we have the user and we are ready to show notifications.
+  // Now we have the user (or mock mode) and we are ready to show notifications.
   return (
     <>
       <Popover>
@@ -232,10 +281,7 @@ export default function NotificationCenter() {
                     description={item.body}
                     timestamp={formatTimestamp(item.created_at)}
                     isRead={item.is_read}
-                    showStatusIcon={
-                      cardType === "needs_info" &&
-                      item.type !== "project_invitation"
-                    }
+                    showStatusIcon={shouldShowStatusIcon(cardType, item)}
                     actions={[
                       {
                         label: "View details",
@@ -289,7 +335,7 @@ export default function NotificationCenter() {
               </DialogHeader>
               <NotificationDialogContent
                 notification={selectedNotification}
-                userId={user?.id}
+                userId={activeUserId}
                 onClose={() => setSelectedNotification(null)}
               />
             </>

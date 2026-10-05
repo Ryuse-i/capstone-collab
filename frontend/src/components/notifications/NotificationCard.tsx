@@ -16,6 +16,7 @@ export type NotificationCardType =
   | "context_updated"
   | "needs_info"
   | "task_completed"
+  | "overdue"
   | "error";
 
 export interface NotificationCardAction {
@@ -46,8 +47,13 @@ const notificationStyles = {
   },
   task_completed: {
     icon: CheckCircle2Icon,
-    iconClassName: "bg-emerald-400/15 text-emerald-300",
-    glowClassName: "before:bg-emerald-400",
+    iconClassName: "bg-green-500/15 text-green-400",
+    glowClassName: "before:bg-green-400",
+  },
+  overdue: {
+    icon: AlertTriangleIcon,
+    iconClassName: "bg-red-500/15 text-red-400",
+    glowClassName: "before:bg-red-400",
   },
   error: {
     icon: OctagonAlertIcon,
