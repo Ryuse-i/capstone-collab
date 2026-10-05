@@ -14,7 +14,7 @@ import apiClient from "@/services/apiClient";
 const url = "/projects";
 
 const api = {
-  getCurentProjectWithSnapshot: async (
+  getCurrentProjectWithSnapshot: async (
     id: string,
   ): Promise<ProjectWithSnapshot | null> => {
     if (!id) return null;
@@ -157,7 +157,7 @@ export const projectKeys = {
 export function useGetCurrentProject(id: string) {
   return useQuery({
     queryKey: projectKeys.detailSnapshot(id),
-    queryFn: () => api.getCurentProjectWithSnapshot(id),
+    queryFn: () => api.getCurrentProjectWithSnapshot(id),
     retry: false,
     enabled: !!id,
   });

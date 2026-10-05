@@ -1,6 +1,3 @@
-import asyncio
-import sys
-
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -10,12 +7,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
-
-if sys.platform == "win32":
-    try:
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    except AttributeError:
-        pass
 
 #DATABASE_URL = (
 #   f"postgresql+psycopg://{settings.DB_USER}:"
