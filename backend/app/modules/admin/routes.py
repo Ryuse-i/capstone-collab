@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
+from app.modules.admin.activity_service import ActivityLogService
 from app.modules.admin.schema import (
     AdminUserCreate,
     AdminUserListResponse,
@@ -13,12 +14,20 @@ from app.modules.admin.schema import (
     AdminUserResponse,
     AdminUserUpdate,
 )
+from app.modules.admin.metrics_schema import AdminMetricsOverview
+from app.modules.admin.metrics_service import AdminMetricsService
 from app.modules.admin.services import AdminUserService
 from app.modules.users.manager import UserManager, get_user_manager
 from app.modules.users.model import User, UserRole
 from app.modules.users.services import require_admin
 
 admin_router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
+
+
+@admin_router.get("/metrics/overview", response_model=AdminMetricsOverview, tags=["admin"])
+async def get_metrics_overview(db: AsyncSession = Depends(get_async_session)):
+    """Return aggregate account, project, and task metrics for the admin dashboard."""
+    return await AdminMetricsService.get_overview(db)
 
 
 @admin_router.get("/users", response_model=AdminUserListResponse, tags=["admin"])
@@ -63,6 +72,14 @@ async def create_user(
 ):
     """Create a new user account from the admin dashboard."""
     user = await AdminUserService.create_instructor(db, payload=payload.model_dump(), user_manager=user_manager)
+    await ActivityLogService.record(
+        db,
+        event_type="account_created",
+        actor_id=_admin.id,
+        target_type="user",
+        target_id=user.id,
+        details={"target_label": user.email, "role": user.role.value},
+    )
     return AdminUserResponse.model_validate(user)
 
 
@@ -74,7 +91,32 @@ async def update_user(
     current_user: User = Depends(require_admin),
 ):
     """Update a user account while maintaining admin safeguards."""
+    previous_user = await AdminUserService.get_user(db, user_id)
+    previous_role = previous_user.role
+    previous_active = previous_user.is_active
     user = await AdminUserService.update_user(db, actor=current_user, user_id=user_id, payload=payload.model_dump(exclude_unset=True))
+    if previous_role != user.role:
+        await ActivityLogService.record(
+            db,
+            event_type="role_changed",
+            actor_id=current_user.id,
+            target_type="user",
+            target_id=user.id,
+            details={
+                "target_label": user.email,
+                "from_role": previous_role.value,
+                "to_role": user.role.value,
+            },
+        )
+    if previous_active != user.is_active:
+        await ActivityLogService.record(
+            db,
+            event_type="account_reactivated" if user.is_active else "account_deactivated",
+            actor_id=current_user.id,
+            target_type="user",
+            target_id=user.id,
+            details={"target_label": user.email},
+        )
     return AdminUserResponse.model_validate(user)
 
 
@@ -86,6 +128,14 @@ async def deactivate_user(
 ):
     """Disable a user account and delete their refresh tokens."""
     user = await AdminUserService.deactivate_user(db, actor=current_user, user_id=user_id)
+    await ActivityLogService.record(
+        db,
+        event_type="account_deactivated",
+        actor_id=current_user.id,
+        target_type="user",
+        target_id=user.id,
+        details={"target_label": user.email},
+    )
     return AdminUserResponse.model_validate(user)
 
 
@@ -97,6 +147,14 @@ async def reactivate_user(
 ):
     """Re-enable a previously deactivated account."""
     user = await AdminUserService.reactivate_user(db, user_id=user_id)
+    await ActivityLogService.record(
+        db,
+        event_type="account_reactivated",
+        actor_id=_admin.id,
+        target_type="user",
+        target_id=user.id,
+        details={"target_label": user.email},
+    )
     return AdminUserResponse.model_validate(user)
 
 
@@ -110,6 +168,14 @@ async def reset_password(
 ):
     """Reset a user's password and force a change on next login."""
     user = await AdminUserService.reset_password(db, user_id=user_id, password=payload.password, user_manager=user_manager)
+    await ActivityLogService.record(
+        db,
+        event_type="password_reset",
+        actor_id=_admin.id,
+        target_type="user",
+        target_id=user.id,
+        details={"target_label": user.email},
+    )
     return AdminUserResponse.model_validate(user)
 
 
@@ -121,4 +187,12 @@ async def soft_delete_user(
 ):
     """Soft-delete a user and block unsafe cases such as removing the last admin."""
     user = await AdminUserService.soft_delete_user(db, actor=current_user, user_id=user_id)
+    await ActivityLogService.record(
+        db,
+        event_type="account_soft_deleted",
+        actor_id=current_user.id,
+        target_type="user",
+        target_id=user.id,
+        details={"target_label": user.email},
+    )
     return AdminUserResponse.model_validate(user)

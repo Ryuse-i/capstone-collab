@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import func, select
+from datetime import datetime, timezone
+from app.modules.admin.activity_service import ActivityLogService
 from app.modules.users.manager import UserManager, get_user_manager
 from .services import fastapi_users, current_active_user, require_admin
 from .auth import (
@@ -37,12 +40,24 @@ async def login(
     user = await user_manager.authenticate(credentials)
 
     if user is None or not user.is_active or user.deleted_at is not None:
+        failed_user_id = await db.scalar(
+            select(User.id).where(func.lower(User.email) == credentials.username.lower())
+        )
+        await ActivityLogService.record(
+            db,
+            event_type="login_failed",
+            target_type="user",
+            target_id=user.id if user is not None else failed_user_id,
+            details={"target_label": "Rejected sign-in"},
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
 
     # Create access token
+    user.last_login_at = datetime.now(timezone.utc)
     access_token = await create_access_token(user)
 
     # Create refresh token

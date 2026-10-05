@@ -156,9 +156,13 @@ const instructorNavMain = [
 
 const adminNavMain = [
   {
+    title: "Overview",
+    url: "/dashboard",
+    icon: <LayoutGridIcon />,
+  },
+  {
     title: "User management",
     url: "/admin/users",
-    matchPrefixes: ["/dashboard"],
     icon: <UserRoundCog />,
   },
 ];

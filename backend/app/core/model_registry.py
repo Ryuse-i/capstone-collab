@@ -2,6 +2,7 @@ import importlib
 
 modules = [
     "app.modules.users.model",
+    "app.modules.admin.activity_model",
     "app.modules.projects.model",
     "app.modules.project_members.model",
     "app.modules.project_snapshots.model",

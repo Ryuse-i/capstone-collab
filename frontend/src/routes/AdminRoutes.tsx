@@ -2,11 +2,12 @@ import { Route } from "react-router-dom";
 import RoleRoute from "@/components/RoleRoute";
 import { ROLES } from "@/constants/roles";
 
-import Dashboard from "@/pages/admin/Dashboard";
+import Overview from "@/pages/admin/Overview";
+import User from "@/pages/admin/User";
 
 export const AdminRoutes = (
   <Route element={<RoleRoute role={ROLES.ADMIN} />}>
-    <Route path="/dashboard" element={<Dashboard />} />
-    <Route path="/admin/users" element={<Dashboard />} />
+    <Route path="/dashboard" element={<Overview />} />
+    <Route path="/admin/users" element={<User />} />
   </Route>
 );

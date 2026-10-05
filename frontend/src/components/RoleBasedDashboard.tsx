@@ -6,7 +6,7 @@ import type { UserRole } from "@/services/api";
 
 import StudentDashboard from "@/pages/student/Dashboard";
 import InstructorDashboard from "@/pages/instructor/Dashboard";
-import AdminDashboard from "@/pages/admin/Dashboard";
+import AdminDashboard from "@/pages/admin/Overview";
 
 export default function RoleBasedDashboard() {
   const { data: user, isLoading, isError } = useCurrentUser();

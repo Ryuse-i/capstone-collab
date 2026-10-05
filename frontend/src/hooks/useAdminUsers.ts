@@ -68,6 +68,7 @@ const api = {
 
 export const adminKeys = {
   all: ["admin"] as const,
+  overview: () => [...adminKeys.all, "metrics", "overview"] as const,
   users: () => [...adminKeys.all, "users"] as const,
   lists: () => [...adminKeys.users(), "list"] as const,
   list: (filters: AdminUserFilters) =>

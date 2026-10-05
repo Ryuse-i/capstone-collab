@@ -148,6 +148,7 @@ async def test_task(ac: AsyncClient, test_user: dict, test_project: dict) -> dic
         "complexity": "low",
         "complexity_points": 0,
         "category": "development",
+        "primary_skill": "Backend Development",
         "deadline": "2099-01-01T00:00:00Z",
     }
     response = await ac.post("/tasks/", json=payload)

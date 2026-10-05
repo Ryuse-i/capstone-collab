@@ -12,6 +12,7 @@ from uuid import UUID
 from typing import List
 from app.modules.users.services import current_active_user
 from app.modules.users.model import User
+from app.modules.admin.activity_service import ActivityLogService
 
 project_router = APIRouter()
 project_member_router = APIRouter()
@@ -65,7 +66,16 @@ async def create_project(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    return await ProjectService.create_project(db, project)
+    created = await ProjectService.create_project(db, project)
+    await ActivityLogService.record(
+        db,
+        event_type="project_created",
+        actor_id=current_user.id,
+        target_type="project",
+        target_id=created.id,
+        details={"target_label": created.name},
+    )
+    return created
 
 
 @project_router.patch("/{project_id}", response_model=ProjectResponse)
@@ -76,7 +86,16 @@ async def update_project(
     current_user: User = Depends(current_active_user),
 ):
     db_item = await ProjectService.get_one_project(db, project_id)
-    return await ProjectService.update_project(db, db_item, project)
+    updated = await ProjectService.update_project(db, db_item, project)
+    await ActivityLogService.record(
+        db,
+        event_type="project_updated",
+        actor_id=current_user.id,
+        target_type="project",
+        target_id=updated.id,
+        details={"target_label": updated.name},
+    )
+    return updated
 
 
 @project_router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -90,7 +109,16 @@ async def delete_project(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
+    project_name = db_item.name
     await ProjectService.delete_project(db, db_item)
+    await ActivityLogService.record(
+        db,
+        event_type="project_deleted",
+        actor_id=current_user.id,
+        target_type="project",
+        target_id=project_id,
+        details={"target_label": project_name},
+    )
     return None
 
 

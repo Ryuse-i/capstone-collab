@@ -3,7 +3,7 @@ from app.core.db import Base
 from sqlalchemy import String, Enum as SAENUM, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class UserRole(str, enum.Enum):
@@ -21,6 +21,12 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     )
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=True
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class RefreshToken(Base):
