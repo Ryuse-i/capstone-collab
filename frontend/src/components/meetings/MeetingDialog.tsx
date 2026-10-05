@@ -45,8 +45,8 @@ export function MeetingDialog({
     useState<MeetingProvider>(provider);
   const [topic, setTopic] = useState("Weekly Capstone Meeting");
   const [joinUrl, setJoinUrl] = useState("");
-  const [startTime, setStartTime] = useState(defaultStartTime);
-  const [duration, setDuration] = useState("60");
+  const [startTime] = useState(defaultStartTime);
+  const [duration] = useState("60");
   const [validationError, setValidationError] = useState("");
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {

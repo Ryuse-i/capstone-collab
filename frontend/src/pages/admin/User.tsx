@@ -119,36 +119,11 @@ function getErrorMessage(error: unknown): string {
   return maybeResponse.message ?? "The request could not be completed.";
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "Not available";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not available";
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 function roleLabel(role: AdminUserRole): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
-function UserStatus({ active }: { active: boolean }) {
-  return (
-    <Badge
-      variant="outline"
-      className={
-        active
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
-          : "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300"
-      }
-    >
-      <span className={`size-1.5 rounded-full ${active ? "bg-emerald-600" : "bg-rose-600"}`} />
-      {active ? "Active" : "Inactive"}
-    </Badge>
-  );
-}
 
 function UserTableSkeleton() {
   return (

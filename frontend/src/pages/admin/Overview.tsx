@@ -388,7 +388,6 @@ const activityIcons: Record<string, LucideIcon> = {
 };
 
 function AccountHealth({ metrics }: { metrics: AdminMetricsOverview["users"] }) {
-  const needsReview = metrics.unverified_older_than_7_days > 0;
   const stats = [
     ["New · 7 days", metrics.new_last_7_days],
     ["New · 30 days", metrics.new_last_30_days],
