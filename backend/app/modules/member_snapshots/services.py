@@ -115,6 +115,9 @@ class MemberSnapshotService:
         from app.modules.project_members.services import ProjectMemberService
         from app.modules.redistribution_recommendations.workload_calculation import (
             calculate_member_workload_totals,
+            complexity_to_points
+        )
+        from app.modules.redistribution_recommendations.workload_math import (
             validate_task_deadline
         )
         from app.modules.project_snapshots.services import ProjectSnapshotService
@@ -138,7 +141,13 @@ class MemberSnapshotService:
 
         # Validate deadlines for all tasks (preserving existing validation logic)
         for task in all_tasks:
-            is_valid, msg = await validate_task_deadline(task, base_days_per_point)
+            is_valid, msg = await validate_task_deadline(
+                task.deadline,
+                complexity_to_points(task.complexity),
+                base_days_per_point,
+                date.today(),
+                skip=(task.status == Status.COMPLETED)
+            )
             if not is_valid:
                 # Log validation error but continue processing (preserving existing behavior)
                 logger.warning(f"Task deadline validation failed for task {task.id}: {msg}")
