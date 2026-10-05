@@ -137,7 +137,7 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   isRefreshing = true;
-  return new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve) => {
     const refreshToken = getStoredRefreshToken();
     if (!refreshToken) {
       isRefreshing = false;

@@ -147,7 +147,7 @@ export function useUpdateAssignedReviewer() {
       id: string;
       assignedReviewer: AssignedReviewerUpdate;
     }) => api.update(id, assignedReviewer),
-    onSuccess: (_, variables) => {
+    onSuccess: (_) => {
       queryClient.invalidateQueries({ queryKey: assignedReviewerKeys.all });
     },
   });

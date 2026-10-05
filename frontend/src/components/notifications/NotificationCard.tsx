@@ -70,7 +70,6 @@ export default function NotificationCard({
   title,
   description,
   timestamp,
-  isRead,
   showStatusIcon,
   actions,
 }: NotificationCardProps) {

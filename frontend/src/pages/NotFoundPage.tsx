@@ -1,4 +1,4 @@
-import FuzzyText from "@/components/FuzzyText";
+import FuzzyText from "@/components/FuzzyText.jsx";
 export default function NotFoundPage() {
   return (
     <div className="flex justify-center">
