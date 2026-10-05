@@ -129,7 +129,7 @@ function UserTableSkeleton() {
   return (
     <div className="space-y-0 divide-y">
       {Array.from({ length: 5 }, (_, index) => (
-        <div key={index} className="flex h-[66px] items-center gap-4 px-4 sm:px-5">
+        <div key={index} className="flex h-16.5 items-center gap-4 px-4 sm:px-5">
           <Skeleton className="size-9 rounded-md" />
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-3.5 w-36 max-w-full" />
@@ -362,7 +362,7 @@ export default function Dashboard() {
 
             <div className="flex flex-wrap items-center gap-2">
               <Select value={role} onValueChange={updateRoleFilter}>
-                <SelectTrigger aria-label="Filter by role" className="w-[145px]">
+                <SelectTrigger aria-label="Filter by role" className="w-36.25">
                   <SelectValue placeholder="All roles" />
                 </SelectTrigger>
                 <SelectContent>
@@ -374,7 +374,7 @@ export default function Dashboard() {
               </Select>
 
               <Select value={status} onValueChange={updateStatusFilter}>
-                <SelectTrigger aria-label="Filter by account status" className="w-[145px]">
+                <SelectTrigger aria-label="Filter by account status" className="w-36.25">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -437,7 +437,7 @@ export default function Dashboard() {
                 )}
               </div>
             ) : (
-              <Table className="min-w-[560px]">
+              <Table className="min-w-140">
                 <TableHeader>
                   <TableRow className="bg-muted/35 hover:bg-muted/35">
                     <TableHead className="pl-5">User</TableHead>
@@ -466,7 +466,7 @@ export default function Dashboard() {
                                   <span className="shrink-0 text-xs text-muted-foreground">You</span>
                                 )}
                               </div>
-                              <p className="max-w-[280px] truncate text-xs text-muted-foreground">{user.email}</p>
+                              <p className="max-w-70 truncate text-xs text-muted-foreground">{user.email}</p>
                             </div>
                           </div>
                         </TableCell>

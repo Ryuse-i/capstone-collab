@@ -25,7 +25,6 @@ import { useGetTasksForUser } from "@/hooks/useTask";
 // Types
 // ---------------------------------------------------------------------------
 
-type ChartDataPoint = { month: string; desktop: number };
 type ActivityColor = "bg-green-500" | "bg-yellow-500" | "bg-red-500";
 type TextColor = "text-green-500" | "text-yellow-500" | "text-red-500";
 type RecentActivity = {
