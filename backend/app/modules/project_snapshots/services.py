@@ -49,6 +49,16 @@ async def _lock_project(db: AsyncSession, project_id: UUID) -> None:
     await db.execute(select(Project.id).where(Project.id == project_id).with_for_update())
 
 
+def task_state_from_status(status) -> wm.TaskState:
+    """Single whitelist: only NOT_STARTED (or None) and IN_PROGRESS count toward workload.
+    COMPLETED, SUBMITTED and anything else are INACTIVE."""
+    from app.modules.tasks.enums import Status as TaskStatus  # lazy
+    if status is None or status == TaskStatus.NOT_STARTED:
+        return wm.TaskState.NOT_STARTED
+    if status == TaskStatus.IN_PROGRESS:
+        return wm.TaskState.IN_PROGRESS
+    return wm.TaskState.INACTIVE
+
 async def _load_task_inputs(db: AsyncSession, member_id: UUID) -> list[wm.TaskInput]:
     """Read one member's tasks and convert to pure TaskInput objects."""
     from app.modules.assigned_members.services import AssignedMemberService  # lazy
@@ -65,18 +75,14 @@ async def _load_task_inputs(db: AsyncSession, member_id: UUID) -> list[wm.TaskIn
     for t in tasks:
         if getattr(t, "deleted_at", None) is not None:   # ASSUMPTION: soft delete column
             continue
-        if t.status is None or t.status == TaskStatus.NOT_STARTED:
-            state = wm.TaskState.NOT_STARTED             # no status = not started (old behaviour)
-        elif t.status == TaskStatus.IN_PROGRESS:
-            state = wm.TaskState.IN_PROGRESS
-        else:
-            state = wm.TaskState.INACTIVE                # whitelist: only the two above count
+        state = task_state_from_status(t.status)
         am = by_task[t.id]
+        share = getattr(am, "effort_share", None)
         inputs.append(wm.TaskInput(
             state=state,
             complexity_points=wm.complexity_to_points(t.complexity),
             deadline=t.deadline,
-            effort_share=getattr(am, "effort_share", None),        # ASSUMPTION
+            effort_share=Decimal(str(share)) if share else None,
             is_parent=bool(getattr(t, "has_subtasks", False)),     # ASSUMPTION
         ))
     return inputs

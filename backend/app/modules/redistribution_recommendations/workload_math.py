@@ -49,7 +49,7 @@ class TaskState(str, Enum):
 @dataclass(frozen=True)
 class WorkloadConfig:
     """Tunable decisions. Defaults reproduce the spec; change them in ONE place."""
-    underutilized_fraction: Decimal = Decimal("0.5")
+    underutilized_fraction: Decimal = Decimal("0.8")
     # 0 = strict spec behaviour (anything above expected_load is overloaded).
     # 0.10 = must exceed expected_load by more than 10% to be flagged.
     overload_tolerance: Decimal = D0

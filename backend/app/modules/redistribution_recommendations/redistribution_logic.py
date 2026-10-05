@@ -7,6 +7,10 @@ import math
 from datetime import date, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID
+from decimal import Decimal
+from app.modules.project_snapshots.services import (
+    ProjectSnapshotService, is_counted_member, app_today, task_state_from_status,
+)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,35 +27,21 @@ from app.modules.member_snapshots.model import MemberSnapshot
 from app.modules.tasks.services import TaskService
 
 
-def _get_urgency_multiplier_for_task(task: Task) -> float:
-    """Get the urgency multiplier for a task based on its status and deadline."""
-    if task.status == TaskStatus.COMPLETED:
-        return 0.0  # Completed tasks have zero effective points, but we won't consider them for redistribution
-    if task.status == TaskStatus.IN_PROGRESS:
-        return 1.0
-    else:  # NOT_STARTED
-        # Use the new workload_math urgency_multiplier function
-        # Note: workload_math expects a date and returns Decimal, we need float for compatibility
-        today = date.today()
-        return float(wm.urgency_multiplier(task.deadline, today))
+HALF = Decimal("0.5")
 
-
-def _get_task_effective_points(task: Task) -> float:
-    """Get the effective points of a task (same as in workload_calculation)."""
-    if task.status == TaskStatus.COMPLETED:
-        return 0.0
-    # Use the new workload_math functions
-    # Note: workload_math.effective_points returns Decimal, we need float for compatibility
-    today = date.today()
-    task_input = wm.TaskInput(
-        state=wm.TaskState.NOT_STARTED if task.status != TaskStatus.IN_PROGRESS else wm.TaskState.IN_PROGRESS,
-        complexity_points=wm.complexity_to_points(task.complexity),
-        deadline=task.deadline,
-        effort_share=None,  # Whole task for effectiveness calculation
-        is_parent=False
+def _task_effective(task: Task, today: date) -> Decimal:
+    """Effective points of the whole task, using the same rules as the service."""
+    return wm.effective_points(
+        wm.TaskInput(
+            state=task_state_from_status(task.status),
+            complexity_points=wm.complexity_to_points(task.complexity),
+            deadline=task.deadline,
+            effort_share=None,
+            is_parent=False,
+        ),
+        today,
     )
-    effective_points_decimal = wm.effective_points(task_input, today)
-    return float(effective_points_decimal)
+
 
 
 def _is_eligible_for_task(member: ProjectMember, task: Task) -> bool:
@@ -93,7 +83,8 @@ async def generate_redistribution_options(
     Options with negative impact are excluded. Move Deadline options are appended last.
     """
     # Step 1: Recompute workload state for the project using the new workload math
-    project_workload = await ProjectSnapshotService.calculate_project_workload(db, project_id)
+    today = app_today()
+    project_workload = await ProjectSnapshotService.calculate_project_workload(db, project_id, today=today)
     if not project_workload.members:
         return []
 
@@ -101,7 +92,7 @@ async def generate_redistribution_options(
     # We define "most overloaded" as the member with the highest amount over expected_load
     # Only consider counted members (those that contribute to the baseline)
     counted_members = [m for m in project_workload.members if m.is_counted]
-    overloaded_members = [m for m in counted_members if m.is_over_threshold]
+    overloaded_members = [m for m in counted_members if m.is_over_threshold and not m.warning_supressed]
     if not overloaded_members:
         return []
     most_overloaded_member = max(
@@ -116,10 +107,12 @@ async def generate_redistribution_options(
 
     # Compute overage ratio for display in Move Deadline options
     if overloaded_member_expected_load <= 0:
-        overage_ratio = float(wm.MAX_OVERAGE_RATIO)
+        overage_ratio = wm.MAX_OVERAGE_RATIO
     else:
-        ratio = overloaded_member_total_effective / overloaded_member_expected_load
-        overage_ratio = min(max(ratio, 1.0), float(wm.MAX_OVERAGE_RATIO))
+        overage_ratio = min(
+            max(overloaded_member_total_effective / overloaded_member_expected_load, Decimal("1")),
+            wm.MAX_OVERAGE_RATIO,
+        )
 
     # Step 3: Get the project's base_days_per_point
     base_days_per_point = await _get_project_base_days_per_point(db, project_id)
@@ -134,7 +127,7 @@ async def generate_redistribution_options(
     # Filter out completed tasks
     overloaded_member_tasks = [
         task for task in overloaded_member_tasks
-        if task.status != TaskStatus.COMPLETED
+        if task_state_from_status(task.status) is not wm.TaskState.INACTIVE
     ]
 
     # Step 5: Get all members in the project (for eligibility checking)
@@ -150,8 +143,9 @@ async def generate_redistribution_options(
 
     # For each task of the overloaded member, generate options
     for task in overloaded_member_tasks:
-        task_effective = _get_task_effective_points(task)
+        task_effective = _task_effective(task, today)
         task_complexity_points = wm.complexity_to_points(task.complexity)
+        per_point = task_effective / Decimal(task_complexity_points) if task_complexity_points else Decimal("0")
         urgency_multiplier = _get_urgency_multiplier_for_task(task)
 
         # Check eligibility of each potential recipient for this task
@@ -228,7 +222,7 @@ async def generate_redistribution_options(
 
             # ========== Share Option ==========
             # Split the task 50/50 between original member and recipient
-            shared_points = task_effective * 0.5
+            shared_points = task_effective * HALF
             overloaded_after_share = overloaded_member_total_effective - shared_points
             recipient_after_share = recipient_total_effective + shared_points
             impact_share = wm.impact_score(
@@ -247,7 +241,7 @@ async def generate_redistribution_options(
                     "impact": impact_share,
                     "details": {
                         "points_shared": shared_points,
-                        "effort_share": 0.5,
+                        "effort_share": HALF,
                         "overloaded_before": overloaded_member_total_effective,
                         "overloaded_after": overloaded_after_share,
                         "recipient_before": recipient_total_effective,
@@ -276,60 +270,46 @@ async def generate_redistribution_options(
                 # Way B: original member gets subtask2 (eff2), recipient gets subtask1 (eff1)
                 # We'll choose the way that gives the better impact (higher impact) for this recipient
 
-                # Way A
-                overloaded_after_a = overloaded_member_total_effective - eff1
-                recipient_after_a = recipient_total_effective + eff2
-                impact_a = wm.impact_score(
-                    overloaded_member_total_effective,
-                    overloaded_member_expected_load,
-                    eff1,
-                    recipient_after_a,
-                    recipient_expected_load
-                )
+            if task_complexity_points >= 2:
+                p1 = task_complexity_points // 2
+                p2 = task_complexity_points - p1
 
-                # Way B
-                overloaded_after_b = overloaded_member_total_effective - eff2
-                recipient_after_b = recipient_total_effective + eff1
-                impact_b = wm.impact_score(
-                    overloaded_member_total_effective,
-                    overloaded_member_expected_load,
-                    eff2,
-                    recipient_after_b,
-                    recipient_expected_load
-                )
+                best = None
+                # The recipient takes either the smaller or the larger half; the donor keeps the other.
+                for recipient_points in (p1, p2):
+                    moved_eff = per_point * recipient_points
+                    donor_after = overloaded_member_total_effective - moved_eff
+                    recipient_after = recipient_total_effective + moved_eff
+                    impact = wm.impact_score(
+                        overloaded_member_total_effective, overloaded_member_expected_load,
+                        moved_eff, recipient_after, recipient_expected_load,
+                    )
+                    if best is None or impact > best["impact"]:
+                        best = {
+                            "impact": impact, "recipient_points": recipient_points,
+                            "moved_eff": moved_eff, "donor_after": donor_after,
+                            "recipient_after": recipient_after,
+                        }
 
-                # Choose the better impact
-                if impact_a >= impact_b:
-                    chosen_impact = impact_a
-                    chosen_way = "A"
-                    overloaded_after = overloaded_after_a
-                    recipient_after = recipient_after_a
-                else:
-                    chosen_impact = impact_b
-                    chosen_way = "B"
-                    overloaded_after = overloaded_after_b
-                    recipient_after = recipient_after_b
-
-                if chosen_impact >= 0:
+                if best["impact"] >= 0:
                     options.append({
                         "type": "Split",
                         "task_id": task.id,
                         "original_member_id": overloaded_member_id,
                         "recipient_member_id": recipient.id,
-                        "impact": chosen_impact,
+                        "impact": best["impact"],
                         "details": {
-                            "subtask1_points": p1,
-                            "subtask2_points": p2,
-                            "subtask1_effective": eff1,
-                            "subtask2_effective": eff2,
-                            "way": chosen_way,
+                            "donor_keeps_points": task_complexity_points - best["recipient_points"],
+                            "recipient_gets_points": best["recipient_points"],
+                            "points_moved": best["moved_eff"],
                             "overloaded_before": overloaded_member_total_effective,
-                            "overloaded_after": overloaded_after,
+                            "overloaded_after": best["donor_after"],
                             "recipient_before": recipient_total_effective,
-                            "recipient_after": recipient_after,
-                            "recipient_expected_load": recipient_expected_load
-                        }
+                            "recipient_after": best["recipient_after"],
+                            "recipient_expected_load": recipient_expected_load,
+                        },
                     })
+
 
     # Step 6: Exclude options with negative impact (we already did during generation, but double-check)
     options = [opt for opt in options if opt["impact"] is None or opt["impact"] >= 0]
