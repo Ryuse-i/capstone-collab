@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetTasksForUser } from "@/hooks/useTask";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,22 +38,17 @@ type RecentActivity = {
   text: TextColor;
 };
 
+// Task status distribution for the bar chart replacement
+type TaskStatusDistribution = {
+  not_started: number;
+  in_progress: number;
+  submitted: number;
+  completed: number;
+};
+
 // ---------------------------------------------------------------------------
 // Static chart data (replace with API data when available)
 // ---------------------------------------------------------------------------
-
-const chartData: ChartDataPoint[] = [
-  { month: "January", desktop: 186 },
-  { month: "February", desktop: 305 },
-  { month: "March", desktop: 237 },
-  { month: "April", desktop: 73 },
-  { month: "May", desktop: 209 },
-  { month: "June", desktop: 214 },
-];
-
-const chartConfig: ChartConfig = {
-  desktop: { label: "Desktop", color: "var(--chart-1)" },
-};
 
 const recentActivities: RecentActivity[] = [
   {
@@ -239,8 +235,18 @@ export default function Dashboard() {
     error,
   } = useGetCurrentProject(user?.id ?? "");
 
+  const {
+    data: userTasks,
+    isLoading: isTasksLoading,
+    error: tasksError,
+  } = useGetTasksForUser(user?.id ?? "");
+
   if (isError) {
     console.error("Dashboard project error", error);
+  }
+
+  if (tasksError) {
+    console.error("Dashboard tasks error", tasksError);
   }
 
   const hasProject = Boolean(currentProject);
@@ -251,7 +257,7 @@ export default function Dashboard() {
   const dataLoaded = !!currentProject && !!currentProject.snapshot;
 
   const isDashboardLoading =
-    isLoading || (!!currentProject && !currentProject.snapshot);
+    isLoading || (!!currentProject && !currentProject.snapshot) || isTasksLoading;
 
   const healthScore = currentProject?.snapshot?.health_score ?? 0;
   const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
@@ -264,6 +270,38 @@ export default function Dashboard() {
     currentProject?.snapshot?.total_workload_points ?? 0;
   const expectedPercentage =
     currentProject?.snapshot?.expected_percentage ?? 0;
+
+  // Calculate task status distribution for the bar chart replacement
+  const taskStatusDistribution: TaskStatusDistribution = {
+    not_started: 0,
+    in_progress: 0,
+    submitted: 0,
+    completed: 0,
+  };
+
+  userTasks?.forEach(task => {
+    if (task.status === "not_started") {
+      taskStatusDistribution.not_started++;
+    } else if (task.status === "in_progress") {
+      taskStatusDistribution.in_progress++;
+    } else if (task.status === "submitted") {
+      taskStatusDistribution.submitted++;
+    } else if (task.status === "completed") {
+      taskStatusDistribution.completed++;
+    }
+  });
+
+  // Prepare data for the task status bar chart
+  const taskChartData = [
+    { month: "Not Started", desktop: taskStatusDistribution.not_started },
+    { month: "In Progress", desktop: taskStatusDistribution.in_progress },
+    { month: "Submitted", desktop: taskStatusDistribution.submitted },
+    { month: "Completed", desktop: taskStatusDistribution.completed },
+  ];
+
+  const taskChartConfig: ChartConfig = {
+    desktop: { label: "Task Count", color: "var(--chart-1)" },
+  };
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
@@ -410,18 +448,18 @@ export default function Dashboard() {
               </div>
             </Card>
 
-            {/* ── Bar Chart (static for now) ────────────────────────── */}
+            {/* ── Task Status Distribution ────────────────────────── */}
             <Card className="rounded-lg p-4 shadow-sm">
               <CardHeader>
-                <CardTitle>Bar Chart - Horizontal</CardTitle>
-                <CardDescription>January - June 2024</CardDescription>
+                <CardTitle>Task Status Distribution</CardTitle>
+                <CardDescription>Current project task breakdown</CardDescription>
               </CardHeader>
 
               <CardContent>
-                <ChartContainer config={chartConfig}>
+                <ChartContainer config={taskChartConfig}>
                   <BarChart
                     accessibilityLayer
-                    data={chartData}
+                    data={taskChartData}
                     layout="vertical"
                     margin={{ left: -20 }}
                   >
@@ -433,7 +471,7 @@ export default function Dashboard() {
                       tickLine={false}
                       tickMargin={10}
                       axisLine={false}
-                      tickFormatter={(v) => v.slice(0, 3)}
+                      tickFormatter={(v) => v}
                     />
 
                     <ChartTooltip
