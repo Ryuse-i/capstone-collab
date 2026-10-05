@@ -1,5 +1,5 @@
 // src/services/api.ts
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "psu-collab.railway.internal";
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://psu-collab-production.up.railway.app";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
