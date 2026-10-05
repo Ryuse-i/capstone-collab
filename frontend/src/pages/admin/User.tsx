@@ -161,7 +161,6 @@ function UserTableSkeleton() {
             <Skeleton className="h-3 w-52 max-w-full" />
           </div>
           <Skeleton className="hidden h-5 w-20 sm:block" />
-          <Skeleton className="hidden h-5 w-16 md:block" />
           <Skeleton className="size-8" />
         </div>
       ))}
@@ -463,13 +462,11 @@ export default function Dashboard() {
                 )}
               </div>
             ) : (
-              <Table className="min-w-[760px]">
+              <Table className="min-w-[560px]">
                 <TableHeader>
                   <TableRow className="bg-muted/35 hover:bg-muted/35">
                     <TableHead className="pl-5">User</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="w-36 pr-4 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -504,10 +501,7 @@ export default function Dashboard() {
                             {roleLabel(user.role)}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <UserStatus active={user.is_active} />
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(user.created_at)}</TableCell>
+
                         <TableCell className="pr-4">
                           <div className="flex justify-end gap-1">
                             <Button

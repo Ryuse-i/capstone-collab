@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import type { CreateProjectResourceInput } from "@/types/resource";
 import {
   Check,
   ChevronDown,
@@ -28,33 +29,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-export type ResourceFormValues = {
-  id: number;
-  title: string;
-  category: "Links" | "Paper Files" | "Code";
-  description: string;
-  type: string;
-  size: string;
-  author: string;
-  updatedAt: string;
-  pinned: boolean;
-  uses: number;
-  sourceUrl: string;
-  attachment: File | null;
-};
+export type ResourceFormValues = CreateProjectResourceInput;
 
 const initialFormValues: ResourceFormValues = {
-  id: Date.now(),
   title: "",
   category: "Links",
   description: "",
-  type: "Live link",
-  size: "",
-  author: "You",
-  updatedAt: "Just now",
-  pinned: false,
-  uses: 0,
-  sourceUrl: "",
+  source_url: "",
   attachment: null,
 };
 
@@ -71,17 +52,20 @@ function formatFileSize(bytes: number) {
 
 interface AddResoourceDialogProps {
   trigger?: ReactNode;
-  onCreate?: (resource: ResourceFormValues) => void;
+  onCreate: (resource: ResourceFormValues) => Promise<void>;
+  isPending?: boolean;
 }
 
 export default function AddResoourceDialog({
   trigger,
   onCreate,
+  isPending = false,
 }: AddResoourceDialogProps) {
   const [open, setOpen] = useState(false);
   const [formValues, setFormValues] =
     useState<ResourceFormValues>(initialFormValues);
   const [categoryOpen, setCategoryOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const updateField = <K extends keyof ResourceFormValues>(
     field: K,
@@ -91,18 +75,15 @@ export default function AddResoourceDialog({
   };
 
   const resetForm = () => {
-    setFormValues({
-      ...initialFormValues,
-      id: Date.now(),
-    });
+    setFormValues(initialFormValues);
     setCategoryOpen(false);
+    setSubmitError(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmedTitle = formValues.title.trim();
     const trimmedDescription = formValues.description.trim();
-    const trimmedAuthor = formValues.author.trim();
-    const sourceUrl = formValues.sourceUrl.trim();
+    const sourceUrl = formValues.source_url.trim();
 
     if (
       !trimmedTitle ||
@@ -112,23 +93,18 @@ export default function AddResoourceDialog({
       return;
     }
 
-    const resourceToCreate = {
-      ...formValues,
-      title: trimmedTitle,
-      description: trimmedDescription,
-      author: trimmedAuthor,
-      type: formValues.attachment
-        ? formValues.attachment.name.split(".").pop()?.toUpperCase() || "File"
-        : "Live link",
-      size: formValues.attachment
-        ? formatFileSize(formValues.attachment.size)
-        : sourceUrl,
-      sourceUrl,
-      updatedAt: formValues.updatedAt || "Just now",
-      uses: Number(formValues.uses) || 0,
-    };
-
-    onCreate?.(resourceToCreate);
+    try {
+      await onCreate({
+        title: trimmedTitle,
+        description: trimmedDescription,
+        source_url: sourceUrl,
+        category: formValues.category,
+        attachment: formValues.attachment,
+      });
+    } catch {
+      setSubmitError("Could not add the resource. Check your connection and try again.");
+      return;
+    }
     resetForm();
     setOpen(false);
   };
@@ -149,6 +125,11 @@ export default function AddResoourceDialog({
           <DialogDescription>
             Add a link or attach a file for your team.
           </DialogDescription>
+          {submitError && (
+            <p className="text-sm text-destructive" role="alert">
+              {submitError}
+            </p>
+          )}
         </DialogHeader>
 
         <div className="grid gap-5 py-2 md:grid-cols-2">
@@ -239,9 +220,9 @@ export default function AddResoourceDialog({
               <Input
                 id="resource-link"
                 type="url"
-                value={formValues.sourceUrl}
+                value={formValues.source_url}
                 onChange={(event) =>
-                  updateField("sourceUrl", event.target.value)
+                  updateField("source_url", event.target.value)
                 }
                 placeholder="https://example.com"
                 className="pl-8"
@@ -285,7 +266,8 @@ export default function AddResoourceDialog({
           </Button>
           <Button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
+            disabled={isPending}
             className="bg-(--maroon) text-white hover:bg-(--maroon)/90"
           >
             <PlusCircle className="mr-2 h-4 w-4" />

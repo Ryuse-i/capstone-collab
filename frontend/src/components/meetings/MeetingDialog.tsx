@@ -12,6 +12,7 @@ import {
 import { useCreateMeeting } from "@/hooks/useMeeting";
 import type { MeetingProvider } from "@/types/meeting";
 
+
 function defaultStartTime() {
   const start = new Date(Date.now() + 60 * 60 * 1000);
   start.setSeconds(0, 0);
@@ -146,31 +147,7 @@ export function MeetingDialog({
             </label>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-medium">
-              Start Time
-              <input
-                type="datetime-local"
-                value={startTime}
-                onChange={(event) => setStartTime(event.target.value)}
-                required
-                className="h-9 rounded-md border bg-background px-3 font-normal outline-none focus:ring-2 focus:ring-ring"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Duration (minutes)
-              <input
-                type="number"
-                min={1}
-                max={1440}
-                value={duration}
-                onChange={(event) => setDuration(event.target.value)}
-                required
-                className="h-9 rounded-md border bg-background px-3 font-normal outline-none focus:ring-2 focus:ring-ring"
-              />
-            </label>
-          </div>
-
+          
           {validationError && (
             <p className="text-sm text-destructive">{validationError}</p>
           )}

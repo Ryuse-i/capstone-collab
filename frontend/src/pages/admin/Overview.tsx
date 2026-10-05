@@ -3,7 +3,14 @@ import {
   AlertTriangle,
   CheckCircle2,
   CircleDashed,
+  File as FileIcon,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileImage,
+  FileSpreadsheet,
   FileText,
+  FileVideo,
   FolderKanban,
   RefreshCw,
   ShieldCheck,
@@ -30,7 +37,7 @@ import type { AdminMetricsOverview } from "@/types/admin_metrics";
 const numberFormat = new Intl.NumberFormat();
 
 const roleColors = {
-  student: "#7A0C2E",
+  student: "#7b1113",
   instructor: "#B88A22",
   admin: "#16766F",
 } as const;
@@ -161,9 +168,143 @@ function relativeTime(value: string): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
+type FileKind = {
+  label: string;
+  icon: LucideIcon;
+  color: string; // used for the segmented bar and progress fill
+  chip: string; // icon container classes
+};
+
+function getFileKind(contentType: string): FileKind {
+  const type = (contentType || "").toLowerCase();
+  const subtype = type.split("/")[1]?.split(";")[0]?.split(".").pop()?.split("+")[0] ?? "";
+  const short = subtype ? subtype.toUpperCase() : "Unknown";
+
+  if (type.startsWith("image/"))
+    return { label: `${short} image`, icon: FileImage, color: "#B88A22", chip: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" };
+  if (type.startsWith("video/"))
+    return { label: `${short} video`, icon: FileVideo, color: "#7A0C2E", chip: "bg-[#7A0C2E]/10 text-[#7A0C2E] dark:bg-rose-950/60 dark:text-rose-300" };
+  if (type.startsWith("audio/"))
+    return { label: `${short} audio`, icon: FileAudio, color: "#6D5BD0", chip: "bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300" };
+  if (type.includes("pdf"))
+    return { label: "PDF document", icon: FileText, color: "#DC2626", chip: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300" };
+  if (type.includes("spreadsheet") || type.includes("excel") || type.includes("csv"))
+    return { label: "Spreadsheet", icon: FileSpreadsheet, color: "#16766F", chip: "bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300" };
+  if (type.includes("zip") || type.includes("compressed") || type.includes("tar") || type.includes("rar"))
+    return { label: "Archive", icon: FileArchive, color: "#64748B", chip: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
+  if (type.includes("json") || type.includes("javascript") || type.includes("xml") || type.includes("html"))
+    return { label: short, icon: FileCode, color: "#0284C7", chip: "bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300" };
+  if (type.startsWith("text/") || type.includes("word") || type.includes("presentation") || type.includes("document"))
+    return { label: type.includes("word") ? "Word document" : type.includes("presentation") ? "Presentation" : "Text document", icon: FileText, color: "#2563EB", chip: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300" };
+
+  return { label: contentType ? short : "Unknown file type", icon: FileIcon, color: "#94A3B8", chip: "bg-muted text-muted-foreground" };
+}
+
+function FileTypeBreakdown({
+  items,
+  total,
+}: {
+  items: AdminMetricsOverview["files"]["by_type"];
+  total: number;
+}) {
+  const list = items ?? [];
+
+  if (list.length === 0) {
+    return (
+      <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-center">
+        <FileIcon className="size-5 text-muted-foreground" aria-hidden="true" />
+        <p className="text-sm text-muted-foreground">No file records yet.</p>
+      </div>
+    );
+  }
+
+  const enriched = list
+    .map((item) => ({
+      ...item,
+      kind: getFileKind(item.content_type),
+      share: total > 0 ? Math.min(100, (item.count / total) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return (
+    <div className="space-y-4">
+      {/* Segmented distribution bar */}
+      <div>
+        <div
+          className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-muted"
+          role="img"
+          aria-label="File type distribution"
+        >
+          {enriched.map((item) => (
+            <div
+              key={item.content_type}
+              className="h-full first:rounded-l-full last:rounded-r-full transition-[width] duration-500"
+              style={{ width: `${item.share}%`, backgroundColor: item.kind.color }}
+              title={`${item.kind.label}: ${item.share.toFixed(1)}%`}
+            />
+          ))}
+        </div>
+        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
+          {enriched.slice(0, 5).map((item) => (
+            <span key={item.content_type} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="size-2 rounded-full" style={{ backgroundColor: item.kind.color }} />
+              {item.kind.label}
+            </span>
+          ))}
+          {enriched.length > 5 && (
+            <span className="text-xs text-muted-foreground">+{enriched.length - 5} more</span>
+          )}
+        </div>
+      </div>
+
+      {/* Type cards */}
+      <ul className="grid max-h-72 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2">
+        {enriched.map((item) => {
+          const Icon = item.kind.icon;
+          return (
+            <li
+              key={item.content_type}
+              className="group rounded-xl border bg-card p-3 transition-colors hover:bg-muted/40"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${item.kind.chip}`}>
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium" title={item.content_type}>
+                    {item.kind.label}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {numberFormat.format(item.count)} {item.count === 1 ? "file" : "files"} · {formatBytes(item.total_size_bytes)}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-semibold tabular-nums">
+                  {item.share < 1 && item.share > 0 ? "<1" : Math.round(item.share)}%
+                </span>
+              </div>
+              <div
+                className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+                aria-label={`${item.kind.label} share of file records`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(item.share)}
+              >
+                <div
+                  className="h-full rounded-full transition-[width] duration-500"
+                  style={{ width: `${item.share}%`, backgroundColor: item.kind.color }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function FilesInDatabase({ metrics }: { metrics: AdminMetricsOverview["files"] }) {
   const typeSummary = metrics.by_type ?? [];
-  const recentFiles = metrics.recent ?? [];
 
   return (
     <Card className="rounded-md py-0 shadow-none">
@@ -187,68 +328,7 @@ function FilesInDatabase({ metrics }: { metrics: AdminMetricsOverview["files"] }
       <CardContent className="space-y-4 px-4">
         <section aria-label="File records by content type">
           <h3 className="py-3 text-xs font-medium text-muted-foreground">Breakdown by file type</h3>
-          {typeSummary.length === 0 ? (
-            <p className="pb-3 text-sm text-muted-foreground">No file records yet.</p>
-          ) : (
-            <ul className="max-h-56 divide-y overflow-y-auto">
-              {typeSummary.map((item) => {
-                const share = metrics.total > 0
-                  ? Math.min(100, (item.count / metrics.total) * 100)
-                  : 0;
-                return (
-                  <li key={item.content_type} className="py-2.5">
-                    <div className="flex min-w-0 items-baseline justify-between gap-3">
-                      <span className="truncate text-sm" title={item.content_type}>
-                        {item.content_type || "Unknown file type"}
-                      </span>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {numberFormat.format(item.count)} files · {formatBytes(item.total_size_bytes)}
-                      </span>
-                    </div>
-                    <div
-                      className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted"
-                      role="progressbar"
-                      aria-label={`${item.content_type} share of file records`}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={Math.round(share)}
-                    >
-                      <div
-                        className="h-full rounded-full bg-[#7A0C2E] dark:bg-rose-400"
-                        style={{ width: `${share}%` }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="border-t" aria-label="Recent file records">
-          <h3 className="py-3 text-xs font-medium text-muted-foreground">Recently added</h3>
-          {recentFiles.length === 0 ? (
-            <p className="pb-3 text-sm text-muted-foreground">No recent files.</p>
-          ) : (
-            <ul className="divide-y">
-              {recentFiles.map((file) => (
-                <li key={file.id} className="flex min-w-0 items-center gap-3 py-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" aria-hidden="true">
-                    <FileText className="size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium" title={file.filename}>{file.filename}</p>
-                    <p className="truncate text-xs text-muted-foreground" title={file.content_type}>
-                      {file.content_type || "Unknown file type"} · {relativeTime(file.created_at)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {formatBytes(file.size)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <FileTypeBreakdown items={typeSummary} total={metrics.total} />
         </section>
       </CardContent>
     </Card>
@@ -328,9 +408,6 @@ function AccountHealth({ metrics }: { metrics: AdminMetricsOverview["users"] }) 
             <CardTitle>Account health</CardTitle>
             <CardDescription className="mt-1">Signups, recent sign-ins, and verification.</CardDescription>
           </div>
-          <Badge variant={needsReview ? "destructive" : "outline"}>
-            {needsReview ? "Needs review" : "No aged unverified accounts"}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-x-4 gap-y-5 px-4 py-5 sm:grid-cols-4">
