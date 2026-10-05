@@ -56,6 +56,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 import NotificationCenter from "@/components/notifications/NotificationCenter";
+import { PageTransition } from "@/components/page-transition";
 
 interface BreadcrumbItemType {
   label: string;
@@ -232,7 +233,7 @@ export default function AppLayout({
 
         {/* Main Content Area */}
         <div className="flex min-h-0 flex-1 flex-col gap-4 px-2 pb-4 pt-0 min-w-0">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </div>
       </SidebarInset>
     </SidebarProvider>

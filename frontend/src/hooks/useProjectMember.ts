@@ -113,6 +113,9 @@ export const memberKeys = {
   detail: (id: string) => [...memberKeys.details(), id] as const,
   userDetail: (id: string) => [...memberKeys.details(), id, "user"] as const,
   byProject: (id: string) => [...memberKeys.all, id, "project"] as const,
+  snapshots: () => [...memberKeys.all, "snapshot"] as const,
+  snapshotByProject: (id: string) =>
+    [...memberKeys.snapshots(), id] as const,
 };
 
 export function useGetMembers() {
@@ -136,6 +139,7 @@ export function useCreateMember() {
     mutationFn: api.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: memberKeys.list() });
+      queryClient.invalidateQueries({ queryKey: memberKeys.snapshots() });
     },
   });
 }
@@ -150,6 +154,8 @@ export function useUpdateMember() {
         queryKey: memberKeys.detail(variables.id),
       });
       queryClient.invalidateQueries({ queryKey: memberKeys.list() });
+      // Refresh the Team page / drawer data (skills live in the snapshot response)
+      queryClient.invalidateQueries({ queryKey: memberKeys.snapshots() });
     },
   });
 }
@@ -161,6 +167,7 @@ export function useDeleteMember() {
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: memberKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: memberKeys.list() });
+      queryClient.invalidateQueries({ queryKey: memberKeys.snapshots() });
     },
   });
 }
@@ -183,7 +190,7 @@ export function useGetCurrentMember(member_id: string) {
 
 export function useGetMembersWithUserSnapshot(project_id: string) {
   return useQuery({
-    queryKey: memberKeys.list(),
+    queryKey: memberKeys.snapshotByProject(project_id),
     queryFn: () => api.getMemberWithUserSnapshot(project_id),
     enabled: !!project_id,
   });

@@ -380,7 +380,7 @@ export default function MyTask() {
                                   : "bg-gray-100 text-gray-500",
                             )}
                           >
-                            {project.priority}
+                            {project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}
                           </Badge>
                         </div>
 
