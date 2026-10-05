@@ -14,7 +14,6 @@ class TestUserEndpoints:
             "email": f"test_register_{unique_suffix}@example.com",
             "first_name": "Register",
             "last_name": "Test",
-            "role": "student",
             "password": "securepassword123",
             "is_active": True,
             "is_superuser": False,
@@ -26,7 +25,7 @@ class TestUserEndpoints:
         assert data["email"] == payload["email"]
         assert data["first_name"] == payload["first_name"]
         assert data["last_name"] == payload["last_name"]
-        assert data["role"] == payload["role"]
+        assert data["role"] == "student"
         assert "id" in data
 
     async def test_register_user_duplicate_email(self, ac: AsyncClient):
@@ -38,7 +37,6 @@ class TestUserEndpoints:
             "email": email,
             "first_name": "User",
             "last_name": "One",
-            "role": "student",
             "password": "securepassword123",
         }
         response1 = await ac.post(f"{self.base_url}/register", json=payload1)
@@ -48,7 +46,6 @@ class TestUserEndpoints:
             "email": email,
             "first_name": "User",
             "last_name": "Two",
-            "role": "student",
             "password": "securepassword123",
         }
         response2 = await ac.post(f"{self.base_url}/register", json=payload2)
@@ -67,7 +64,6 @@ class TestUserEndpoints:
             "email": f"test_fields_{unique_suffix}@example.com",
             "first_name": "Fields",
             "last_name": "Test",
-            "role": "student",
             "password": "securepassword123",
         }
         response = await ac.post(f"{self.base_url}/register", json=payload)
@@ -82,9 +78,20 @@ class TestUserEndpoints:
         assert "is_active" in data
         assert "is_verified" in data
 
-    async def test_register_each_role(self, ac: AsyncClient):
-        """Tests POST /auth/register — each valid UserRole value is accepted."""
-        for role in ["student", "instructor", "admin"]:
+    async def test_registration_defaults_to_student_and_rejects_role_overrides(self, ac: AsyncClient):
+        """Public registration creates students and rejects role selection."""
+        unique_suffix = uuid.uuid4().hex[:6]
+        student_payload = {
+            "email": f"test_student_{unique_suffix}@example.com",
+            "first_name": "Student",
+            "last_name": "User",
+            "password": "securepassword123",
+        }
+        response = await ac.post(f"{self.base_url}/register", json=student_payload)
+        assert response.status_code == 201, response.text
+        assert response.json()["role"] == "student"
+
+        for role in ["instructor", "admin"]:
             unique_suffix = uuid.uuid4().hex[:6]
             payload = {
                 "email": f"test_{role}_{unique_suffix}@example.com",
@@ -94,10 +101,7 @@ class TestUserEndpoints:
                 "password": "securepassword123",
             }
             response = await ac.post(f"{self.base_url}/register", json=payload)
-            assert response.status_code == 201, (
-                f"Failed for role '{role}': {response.text}"
-            )
-            assert response.json()["role"] == role
+            assert response.status_code == 422, response.text
 
     async def test_register_invalid_role(self, ac: AsyncClient):
         """Tests POST /auth/register — returns error for invalid role value."""
@@ -118,7 +122,7 @@ class TestUserEndpoints:
         payload = {
             "email": f"test_missing_{unique_suffix}@example.com",
             "first_name": "Missing",
-            # missing last_name, role, and password
+            # missing last_name and password
         }
         response = await ac.post(f"{self.base_url}/register", json=payload)
         assert response.status_code in [400, 422]

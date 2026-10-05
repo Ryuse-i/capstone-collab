@@ -7,5 +7,6 @@ import Dashboard from "@/pages/admin/Dashboard";
 export const AdminRoutes = (
   <Route element={<RoleRoute role={ROLES.ADMIN} />}>
     <Route path="/dashboard" element={<Dashboard />} />
+    <Route path="/admin/users" element={<Dashboard />} />
   </Route>
 );

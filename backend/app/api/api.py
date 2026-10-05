@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.modules.users.routes import router as users_router
+from app.modules.admin.routes import admin_router
 from app.modules.projects.routes import project_router
 from app.modules.project_members.routes import project_member_router
 from app.modules.tasks.routes import task_router
@@ -26,6 +27,7 @@ from app.modules.task_links.routes import task_link_router
 
 api_router = APIRouter()
 api_router.include_router(users_router)
+api_router.include_router(admin_router)
 api_router.include_router(project_router, prefix="/projects", tags=["project"])
 api_router.include_router(
     project_member_router, prefix="/project_members", tags=["project_member"]

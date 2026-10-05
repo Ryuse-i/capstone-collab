@@ -53,7 +53,6 @@ async def test_user(db_session: AsyncSession) -> dict:
         "email": f"test_user_{unique_suffix}@example.com",
         "first_name": "Test",
         "last_name": "User",
-        "role": "student",
         "password": "securepassword123",
     }
 
@@ -80,7 +79,6 @@ async def test_another_user(db_session: AsyncSession) -> dict:
         "email": f"test_another_user_{unique_suffix}@example.com",
         "first_name": "Another",
         "last_name": "User",
-        "role": "student",
         "password": "securepassword123",
     }
 
