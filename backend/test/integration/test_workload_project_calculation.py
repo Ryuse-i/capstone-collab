@@ -99,12 +99,33 @@ def patch_workload(monkeypatch, members, tasks_by_member=None):
     tasks_by_member = tasks_by_member or {}
     all_tasks = {}
     assignments = {}
+    # Also track task_id -> list of assigned members for get_task_members mock
+    # We need to calculate the number of members based on the effort_share in the test data
+    # effort_share = 1 / member_count, so member_count = 1 / effort_share
+    task_assigned_members = {}
     for member_id, entries in tasks_by_member.items():
         rows = []
         for entry in entries:
             task, share = entry if isinstance(entry, tuple) else (entry, None)
             all_tasks[task.id] = task
+            # Build assignment rows
             rows.append(make_assignment(task, share))
+            # Calculate how many members should be assigned to this task based on share
+            # If share is None, treat as 1.0 (full task)
+            # member_count = 1 / share
+            if share is None:
+                member_count = 1
+            else:
+                # Handle the case where share might be 0 (though it shouldn't be in valid data)
+                if share == 0:
+                    member_count = 1  # fallback to avoid division by zero
+                else:
+                    member_count = max(1, int(round(1 / share)))
+            # Track which members are assigned to each task for get_task_members mock
+            if task.id not in task_assigned_members:
+                task_assigned_members[task.id] = []
+            # Add the calculated number of members
+            task_assigned_members[task.id].extend([make_member() for _ in range(member_count)])
         assignments[member_id] = rows
 
     lock = AsyncMock()
@@ -118,6 +139,10 @@ def patch_workload(monkeypatch, members, tasks_by_member=None):
     monkeypatch.setattr(
         f"{ASSIGNED_SERVICE}.get_members",
         AsyncMock(side_effect=lambda db, member_id: assignments.get(member_id, [])),
+    )
+    monkeypatch.setattr(
+        f"{ASSIGNED_SERVICE}.get_task_members",
+        AsyncMock(side_effect=lambda db, task_id: task_assigned_members.get(task_id, [])),
     )
     monkeypatch.setattr(
         f"{TASK_SERVICE}.batch_get_task",
@@ -218,7 +243,9 @@ class TestLoadTaskInputs:
         plain_in, shared_in, parent_in, none_in = await _load_task_inputs(AsyncMock(), member.id)
 
         assert plain_in.complexity_points == 3 and plain_in.deadline == days_from_today(5)
-        assert plain_in.effort_share is None and plain_in.is_parent is False
+        # With our new logic, effort_share is calculated as 1 / assigned_member_count
+        # Since we mocked get_task_members to return 1 member, share = 1/1 = 1
+        assert plain_in.effort_share == D("1") and plain_in.is_parent is False
         assert shared_in.effort_share == D("0.5") and shared_in.deadline is None
         assert parent_in.is_parent is True
         assert none_in.complexity_points == 0

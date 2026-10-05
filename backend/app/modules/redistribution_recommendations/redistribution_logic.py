@@ -146,7 +146,6 @@ async def generate_redistribution_options(
         task_effective = _task_effective(task, today)
         task_complexity_points = wm.complexity_to_points(task.complexity)
         per_point = task_effective / Decimal(task_complexity_points) if task_complexity_points else Decimal("0")
-        urgency_multiplier = _get_urgency_multiplier_for_task(task)
 
         # Check eligibility of each potential recipient for this task
         eligible_recipients = [
@@ -253,23 +252,6 @@ async def generate_redistribution_options(
             # ========== Split Option ==========
             # Split the task into two subtasks (as equal as possible in complexity points)
             # We only split if the task has at least 2 complexity points
-            if task_complexity_points >= 2:
-                # Split complexity points into two integers that sum to the original and are as close as possible
-                p1 = task_complexity_points // 2
-                p2 = task_complexity_points - p1
-                # Calculate effective points for each subtask
-                if task.status == TaskStatus.IN_PROGRESS:
-                    eff1 = p1 * 1.0
-                    eff2 = p2 * 1.0
-                else:  # NOT_STARTED
-                    eff1 = p1 * urgency_multiplier
-                    eff2 = p2 * urgency_multiplier
-
-                # We have two ways to assign the subtasks:
-                # Way A: original member gets subtask1 (eff1), recipient gets subtask2 (eff2)
-                # Way B: original member gets subtask2 (eff2), recipient gets subtask1 (eff1)
-                # We'll choose the way that gives the better impact (higher impact) for this recipient
-
             if task_complexity_points >= 2:
                 p1 = task_complexity_points // 2
                 p2 = task_complexity_points - p1

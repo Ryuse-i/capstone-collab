@@ -76,8 +76,11 @@ async def _load_task_inputs(db: AsyncSession, member_id: UUID) -> list[wm.TaskIn
         if getattr(t, "deleted_at", None) is not None:   # ASSUMPTION: soft delete column
             continue
         state = task_state_from_status(t.status)
-        am = by_task[t.id]
-        share = getattr(am, "effort_share", None)
+        # Get all members assigned to this task to calculate equal share
+        task_members = await AssignedMemberService.get_task_members(db, t.id)
+        member_count = len(task_members)
+        # Avoid division by zero - if no members assigned, share is 0 (shouldn't happen if current member is assigned)
+        share = Decimal("1") / Decimal(member_count) if member_count > 0 else Decimal("0")
         inputs.append(wm.TaskInput(
             state=state,
             complexity_points=wm.complexity_to_points(t.complexity),
