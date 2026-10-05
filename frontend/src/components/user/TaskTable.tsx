@@ -38,7 +38,6 @@ import {
 
 import { AddTaskDialog } from "@/components/user/AddTaskDialog";
 import EditTaskDialog from "@/components/user/EditTaskDialog";
-import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 
 import type {
   TaskComplexity,
@@ -355,8 +354,6 @@ export function TaskTable({
   const [complexityFilter, setComplexityFilter] = useState<string[]>([]);
   const [selectValue, setSelectValue] = useState("all");
 
-
-
   // Build the member filter options from the members actually assigned
   // to tasks, so the list never goes out of sync with the data.
   const memberOptions = Array.from(
@@ -396,10 +393,6 @@ export function TaskTable({
 
     return true;
   });
-
-
-
-
 
   return (
     <div className="mt-6 space-y-3">
@@ -554,7 +547,6 @@ export function TaskTable({
                         {/* Actions */}
                         <TableCell>
                           <div className="flex items-center gap-2 whitespace-nowrap">
-                            
                             <EditTaskDialog
                               task={task}
                               projectId={projectId}
@@ -563,10 +555,6 @@ export function TaskTable({
                                   Open
                                 </Button>
                               }
-                            />
-                            <DeleteTaskDialog
-                              task={task}
-                              projectId={projectId}
                             />
                           </div>
                         </TableCell>
@@ -579,8 +567,6 @@ export function TaskTable({
           </div>
         </CardContent>
       </Card>
-
-     
     </div>
   );
 }

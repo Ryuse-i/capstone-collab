@@ -23,7 +23,7 @@ export interface TaskBase {
   started_at?: string;
   completed_at?: string;
   status?: TaskStatus;
-  supertask_id?: string;
+  supertask_id?: string | null;
   primary_skill: Skill;
   secondary_skills?: Skill[];
 }

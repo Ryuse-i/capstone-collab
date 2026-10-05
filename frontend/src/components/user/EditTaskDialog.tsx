@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarIcon, Check, ChevronDown, Users, X } from "lucide-react";
 import { format } from "date-fns";
@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskComments } from "@/components/user/TaskComments";
+import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskLinks } from "./TaskLinks";
 
@@ -160,7 +161,11 @@ export interface EditTaskDialogProps {
   task: TaskResponseMembers;
   projectId: string;
   onUpdated?: () => void;
+  onDeleted?: () => void;
   trigger?: ReactNode;
+  /** Optional controlled mode. When `open` is provided, no trigger is rendered. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function EditTaskDialog({
@@ -168,8 +173,18 @@ export default function EditTaskDialog({
   projectId,
   trigger,
   onUpdated,
+  onDeleted,
+  open: controlledOpen,
+  onOpenChange,
 }: EditTaskDialogProps) {
-  const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
 
   const [taskForm, setTaskForm] = useState<TaskFormState>(() =>
     formStateFromTask(task),
@@ -315,6 +330,7 @@ export default function EditTaskDialog({
       last_name: member.users.last_name,
     };
   }, [projectMembersData, effectiveReviewerId]);
+
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     setError(null);
@@ -325,6 +341,27 @@ export default function EditTaskDialog({
       setSelectedReviewerId(undefined); // Reset reviewer selection when opening
       setSupertaskOpen(false);
     }
+  };
+
+  // Reset the form whenever the drawer opens (covers controlled mode,
+  // where the parent flips `open` without going through handleOpenChange).
+  // `task` is deliberately not a dependency so a background refetch
+  // doesn't wipe in-progress edits.
+  useEffect(() => {
+    if (!open) return;
+    setTaskForm(formStateFromTask(task));
+    setSelectedMemberIds(null);
+    setSelectedReviewerId(undefined);
+    setSupertaskOpen(false);
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handleTaskDeleted = () => {
+    // Close the drawer first so it isn't left open (or leaving a stuck
+    // overlay behind) when the row, and this component, unmount.
+    handleOpenChange(false);
+    onDeleted?.();
   };
 
   const handleTaskFieldChange = <K extends keyof TaskFormState>(
@@ -437,7 +474,7 @@ export default function EditTaskDialog({
         primary_skill: taskForm.primary_skill as Skill,
         secondary_skills: taskForm.secondary_skills,
         // null explicitly removes the task from its supertask.
-        supertask_id: taskForm.supertask_id ?? "",
+        supertask_id: taskForm.supertask_id,
       };
 
       await updateTaskMutation.mutateAsync({
@@ -575,9 +612,11 @@ export default function EditTaskDialog({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
-      <DrawerTrigger asChild>
-        {trigger ?? <Button variant="outline">Edit</Button>}
-      </DrawerTrigger>
+      {!isControlled && (
+        <DrawerTrigger asChild>
+          {trigger ?? <Button variant="outline">Edit</Button>}
+        </DrawerTrigger>
+      )}
 
       <DrawerContent className="ml-auto h-full w-full overflow-hidden rounded-none p-0 sm:max-w-2xl">
         <DrawerHeader className="shrink-0 border-b px-6 py-5">
@@ -1234,26 +1273,45 @@ export default function EditTaskDialog({
           </div>
         </div>
 
-        <DrawerFooter className="shrink-0 gap-2 border-t bg-muted/40 px-6 py-3">
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            onClick={handleSubmit}
-            disabled={
-              isSubmitting ||
-              assignedLoading ||
-              membersLoading ||
-              reviewerLoading
+        <DrawerFooter className="shrink-0 flex-row items-center justify-between gap-2 border-t bg-muted/40 px-6 py-3">
+          {/* Delete lives here now; it has its own confirm dialog. */}
+          <DeleteTaskDialog
+            task={task}
+            projectId={projectId}
+            onDeleted={handleTaskDeleted}
+            trigger={
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={isSubmitting}
+              >
+                Delete
+              </Button>
             }
-          >
-            {isSubmitting ? "Saving..." : "Save changes"}
-          </Button>
+          />
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                isSubmitting ||
+                assignedLoading ||
+                membersLoading ||
+                reviewerLoading
+              }
+            >
+              {isSubmitting ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

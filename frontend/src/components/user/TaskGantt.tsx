@@ -6,11 +6,10 @@ import GanttChart, {
 } from "react-modern-gantt";
 import "react-modern-gantt/dist/index.css";
 
-
-
 import type { TaskResponseMembers, TaskStatus } from "@/types/task";
 import type { UserBase } from "@/types/user";
 import * as ProjectMemberTypes from "@/types/project_member";
+import EditTaskDialog from "@/components/user/EditTaskDialog";
 
 // -------------------------------------------------------------------------
 // Color logic
@@ -39,6 +38,10 @@ const COMPLETED_COLOR = {
 
 const IN_PROGRESS_HUE = 217; // blue
 const MIN_GANTT_ROWS = 8;
+
+// The timeline always spans at least this many months ahead of today,
+// even when there are no tasks (or all tasks end sooner).
+const HORIZON_MONTHS = 3;
 
 // Dummy raw object for placeholder tasks
 const dummyRaw: TaskResponseMembers = {
@@ -127,6 +130,12 @@ function normalizeStatus(raw: unknown): TaskStatus {
 function addDays(date: Date, days: number): Date {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function addMonths(date: Date, months: number): Date {
+  const copy = new Date(date);
+  copy.setMonth(copy.getMonth() + months);
   return copy;
 }
 
@@ -433,14 +442,21 @@ export function TaskGanttView({
   isLoading = false,
   isError = false,
 }: TaskGanttViewProps) {
-  const [selectedTask, setSelectedTask] = useState<TaskResponseMembers | null>(
-    null,
+  const [selectedTaskId, setSelectedTaskId] = useState<
+    TaskResponseMembers["id"] | null
+  >(null);
+
+  // Derive the task from the live list so the drawer always sees fresh
+  // data after a refetch.
+  const selectedTask = useMemo(
+    () => tasks.find((t) => t.id === selectedTaskId) ?? null,
+    [tasks, selectedTaskId],
   );
 
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   // Today marker position is now controlled via CSS variable --rmg-today-marker-left
-// Set to "0%" to position it at the start of today's column (00:00)
+  // Set to "0%" to position it at the start of today's column (00:00)
 
   // -----------------------------------------------------------------------
   // Task click
@@ -452,23 +468,19 @@ export function TaskGanttView({
       return;
     }
 
-    setSelectedTask(task);
+    setSelectedTaskId(task.id);
     setViewDialogOpen(true);
   };
 
+  // Keep selectedTaskId on close so the drawer's slide-out animation
+  // isn't cut short by an immediate unmount.
   const handleViewDialogChange = (open: boolean) => {
     setViewDialogOpen(open);
-
-    if (!open) {
-      setSelectedTask(null);
-    }
   };
 
   // -----------------------------------------------------------------------
   // Build one flat task group (no supertask grouping — see note above)
   // -----------------------------------------------------------------------
-
-  const now = new Date();
 
   const realGroups = useMemo<TaskGroup[]>(() => {
     if (tasks.length === 0) return [];
@@ -500,32 +512,20 @@ export function TaskGanttView({
       );
   }, [tasks]);
 
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-
   const groups = useMemo<TaskGroup[]>(() => {
-    if (realGroups.length >= MIN_GANTT_ROWS) {
-      return realGroups;
-    }
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const horizonEnd = addMonths(startOfToday, HORIZON_MONTHS);
 
-    // Compute minStart and maxEnd from realGroups to preserve timeline range
-    let minStart: Date | null = null;
-    let maxEnd: Date | null = null;
-    for (const group of realGroups) {
-      const task = group.tasks[0];
-      if (minStart === null || task.startDate < minStart) {
-        minStart = task.startDate;
-      }
-      if (maxEnd === null || task.endDate > maxEnd) {
-        maxEnd = task.endDate;
-      }
-    }
+    // Always add at least one placeholder: the first one is an invisible
+    // "anchor" spanning today -> +3 months so the timeline never shrinks
+    // below that range, even with zero tasks.
+    const placeholderCount = Math.max(MIN_GANTT_ROWS - realGroups.length, 1);
 
     const placeholders: TaskGroup[] = [];
-    const baseDate =
-      realGroups.length > 0 && maxEnd !== null ? maxEnd : startOfToday;
+    for (let i = 0; i < placeholderCount; i++) {
+      const isAnchor = i === 0;
 
-    for (let i = 0; i < MIN_GANTT_ROWS - realGroups.length; i++) {
       placeholders.push({
         id: `placeholder-${i}`,
         name: "",
@@ -533,18 +533,18 @@ export function TaskGanttView({
           {
             id: `placeholder-task-${i}`,
             name: "",
-            startDate: baseDate,
-            endDate: baseDate, // zero width
+            startDate: startOfToday,
+            endDate: isAnchor ? horizonEnd : startOfToday,
             percent: 0,
             status: "not_started",
             raw: dummyRaw,
-          },
+          } as GanttCustomTask,
         ],
       });
     }
 
     return [...realGroups, ...placeholders];
-  }, [realGroups, startOfToday]);
+  }, [realGroups]);
 
   // -----------------------------------------------------------------------
   // Render
@@ -602,6 +602,14 @@ export function TaskGanttView({
             getTaskColor={({ task }) => {
               const t = task as GanttCustomTask;
 
+              // Placeholder / anchor rows are fully invisible.
+              if (t.name === "") {
+                return {
+                  backgroundColor: "transparent",
+                  textColor: "transparent",
+                };
+              }
+
               return resolveColor(t.status, t.percent ?? 0);
             }}
             // -------------------------------------------------------------
@@ -637,8 +645,12 @@ export function TaskGanttView({
                 // Placeholder task: make it invisible and non-interactable
                 taskStyle.backgroundColor = "transparent";
                 taskStyle.pointerEvents = "none";
+                taskStyle.boxShadow = "none";
               } else if (t.status === "in_progress") {
-                const passed = solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0);
+                const passed = solidColorForProgress(
+                  IN_PROGRESS_HUE,
+                  t.percent ?? 0,
+                );
                 const upcoming = pastelColorForProgress(IN_PROGRESS_HUE, 0);
 
                 taskStyle.background = `linear-gradient(to right, ${passed.backgroundColor} 0%, ${passed.backgroundColor} ${t.percent ?? 0}%, ${upcoming.backgroundColor} ${t.percent ?? 0}%, ${upcoming.backgroundColor} 100%)`;
@@ -664,9 +676,14 @@ export function TaskGanttView({
 
                   <AvatarStack
                     members={members}
-                    ringColor={t.status === "in_progress"
-                      ? solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0).backgroundColor
-                      : color.backgroundColor}
+                    ringColor={
+                      t.status === "in_progress"
+                        ? solidColorForProgress(
+                            IN_PROGRESS_HUE,
+                            t.percent ?? 0,
+                          ).backgroundColor
+                        : color.backgroundColor
+                    }
                   />
                 </div>
               );
@@ -676,11 +693,24 @@ export function TaskGanttView({
             // -------------------------------------------------------------
 
             onTaskClick={(task) => {
-              handleTaskClick((task as GanttCustomTask).raw);
+              const t = task as GanttCustomTask;
+              if (!t.raw?.id) return; // ignore placeholder/anchor rows
+              handleTaskClick(t.raw);
             }}
           />
         )}
       </div>
+
+      {/* Outside the translateZ(0) wrapper so the transform can't affect
+          the drawer's fixed positioning. */}
+      {selectedTask && (
+        <EditTaskDialog
+          task={selectedTask}
+          projectId={selectedTask.project_id}
+          open={viewDialogOpen}
+          onOpenChange={handleViewDialogChange}
+        />
+      )}
     </div>
   );
 }
