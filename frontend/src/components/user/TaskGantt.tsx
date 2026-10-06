@@ -13,12 +13,6 @@ import EditTaskDialog from "@/components/user/EditTaskDialog";
 
 // -------------------------------------------------------------------------
 // Color logic
-//
-// Fixed, unambiguous color per status:
-// - not_started : neutral gray
-// - in-progress : blue, intensifying as progress increases
-// - submitted   : fixed yellow
-// - completed   : fixed green
 // -------------------------------------------------------------------------
 
 const NOT_STARTED_COLOR = {
@@ -36,11 +30,8 @@ const COMPLETED_COLOR = {
   textColor: "#ffffff",
 };
 
-const IN_PROGRESS_HUE = 217; // blue
+const IN_PROGRESS_HUE = 217;
 const MIN_GANTT_ROWS = 8;
-
-// The timeline always spans at least this many months ahead of today,
-// even when there are no tasks (or all tasks end sooner).
 const HORIZON_MONTHS = 3;
 
 // Dummy raw object for placeholder tasks
@@ -82,9 +73,8 @@ function solidColorForProgress(hue: number, progress: number) {
 function pastelColorForProgress(hue: number, progress: number) {
   const clamped = Math.min(100, Math.max(0, progress));
 
-  // For pastel: increase lightness, decrease saturation
-  const saturation = 30 + (clamped / 100) * 15; // Lower saturation range
-  const lightness = 80 + (clamped / 100) * 10; // Higher lightness range
+  const saturation = 30 + (clamped / 100) * 15;
+  const lightness = 80 + (clamped / 100) * 10;
 
   return {
     backgroundColor: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
@@ -96,31 +86,24 @@ function pastelColorForProgress(hue: number, progress: number) {
 // Date + progress resolution per status
 // -------------------------------------------------------------------------
 
-/**
- * Normalizes a status value to the canonical TaskStatus form.
- * This project has repeatedly hit backend/frontend enum casing mismatches
- * (e.g. NOT_STARTED vs not_started), so match defensively instead of an
- * exact string comparison that can silently fall through and look like
- * "no color at all". Note the canonical statuses themselves use mixed
- * separators ("not_started" vs "in-progress"), so the hyphen-normalized
- * key is mapped explicitly back to each real value rather than reused as
- * the value directly.
- */
 function normalizeStatus(raw: unknown): TaskStatus {
   if (typeof raw !== "string") return "not_started";
 
-  // Trim, lowercase, and convert spaces/underscores to hyphens for matching
   const key = raw.trim().toLowerCase().replace(/[_\s]+/g, "-");
 
   switch (key) {
     case "not-started":
       return "not_started";
+
     case "in-progress":
       return "in_progress";
+
     case "submitted":
       return "submitted";
+
     case "completed":
       return "completed";
+
     default:
       console.warn("[TaskGantt] Unrecognized task status:", raw);
       return "not_started";
@@ -139,10 +122,10 @@ function addMonths(date: Date, months: number): Date {
   return copy;
 }
 
-/**
- * Parse a date string, falling back to `fallback` if it's missing/invalid.
- */
-function safeDate(value: string | null | undefined, fallback: Date): Date {
+function safeDate(
+  value: string | null | undefined,
+  fallback: Date,
+): Date {
   if (!value) return fallback;
 
   const parsed = new Date(value);
@@ -156,14 +139,13 @@ interface Resolved {
   percent: number;
 }
 
-/**
- * Bad/overdue data can otherwise produce endDate < startDate,
- * which renders as a negative-width or glitched bar.
- *
- * Guarantee endDate is never before startDate.
- */
-function clampRange(startDate: Date, endDate: Date): [Date, Date] {
-  return endDate < startDate ? [startDate, startDate] : [startDate, endDate];
+function clampRange(
+  startDate: Date,
+  endDate: Date,
+): [Date, Date] {
+  return endDate < startDate
+    ? [startDate, startDate]
+    : [startDate, endDate];
 }
 
 function resolveTask(task: TaskResponseMembers): Resolved {
@@ -184,29 +166,39 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
       return {
         startDate,
-
         endDate,
         percent: 0,
       };
     }
 
     case "in_progress": {
-      const start = safeDate(task.started_at ?? task.created_at, now);
+      const start = safeDate(
+        task.started_at ?? task.created_at,
+        now,
+      );
 
       const end = deadline ?? addDays(start, 7);
 
       const [startDate, endDate] = clampRange(start, end);
 
-      const total = endDate.getTime() - startDate.getTime();
+      const total =
+        endDate.getTime() - startDate.getTime();
 
-      // Calculate progress relative to start of today (00:00) to synchronize
-      // with the today marker which is fixed at the start of the day.
       const startOfToday = new Date(now);
       startOfToday.setHours(0, 0, 0, 0);
-      const elapsed = Math.max(0, startOfToday.getTime() - startDate.getTime());
+
+      const elapsed = Math.max(
+        0,
+        startOfToday.getTime() - startDate.getTime(),
+      );
 
       const percent =
-        total > 0 ? Math.min(99, Math.max(1, (elapsed / total) * 100)) : 1;
+        total > 0
+          ? Math.min(
+              99,
+              Math.max(1, (elapsed / total) * 100),
+            )
+          : 1;
 
       return {
         startDate,
@@ -216,13 +208,22 @@ function resolveTask(task: TaskResponseMembers): Resolved {
     }
 
     case "submitted": {
-      const start = safeDate(task.started_at ?? task.created_at, now);
+      const start = safeDate(
+        task.started_at ?? task.created_at,
+        now,
+      );
 
       const end = task.completed_at
-        ? safeDate(task.completed_at, addDays(start, 1))
+        ? safeDate(
+            task.completed_at,
+            addDays(start, 1),
+          )
         : (deadline ?? addDays(start, 1));
 
-      const [startDate, endDate] = clampRange(start, end);
+      const [startDate, endDate] = clampRange(
+        start,
+        end,
+      );
 
       return {
         startDate,
@@ -232,13 +233,19 @@ function resolveTask(task: TaskResponseMembers): Resolved {
     }
 
     case "completed": {
-      const start = safeDate(task.started_at ?? task.created_at, now);
+      const start = safeDate(
+        task.started_at ?? task.created_at,
+        now,
+      );
 
       const end = task.completed_at
         ? safeDate(task.completed_at, start)
         : start;
 
-      const [startDate, endDate] = clampRange(start, end);
+      const [startDate, endDate] = clampRange(
+        start,
+        end,
+      );
 
       return {
         startDate,
@@ -248,10 +255,18 @@ function resolveTask(task: TaskResponseMembers): Resolved {
     }
 
     default: {
-      // This should never happen due to normalizeStatus, but added for TypeScript safety
-      const start = safeDate(task.started_at ?? task.created_at, now);
+      const start = safeDate(
+        task.started_at ?? task.created_at,
+        now,
+      );
+
       const end = deadline ?? addDays(start, 7);
-      const [startDate, endDate] = clampRange(start, end);
+
+      const [startDate, endDate] = clampRange(
+        start,
+        end,
+      );
+
       return {
         startDate,
         endDate,
@@ -265,7 +280,10 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 // Task colors
 // -------------------------------------------------------------------------
 
-function resolveColor(status: TaskStatus, percent: number) {
+function resolveColor(
+  status: TaskStatus,
+  percent: number,
+) {
   switch (status) {
     case "submitted":
       return SUBMITTED_COLOR;
@@ -273,11 +291,11 @@ function resolveColor(status: TaskStatus, percent: number) {
     case "completed":
       return COMPLETED_COLOR;
 
-    case "in_progress": {
-      // For in-progress tasks, we return a solid color based on progress.
-      // The gradient effect will be handled in the renderTask style.
-      return solidColorForProgress(IN_PROGRESS_HUE, percent);
-    }
+    case "in_progress":
+      return solidColorForProgress(
+        IN_PROGRESS_HUE,
+        percent,
+      );
 
     case "not_started":
     default:
@@ -302,10 +320,13 @@ function avatarColorFor(id: string) {
   let hash = 0;
 
   for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    hash =
+      (hash * 31 + id.charCodeAt(i)) >>> 0;
   }
 
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+  return AVATAR_PALETTE[
+    hash % AVATAR_PALETTE.length
+  ];
 }
 
 function initials(member: UserBase) {
@@ -328,11 +349,18 @@ function AvatarStack({
     return null;
   }
 
-  const visible = members.slice(0, MAX_VISIBLE_AVATARS);
+  const visible = members.slice(
+    0,
+    MAX_VISIBLE_AVATARS,
+  );
 
-  const overflow = members.length - visible.length;
+  const overflow =
+    members.length - visible.length;
 
-  const bubbleStyle = (bg: string, marginLeft: number): CSSProperties => ({
+  const bubbleStyle = (
+    bg: string,
+    marginLeft: number,
+  ): CSSProperties => ({
     width: 22,
     height: 22,
     marginLeft,
@@ -361,14 +389,19 @@ function AvatarStack({
         <div
           key={member.id}
           title={`${member.first_name} ${member.last_name}`}
-          style={bubbleStyle(avatarColorFor(member.id), i === 0 ? 0 : -8)}
+          style={bubbleStyle(
+            avatarColorFor(member.id),
+            i === 0 ? 0 : -8,
+          )}
         >
           {initials(member)}
         </div>
       ))}
 
       {overflow > 0 && (
-        <div style={bubbleStyle("#334155", -8)}>+{overflow}</div>
+        <div style={bubbleStyle("#334155", -8)}>
+          +{overflow}
+        </div>
       )}
     </div>
   );
@@ -387,14 +420,13 @@ interface TaskGanttViewProps {
   tasks: TaskResponseMembers[];
 
   /**
-   * @deprecated No longer rendered — the sidebar (which showed these
-   * group names) has been removed. Kept optional so existing callers
-   * don't break; safe to stop passing this.
+   * @deprecated No longer rendered.
    */
   supertaskNames?: Record<string, string>;
 
-  /** Optional override for task click behavior. */
-  onTaskClick?: (task: TaskResponseMembers) => void;
+  onTaskClick?: (
+    task: TaskResponseMembers,
+  ) => void;
 
   isLoading?: boolean;
   isError?: boolean;
@@ -402,35 +434,40 @@ interface TaskGanttViewProps {
 
 // -------------------------------------------------------------------------
 // Gantt styling
+// -------------------------------------------------------------------------
 //
-// Keep the chart itself flat and rectangular.
-// Only the individual task bars receive subtle rounding.
+// IMPORTANT:
+// These CSS variables use the application's theme variables.
+// Therefore the Gantt automatically changes when the
+// application switches between light and dark mode.
 // -------------------------------------------------------------------------
 
 const GANTT_CSS_VARS: CSSProperties = {
-  ["--rmg-bg-color" as string]: "#ffffff",
+  // Light mode:
+  // --background will normally be white.
+  //
+  // Dark mode:
+  // --background will normally become a dark color.
+  ["--rmg-bg-color" as string]:
+    "hsl(var(--background))",
 
-  ["--rmg-text-color" as string]: "#000000",
+  ["--rmg-text-color" as string]:
+    "hsl(var(--foreground))",
 
-  ["--rmg-border-color" as string]: "#e5e7eb",
+  ["--rmg-border-color" as string]:
+    "hsl(var(--border))",
 
   ["--rmg-row-height" as string]: "80px",
 
   ["--rmg-task-height" as string]: "60px",
 
-  // Subtle rounding instead of a full pill.
   ["--rmg-border-radius" as string]: "6px",
 
-  ["--rmg-marker-color" as string]: "var(--maroon)",
+  ["--rmg-marker-color" as string]:
+    "var(--maroon)",
 
-  // Position today marker at start of day (00:00) instead of current time
-  // In DAY view, setting to 0% places it at the left edge of today's column
   ["--rmg-today-marker-left" as string]: "0%",
 };
-
-// Single flat group. There's no sidebar to show a group label in
-// anymore, so grouping by supertask would only add invisible divider
-// lines between blocks — one continuous list reads cleaner.
 
 // -------------------------------------------------------------------------
 // Component
@@ -442,27 +479,33 @@ export function TaskGanttView({
   isLoading = false,
   isError = false,
 }: TaskGanttViewProps) {
-  const [selectedTaskId, setSelectedTaskId] = useState<
+  const [
+    selectedTaskId,
+    setSelectedTaskId,
+  ] = useState<
     TaskResponseMembers["id"] | null
   >(null);
 
-  // Derive the task from the live list so the drawer always sees fresh
-  // data after a refetch.
   const selectedTask = useMemo(
-    () => tasks.find((t) => t.id === selectedTaskId) ?? null,
+    () =>
+      tasks.find(
+        (t) => t.id === selectedTaskId,
+      ) ?? null,
     [tasks, selectedTaskId],
   );
 
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-
-  // Today marker position is now controlled via CSS variable --rmg-today-marker-left
-  // Set to "0%" to position it at the start of today's column (00:00)
+  const [
+    viewDialogOpen,
+    setViewDialogOpen,
+  ] = useState(false);
 
   // -----------------------------------------------------------------------
   // Task click
   // -----------------------------------------------------------------------
 
-  const handleTaskClick = (task: TaskResponseMembers) => {
+  const handleTaskClick = (
+    task: TaskResponseMembers,
+  ) => {
     if (onTaskClick) {
       onTaskClick(task);
       return;
@@ -472,23 +515,31 @@ export function TaskGanttView({
     setViewDialogOpen(true);
   };
 
-  // Keep selectedTaskId on close so the drawer's slide-out animation
-  // isn't cut short by an immediate unmount.
-  const handleViewDialogChange = (open: boolean) => {
+  const handleViewDialogChange = (
+    open: boolean,
+  ) => {
     setViewDialogOpen(open);
   };
 
   // -----------------------------------------------------------------------
-  // Build one flat task group (no supertask grouping — see note above)
+  // Build one flat task group
   // -----------------------------------------------------------------------
 
   const realGroups = useMemo<TaskGroup[]>(() => {
-    if (tasks.length === 0) return [];
+    if (tasks.length === 0) {
+      return [];
+    }
 
     return tasks
       .map((task) => {
-        const status: TaskStatus = normalizeStatus(task.status);
-        const { startDate, endDate, percent } = resolveTask(task);
+        const status: TaskStatus =
+          normalizeStatus(task.status);
+
+        const {
+          startDate,
+          endDate,
+          percent,
+        } = resolveTask(task);
 
         const ganttTask: GanttCustomTask = {
           id: task.id,
@@ -501,29 +552,44 @@ export function TaskGanttView({
         };
 
         return {
-          id: task.id, // one group per task
+          id: task.id,
           name: task.name,
-          tasks: [ganttTask], // single task in that group
+          tasks: [ganttTask],
         };
       })
       .sort(
         (a, b) =>
-          a.tasks[0].startDate.getTime() - b.tasks[0].startDate.getTime(),
+          a.tasks[0].startDate.getTime() -
+          b.tasks[0].startDate.getTime(),
       );
   }, [tasks]);
 
+  // -----------------------------------------------------------------------
+  // Placeholder rows
+  // -----------------------------------------------------------------------
+
   const groups = useMemo<TaskGroup[]>(() => {
     const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const horizonEnd = addMonths(startOfToday, HORIZON_MONTHS);
 
-    // Always add at least one placeholder: the first one is an invisible
-    // "anchor" spanning today -> +3 months so the timeline never shrinks
-    // below that range, even with zero tasks.
-    const placeholderCount = Math.max(MIN_GANTT_ROWS - realGroups.length, 1);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const horizonEnd = addMonths(
+      startOfToday,
+      HORIZON_MONTHS,
+    );
+
+    const placeholderCount = Math.max(
+      MIN_GANTT_ROWS - realGroups.length,
+      1,
+    );
 
     const placeholders: TaskGroup[] = [];
-    for (let i = 0; i < placeholderCount; i++) {
+
+    for (
+      let i = 0;
+      i < placeholderCount;
+      i++
+    ) {
       const isAnchor = i === 0;
 
       placeholders.push({
@@ -534,7 +600,9 @@ export function TaskGanttView({
             id: `placeholder-task-${i}`,
             name: "",
             startDate: startOfToday,
-            endDate: isAnchor ? horizonEnd : startOfToday,
+            endDate: isAnchor
+              ? horizonEnd
+              : startOfToday,
             percent: 0,
             status: "not_started",
             raw: dummyRaw,
@@ -543,7 +611,10 @@ export function TaskGanttView({
       });
     }
 
-    return [...realGroups, ...placeholders];
+    return [
+      ...realGroups,
+      ...placeholders,
+    ];
   }, [realGroups]);
 
   // -----------------------------------------------------------------------
@@ -553,17 +624,19 @@ export function TaskGanttView({
   return (
     <div className="mt-6">
       <div
-        className="relative overflow-visible"
+        className="
+          relative
+          overflow-visible
+          bg-background
+          text-foreground
+          transition-colors
+          duration-200
+        "
         style={{
-          /*
-           * react-modern-gantt uses fixed-position elements internally.
-           *
-           * transform keeps the library's positioned elements anchored to
-           * this chart without clipping the full task stack.
-           */
           transform: "translateZ(0)",
           contain: "layout",
 
+          // Theme-aware Gantt variables
           ...GANTT_CSS_VARS,
         }}
       >
@@ -587,87 +660,146 @@ export function TaskGanttView({
             editMode={false}
             showCurrentDateMarker
             todayLabel="Today"
-            // -------------------------------------------------------------
-            // Day-only view, no Day/Week/Month selector, no title bar,
-            // no sidebar — just the day header + the task rows.
-            // -------------------------------------------------------------
+
+            // Day-only view
             viewMode={ViewMode.DAY}
             viewModes={false}
             renderHeader={() => null}
             renderTaskList={() => null}
+
             // -------------------------------------------------------------
             // Task colors
             // -------------------------------------------------------------
 
             getTaskColor={({ task }) => {
-              const t = task as GanttCustomTask;
+              const t =
+                task as GanttCustomTask;
 
-              // Placeholder / anchor rows are fully invisible.
+              // Placeholder / anchor rows
+              // are completely invisible.
               if (t.name === "") {
                 return {
-                  backgroundColor: "transparent",
+                  backgroundColor:
+                    "transparent",
                   textColor: "transparent",
                 };
               }
 
-              return resolveColor(t.status, t.percent ?? 0);
+              return resolveColor(
+                t.status,
+                t.percent ?? 0,
+              );
             }}
+
             // -------------------------------------------------------------
             // Custom task renderer
             // -------------------------------------------------------------
 
-            renderTask={({ task, isHovered }) => {
-              const t = task as GanttCustomTask;
+            renderTask={({
+              task,
+              isHovered,
+            }) => {
+              const t =
+                task as GanttCustomTask;
 
-              const color = resolveColor(t.status, t.percent ?? 0);
+              const color = resolveColor(
+                t.status,
+                t.percent ?? 0,
+              );
 
-              // For in-progress tasks, create a gradient effect
               const taskStyle: CSSProperties = {
                 width: "100%",
-                height: "var(--rmg-task-height, 85px)",
+                height:
+                  "var(--rmg-task-height, 85px)",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
+                justifyContent:
+                  "space-between",
                 gap: 6,
-                padding: "0 6px 0 14px",
+                padding:
+                  "0 6px 0 14px",
                 borderRadius: "7px",
                 fontSize: 13,
                 fontWeight: 600,
                 whiteSpace: "nowrap",
                 cursor: "pointer",
+
                 boxShadow: isHovered
                   ? "0 2px 6px rgba(15, 23, 42, 0.12)"
                   : "none",
-                transition: "box-shadow 0.15s ease",
+
+                transition:
+                  "box-shadow 0.15s ease",
               };
 
-              if (t.name === "") {
-                // Placeholder task: make it invisible and non-interactable
-                taskStyle.backgroundColor = "transparent";
-                taskStyle.pointerEvents = "none";
-                taskStyle.boxShadow = "none";
-              } else if (t.status === "in_progress") {
-                const passed = solidColorForProgress(
-                  IN_PROGRESS_HUE,
-                  t.percent ?? 0,
-                );
-                const upcoming = pastelColorForProgress(IN_PROGRESS_HUE, 0);
+              // -----------------------------------------------------------
+              // Placeholder
+              // -----------------------------------------------------------
 
-                taskStyle.background = `linear-gradient(to right, ${passed.backgroundColor} 0%, ${passed.backgroundColor} ${t.percent ?? 0}%, ${upcoming.backgroundColor} ${t.percent ?? 0}%, ${upcoming.backgroundColor} 100%)`;
-                taskStyle.color = passed.textColor;
-              } else {
-                taskStyle.backgroundColor = color.backgroundColor;
-                taskStyle.color = color.textColor;
+              if (t.name === "") {
+                taskStyle.backgroundColor =
+                  "transparent";
+
+                taskStyle.pointerEvents =
+                  "none";
+
+                taskStyle.boxShadow = "none";
               }
 
-              const members = t.raw.assigned_members ?? [];
+              // -----------------------------------------------------------
+              // In progress
+              // -----------------------------------------------------------
+
+              else if (
+                t.status === "in_progress"
+              ) {
+                const passed =
+                  solidColorForProgress(
+                    IN_PROGRESS_HUE,
+                    t.percent ?? 0,
+                  );
+
+                const upcoming =
+                  pastelColorForProgress(
+                    IN_PROGRESS_HUE,
+                    0,
+                  );
+
+                taskStyle.background =
+                  `linear-gradient(
+                    to right,
+                    ${passed.backgroundColor} 0%,
+                    ${passed.backgroundColor} ${t.percent ?? 0}%,
+                    ${upcoming.backgroundColor} ${t.percent ?? 0}%,
+                    ${upcoming.backgroundColor} 100%
+                  )`;
+
+                taskStyle.color =
+                  passed.textColor;
+              }
+
+              // -----------------------------------------------------------
+              // Other statuses
+              // -----------------------------------------------------------
+
+              else {
+                taskStyle.backgroundColor =
+                  color.backgroundColor;
+
+                taskStyle.color =
+                  color.textColor;
+              }
+
+              const members =
+                t.raw.assigned_members ?? [];
 
               return (
                 <div style={taskStyle}>
                   <span
                     style={{
                       overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      textOverflow:
+                        "ellipsis",
                       minWidth: 0,
                     }}
                   >
@@ -677,7 +809,8 @@ export function TaskGanttView({
                   <AvatarStack
                     members={members}
                     ringColor={
-                      t.status === "in_progress"
+                      t.status ===
+                      "in_progress"
                         ? solidColorForProgress(
                             IN_PROGRESS_HUE,
                             t.percent ?? 0,
@@ -688,27 +821,37 @@ export function TaskGanttView({
                 </div>
               );
             }}
+
             // -------------------------------------------------------------
             // Task click
             // -------------------------------------------------------------
 
             onTaskClick={(task) => {
-              const t = task as GanttCustomTask;
-              if (!t.raw?.id) return; // ignore placeholder/anchor rows
+              const t =
+                task as GanttCustomTask;
+
+              if (!t.raw?.id) {
+                return;
+              }
+
               handleTaskClick(t.raw);
             }}
           />
         )}
       </div>
 
-      {/* Outside the translateZ(0) wrapper so the transform can't affect
-          the drawer's fixed positioning. */}
+      {/* Outside the translateZ(0) wrapper so
+          the drawer's fixed positioning isn't affected. */}
       {selectedTask && (
         <EditTaskDialog
           task={selectedTask}
-          projectId={selectedTask.project_id}
+          projectId={
+            selectedTask.project_id
+          }
           open={viewDialogOpen}
-          onOpenChange={handleViewDialogChange}
+          onOpenChange={
+            handleViewDialogChange
+          }
         />
       )}
     </div>

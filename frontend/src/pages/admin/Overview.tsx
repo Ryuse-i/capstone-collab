@@ -492,7 +492,7 @@ function ActivityFeed({ metrics }: { metrics: AdminMetricsOverview["activity"] }
               const Icon = activityIcons[item.type] ?? CircleDashed;
               return (
                 <li key={item.id} className="flex min-w-0 items-center gap-3 py-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground" aria-hidden="true">
                     <Icon className="size-4" />
                   </span>
                   <p className="min-w-0 flex-1 truncate text-sm" title={activityDescription(item.type, item.actor, item.target_label)}>

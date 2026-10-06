@@ -33,10 +33,14 @@ import { TaskLinks } from "./TaskLinks";
 // Soft pill badges (outline-tinted, like the reference "In Research" / "Low" pills)
 // rather than solid-fill badges — reserved for the header meta rows.
 const statusPillStyle: Record<TaskStatus, string> = {
-  completed: "bg-green-50 text-green-700",
-  submitted: "bg-blue-50 text-blue-700",
-  in_progress: "bg-yellow-50 text-yellow-700",
-  not_started: "bg-gray-100 text-gray-500",
+  completed:
+    "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400",
+  submitted:
+    "bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
+  in_progress:
+    "bg-yellow-50 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
+  not_started:
+    "bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400",
 };
 
 const statusDotStyle: Record<TaskStatus, string> = {
@@ -47,9 +51,10 @@ const statusDotStyle: Record<TaskStatus, string> = {
 };
 
 const priorityPillStyle: Record<TaskPriority, string> = {
-  high: "bg-red-50 text-red-600",
-  medium: "bg-yellow-50 text-yellow-600",
-  low: "bg-gray-50 text-gray-600",
+  high: "bg-red-50 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+  medium:
+    "bg-yellow-50 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400",
+  low: "bg-gray-50 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400",
 };
 
 const priorityDotStyle: Record<TaskPriority, string> = {
@@ -59,9 +64,10 @@ const priorityDotStyle: Record<TaskPriority, string> = {
 };
 
 const complexityPillStyle: Record<TaskComplexity, string> = {
-  high: "bg-red-50 text-red-600",
-  medium: "bg-yellow-50 text-yellow-600",
-  low: "bg-gray-50 text-gray-600",
+  high: "bg-red-50 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+  medium:
+    "bg-yellow-50 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400",
+  low: "bg-gray-50 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400",
 };
 
 const complexityDotStyle: Record<TaskComplexity, string> = {

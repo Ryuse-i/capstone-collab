@@ -68,7 +68,7 @@ function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-sm border-b border-gray-200 dark:bg-slate-950/80 dark:border-gray-800">
+    <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-sm border-b border-gray-200 dark:bg-[#121212] dark:border-[#1A1A1A]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -133,7 +133,7 @@ function Navbar() {
 
 function HeroSection() {
   return (
-    <section className="py-20 md:py-32 px-4 bg-white dark:bg-slate-950">
+    <section className="py-20 md:py-32 px-4 bg-white dark:bg-[#121212]">
       <div className="max-w-4xl mx-auto text-center">
         {/* Title */}
         <div className="animate-on-scroll">
@@ -189,7 +189,7 @@ function FeatureSection() {
   return (
     <section
       id="features"
-      className="py-16 md:py-24 px-4 bg-white dark:bg-slate-950"
+      className="py-16 md:py-24 px-4 bg-white dark:bg-[#121212]"
     >
       <div className="max-w-6xl mx-auto">
         {/* Title fades up */}
@@ -368,7 +368,7 @@ function CTASection() {
 
 function Footer() {
   return (
-    <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-950 py-12 px-4">
+    <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#121212] py-12 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
           <div className="animate-on-scroll" style={{ transitionDelay: "0ms" }}>

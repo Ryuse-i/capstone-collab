@@ -112,13 +112,8 @@ export default function AppLayout({
           <div className="flex items-center gap-2">
             {/* Search Command Dialog Trigger */}
             <div>
-              <Button
-                onClick={() => setOpen(true)}
-                variant="outline"
-                size="icon"
-              >
-                <LucideSearch className="h-4 w-4" />
-              </Button>
+              
+            
               <CommandDialog open={open} onOpenChange={setOpen}>
                 <Command>
                   <CommandInput placeholder="Type a command or search..." />

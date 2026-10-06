@@ -197,7 +197,7 @@ function MemberCard({
                 </span>
               </div>
 
-              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-400">
                 <div
                   className={`h-full rounded-full ${workload.bar}`}
                   style={{
