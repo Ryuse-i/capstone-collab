@@ -49,7 +49,7 @@ async def get_one_task(task_id: UUID, db: AsyncSession = Depends(get_async_sessi
     return db_item
 
 
-@task_router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+@task_router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
     task: TaskCreate,
     db: AsyncSession = Depends(get_async_session),
