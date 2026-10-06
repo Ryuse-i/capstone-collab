@@ -1,8 +1,18 @@
-from sqlalchemy import delete, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.base_repo import BaseRepo
-from app.modules.papers.model import Paper, PaperChunk
+from app.modules.papers.model import Paper
+
+
+def _apply_filters(stmt, year: int | None, author: str | None, category: str | None):
+    if year is not None:
+        stmt = stmt.where(func.extract("year", Paper.published_date) == year)
+    if author:
+        stmt = stmt.where(Paper.authors.any(author))  # exact match on one name
+    if category:
+        stmt = stmt.where(Paper.category == category)
+    return stmt
 
 
 class PaperRepo(BaseRepo):
@@ -20,62 +30,34 @@ class PaperRepo(BaseRepo):
         year: int | None = None,
         author: str | None = None,
         keyword: str | None = None,
+        category: str | None = None,
     ) -> list[Paper]:
         """List papers with optional filters and pagination."""
-        query = select(Paper)
-
-        if year is not None:
-            query = query.where(Paper.published_date.year == year)
-        if author:
-            query = query.where(Paper.authors.any(author))
+        stmt = _apply_filters(select(Paper), year, author, category)
         if keyword:
-            query = query.where(Paper.keywords.any(keyword))
-
-        query = query.offset(offset).limit(limit)
-        result = await self.db.execute(query)
+            stmt = stmt.where(Paper.keywords.any(keyword))
+        stmt = stmt.order_by(Paper.created_at.desc()).offset(offset).limit(limit)
+        result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-
-class PaperChunkRepo(BaseRepo):
-    def __init__(self, db: AsyncSession):
-        super().__init__(db, PaperChunk)
-
-    async def replace_chunks_for_paper(self, paper_id: int, chunks: list[PaperChunk]) -> None:
-        """Delete all existing chunks for a paper and replace with new ones."""
-        await self.db.execute(
-            delete(PaperChunk).where(PaperChunk.paper_id == paper_id)
-        )
-        self.db.add_all(chunks)
-        await self.db.flush()
-
-    async def search_chunks(
+    async def search_by_embedding(
         self,
         query_vector: list[float],
         limit: int = 5,
         min_score: float = 0.0,
         year: int | None = None,
         author: str | None = None,
-    ) -> list[tuple[PaperChunk, Paper, float]]:
-        """Search for paper chunks using vector similarity."""
-        from sqlalchemy import func
+        category: str | None = None,
+    ) -> list[tuple[Paper, float]]:
+        """Nearest papers by cosine distance. Returns (paper, similarity)."""
+        distance = Paper.embedding.cosine_distance(query_vector).label("distance")
 
-        distance = PaperChunk.embedding.cosine_distance(query_vector).label("distance")
-
-        stmt = (
-            select(PaperChunk, Paper, distance)
-            .join(Paper, Paper.id == PaperChunk.paper_id)
-            .order_by(distance)
-            .limit(limit)
-        )
-        if year is not None:
-            stmt = stmt.where(func.extract("year", Paper.published_date) == year)
-        if author:
-            stmt = stmt.where(Paper.authors.any(author))  # exact match on one name
+        stmt = select(Paper, distance).where(Paper.embedding.is_not(None))
+        stmt = _apply_filters(stmt, year, author, category)
+        stmt = stmt.order_by(distance).limit(limit)
 
         result = await self.db.execute(stmt)
-        # Convert distance to similarity score (1 - distance for cosine distance with normalized vectors)
+        # With normalized vectors, similarity = 1 - cosine distance.
         return [
-            (chunk, paper, 1 - dist)
-            for chunk, paper, dist in result.all()
-            if (1 - dist) >= min_score
+            (paper, 1 - dist) for paper, dist in result.all() if (1 - dist) >= min_score
         ]

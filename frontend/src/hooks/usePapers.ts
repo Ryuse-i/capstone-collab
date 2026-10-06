@@ -13,6 +13,7 @@ import type {
   PaperFilters,
   PaperSearchParams,
 } from "@/types/capstoneresults";
+import type { FileUrlResponse } from "@/types/task_attachment";
 
 const url = "/papers/";
 
@@ -89,6 +90,35 @@ const api = {
       throw error;
     }
   },
+
+  // Multipart upload; the backend stores the file and sets file_path on the paper
+  uploadFile: async (id: number, file: File): Promise<PaperResponse> => {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await apiClient.post<PaperResponse>(
+        `${url}${id}/file/`,
+        form,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to upload paper file", error);
+      throw error;
+    }
+  },
+
+  getFileUrl: async (id: number): Promise<string> => {
+    try {
+      const response = await apiClient.get<FileUrlResponse>(
+        `${url}${id}/file/url/`,
+      );
+      return response.data.url;
+    } catch (error) {
+      console.error("Failed to get paper file url", error);
+      throw error;
+    }
+  },
 };
 
 export const paperKeys = {
@@ -161,5 +191,27 @@ export function useDeletePaper() {
       queryClient.invalidateQueries({ queryKey: paperKeys.searches() });
       queryClient.removeQueries({ queryKey: paperKeys.detail(id) });
     },
+  });
+}
+
+export function useUploadPaperFile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) =>
+      api.uploadFile(id, file),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: paperKeys.detail(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: paperKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: paperKeys.searches() });
+    },
+  });
+}
+
+// Signed URLs expire, so fetch on demand (on click) instead of caching in a query.
+export function useGetPaperFileUrl() {
+  return useMutation({
+    mutationFn: (id: number) => api.getFileUrl(id),
   });
 }

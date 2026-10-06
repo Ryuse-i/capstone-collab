@@ -2,16 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
+from app.core.storage import delete_file
 from app.modules.papers.schema import (
     PaperCreate,
     PaperResponse,
-    PaperUpdate,
     PaperSearchResult,
+    PaperUpdate,
 )
 from app.modules.papers.services import PaperService
 from app.modules.users.model import User
 from app.modules.users.services import current_active_user
-from uuid import UUID
 
 papers_router = APIRouter()
 
@@ -23,6 +23,7 @@ async def list_papers(
     year: int | None = None,
     author: str | None = None,
     keyword: str | None = None,
+    category: str | None = None,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
@@ -34,29 +35,30 @@ async def list_papers(
         year=year,
         author=author,
         keyword=keyword,
+        category=category,
     )
 
 
+# Must be declared before "/{paper_id}" or "search" is parsed as an id.
 @papers_router.get("/search/", response_model=list[PaperSearchResult])
 async def search_papers(
     q: str,
     limit: int = 5,
     year: int | None = None,
     author: str | None = None,
+    category: str | None = None,
     min_score: float = 0.0,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    """Search for papers using semantic search."""
-    if not q or not q.strip():
+    """Semantic search over paper embeddings."""
+    if not q.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Search query cannot be empty",
         )
-
-    # Validate limit
     if limit < 1 or limit > 20:
-        limit = 5  # sensible default
+        limit = 5
 
     return await PaperService.search_papers(
         db=db,
@@ -64,6 +66,7 @@ async def search_papers(
         limit=limit,
         year=year,
         author=author,
+        category=category,
         min_score=min_score,
     )
 
@@ -74,12 +77,9 @@ async def get_paper(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    """Get a single paper by its ID."""
     paper = await PaperService.get_paper(db, paper_id)
     if paper is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Paper not found"
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paper not found")
     return paper
 
 
@@ -91,7 +91,6 @@ async def create_paper(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    """Create a new paper."""
     return await PaperService.create_paper(db=db, data=paper)
 
 
@@ -102,15 +101,10 @@ async def update_paper(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    """Update an existing paper."""
-    updated_paper = await PaperService.update_paper(
-        db=db, paper_id=paper_id, data=paper
-    )
-    if updated_paper is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Paper not found"
-        )
-    return updated_paper
+    updated = await PaperService.update_paper(db=db, paper_id=paper_id, data=paper)
+    if updated is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paper not found")
+    return updated
 
 
 @papers_router.delete("/{paper_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -119,6 +113,7 @@ async def delete_paper(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    """Delete a paper."""
-    await PaperService.delete_paper(db=db, paper_id=paper_id)
+    file_path = await PaperService.delete_paper(db=db, paper_id=paper_id)
+    if file_path:
+        await delete_file(file_path)  # don't leave the PDF behind
     return None

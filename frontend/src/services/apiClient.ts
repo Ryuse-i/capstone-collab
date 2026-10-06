@@ -1,9 +1,10 @@
 import axios from "axios";
 import { getStoredToken } from "./api";
+import API_BASE_URL from "./api";
 
 const apiClient = axios.create({
   // Automatically uses your env URL, or falls back to localhost if missing
-  baseURL: import.meta.env.VITE_APP_URL || "https://psu-collab-production.up.railway.app",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

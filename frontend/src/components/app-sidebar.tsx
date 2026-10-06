@@ -166,6 +166,11 @@ const adminNavMain = [
     url: "/admin/users",
     icon: <UserRoundCog />,
   },
+  {
+    title: "Capstone Search",
+    url: "/admin/capstone",
+    icon: <BookOpenIcon/>,
+  },
 ];
 
 // Static class names so Tailwind can generate them

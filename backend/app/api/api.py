@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from app.modules.users.routes import router as users_router
 from app.modules.admin.routes import admin_router
+from app.modules.papers.admin_router import admin_papers_router
 from app.modules.projects.routes import project_router
 from app.modules.project_members.routes import project_member_router
 from app.modules.tasks.routes import task_router
@@ -30,6 +31,7 @@ from app.modules.resources.routes import resources_router
 api_router = APIRouter()
 api_router.include_router(users_router)
 api_router.include_router(admin_router)
+api_router.include_router(admin_papers_router, prefix="/admin-paper", tags=["admin-paper"])
 api_router.include_router(resources_router, prefix="/resources", tags=["resources"])
 api_router.include_router(project_router, prefix="/projects", tags=["project"])
 api_router.include_router(

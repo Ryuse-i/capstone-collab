@@ -1,48 +1,51 @@
-from dataclasses import dataclass
-from datetime import date
+"""Indexing (build + store embeddings) and retrieval (semantic search)."""
 
-from sqlalchemy import  delete, func, select
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ai.embedding import (
+    build_embedding_text,
     chunk_text,
     embed_query,
     embed_texts,
 )
 from app.modules.papers.model import Paper, PaperChunk
+from app.modules.papers.repo import PaperRepo
+from app.modules.papers.schema import PaperSearchResult
+
+SNIPPET_CHARS = 300
 
 
+async def embed_paper(paper: Paper) -> None:
+    """Build embedding_text from the paper's fields and store its vector.
 
-
-@dataclass
-class SearchResult:
-    paper_id: int
-    title: str
-    authors: list[str]
-    published_date: date | None
-    content: str  # the matching chunk
-    score: float  # cosine similarity, higher = more relevant (max 1.0)
-
-
-async def index_paper(
-    db: AsyncSession, paper: Paper, full_text: str | None = None
-) -> int:
+    Mutates the paper in place; the caller is responsible for flush/commit.
     """
-    Embed title+abstract as chunk 0, then the full text (if any) as further
-    chunks. Re-indexing replaces old chunks. Returns the number stored.
-    """
+    paper.embedding_text = build_embedding_text(
+        title=paper.title,
+        abstract=paper.abstract,
+        keywords=paper.keywords,
+        research_problem=paper.research_problem,
+        methodology=paper.methodology,
+        conclusion=paper.conclusion,
+    )
+    paper.embedding = (await embed_texts([paper.embedding_text]))[0]
+
+
+async def index_chunks(db: AsyncSession, paper: Paper, full_text: str) -> int:
+    """Replace a paper's full-text chunks. Returns the number stored."""
     await db.execute(delete(PaperChunk).where(PaperChunk.paper_id == paper.id))
 
-    chunks = [f"{paper.title}\n\n{paper.abstract}"]
-    if full_text:
-        chunks += chunk_text(full_text)
+    chunks = chunk_text(full_text)
+    if not chunks:
+        return 0
 
     vectors = await embed_texts(chunks)
     db.add_all(
         PaperChunk(paper_id=paper.id, chunk_index=i, content=c, embedding=v)
         for i, (c, v) in enumerate(zip(chunks, vectors))
     )
-    await db.commit()
+    await db.flush()
     return len(chunks)
 
 
@@ -53,32 +56,30 @@ async def search_papers(
     min_score: float = 0.0,
     year: int | None = None,
     author: str | None = None,
-) -> list[SearchResult]:
-    """Return the chunks most semantically similar to the query, with paper metadata."""
+    category: str | None = None,
+) -> list[PaperSearchResult]:
+    """Return the papers most semantically similar to the query."""
+    if not query.strip():
+        return []
+
     query_vector = await embed_query(query)
-    distance = PaperChunk.embedding.cosine_distance(query_vector).label("distance")
-
-    stmt = (
-        select(PaperChunk, Paper, distance)
-        .join(Paper, Paper.id == PaperChunk.paper_id)
-        .order_by(distance)
-        .limit(limit)
+    rows = await PaperRepo(db).search_by_embedding(
+        query_vector=query_vector,
+        limit=limit,
+        min_score=min_score,
+        year=year,
+        author=author,
+        category=category,
     )
-    if year is not None:
-        stmt = stmt.where(func.extract("year", Paper.published_date) == year)
-    if author:
-        stmt = stmt.where(Paper.authors.any(author))  # exact match on one name
-
-    rows = (await db.execute(stmt)).all()
-    results = [
-        SearchResult(
+    return [
+        PaperSearchResult(
             paper_id=paper.id,
             title=paper.title,
             authors=paper.authors,
+            category=paper.category,
             published_date=paper.published_date,
-            content=chunk.content,
-            score=1 - dist,
+            matching_snippet=paper.abstract[:SNIPPET_CHARS],
+            score=score,
         )
-        for chunk, paper, dist in rows
+        for paper, score in rows
     ]
-    return [r for r in results if r.score >= min_score]
