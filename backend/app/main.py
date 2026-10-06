@@ -15,7 +15,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:8000",
         "https://psu-collab.vercel.app",
-        "https://psu-collab.railway.internal",
+        "https://psu-collab-production.up.railway.app",
     ],
     allow_credentials=False,
     allow_methods=["*"],
