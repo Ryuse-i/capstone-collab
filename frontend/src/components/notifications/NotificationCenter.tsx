@@ -54,7 +54,7 @@ export default function NotificationCenter() {
     isError: notificationError,
   } = useGetUserNotifications(user?.id ?? "");
 
-  const { mutate: markAsRead } = useMarkAsRead(user?.id);
+  const { mutate: markAsRead } = useMarkAsRead();
 
   // Controls the notification popover
   const [popoverOpen, setPopoverOpen] = React.useState(false);
