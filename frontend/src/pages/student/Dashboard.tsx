@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetTasksForUser } from "@/hooks/useTask";
+import { useGetMemberActivities } from "@/hooks/useMemberActivity";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,58 +45,6 @@ type TaskStatusDistribution = {
   submitted: number;
   completed: number;
 };
-
-// ---------------------------------------------------------------------------
-// Static chart data (replace with API data when available)
-// ---------------------------------------------------------------------------
-
-const recentActivities: RecentActivity[] = [
-  {
-    id: 1,
-    user: "Andrea P.",
-    action: "completed",
-    task: "Database Migration Design",
-    time: "5m ago",
-    color: "bg-green-500",
-    text: "text-green-500",
-  },
-  {
-    id: 2,
-    user: "Harry G.",
-    action: "submitted",
-    task: "Dashboard UI",
-    time: "1d ago",
-    color: "bg-yellow-500",
-    text: "text-yellow-500",
-  },
-  {
-    id: 3,
-    user: "Dylan M.",
-    action: "completed",
-    task: "Website Wireframe",
-    time: "2d ago",
-    color: "bg-red-500",
-    text: "text-red-500",
-  },
-  {
-    id: 4,
-    user: "Rommel G.",
-    action: "started",
-    task: "Research on Chapter 1",
-    time: "4d ago",
-    color: "bg-green-500",
-    text: "text-green-500",
-  },
-  {
-    id: 5,
-    user: "Clarisa P.",
-    action: "started",
-    task: "Questionnaire Items",
-    time: "5d ago",
-    color: "bg-yellow-500",
-    text: "text-yellow-500",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Dashboard Skeleton
@@ -240,6 +189,11 @@ export default function Dashboard() {
     error: tasksError,
   } = useGetTasksForUser(user?.id ?? "");
 
+  const {
+    data: memberActivities,
+    isLoading: isActivitiesLoading,
+  } = useGetMemberActivities(currentProject?.id ?? "");
+
   if (isError) {
     console.error("Dashboard project error", error);
   }
@@ -256,7 +210,10 @@ export default function Dashboard() {
   const dataLoaded = !!currentProject && !!currentProject.snapshot;
 
   const isDashboardLoading =
-    isLoading || (!!currentProject && !currentProject.snapshot) || isTasksLoading;
+    isLoading ||
+    (!!currentProject && !currentProject.snapshot) ||
+    isTasksLoading ||
+    isActivitiesLoading;
 
   const healthScore = currentProject?.snapshot?.health_score ?? 0;
   const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
@@ -412,7 +369,7 @@ export default function Dashboard() {
 
                 <div className="h-2 w-full rounded-full bg-gray-200">
                   <div
-                    className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
+                    className="h-2 rounded-full bg-yellow-400 transition_all duration-500"
                     style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
@@ -507,42 +464,72 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                {recentActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start justify-between rounded-lg border-b border-gray-100 px-2 py-2 pb-4 transition last:border-none hover:bg-gray-200 dark:hover:bg-[#303233]"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`mt-2 h-3 w-3 rounded-full ${activity.color}`}
-                      />
+              {isActivitiesLoading ? (
+                <div className="space-y-1">
+                  {[1, 2, 3, 4, 5].map((item) => (
+                    <div
+                      key={item}
+                      className="flex items-start justify-between border-b border-gray-100 px-2 py-2 pb-4 last:border-none"
+                    >
+                      <div className="flex items-start gap-4">
+                        <Skeleton className="mt-2 h-3 w-3 shrink-0 rounded-full" />
 
-                      <div>
-                        <p className="text-sm text-gray-700 dark:text-(--semi-foreground)">
-                          <span className="font-semibold text-foreground">
-                            {activity.user}
-                          </span>{" "}
-                          <span className={`${activity.text} font-semibold`}>
-                            {activity.action}
-                          </span>{" "}
-                          <span className="font-medium text-black dark:text-card-foreground">
-                            {activity.task}
-                          </span>
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-400">
-                          Team collaboration update
-                        </p>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-72 max-w-[50vw]" />
+                          <Skeleton className="h-3 w-40" />
+                        </div>
                       </div>
-                    </div>
 
-                    <span className="whitespace-nowrap text-xs text-gray-400">
-                      {activity.time}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                      <Skeleton className="h-3 w-12 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              ) : memberActivities === null || memberActivities === undefined ? (
+                <div className="text-center py-4 text-gray-500">
+                  No activities
+                </div>
+              ) : memberActivities.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  No recent activities to display
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {memberActivities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start justify-between rounded-lg border-b border-gray-100 px-2 py-2 pb-4 transition last:border-none hover:bg-gray-200 dark:hover:bg-[#303233]"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`mt-2 h-3 w-3 rounded-full ${activity.color}`}
+                        />
+
+                        <div>
+                          <p className="text-sm text-gray-700 dark:text-(--semi-foreground)">
+                            <span className="font-semibold text-foreground">
+                              {activity.user}
+                            </span>{" "}
+                            <span className={`${activity.text} font-semibold`}>
+                              {activity.action}
+                            </span>{" "}
+                            <span className="font-medium text-black dark:text-card-foreground">
+                              {activity.task}
+                            </span>
+                          </p>
+
+                          <p className="mt-1 text-xs text-gray-400">
+                            Team collaboration update
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="whitespace-nowrap text-xs text-gray-400">
+                        {activity.time}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
         </div>

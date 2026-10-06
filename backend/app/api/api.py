@@ -9,6 +9,7 @@ from app.modules.task_attachments.routes import task_attachment_router
 from app.modules.assigned_members.routes import assigned_member_router
 from app.modules.assigned_reviewer.routes import assigned_reviewer_router
 from app.modules.peer_evaluations.routes import peer_evaluation_router
+from app.modules.papers.routes import papers_router
 from app.modules.task_comments.routes import task_comment_router
 from app.modules.task_relations.routes import task_relation_router
 from app.modules.task_submissions.routes import task_submission_router
@@ -46,6 +47,9 @@ api_router.include_router(
     assigned_reviewer_router, prefix="/assigned_reviewer", tags=["assigned_reviewer"])
 api_router.include_router(
     peer_evaluation_router, prefix="/peer_evaluations", tags=["peer_evaluations"]
+)
+api_router.include_router(
+    papers_router, prefix="/papers", tags=["papers"]
 )
 api_router.include_router(
     task_comment_router, prefix="/task_comments", tags=["task_comments"]

@@ -1,17 +1,20 @@
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ARRAY, Date, DateTime, Text, func, Integer, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import date
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import Mapped, mapped_column
 
 from app.modules.ai.embedding import (
     EMBEDDING_DIM,
 )
 
-from app.core.db import Base  
+from app.core.db import Base
+
+
+if TYPE_CHECKING:
+    from app.modules.papers.model import Paper
 
 
 class Paper(Base):
@@ -40,3 +43,6 @@ class PaperChunk(Base):
     chunk_index: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))
+
+    # Relationship to parent paper
+    paper: Mapped["Paper"] = relationship("Paper")

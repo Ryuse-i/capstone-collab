@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import {
   ListChecks,
   AlertTriangle,
 } from "lucide-react";
-import { results } from "@/types/capstoneresults";
+import { useGetOnePaper } from "@/hooks/usePapers";
 import { rememberLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
 
 // ---------------------------------------------------------------------------
@@ -129,35 +129,16 @@ export default function CapstoneView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const paperId = id ? parseInt(id, 10) : 0;
+
+  // TanStack Query hook replacing manual effect + reloading logic
+  const { data: paper, isLoading, error } = useGetOnePaper(paperId);
 
   useEffect(() => {
-    // Simulate loading delay for consistency with other pages.
-    const timer = setTimeout(() => {
-      try {
-        const foundResult = results.find((r) => r.id === id);
-
-        if (foundResult) {
-          setResult(foundResult);
-          setLoading(false);
-        } else {
-          setError("Capstone project not found");
-          setLoading(false);
-        }
-      } catch (err) {
-        setError("Failed to load capstone data. Please try again.");
-        setLoading(false);
-      }
-    }, 300);
-
-    if (id) {
-      rememberLastVisitedCapstone(`/capstone-view/${id}`);
+    if (paperId) {
+      rememberLastVisitedCapstone(`/capstone-view/${paperId}`);
     }
-
-    return () => clearTimeout(timer);
-  }, [id]);
+  }, [paperId]);
 
   if (error) {
     return (
@@ -174,7 +155,7 @@ export default function CapstoneView() {
             </div>
 
             <p className="text-foreground dark:text-muted-foreground">
-              {error}
+              {error.message}
             </p>
           </div>
         </div>
@@ -182,7 +163,7 @@ export default function CapstoneView() {
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <AppLayout
         breadcrumbs={[
@@ -195,7 +176,7 @@ export default function CapstoneView() {
     );
   }
 
-  if (!result) {
+  if (!paper) {
     return (
       <AppLayout
         breadcrumbs={[
@@ -224,7 +205,7 @@ export default function CapstoneView() {
     <AppLayout
       breadcrumbs={[
         { label: "Capstone Search", href: "/capstone-search" },
-        { label: result.title, href: `/capstone-view/${result.id}` },
+        { label: paper.title, href: `/capstone-view/${paper.id}` },
       ]}
     >
       <div className="flex flex-col gap-4">
@@ -244,16 +225,16 @@ export default function CapstoneView() {
             <BookOpen className="mt-1 h-6 w-6 shrink-0 text-muted-foreground" />
 
             <h1 className="text-xl font-semibold leading-snug text-gray-900 dark:text-card-foreground">
-              {result.title}
+              {paper.title}
             </h1>
           </div>
 
           <p className="pl-9 text-sm text-muted-foreground">
-            {result.description}
+            {paper.abstract}
           </p>
 
           <div className="flex flex-wrap gap-2 pl-9">
-            {result.tags.map((tag: string) => (
+            {paper.keywords?.map((tag: string) => (
               <Badge key={tag} variant="outline" className="text-xs">
                 {tag}
               </Badge>
@@ -263,13 +244,20 @@ export default function CapstoneView() {
           <div className="flex flex-col gap-2 border-t border-border pl-9 pt-4 text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <LucideCalendarDays className="h-4 w-4" />
-              Year: <span className="text-foreground">{result.year}</span>
+              Year:{" "}
+              <span className="text-foreground">
+                {paper.published_date
+                  ? paper.published_date.split("-")[0]
+                  : "N/A"}
+              </span>
             </span>
 
             <span className="flex items-center gap-2 text-muted-foreground">
               <Users className="h-4 w-4" />
               Authors:{" "}
-              <span className="text-foreground">{result.authors}</span>
+              <span className="text-foreground">
+                {paper.authors?.join(", ") || "N/A"}
+              </span>
             </span>
           </div>
         </div>
@@ -285,50 +273,35 @@ export default function CapstoneView() {
           </div>
 
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {result.abstract}
+            {paper.abstract}
           </p>
         </div>
 
-        {/* Tech Stack */}
+        {/* Additional fields reserved for future backend updates */}
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-muted-foreground" />
-
             <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
               Tech Stack
             </h2>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            {result.techStack.map((tech: string) => (
-              <Badge key={tech} variant="secondary" className="text-xs">
-                {tech}
-              </Badge>
-            ))}
-          </div>
+          <p className="pl-4 text-sm text-muted-foreground">
+            Tech stack information would be displayed here once added to the
+            Paper model.
+          </p>
         </div>
 
-        {/* Key Features */}
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-muted-foreground" />
-
             <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
               Key Features
             </h2>
           </div>
-
-          <ul className="flex flex-col gap-2">
-            {result.keyFeatures.map((feature: string, i: number) => (
-              <li
-                key={i}
-                className="flex items-start gap-2 text-sm text-muted-foreground"
-              >
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                {feature}
-              </li>
-            ))}
-          </ul>
+          <p className="pl-4 text-sm text-muted-foreground">
+            Key features information would be displayed here once added to the
+            Paper model.
+          </p>
         </div>
       </div>
     </AppLayout>

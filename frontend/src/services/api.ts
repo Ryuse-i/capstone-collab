@@ -176,7 +176,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
 // ─── Core fetch with refresh logic ───────────────────────────────────────────
 
-async function fetchWithRefresh<T>(
+export async function fetchWithRefresh<T>(
   url: string,
   init: RequestInit = {}
 ): Promise<T> {
