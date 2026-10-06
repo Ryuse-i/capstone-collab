@@ -11,6 +11,7 @@ import {
 // Adjust this import path to wherever useCurrentUser lives in your project.
 import { useCurrentUser } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { TaskCommentResponseWithAuthor } from "@/types/taskComment";
 import type { UserBase } from "@/types/user";
@@ -36,16 +37,22 @@ function getInitials(comment: TaskCommentResponseWithAuthor): string {
   return (initials || getAuthorName(comment).charAt(0)).toUpperCase();
 }
 
-function Avatar({ label, className }: { label: string; className?: string }) {
+/**
+ * Avatar styled the same as the one in NavUser's dropdown.
+ */
+function CommentAvatar({
+  label,
+  className,
+}: {
+  label: string;
+  className?: string;
+}) {
   return (
-    <div
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]",
-        className,
-      )}
-    >
-      {label}
-    </div>
+    <Avatar className={cn("h-8 w-8 shrink-0 rounded-full bg-primary", className)}>
+      <AvatarFallback className="rounded-full font-bold ring-1 dark:bg-gray-800 dark:ring-gray-600">
+        {label}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -145,7 +152,7 @@ function CommentItem({
 
   return (
     <div className="group flex gap-3">
-      <Avatar label={getInitials(comment)} />
+      <CommentAvatar label={getInitials(comment)} />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -282,6 +289,12 @@ export function TaskComments({ taskId, className }: TaskCommentsProps) {
   const { data: user } = useCurrentUser();
   const currentUserId = user?.id != null ? String(user.id) : null;
 
+  const currentUserInitials = (
+    `${user?.first_name?.charAt(0) ?? ""}${user?.last_name?.charAt(0) ?? ""}` ||
+    user?.email?.charAt(0) ||
+    "Y"
+  ).toUpperCase();
+
   const {
     data: comments = [],
     isLoading,
@@ -364,7 +377,7 @@ export function TaskComments({ taskId, className }: TaskCommentsProps) {
 
       {/* Composer */}
       <div className="flex gap-3">
-        <Avatar label={(user?.first_name?.charAt(0) ?? "Y").toUpperCase()} />
+        <CommentAvatar label={currentUserInitials} />
 
         <div className="min-w-0 flex-1">
           <div

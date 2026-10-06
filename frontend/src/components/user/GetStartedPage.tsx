@@ -100,31 +100,6 @@ export default function GetStarted() {
             </div>
           </div>
         </div>
-
-        {/* Watch Demo Video Card */}
-        <div className="bg-card rounded-lg border border-border p-6 shadow-(--shadow) flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-muted rounded-full opacity-40 pointer-events-none" />
-
-          <div>
-            <h3 className="text-lg font-semibold text-(--text-h) mb-2 dark:text-card-foreground">
-              Watch our Demo Video
-            </h3>
-            <p className="text-sm text-(--text) leading-relaxed dark:text-card-foreground">
-              Watch this 2-minute overview to learn how to manage a simple
-              project, and assign tasks effectively.
-            </p>
-          </div>
-
-          <button
-            className="mt-6 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium border border-border hover:bg-muted text-(--text-h) transition-all group dark:text-card-foreground"
-            style={{ "--ring-color": "#701D0B" } as React.CSSProperties}
-          >
-            <div className="w-6 h-6 rounded-full bg-[#701D0B]/10 flex items-center justify-center text-[#701D0B] group-hover:bg-[#701D0B] group-hover:text-white transition-colors">
-              <Play className="w-3 h-3 fill-current ml-0.5" />
-            </div>
-            Watch video
-          </button>
-        </div>
       </div>
 
       {/* Bottom Layout Split */}
@@ -156,51 +131,6 @@ export default function GetStarted() {
           </div>
         </div>
 
-        {/* Resources & Support Column */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-(--text-h) tracking-tight dark:text-foreground">
-            Resources & Support
-          </h3>
-          <div className="bg-card border border-border rounded-lg p-5 shadow-(--shadow)">
-            <p className="text-sm text-(--text) mb-4 leading-relaxed dark:text-card-foreground">
-              Find useful documentation, key configurations, system uptimes, and
-              direct developer guides below.
-            </p>
-
-            <nav className="space-y-3.5">
-              {[
-                { label: "Help Center", icon: HelpCircle },
-                { label: "View API Integration Keys", icon: Key },
-                {
-                  label: "Platform Status Page",
-                  icon: Activity,
-                  external: true,
-                },
-                {
-                  label: "Browse Developer Docs",
-                  icon: FileText,
-                  external: true,
-                },
-              ].map((link, idx) => (
-                <a
-                  key={idx}
-                  href="#"
-                  className="flex items-center justify-between text-sm font-medium transition-colors hover:text-[#701D0B] group text-(--text-h) dark:text-card-foreground"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <link.icon className="w-4 h-4 text-(--text) group-hover:text-[#701D0B] transition-colors dark:text-card-foreground" />
-                    {link.label}
-                  </span>
-                  {link.external ? (
-                    <ExternalLink className="w-3.5 h-3.5 text-(--text) opacity-60 dark:text-card-foreground" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-(--text) opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all dark:text-card-foreground" />
-                  )}
-                </a>
-              ))}
-            </nav>
-          </div>
-        </div>
       </div>
     </div>
   );

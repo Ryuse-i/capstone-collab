@@ -1,5 +1,6 @@
 import React from "react";
 import { Loader2Icon, LucideBellRing } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -7,7 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 import { Badge } from "@/components/ui/badge";
+
 import {
   Popover,
   PopoverContent,
@@ -16,21 +19,27 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
 import { Button } from "@/components/ui/button";
+
 import { useCurrentUser } from "@/hooks/useAuth";
+
 import {
   useGetUserNotifications,
   useMarkAsRead,
 } from "@/hooks/useNotification";
+
 import type { NotificationResponse } from "@/types/notification";
+
 import NotificationDialogContent from "./NotificationDialogContent";
+
 import NotificationCard, {
   type NotificationCardType,
 } from "./NotificationCard";
-import { getMockNotifications } from "./notificationFixtures"; // adjust path to where your mock file lives
 
-// Flip to false to use real notifications from the API.
-const USE_MOCK_NOTIFICATIONS = true;
+// Popover container with no outer box (no bg, border, ring, shadow, padding)
+const POPOVER_CONTENT_CLASS =
+  "w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0";
 
 export default function NotificationCenter() {
   const {
@@ -38,45 +47,43 @@ export default function NotificationCenter() {
     isLoading: userLoading,
     isError: userError,
   } = useCurrentUser();
-  const { mutate: markAsRead } = useMarkAsRead();
+
+  const {
+    data,
+    isLoading: apiNotificationLoading,
+    isError: notificationError,
+  } = useGetUserNotifications(user?.id ?? "");
+
+  const { mutate: markAsRead } = useMarkAsRead(user?.id);
+
+  // Controls the notification popover
+  const [popoverOpen, setPopoverOpen] = React.useState(false);
+
+  // Controls the notification details dialog
   const [selectedNotification, setSelectedNotification] =
     React.useState<NotificationResponse | null>(null);
+
+  // Stores notifications cleared from the current UI session
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(
     () => new Set(),
   );
-  // Used only in mock mode, since mock IDs don't exist on the backend.
-  const [localReadIds, setLocalReadIds] = React.useState<Set<string>>(
-    () => new Set(),
-  );
 
-  // Only fetch notifications if we have a user and the user is loaded
-  const { data, isLoading: apiNotificationLoading } = useGetUserNotifications(
-    user?.id ?? "",
-  );
-
-  // Memoized so mock timestamps stay stable between renders.
-  const mockNotifications = React.useMemo(
-    () => (USE_MOCK_NOTIFICATIONS ? getMockNotifications(user?.id) : []),
-    [user?.id],
-  );
-
-  const notificationLoading = USE_MOCK_NOTIFICATIONS
-    ? false
-    : apiNotificationLoading;
-
-  const notifications: NotificationResponse[] = USE_MOCK_NOTIFICATIONS
-    ? mockNotifications.map((item) => ({
-        ...item,
-        is_read: item.is_read || localReadIds.has(item.id),
-      }))
-    : (data ?? []);
+  // Real notifications from the backend
+  const notifications: NotificationResponse[] = data ?? [];
 
   const visibleNotifications = notifications.filter(
     (item) => !dismissedIds.has(item.id),
   );
+
   const hasUnread = visibleNotifications.some((item) => !item.is_read);
 
-  const activeUserId = user?.id ?? (USE_MOCK_NOTIFICATIONS ? "mock-user" : "");
+  const notificationLoading = userLoading || apiNotificationLoading;
+
+  /*
+   * ============================
+   * NOTIFICATION CARD TYPE
+   * ============================
+   */
 
   function getNotificationCardType(
     notification: NotificationResponse,
@@ -84,22 +91,27 @@ export default function NotificationCenter() {
     const searchableText =
       `${notification.title} ${notification.body}`.toLowerCase();
 
-    if (searchableText.includes("error") || searchableText.includes("fail")) {
+    if (
+      searchableText.includes("error") ||
+      searchableText.includes("fail")
+    ) {
       return "error";
     }
-    // Checked before "needs_info" so overdue/missed items show red, not amber.
+
     if (
       searchableText.includes("overdue") ||
       searchableText.includes("missed")
     ) {
       return "overdue";
     }
+
     if (
       searchableText.includes("complete") ||
       searchableText.includes("success")
     ) {
       return "task_completed";
     }
+
     if (
       searchableText.includes("warning") ||
       notification.type === "project_invitation" ||
@@ -108,22 +120,49 @@ export default function NotificationCenter() {
     ) {
       return "needs_info";
     }
+
     return "context_updated";
   }
+
+  /*
+   * ============================
+   * STATUS ICON
+   * ============================
+   */
 
   function shouldShowStatusIcon(
     cardType: NotificationCardType,
     notification: NotificationResponse,
   ) {
-    if (cardType === "task_completed" || cardType === "overdue") return true;
+    if (cardType === "task_completed" || cardType === "overdue") {
+      return true;
+    }
+
     return (
-      cardType === "needs_info" && notification.type !== "project_invitation"
+      cardType === "needs_info" &&
+      notification.type !== "project_invitation"
     );
   }
 
+  /*
+   * ============================
+   * CLEAR NOTIFICATION
+   * ============================
+   */
+
   function dismissNotification(id: string) {
-    setDismissedIds((current) => new Set(current).add(id));
+    setDismissedIds((current) => {
+      const next = new Set(current);
+      next.add(id);
+      return next;
+    });
   }
+
+  /*
+   * ============================
+   * TIMESTAMP
+   * ============================
+   */
 
   function formatTimestamp(createdAt: string) {
     return new Date(createdAt).toLocaleString([], {
@@ -135,175 +174,212 @@ export default function NotificationCenter() {
     });
   }
 
+  /*
+   * ============================
+   * NOTIFICATION CLICK
+   * ============================
+   */
+
   function handleNotificationClick(item: NotificationResponse) {
+    // Close notification popover
+    setPopoverOpen(false);
+
+    // Open notification details
     setSelectedNotification(item);
+
+    // Mark notification as read
     if (!item.is_read) {
-      if (USE_MOCK_NOTIFICATIONS) {
-        setLocalReadIds((current) => new Set(current).add(item.id));
-      } else {
-        markAsRead(item.id);
-      }
+      markAsRead(item.id);
     }
   }
 
-  // If there's an error loading the user, show an error message.
-  if (!USE_MOCK_NOTIFICATIONS && userError) {
+  /*
+   * ============================
+   * BELL BUTTON
+   * ============================
+   * This is a plain JSX element, NOT a component. PopoverTrigger
+   * (asChild) injects its ref + onClick directly into this Button,
+   * so the popover gets its anchor and toggles on click.
+   */
+
+  const bellButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="relative"
+    >
+      <LucideBellRing className="h-4 w-4" />
+
+      {hasUnread && (
+        <span
+          className="
+            absolute
+            -right-1
+            -top-1
+            h-2.5
+            w-2.5
+            rounded-full
+            bg-red-500
+            ring-2
+            ring-background
+          "
+        />
+      )}
+    </Button>
+  );
+
+  /*
+   * ============================
+   * USER ERROR
+   * ============================
+   */
+
+  if (userError) {
     return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" className="relative">
-            <LucideBellRing className="h-4 w-4" />
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
-            )}
-          </Button>
-        </PopoverTrigger>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>{bellButton}</PopoverTrigger>
+
         <PopoverContent
           align="end"
-          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
+          sideOffset={8}
+          className={POPOVER_CONTENT_CLASS}
         >
           <PopoverHeader className="sr-only">
             <PopoverTitle>Notifications</PopoverTitle>
+
             <PopoverDescription>Recent notifications</PopoverDescription>
           </PopoverHeader>
-          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
-            <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-center text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
-              Failed to load user information.
-            </div>
+
+          <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-center text-xs text-(--notification-card-muted)">
+            Failed to load user information.
           </div>
         </PopoverContent>
       </Popover>
     );
   }
 
-  // If the user is still loading, show a loading indicator in the popover.
-  if (!USE_MOCK_NOTIFICATIONS && userLoading) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" className="relative">
-            <LucideBellRing className="h-4 w-4" />
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
-        >
-          <PopoverHeader className="sr-only">
-            <PopoverTitle>Notifications</PopoverTitle>
-            <PopoverDescription>Recent notifications</PopoverDescription>
-          </PopoverHeader>
-          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
-            <div className="flex items-center justify-center gap-2 p-6">
-              <Loader2Icon className="h-4 w-4 animate-spin" />
-              Loading user information...
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
-  }
+  /*
+   * ============================
+   * MAIN
+   * ============================
+   */
 
-  // If we don't have a user (e.g., not logged in), show an empty state.
-  if (!USE_MOCK_NOTIFICATIONS && !user) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" className="relative">
-            <LucideBellRing className="h-4 w-4" />
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
-        >
-          <PopoverHeader className="sr-only">
-            <PopoverTitle>Notifications</PopoverTitle>
-            <PopoverDescription>Recent notifications</PopoverDescription>
-          </PopoverHeader>
-          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
-            <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-center text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
-              Please log in to see notifications.
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
-  // Now we have the user (or mock mode) and we are ready to show notifications.
   return (
     <>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" className="relative">
-            <LucideBellRing className="h-4 w-4" />
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
-            )}
-          </Button>
-        </PopoverTrigger>
+      {/* =====================================
+          NOTIFICATION BELL + POPOVER
+      ====================================== */}
+
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>{bellButton}</PopoverTrigger>
+
         <PopoverContent
           align="end"
-          className="w-[min(26rem,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none ring-0 custom-scrollbar"
+          sideOffset={8}
+          className={POPOVER_CONTENT_CLASS}
         >
           <PopoverHeader className="sr-only">
             <PopoverTitle>Notifications</PopoverTitle>
+
             <PopoverDescription>Recent notifications</PopoverDescription>
           </PopoverHeader>
-          <div className="max-h-[calc(100vh-5rem)] space-y-3 overflow-y-auto rounded-xl p-1">
+
+          <div className="max-h-[calc(100vh-5rem)] overflow-y-auto">
             {notificationLoading ? (
-              <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
+              <div
+                className="
+                  rounded-xl
+                  border
+                  border-(--notification-card-border)
+                  bg-(--notification-card)
+                  p-6
+                  text-xs
+                  text-(--notification-card-muted)
+                "
+              >
                 <div className="flex items-center justify-center gap-2">
                   <Loader2Icon className="h-4 w-4 animate-spin" />
+
                   Loading notifications...
                 </div>
               </div>
+            ) : notificationError ? (
+              <div
+                className="
+                  rounded-xl
+                  border
+                  border-(--notification-card-border)
+                  bg-(--notification-card)
+                  p-6
+                  text-center
+                  text-xs
+                  text-(--notification-card-muted)
+                "
+              >
+                Failed to load notifications.
+              </div>
             ) : visibleNotifications.length === 0 ? (
-              <div className="rounded-xl border border-(--notification-card-border) bg-(--notification-card) p-6 text-center text-xs text-(--notification-card-muted) shadow-(--notification-card-shadow)">
-                You currently have no notifications
+              <div
+                className="
+                  rounded-xl
+                  border
+                  border-(--notification-card-border)
+                  bg-(--notification-card)
+                  p-6
+                  text-center
+                  text-xs
+                  text-(--notification-card-muted)
+                "
+              >
+                You currently have no notifications.
               </div>
             ) : (
-              visibleNotifications.map((item) => {
-                const cardType = getNotificationCardType(item);
+              <div className="space-y-3">
+                {visibleNotifications.map((item) => {
+                  const cardType = getNotificationCardType(item);
 
-                return (
-                  <NotificationCard
-                    key={item.id}
-                    type={cardType}
-                    title={item.title}
-                    description={item.body}
-                    timestamp={formatTimestamp(item.created_at)}
-                    isRead={item.is_read}
-                    showStatusIcon={shouldShowStatusIcon(cardType, item)}
-                    actions={[
-                      {
-                        label: "View details",
-                        onClick: () => handleNotificationClick(item),
-                      },
-                      {
-                        label: "Clear",
-                        onClick: () => dismissNotification(item.id),
-                      },
-                    ]}
-                  />
-                );
-              })
+                  return (
+                    <NotificationCard
+                      key={item.id}
+                      type={cardType}
+                      title={item.title}
+                      description={item.body}
+                      timestamp={formatTimestamp(item.created_at)}
+                      isRead={item.is_read}
+                      showStatusIcon={shouldShowStatusIcon(
+                        cardType,
+                        item,
+                      )}
+                      actions={[
+                        {
+                          label: "View details",
+                          onClick: () => handleNotificationClick(item),
+                        },
+                        {
+                          label: "Clear",
+                          onClick: () => dismissNotification(item.id),
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </div>
             )}
           </div>
         </PopoverContent>
       </Popover>
 
+      {/* =====================================
+          NOTIFICATION DETAILS DIALOG
+      ====================================== */}
+
       <Dialog
-        open={!!selectedNotification}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setSelectedNotification(null);
+        open={selectedNotification !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedNotification(null);
+          }
         }}
       >
         <DialogContent className="sm:max-w-md">
@@ -312,6 +388,7 @@ export default function NotificationCenter() {
               <DialogHeader>
                 <div className="flex items-center gap-2">
                   <DialogTitle>{selectedNotification.title}</DialogTitle>
+
                   <Badge
                     variant={
                       selectedNotification.is_read ? "secondary" : "default"
@@ -320,22 +397,15 @@ export default function NotificationCenter() {
                     {selectedNotification.is_read ? "Read" : "Unread"}
                   </Badge>
                 </div>
+
                 <DialogDescription className="text-xs">
-                  {new Date(selectedNotification.created_at).toLocaleString(
-                    [],
-                    {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    },
-                  )}
+                  {formatTimestamp(selectedNotification.created_at)}
                 </DialogDescription>
               </DialogHeader>
+
               <NotificationDialogContent
                 notification={selectedNotification}
-                userId={activeUserId}
+                userId={user?.id}
                 onClose={() => setSelectedNotification(null)}
               />
             </>

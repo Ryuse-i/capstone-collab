@@ -456,7 +456,7 @@ export default function Dashboard() {
                       <TableRow key={user.id}>
                         <TableCell className="py-3 pl-5">
                           <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#7A0C2E]/8 text-xs font-semibold text-[#7A0C2E]">
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800 font-bold text-primary-foreground dark:text-foreground">
                               {initials}
                             </div>
                             <div className="min-w-0">

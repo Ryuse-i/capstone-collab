@@ -374,10 +374,10 @@ export default function MyTask() {
                             className={cn(
                               "border-0",
                               project.priority === "high"
-                                ? "bg-red-100 text-red-600"
+                                ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400"
                                 : project.priority === "medium"
-                                  ? "bg-yellow-100 text-yellow-600"
-                                  : "bg-gray-100 text-gray-500",
+                                  ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400"
+                                  : "bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400",
                             )}
                           >
                             {project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}

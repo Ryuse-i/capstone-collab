@@ -48,22 +48,28 @@ import type {
 import type { UserBase } from "@/types/user";
 
 const statusStyle: Record<TaskStatus, string> = {
-  completed: "bg-green-100 text-green-700",
-  submitted: "bg-blue-100 text-blue-700",
-  in_progress: "bg-yellow-100 text-yellow-700",
-  not_started: "bg-gray-100 text-gray-500",
+  completed:
+    "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
+  submitted:
+    "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
+  in_progress:
+    "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
+  not_started:
+    "bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400",
 };
 
 const priorityStyle: Record<TaskPriority, string> = {
-  high: "bg-red-100 text-red-600",
-  medium: "bg-yellow-100 text-yellow-600",
-  low: "bg-gray-100 text-gray-500",
+  high: "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+  medium:
+    "bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400",
+  low: "bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400",
 };
 
 const complexityStyle: Record<TaskComplexity, string> = {
-  high: "bg-red-100 text-red-600",
-  medium: "bg-yellow-100 text-yellow-600",
-  low: "bg-gray-100 text-gray-500",
+  high: "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+  medium:
+    "bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400",
+  low: "bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400",
 };
 
 const statusOptions = [
@@ -165,9 +171,9 @@ function AssigneeList({ members }: { members: UserBase[] }) {
         <Avatar
           key={member.id}
           title={getMemberName(member)}
-          className="size-8 border-2 border-background"
+          className="size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800"
         >
-          <AvatarFallback className="rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground">
+          <AvatarFallback className="rounded-full bg-primary dark:bg-gray-800 text-10 font-bold uppercase text-primary-foreground dark:text-foreground">
             {getInitials(member)}
           </AvatarFallback>
         </Avatar>

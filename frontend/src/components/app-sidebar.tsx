@@ -68,6 +68,7 @@ const capstoneSearchNavItem = {
   // it's only reachable by clicking into a result from Capstone Search —
   // so treat it as part of the same section for active-state highlighting.
   matchPrefixes: ["/capstone-view"],
+
   // Clicking this item returns to whichever capstone-search/capstone-view
   // path the user last visited, instead of always resetting to the list.
   getLastVisited: getLastVisitedCapstone,
@@ -111,11 +112,10 @@ const resourcesNavItem = {
 
 const studentNoProjectNavMain = [
   ...commonNavMain,
-  resourcesNavItem,
   capstoneSearchNavItem,
 ];
 
-// Full nav for a student who is the project leader
+// Full nav for a student who has joined/created a project
 const studentLeaderNavMain = [
   ...commonNavMain,
   projectTaskNavItem,
@@ -146,6 +146,7 @@ const instructorNavMain = [
     // it's only reachable by clicking "View" from the Projects list —
     // so treat it as part of the same section for active-state highlighting.
     matchPrefixes: ["/view-project"],
+
     // Clicking this item returns to whichever project-list/view-project
     // path the user last visited, instead of always resetting to the list.
     getLastVisited: getLastVisitedProjects,
@@ -167,20 +168,28 @@ const adminNavMain = [
   },
 ];
 
-// Static class names so Tailwind can generate them (dynamic `w-${n}` gets purged)
-const skeletonRowWidths = ["w-20", "w-16", "w-24", "w-20", "w-24"];
+// Static class names so Tailwind can generate them
+// (dynamic w-${n} gets purged)
+const skeletonRowWidths = [
+  "w-20",
+  "w-16",
+  "w-24",
+  "w-20",
+  "w-24",
+];
 
 function AppSidebarSkeleton() {
   return (
     <>
       <SidebarContent className="relative isolate">
-        {/* Mirrors NavMain: SidebarGroup > SidebarMenu > item (h-8, px-2, gap-2) */}
+        {/* Mirrors NavMain: SidebarGroup > SidebarMenu > item */}
         <SidebarGroup>
           <SidebarMenu>
             {skeletonRowWidths.map((width, index) => (
               <SidebarMenuItem key={index}>
                 <div className="flex h-8 items-center gap-2 rounded-md px-2">
                   <Skeleton className="size-4 shrink-0 rounded-md" />
+
                   <Skeleton
                     className={`h-4 ${width} group-data-[collapsible=icon]:hidden`}
                   />
@@ -196,6 +205,7 @@ function AppSidebarSkeleton() {
             <SidebarMenuItem>
               <div className="flex h-8 items-center gap-2 rounded-md px-2">
                 <Skeleton className="size-4 shrink-0 rounded-md" />
+
                 <Skeleton className="h-4 w-16 group-data-[collapsible=icon]:hidden" />
               </div>
             </SidebarMenuItem>
@@ -203,16 +213,18 @@ function AppSidebarSkeleton() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Mirrors NavUser: size="lg" button, avatar + two text lines + chevron */}
+      {/* Mirrors NavUser */}
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex h-12 items-center gap-2 rounded-md p-2 group-data-[collapsible=icon]:p-0">
               <Skeleton className="size-8 shrink-0 rounded-lg" />
+
               <div className="grid flex-1 gap-1.5 group-data-[collapsible=icon]:hidden">
                 <Skeleton className="h-3.5 w-24" />
                 <Skeleton className="h-3 w-32" />
               </div>
+
               <Skeleton className="ml-auto size-4 rounded-md group-data-[collapsible=icon]:hidden" />
             </div>
           </SidebarMenuItem>
@@ -222,31 +234,53 @@ function AppSidebarSkeleton() {
   );
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  ...props
+}: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
-  const { data: currentProject, isLoading: isProjectLoading } =
-    useGetCurrentProject(user?.id ?? "");
-  const { data: member, isLoading: isMemberLoading } = useGetCurrentMember(
+
+  const {
+    data: currentProject,
+    isLoading: isProjectLoading,
+  } = useGetCurrentProject(user?.id ?? "");
+
+  const {
+    data: member,
+    isLoading: isMemberLoading,
+  } = useGetCurrentMember(user?.id ?? "");
+
+  const { data: projects } = useGetInstructorProjects(
     user?.id ?? "",
   );
-  const { data: projects } = useGetInstructorProjects(user?.id ?? "");
 
-  // Check if sidebar data is loaded (project and member data)
-  const sidebarDataLoaded = !isProjectLoading && !isMemberLoading && !!user;
+  // Check if sidebar data is loaded
+  const sidebarDataLoaded =
+    !isProjectLoading &&
+    !isMemberLoading &&
+    !!user;
 
   const role = user?.role?.toLowerCase();
+
+  // TRUE only when the student has joined or created a project
   const hasProject = Boolean(currentProject);
-  const shouldShowProjectNav = !isProjectLoading && hasProject;
+
+  const shouldShowProjectNav =
+    !isProjectLoading && hasProject;
+
   const recentProjects =
     projects
       ?.filter(
         (project) =>
-          project.instructor === user?.id || project.advisor === user?.id,
+          project.instructor === user?.id ||
+          project.advisor === user?.id,
       )
-      .filter((project, index, allProjects) =>
-        project.id
-          ? allProjects.findIndex((item) => item.id === project.id) === index
-          : true,
+      .filter(
+        (project, index, allProjects) =>
+          project.id
+            ? allProjects.findIndex(
+                (item) => item.id === project.id,
+              ) === index
+            : true,
       )
       .filter((project) => project.id)
       .map((project) => ({
@@ -264,9 +298,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ];
 
-  // normalize the member's project role for comparison
-
-  const memberRole = member?.project_role.toLocaleLowerCase();
+  // Normalize the member's project role for comparison
+  const memberRole =
+    member?.project_role?.toLocaleLowerCase();
 
   const isLeaderOrAbove =
     memberRole === "leader" ||
@@ -275,18 +309,52 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     memberRole === "admin";
 
   let navMain;
+
   if (role === ROLES.STUDENT) {
+    /*
+     * STUDENT NAVIGATION
+     *
+     * No project:
+     *   Dashboard
+     *   Capstone Search
+     *
+     * With project + regular member:
+     *   Dashboard
+     *   My Task
+     *   Chat
+     *   Resources
+     *   Capstone Search
+     *
+     * With project + leader:
+     *   Dashboard
+     *   Project Task
+     *   My Task
+     *   Workload
+     *   Team
+     *   Chat
+     *   Resources
+     *   Capstone Search
+     */
+
     if (!shouldShowProjectNav) {
+      // IMPORTANT:
+      // Resources is NOT included here.
       navMain = studentNoProjectNavMain;
     } else if (isMemberLoading) {
-      // avoid a flash of the wrong nav while member role is still loading
+      // Avoid a flash of the wrong navigation while
+      // member role is still loading.
       navMain = studentMemberNavMain;
     } else {
-      navMain = isLeaderOrAbove ? studentLeaderNavMain : studentMemberNavMain;
+      navMain = isLeaderOrAbove
+        ? studentLeaderNavMain
+        : studentMemberNavMain;
     }
   } else if (role === ROLES.ADMIN) {
     navMain = adminNavMain;
-  } else if (role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) {
+  } else if (
+    role === ROLES.INSTRUCTOR ||
+    role === ROLES.ADVISOR
+  ) {
     navMain = instructorNavMain;
   } else {
     navMain = commonNavMain;
@@ -294,15 +362,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const sidebarUser = {
     name:
-      [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
+      [user?.first_name, user?.last_name]
+        .filter(Boolean)
+        .join(" ") ||
       user?.email ||
       "User",
-    email: user?.email || "user@example.com",
+
+    email:
+      user?.email || "user@example.com",
+
     avatar: "/avatars/shadcn.jpg",
   };
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar
+      collapsible="icon"
+      {...props}
+    >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -319,9 +395,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <img
                     src={psuLogo}
                     alt="PSU Logo"
-                    className="size-8 object-cover rounded-full"
+                    className="size-8 rounded-full object-cover"
                   />
                 </div>
+
                 <span className="truncate font-medium group-data-[collapsible=icon]:hidden">
                   PSU Collab
                 </span>
@@ -337,10 +414,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <>
           <SidebarContent>
             <NavMain items={navMain} />
-            {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
+
+            {(role === ROLES.INSTRUCTOR ||
+              role === ROLES.ADVISOR) && (
               <NavShortcut items={navShortcuts} />
             )}
-            <NavSecondary items={data.navSecondary} className="mt-auto" />
+
+            <NavSecondary
+              items={data.navSecondary}
+              className="mt-auto"
+            />
           </SidebarContent>
 
           <SidebarFooter>
