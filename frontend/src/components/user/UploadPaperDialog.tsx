@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import type { AxiosError } from "axios";
-import { FileText, Loader2, Upload, X } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { CalendarIcon, FileText, Loader2, Upload, X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useExtractPaper, useUploadPaper } from "@/hooks/useExtract"; // adjust to your hook file
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+
+import { useExtractPaper, useUploadPaper } from "@/hooks/useExtract";
+import { cn } from "@/lib/utils";
 import type { ExtractedPaper } from "@/types/extract";
 
 const MAX_FILE_MB = 20;
@@ -38,12 +48,22 @@ function errorMessage(err: unknown, fallback: string): string {
     ?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
-    return detail
-      .map((d) => (typeof d?.msg === "string" ? d.msg : ""))
-      .filter(Boolean)
-      .join("; ") || fallback;
+    return (
+      detail
+        .map((d) => (typeof d?.msg === "string" ? d.msg : ""))
+        .filter(Boolean)
+        .join("; ") || fallback
+    );
   }
   return err instanceof Error ? err.message : fallback;
+}
+
+/** Helper to safely parse YYYY-MM or YYYY-MM-DD ISO strings for formatting */
+function parsePublishedDate(dateStr: string): Date | undefined {
+  if (!dateStr) return undefined;
+  const normalized = dateStr.length === 7 ? `${dateStr}-01` : dateStr;
+  const parsed = parseISO(normalized);
+  return !isNaN(parsed.getTime()) ? parsed : undefined;
 }
 
 export default function UploadPaperDialog({
@@ -51,8 +71,6 @@ export default function UploadPaperDialog({
   onOpenChange,
 }: UploadPaperDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Tracks which file the latest extraction is for, so a late response for a
-  // removed / replaced file can't overwrite the form.
   const currentFileRef = useRef<File | null>(null);
 
   const extractPaper = useExtractPaper();
@@ -66,14 +84,16 @@ export default function UploadPaperDialog({
   const [researchProblem, setResearchProblem] = useState("");
   const [methodology, setMethodology] = useState("");
   const [conclusion, setConclusion] = useState("");
-  const [publishedDate, setPublishedDate] = useState("");
+  const [publishedDate, setPublishedDate] = useState(""); // Stores YYYY-MM-01
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+
   const extracting = extractPaper.isPending;
   const uploading = uploadPaper.isPending;
-  const busy = extracting || uploading;
+  const fieldsDisabled = extracting || uploading;
 
   const reset = () => {
     setTitle("");
@@ -88,6 +108,7 @@ export default function UploadPaperDialog({
     setFile(null);
     setFileError(null);
     setSubmitError(null);
+    setDatePickerOpen(false);
     currentFileRef.current = null;
     extractPaper.reset();
     uploadPaper.reset();
@@ -95,8 +116,7 @@ export default function UploadPaperDialog({
   };
 
   const handleOpenChange = (next: boolean) => {
-    // Block closing mid-upload so the request isn't orphaned
-    if (uploading) return;
+    if (uploading || extracting) return;
     if (!next) reset();
     onOpenChange(next);
   };
@@ -111,7 +131,14 @@ export default function UploadPaperDialog({
     setResearchProblem(data.research_problem ?? "");
     setMethodology(data.methodology ?? "");
     setConclusion(data.conclusion ?? "");
-    setPublishedDate(data.published_date ?? "");
+    
+    // Convert extracted date to YYYY-MM-01 format
+    if (data.published_date) {
+      const parsed = parsePublishedDate(data.published_date);
+      setPublishedDate(parsed ? format(parsed, "yyyy-MM-01") : "");
+    } else {
+      setPublishedDate("");
+    }
   };
 
   const clearFile = () => {
@@ -141,7 +168,6 @@ export default function UploadPaperDialog({
     setFile(picked);
     currentFileRef.current = picked;
 
-    // Step 1: analyze the PDF and pre-fill the form (still editable).
     extractPaper.mutate(picked, {
       onSuccess: (data) => {
         if (currentFileRef.current === picked) applyExtracted(data);
@@ -149,14 +175,13 @@ export default function UploadPaperDialog({
     });
   };
 
-  const canSubmit = title.trim() && abstract.trim() && file && !busy;
+  const canSubmit = Boolean(title.trim() && abstract.trim() && file && !fieldsDisabled);
 
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!file || !canSubmit) return;
     setSubmitError(null);
 
-    // Step 2: one request stores the PDF, creates the paper and embeds it.
     uploadPaper.mutate(
       {
         file,
@@ -168,7 +193,7 @@ export default function UploadPaperDialog({
         research_problem: researchProblem.trim(),
         methodology: methodology.trim(),
         conclusion: conclusion.trim(),
-        published_date: publishedDate,
+        published_date: publishedDate, // Sends valid ISO date YYYY-MM-01
       },
       {
         onSuccess: () => {
@@ -180,6 +205,8 @@ export default function UploadPaperDialog({
       }
     );
   };
+
+  const parsedDate = parsePublishedDate(publishedDate);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -218,7 +245,7 @@ export default function UploadPaperDialog({
                   size="icon"
                   className="h-6 w-6"
                   aria-label="Remove file"
-                  disabled={uploading}
+                  disabled={fieldsDisabled}
                   onClick={clearFile}
                 >
                   <X className="h-3 w-3" />
@@ -229,6 +256,7 @@ export default function UploadPaperDialog({
                 type="button"
                 variant="outline"
                 className="h-20 border-dashed"
+                disabled={fieldsDisabled}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="mr-2 h-4 w-4" />
@@ -259,7 +287,7 @@ export default function UploadPaperDialog({
               id="paper-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
               required
             />
           </div>
@@ -271,7 +299,7 @@ export default function UploadPaperDialog({
               rows={5}
               value={abstract}
               onChange={(e) => setAbstract(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
               required
             />
           </div>
@@ -283,7 +311,7 @@ export default function UploadPaperDialog({
               placeholder="Separate names with commas"
               value={authors}
               onChange={(e) => setAuthors(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
             />
           </div>
 
@@ -294,7 +322,7 @@ export default function UploadPaperDialog({
               placeholder="e.g. Machine Learning"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
             />
           </div>
 
@@ -305,7 +333,7 @@ export default function UploadPaperDialog({
               placeholder="e.g. machine learning, healthcare"
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
             />
           </div>
 
@@ -316,7 +344,7 @@ export default function UploadPaperDialog({
               rows={3}
               value={researchProblem}
               onChange={(e) => setResearchProblem(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
             />
           </div>
 
@@ -327,7 +355,7 @@ export default function UploadPaperDialog({
               rows={3}
               value={methodology}
               onChange={(e) => setMethodology(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
             />
           </div>
 
@@ -338,19 +366,45 @@ export default function UploadPaperDialog({
               rows={3}
               value={conclusion}
               onChange={(e) => setConclusion(e.target.value)}
-              disabled={extracting}
+              disabled={fieldsDisabled}
             />
           </div>
 
+          {/* Published Month & Year Picker */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="paper-date">Published date</Label>
-            <Input
-              id="paper-date"
-              type="date"
-              value={publishedDate}
-              onChange={(e) => setPublishedDate(e.target.value)}
-              disabled={extracting}
-            />
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="paper-date"
+                  type="button"
+                  variant="outline"
+                  disabled={fieldsDisabled}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !publishedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {parsedDate
+                    ? format(parsedDate, "MMMM yyyy")
+                    : "Pick month and year"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  captionLayout="dropdown"
+                  startMonth={new Date(1970, 0)}
+                  endMonth={new Date(2035, 11)}
+                  month={parsedDate}
+                  onMonthChange={(month) => {
+                    setPublishedDate(format(month, "yyyy-MM-01"));
+                    setDatePickerOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {submitError && (

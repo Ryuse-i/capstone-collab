@@ -26,7 +26,12 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(DATABASE_URL, connect_args={"prepare_threshold": None})
+engine = create_async_engine(
+    DATABASE_URL,
+    connect_args={"prepare_threshold": None,},
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
 
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
