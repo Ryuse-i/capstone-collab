@@ -26,7 +26,7 @@ project_member_router = APIRouter()
 # =====================================================================
 
 
-@project_member_router.get("/", response_model=List[ProjectMemberResponse])
+@project_member_router.get("", response_model=List[ProjectMemberResponse])
 async def get_all_members(db: AsyncSession = Depends(get_async_session)):
     return await ProjectMemberService.get_all_members(db)
 
@@ -127,7 +127,7 @@ async def get_project_for_member_with_snapshot(
 
 
 @project_member_router.post(
-    "/", response_model=ProjectMemberResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=ProjectMemberResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_project_member(
     project_member: ProjectMemberCreate, db: AsyncSession = Depends(get_async_session)

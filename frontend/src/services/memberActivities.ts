@@ -19,7 +19,7 @@ export async function listMemberActivities(
   }
 
   const queryString = queryParams.toString();
-  const url = queryString ? `/member_activities/?${queryString}` : "/member_activities/";
+  const url = queryString ? `/member_activities?${queryString}` : "/member_activities";
 
   return await fetchWithRefresh<MemberActivityResponse[]>(url);
 }
@@ -28,7 +28,7 @@ export async function listMemberActivities(
  * GET /member_activities/{activity_id}/ - Get a single member activity by ID
  */
 export async function getMemberActivity(activityId: number) {
-  return await fetchWithRefresh<MemberActivityResponse>(`/member_activities/${activityId}/`);
+  return await fetchWithRefresh<MemberActivityResponse>(`/member_activities/${activityId}`);
 }
 
 /**
@@ -36,7 +36,7 @@ export async function getMemberActivity(activityId: number) {
  */
 export async function createMemberActivity(activityData: MemberActivityCreate) {
   return await fetchWithRefresh<MemberActivityResponse>(
-    "/member_activities/",
+    "/member_activities",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

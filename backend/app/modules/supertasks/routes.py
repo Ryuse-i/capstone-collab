@@ -62,7 +62,7 @@ async def get_one_supertask(
 
 
 @supertask_router.post(
-    "/",
+    "",
     response_model=SupertaskResponse,
     status_code=status.HTTP_201_CREATED,
 )

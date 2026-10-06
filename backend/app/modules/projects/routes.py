@@ -27,7 +27,7 @@ async def get_by_id_with_snapshot(
     return await ProjectService.get_by_id_with_snapshot(db, project_id)
 
 
-@project_router.get("/", response_model=List[ProjectResponse])
+@project_router.get("", response_model=List[ProjectResponse])
 async def get_all_projects(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
@@ -59,7 +59,7 @@ async def get_one_project(
 
 
 @project_router.post(
-    "/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_project(
     project: ProjectCreate,

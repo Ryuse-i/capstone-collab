@@ -18,7 +18,7 @@ from typing import List
 assigned_member_router = APIRouter()
 
 
-@assigned_member_router.get("/", response_model=List[AssignedMemberResponse])
+@assigned_member_router.get("", response_model=List[AssignedMemberResponse])
 async def get_all_assigned_members(db: AsyncSession = Depends(get_async_session)):
     """Fetch all assigned members from the database."""
     return await AssignedMemberService.get_all_assigned_members(db)
@@ -42,7 +42,7 @@ async def get_one_assigned_member(
 
 
 @assigned_member_router.post(
-    "/", response_model=AssignedMemberResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=AssignedMemberResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_assigned_member(
     assigned_member: AssignedMemberCreate, db: AsyncSession = Depends(get_async_session)

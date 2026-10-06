@@ -10,7 +10,7 @@ from uuid import UUID
 task_comment_router = APIRouter()
 
 
-@task_comment_router.get("/", response_model=List[TaskCommentWithAuthor])
+@task_comment_router.get("", response_model=List[TaskCommentWithAuthor])
 async def get_task_comments(
     task_id: UUID | None = None,
     db: AsyncSession = Depends(get_async_session)
@@ -33,7 +33,7 @@ async def get_one_task_comment(task_comment_id: UUID, db: AsyncSession = Depends
     return db_item
 
 
-@task_comment_router.post("/", response_model=TaskCommentResponse, status_code=status.HTTP_201_CREATED)
+@task_comment_router.post("", response_model=TaskCommentResponse, status_code=status.HTTP_201_CREATED)
 async def create_task_comment(task_comment: TaskCommentCreate, db: AsyncSession = Depends(get_async_session)):
     """Create a new task comment. Returns 201 Created on success."""
     return await TaskCommentService.create_task_comment(db, task_comment)

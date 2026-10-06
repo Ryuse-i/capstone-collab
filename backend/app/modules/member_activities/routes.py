@@ -9,7 +9,7 @@ from typing import List
 member_activity_route = APIRouter()
 
 
-@member_activity_route.get("/", response_model=List[MemberActivityResponse])
+@member_activity_route.get("", response_model=List[MemberActivityResponse])
 async def get_all_member_activitys(db: AsyncSession = Depends(get_async_session)):
     """Fetch all assigned members from the database."""
     return await MemberActivityService.get_all_member_activities(db)
@@ -33,7 +33,7 @@ async def get_one_member_activity(
 
 
 @member_activity_route.post(
-    "/", response_model=MemberActivityResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=MemberActivityResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_member_activity(
     member_activity: MemberActivityCreate, db: AsyncSession = Depends(get_async_session)

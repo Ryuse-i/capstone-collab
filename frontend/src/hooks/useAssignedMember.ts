@@ -13,7 +13,7 @@ const url = "/assigned_members";
 const api = {
   getAll: async (): Promise<AssignedMemberResponse[]> => {
     try {
-      const response = await apiClient.get<AssignedMemberResponse[]>(`${url}/`);
+      const response = await apiClient.get<AssignedMemberResponse[]>(`${url}`);
       return response.data;
     } catch (error) {
       console.error("Failed to get all assigned members", error);
@@ -38,7 +38,7 @@ const api = {
   ): Promise<AssignedMemberResponse> => {
     try {
       const response = await apiClient.post<AssignedMemberResponse>(
-        `${url}/`,
+        `${url}`,
         member,
       );
       return response.data;
