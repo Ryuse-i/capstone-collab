@@ -34,7 +34,6 @@ import {
   UserIcon,
   ZoomInIcon,
   ZoomOutIcon,
-  LucideSearch,
 } from "lucide-react";
 import {
   Command,
@@ -53,7 +52,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 
 import NotificationCenter from "@/components/notifications/NotificationCenter";
 import { PageTransition } from "@/components/page-transition";

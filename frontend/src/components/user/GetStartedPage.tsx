@@ -1,14 +1,7 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 import {
   CheckCircle2,
   FolderPlus,
-  Play,
-  HelpCircle,
-  Key,
-  Activity,
-  FileText,
-  ChevronRight,
-  ExternalLink,
 } from "lucide-react";
 import CreateProjectDialog from "@/components/user/CreateProjectDialog";
 import { useCurrentUser } from "@/hooks/useAuth";
