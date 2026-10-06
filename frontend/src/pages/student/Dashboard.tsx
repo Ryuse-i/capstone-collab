@@ -22,21 +22,7 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetTasksForUser } from "@/hooks/useTask";
 import { useGetMemberActivities } from "@/hooks/useMemberActivity";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
-type ActivityColor = "bg-green-500" | "bg-yellow-500" | "bg-red-500";
-type TextColor = "text-green-500" | "text-yellow-500" | "text-red-500";
-type RecentActivity = {
-  id: number;
-  user: string;
-  action: string;
-  task: string;
-  time: string;
-  color: ActivityColor;
-  text: TextColor;
-};
 
 // Task status distribution for the bar chart replacement
 type TaskStatusDistribution = {

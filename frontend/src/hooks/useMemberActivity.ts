@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery} from "@tanstack/react-query";
 import { listMemberActivities } from "@/services/memberActivities";
 import type { MemberActivityResponse } from "@/services/memberActivities";
 
@@ -7,7 +7,6 @@ import type { MemberActivityResponse } from "@/services/memberActivities";
 // For now, we'll map the activity to the format needed for the dashboard
 function mapActivityToDashboardFormat(
   activity: MemberActivityResponse,
-  index: number
 ): {
   id: number;
   user: string;
@@ -126,9 +125,9 @@ export function useGetMemberActivities(projectId: string) {
     enabled: !!projectId,
     select: (activities) =>
       activities
-        .map((activity, index) => mapActivityToDashboardFormat(activity, index))
+        .map((activity) => mapActivityToDashboardFormat(activity))
         // Sort by created_at descending (most recent first)
-        .sort((a, b) => {
+        .sort(() => {
           // Since we don't have direct access to created_at in the mapped format,
           // we'll rely on the order from the API which should be sorted by created_at desc
           return 0; // Maintain original order from API
