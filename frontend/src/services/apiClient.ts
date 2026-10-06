@@ -3,7 +3,7 @@ import { getStoredToken } from "./api";
 
 const apiClient = axios.create({
   // Automatically uses your env URL, or falls back to localhost if missing
-  baseURL: import.meta.env.VITE_APP_URL || "https://psu-collab-production.app.railway.app",
+  baseURL: import.meta.env.VITE_APP_URL || "https://psu-collab-production.up.railway.app",
   headers: {
     "Content-Type": "application/json",
   },
