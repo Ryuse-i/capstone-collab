@@ -469,7 +469,7 @@ export default function Chat() {
                   onClick={() => handleProjectSelect(id)}
                   className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
                     id === projectId
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground dark:text-foreground"
                       : "text-foreground hover:bg-muted dark:hover:bg-[#222228]"
                   }`}
                 >

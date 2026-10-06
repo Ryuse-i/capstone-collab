@@ -59,9 +59,9 @@ export default function NotificationCenter() {
   // Controls the notification popover
   const [popoverOpen, setPopoverOpen] = React.useState(false);
 
-  // Controls the notification details dialog
-  const [selectedNotification, setSelectedNotification] =
-    React.useState<NotificationResponse | null>(null);
+  // Controls the notification details dialog (stores only the id so the
+  // dialog always reflects the latest data from the query)
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
 
   // Stores notifications cleared from the current UI session
   const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(
@@ -70,6 +70,10 @@ export default function NotificationCenter() {
 
   // Real notifications from the backend
   const notifications: NotificationResponse[] = data ?? [];
+
+  // Derived from query data, so it updates after markAsRead / refetch
+  const selectedNotification =
+    notifications.find((n) => n.id === selectedId) ?? null;
 
   const visibleNotifications = notifications.filter(
     (item) => !dismissedIds.has(item.id),
@@ -185,7 +189,7 @@ export default function NotificationCenter() {
     setPopoverOpen(false);
 
     // Open notification details
-    setSelectedNotification(item);
+    setSelectedId(item.id);
 
     // Mark notification as read
     if (!item.is_read) {
@@ -378,7 +382,7 @@ export default function NotificationCenter() {
         open={selectedNotification !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setSelectedNotification(null);
+            setSelectedId(null);
           }
         }}
       >
@@ -406,7 +410,7 @@ export default function NotificationCenter() {
               <NotificationDialogContent
                 notification={selectedNotification}
                 userId={user?.id}
-                onClose={() => setSelectedNotification(null)}
+                onClose={() => setSelectedId(null)}
               />
             </>
           )}
@@ -414,4 +418,4 @@ export default function NotificationCenter() {
       </Dialog>
     </>
   );
-}
+}``

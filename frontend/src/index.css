@@ -759,11 +759,11 @@
 [data-sidebar="menu-button"],
 [data-sidebar="menu-sub-button"] {
   transition:
-    background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    width 200ms linear,
-    height 200ms linear,
-    padding 200ms linear;
+    background-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 100ms linear,
+    height 100ms linear,
+    padding 100ms linear;
 }
 
 @media (prefers-reduced-motion: reduce) {
