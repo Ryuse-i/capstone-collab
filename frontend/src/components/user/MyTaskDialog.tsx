@@ -7,6 +7,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "../ui/spinner";
 import { Badge } from "@/components/ui/badge";
@@ -137,26 +138,59 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
 
   const handleStartTask = () => {
     if (!task?.id) return;
-    updateTaskMutation.mutate({
-      id: task.id,
-      task: {
-        started_at: new Date().toISOString(),
-        status: "in_progress",
+
+    updateTaskMutation.mutate(
+      {
+        id: task.id,
+        task: {
+          started_at: new Date().toISOString(),
+          status: "in_progress",
+        },
       },
-    });
+      {
+        onSuccess: () => {
+          toast.success("Task started.");
+        },
+        onError: (err) => {
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : "Something went wrong while starting this task.",
+          );
+        },
+      },
+    );
   };
 
   const handleSubmitTask = () => {
     if (!task?.id) return;
-    updateTaskMutation.mutate({
-      id: task.id,
-      task: {
-        status: "submitted",
-        // Note: Assuming backend accepts notes and link fields for submission
-        // If these fields don't exist on the task model, they'll be ignored
-        // TODO: Check if backend has submission-specific fields
+
+    updateTaskMutation.mutate(
+      {
+        id: task.id,
+        task: {
+          status: "submitted",
+          // Note: Assuming backend accepts notes and link fields for submission
+          // If these fields don't exist on the task model, they'll be ignored
+          // TODO: Check if backend has submission-specific fields
+        },
       },
-    });
+      {
+        onSuccess: () => {
+          toast.success("Task submitted successfully.");
+          setSubmissionOpen(false);
+          setSubmissionNotes("");
+          setSubmissionLink("");
+        },
+        onError: (err) => {
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : "Something went wrong while submitting this task.",
+          );
+        },
+      },
+    );
   };
 
   // Calculate deadline urgency
@@ -449,19 +483,19 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                     onClick={handleSubmitTask}
                     disabled={updateTaskMutation.isPending}
                   >
-                    {updateTaskMutation.isPending
-                      ? (
-                        <>
-                          <Spinner className="mr-2 size-4" />
-                          Submitting...
-                        </>
-                      ) : "Submit Task"}
+                    {updateTaskMutation.isPending ? (
+                      <>
+                        <Spinner className="mr-2 size-4" />
+                        Submitting...
+                      </>
+                    ) : (
+                      "Submit Task"
+                    )}
                   </Button>
                 </div>
               </div>
             )}
 
-            
             {/* Attachments: saved immediately, independent of "Save changes" */}
             <div className="border-t pt-6">
               <TaskAttachments taskId={task.id} />
@@ -470,7 +504,6 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
             <div className="border-t pt-6">
               <TaskLinks taskId={task.id} />
             </div>
-
 
             {/* Comments (inside the scroll area so the footer stays pinned) */}
             <div className="mt-6 border-t pt-6">
@@ -500,13 +533,14 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                     className="min-w-24"
                     disabled={updateTaskMutation.isPending}
                   >
-                    {updateTaskMutation.isPending
-                      ? (
-                        <>
-                          <Spinner className="mr-2 size-4" />
-                          Starting...
-                        </>
-                      ) : "Start Task"}
+                    {updateTaskMutation.isPending ? (
+                      <>
+                        <Spinner className="mr-2 size-4" />
+                        Starting...
+                      </>
+                    ) : (
+                      "Start Task"
+                    )}
                   </Button>
                 </>
               ) : isInProgress ? (

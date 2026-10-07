@@ -54,6 +54,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 import NotificationCenter from "@/components/notifications/NotificationCenter";
 import { PageTransition } from "@/components/page-transition";
@@ -112,7 +113,6 @@ export default function AppLayout({
 
           {/* Right Side: Actions (Search & Connected Notifications) */}
           <div className="flex items-center gap-2">
-            
             {/* Search Command Dialog Trigger */}
             <div>
               <CommandDialog open={open} onOpenChange={setOpen}>
@@ -232,6 +232,9 @@ export default function AppLayout({
           <PageTransition>{children}</PageTransition>
         </div>
       </SidebarInset>
+
+      {/* Renders all toast.success / toast.error calls */}
+      <Toaster position="top-right" />
     </SidebarProvider>
   );
 }

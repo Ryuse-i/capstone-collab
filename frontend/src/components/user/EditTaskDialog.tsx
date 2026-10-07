@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarIcon, Check, ChevronDown, Users, X } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
 import {
@@ -482,6 +483,10 @@ export default function EditTaskDialog({
         task: payload,
       });
 
+      // Show the success toast as soon as the task is saved, so it still
+      // appears even if syncing the reviewer or members fails afterwards.
+      toast.success("Task updated successfully.");
+
       if (supertaskChanged) {
         queryClient.invalidateQueries({
           queryKey: supertaskKeys.listProject(projectId),
@@ -523,9 +528,10 @@ export default function EditTaskDialog({
           }
         } catch (reviewerErr) {
           console.error("Failed to sync assigned reviewer", reviewerErr);
-          setError(
-            "Task was updated, but syncing the assigned reviewer failed. You can adjust it from the task detail page.",
-          );
+          const message =
+            "Task was updated, but syncing the assigned reviewer failed. You can adjust it from the task detail page.";
+          setError(message);
+          toast.error(message);
           reviewerSyncFailed = true;
         }
       }
@@ -552,9 +558,10 @@ export default function EditTaskDialog({
           ]);
         } catch (assignErr) {
           console.error("Failed to sync assigned members", assignErr);
-          setError(
-            "Task was updated, but syncing assigned members failed. You can adjust them from the task detail page.",
-          );
+          const message =
+            "Task was updated, but syncing assigned members failed. You can adjust them from the task detail page.";
+          setError(message);
+          toast.error(message);
           memberSyncFailed = true;
         } finally {
           // Invalidate assignment-related queries regardless of success or failure
@@ -594,11 +601,12 @@ export default function EditTaskDialog({
         // If reviewerSyncFailed is true, leave drawer open so user can see the error
       }
     } catch (err) {
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Something went wrong while updating this task.",
-      );
+          : "Something went wrong while updating this task.";
+      setError(message);
+      toast.error(message);
     }
   };
 
