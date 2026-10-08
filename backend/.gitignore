@@ -1,9 +1,5 @@
 /myenv
 __pycache__/
 *.py[cod]
-/migrations
-!/migrations/
-/migrations/*
-!/migrations/versions/
-!/migrations/versions/*.py
+
 
