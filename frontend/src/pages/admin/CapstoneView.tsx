@@ -23,7 +23,6 @@ import {
   AlertTriangle,
   Download,
   Trash2,
-  GraduationCap,
 } from "lucide-react";
 import {
   useGetOnePaper,
@@ -31,7 +30,13 @@ import {
   useGetPaperFileUrl,
 } from "@/hooks/usePapers";
 
-const BACK_HREF = "/admin/capstone-repository";
+const BACK_HREF = "/admin/capstone";
+
+function truncateTitle(title: string, maxLength = 40) {
+  if (!title) return "";
+  if (title.length <= maxLength) return title;
+  return `${title.slice(0, maxLength)}...`;
+}
 
 function CapstoneViewSkeleton() {
   return (
@@ -161,7 +166,10 @@ export default function CapstoneView() {
     <AppLayout
       breadcrumbs={[
         { label: "Research Repository", href: BACK_HREF },
-        { label: paper.title, href: `/admin/capstone-view/${paper.id}` },
+        {
+          label: truncateTitle(paper.title, 40),
+          href: `/admin/capstone-view/${paper.id}`,
+        },
       ]}
     >
       <div className="flex flex-col gap-4">
@@ -232,12 +240,6 @@ export default function CapstoneView() {
                   : "N/A"}
               </span>
             </span>
-            {paper.adviser && (
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <GraduationCap className="h-4 w-4" />
-                Adviser: <span className="text-foreground">{paper.adviser}</span>
-              </span>
-            )}
             <span className="flex items-center gap-2 text-muted-foreground">
               <Users className="h-4 w-4" />
               Authors:{" "}
@@ -248,7 +250,7 @@ export default function CapstoneView() {
           </div>
         </div>
 
-        {/* Abstract (shown once; the original page repeated it in the meta card) */}
+        {/* Abstract */}
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-muted-foreground" />

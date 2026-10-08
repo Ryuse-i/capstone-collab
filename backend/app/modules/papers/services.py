@@ -1,6 +1,8 @@
 from fastapi import HTTPException, status
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import async_session_maker
 from app.modules.ai.retrieval import embed_paper, index_chunks, search_papers
 from app.modules.papers.model import Paper
 from app.modules.papers.repo import PaperRepo
@@ -11,16 +13,15 @@ from app.modules.papers.schema import (
     PaperUpdate,
 )
 
-# Changing any of these changes what the paper "means", so re-embed.
+# Fields that feed build_embedding_text(). Keep in sync with embedding.py:
+# changing any of these requires a re-embed.
 EMBEDDED_FIELDS = {
     "title",
     "abstract",
     "keywords",
     "research_problem",
-    "methodology",
     "conclusion",
 }
-
 
 def _not_found() -> HTTPException:
     return HTTPException(status.HTTP_404_NOT_FOUND, "Paper not found")
@@ -29,24 +30,47 @@ def _not_found() -> HTTPException:
 class PaperService:
     @staticmethod
     async def create_paper(
-        db: AsyncSession, data: PaperCreate, full_text: str | None = None
+        db: AsyncSession, data: PaperCreate
     ) -> PaperResponse:
-        """Create a paper, embed it, and (optionally) chunk its full text,
-        all in one transaction."""
+        """Create a paper record immediately without running embeddings in-request."""
         paper = Paper(**data.model_dump())
         try:
-            await embed_paper(paper)
             db.add(paper)
-            await db.flush()  # assigns paper.id
-            if full_text:
-                await index_chunks(db, paper, full_text)
             await db.commit()
+            await db.refresh(paper)
+            return PaperResponse.model_validate(paper)
         except Exception:
             await db.rollback()
             raise
 
-        await db.refresh(paper)
-        return PaperResponse.model_validate(paper)
+    @staticmethod
+    async def generate_and_store_embedding(
+        paper_id: int, full_text: str | None = None
+    ) -> None:
+        """Background task handler: opens an isolated DB session to run embedding and chunking.
+
+        embed_paper() sets embedding_status to "ready"; on any failure the
+        status is set to "failed" so the paper doesn't sit in "pending" forever.
+        """
+        async with async_session_maker() as db:
+            paper = await PaperRepo(db).get_by_id(paper_id)
+            if not paper:
+                return
+
+            try:
+                await embed_paper(paper)
+                if full_text:
+                    await index_chunks(db, paper, full_text)
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                await db.execute(
+                    update(Paper)
+                    .where(Paper.id == paper_id)
+                    .values(embedding_status="failed")
+                )
+                await db.commit()
+                raise
 
     @staticmethod
     async def get_paper(db: AsyncSession, paper_id: int) -> PaperResponse | None:
@@ -154,3 +178,9 @@ class PaperService:
         except Exception:
             await db.rollback()
             raise
+    @staticmethod
+    async def get_latest_papers(
+        db: AsyncSession, limit: int = 10
+    ) -> list[PaperResponse]:
+        papers = await PaperRepo(db).get_latest(limit=limit)
+        return [PaperResponse.model_validate(p) for p in papers]

@@ -12,7 +12,6 @@ class PaperCreate(BaseModel):
     methodology: str | None = None
     conclusion: str | None = None
     authors: list[str] = []
-    adviser: str | None = None
     published_date: date | None = None
     file_path: str | None = None
 
@@ -26,7 +25,6 @@ class PaperUpdate(BaseModel):
     methodology: str | None = None
     conclusion: str | None = None
     authors: list[str] | None = None
-    adviser: str | None = None
     published_date: date | None = None
     file_path: str | None = None
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
@@ -117,3 +117,11 @@ async def delete_paper(
     if file_path:
         await delete_file(file_path)  # don't leave the PDF behind
     return None
+
+@papers_router.get("/latest/", response_model=list[PaperResponse])
+async def latest_papers(
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await PaperService.get_latest_papers(db, limit=limit)

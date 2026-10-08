@@ -18,6 +18,18 @@ import type { FileUrlResponse } from "@/types/task_attachment";
 const url = "/papers/";
 
 const api = {
+  getLatestPapers: async (limit: number = 10): Promise<PaperResponse[]> => {
+    try {
+      const response = await apiClient.get<PaperResponse[]>(`${url}latest/`, {
+        params: { limit },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get latest papers", error);
+      throw error;
+    }
+  },
+
   getOnePaper: async (paper_id: number): Promise<PaperResponse> => {
     try {
       const response = await apiClient.get<PaperResponse>(`${url}${paper_id}/`);
@@ -28,7 +40,9 @@ const api = {
     }
   },
 
-  getAllPapers: async (filters: PaperFilters = {}): Promise<PaperResponse[]> => {
+  getAllPapers: async (
+    filters: PaperFilters = {},
+  ): Promise<PaperResponse[]> => {
     try {
       const response = await apiClient.get<PaperResponse[]>(url, {
         params: filters, // axios skips undefined values
@@ -130,6 +144,7 @@ export const paperKeys = {
     [...paperKeys.searches(), params] as const,
   details: () => [...paperKeys.all, "details"] as const,
   detail: (id: number) => [...paperKeys.details(), id] as const,
+  latest: (limit: number) => [...paperKeys.lists(), "latest", limit] as const,
 };
 
 export function useGetOnePaper(id: number) {
@@ -213,5 +228,12 @@ export function useUploadPaperFile() {
 export function useGetPaperFileUrl() {
   return useMutation({
     mutationFn: (id: number) => api.getFileUrl(id),
+  });
+}
+
+export function useGetLatestPapers(limit: number = 10) {
+  return useQuery({
+    queryKey: paperKeys.latest(limit),
+    queryFn: () => api.getLatestPapers(limit),
   });
 }

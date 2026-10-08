@@ -19,7 +19,7 @@ class PaperRepo(BaseRepo):
     def __init__(self, db: AsyncSession):
         super().__init__(db, Paper)
 
-    async def get_by_id(self, paper_id: int):
+    async def get_by_id(self, paper_id: int) -> Paper | None:
         """Get a paper by its integer ID."""
         return await super().get_by_id(paper_id)
 
@@ -49,15 +49,41 @@ class PaperRepo(BaseRepo):
         author: str | None = None,
         category: str | None = None,
     ) -> list[tuple[Paper, float]]:
-        """Nearest papers by cosine distance. Returns (paper, similarity)."""
-        distance = Paper.embedding.cosine_distance(query_vector).label("distance")
+        """Nearest ready papers by cosine distance. Returns (paper, similarity).
 
-        stmt = select(Paper, distance).where(Paper.embedding.is_not(None))
+        With normalized vectors, similarity = 1 - cosine distance.
+        """
+        distance = Paper.embedding.cosine_distance(query_vector)
+        similarity = (1 - distance).label("score")
+
+        stmt = (
+            select(Paper, similarity)
+            .where(Paper.embedding_status == "ready")  # fully processed only
+            .where(Paper.embedding.is_not(None))
+        )
         stmt = _apply_filters(stmt, year, author, category)
+
+        if min_score > 0.0:
+            # Filter in SQL so LIMIT applies after the score cutoff.
+            stmt = stmt.where((1 - distance) >= min_score)
+
         stmt = stmt.order_by(distance).limit(limit)
 
         result = await self.db.execute(stmt)
-        # With normalized vectors, similarity = 1 - cosine distance.
-        return [
-            (paper, 1 - dist) for paper, dist in result.all() if (1 - dist) >= min_score
-        ]
+        return [(row.Paper, float(row.score)) for row in result.all()]
+
+    async def delete(self, paper: Paper) -> None:
+        await self.db.delete(paper)
+
+    async def get_latest(self, limit: int = 10) -> list[Paper]:
+        """Most recently published papers; undated ones go last, ties by upload time."""
+        stmt = (
+            select(Paper)
+            .order_by(
+                Paper.published_date.desc().nulls_last(),
+                Paper.created_at.desc(),
+            )
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

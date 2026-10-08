@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    String,
     Text,
     func,
 )
@@ -29,11 +30,13 @@ class Paper(Base):
     methodology: Mapped[str | None] = mapped_column(Text, nullable=True)
     conclusion: Mapped[str | None] = mapped_column(Text, nullable=True)
     authors: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    adviser: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     file_path: Mapped[str | None] = mapped_column(Text, nullable=True)  # Supabase path
 
-    # What was embedded, and the vector itself (one per paper).
+    # Embedding metadata and status
+    embedding_status: Mapped[str] = mapped_column(
+        String(20), default="pending", server_default="pending", index=True
+    )
     embedding_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(EMBEDDING_DIM), nullable=True

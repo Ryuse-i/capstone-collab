@@ -22,7 +22,6 @@ export interface PaperResponse {
   title: string;
   abstract: string;
   authors: string[];
-  adviser?: string | null;
   published_date?: string | null; // ISO date string
   keywords: string[];
   file_path?: string | null;
@@ -48,7 +47,6 @@ export interface PaperCreate {
   title: string;
   abstract: string;
   authors: string[];
-  adviser?: string | null;
   published_date?: string | null; // ISO date string
   keywords: string[];
   file_path?: string | null;
@@ -61,7 +59,6 @@ export interface PaperUpdate {
   title?: string | null;
   abstract?: string | null;
   authors?: string[] | null;
-  adviser?: string | null;
   published_date?: string | null; // ISO date string
   keywords?: string[] | null;
   file_path?: string | null;

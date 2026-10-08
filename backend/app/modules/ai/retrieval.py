@@ -19,17 +19,18 @@ SNIPPET_CHARS = 300
 async def embed_paper(paper: Paper) -> None:
     """Build embedding_text from the paper's fields and store its vector.
 
-    Mutates the paper in place; the caller is responsible for flush/commit.
+    Mutates the paper in place (including embedding_status); the caller is
+    responsible for flush/commit.
     """
     paper.embedding_text = build_embedding_text(
         title=paper.title,
         abstract=paper.abstract,
         keywords=paper.keywords,
         research_problem=paper.research_problem,
-        methodology=paper.methodology,
         conclusion=paper.conclusion,
     )
     paper.embedding = (await embed_texts([paper.embedding_text]))[0]
+    paper.embedding_status = "ready"
 
 
 async def index_chunks(db: AsyncSession, paper: Paper, full_text: str) -> int:
@@ -78,7 +79,7 @@ async def search_papers(
             authors=paper.authors,
             category=paper.category,
             published_date=paper.published_date,
-            matching_snippet=paper.abstract[:SNIPPET_CHARS],
+            matching_snippet=(paper.abstract or "")[:SNIPPET_CHARS],
             score=score,
         )
         for paper, score in rows

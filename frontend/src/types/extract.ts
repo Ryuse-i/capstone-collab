@@ -20,7 +20,6 @@ export interface PaperCreatePayload {
   methodology?: string;
   conclusion?: string;
   authors?: string[];
-  adviser?: string;
   published_date?: string; // YYYY-MM-DD
 }
 
@@ -34,7 +33,6 @@ export interface PaperResponse {
   methodology?: string;
   conclusion?: string;
   authors: string[];
-  adviser?: string;
   published_date?: string;
   file_path: string;
   created_at: string;

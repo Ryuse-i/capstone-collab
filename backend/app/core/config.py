@@ -39,10 +39,10 @@ settings = Settings()
 
 
 # add logging in the processes of the website would show up in the console
-def configure_logging() -> None:
-    """Configure root logging. Call once, at app startup."""
-    level = logging.DEBUG if settings.DEBUG else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
+def configure_logging():
+    logging.basicConfig(level=logging.INFO)  
+
+    # Silence noisy HTTP and low-level network loggers
+    quiet_loggers = ["httpcore", "httpx", "hpack", "h2", "python_multipart", "urllib3"]
+    for logger_name in quiet_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
