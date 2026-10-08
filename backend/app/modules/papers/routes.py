@@ -47,7 +47,7 @@ async def search_papers(
     year: int | None = None,
     author: str | None = None,
     category: str | None = None,
-    min_score: float = 0.0,
+    min_score: float = 0.25,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):

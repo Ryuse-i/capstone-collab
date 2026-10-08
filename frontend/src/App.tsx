@@ -14,9 +14,10 @@ import LoginPage from "@/pages/AuthPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
-import CapstoneSearch from "./pages/student/CapstoneSearch";
 import Settings from "@/pages/shared/Settings";
 import Chat from "./pages/shared/Chat";
+import CapstoneSearch from "./pages/shared/CapstoneSearch";
+import CapstoneView from "./pages/shared/CapstoneView";
 
 export default function App() {
   const navigate = useNavigate();
@@ -43,8 +44,9 @@ export default function App() {
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<RoleBasedDashboard />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/capstone-search" element={<CapstoneSearch />} />
+        <Route path="/capstone-view/:id" element={<CapstoneView/>} />
         <Route element={<RoleRoute role={[ROLES.INSTRUCTOR, ROLES.STUDENT]} />}>
-          <Route path="/capstone-search" element={<CapstoneSearch />} />
           <Route path="/chat" element={<Chat />} />
         </Route>
         {StudentRoutes}

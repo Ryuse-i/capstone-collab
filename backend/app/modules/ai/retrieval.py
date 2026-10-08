@@ -1,5 +1,7 @@
 """Indexing (build + store embeddings) and retrieval (semantic search)."""
 
+import re
+import numpy as np
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +16,35 @@ from app.modules.papers.repo import PaperRepo
 from app.modules.papers.schema import PaperSearchResult
 
 SNIPPET_CHARS = 300
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Split text into sentences, filtering out short fragments."""
+    parts = re.split(r"(?<=[.!?])\s+", text.strip())
+    return [p for p in parts if len(p) > 20]
+
+
+def _cosine(a: list[float] | np.ndarray, b: list[float] | np.ndarray) -> float:
+    """Compute cosine similarity between two vectors."""
+    a, b = np.asarray(a), np.asarray(b)
+    norm_product = np.linalg.norm(a) * np.linalg.norm(b)
+    if norm_product == 0:
+        return 0.0
+    return float(a @ b / norm_product)
+
+
+async def best_sentences(
+    query_vector: list[float], text: str, top_k: int = 2
+) -> list[tuple[str, float]]:
+    """Score individual sentences against query_vector and return top_k matches."""
+    sentences = _split_sentences(text or "")
+    if not sentences:
+        return []
+
+    vectors = await embed_texts(sentences)
+    scored = [(s, _cosine(query_vector, v)) for s, v in zip(sentences, vectors)]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[:top_k]
 
 
 async def embed_paper(paper: Paper) -> None:
@@ -72,15 +103,28 @@ async def search_papers(
         author=author,
         category=category,
     )
-    return [
-        PaperSearchResult(
-            paper_id=paper.id,
-            title=paper.title,
-            authors=paper.authors,
-            category=paper.category,
-            published_date=paper.published_date,
-            matching_snippet=(paper.abstract or "")[:SNIPPET_CHARS],
-            score=score,
+
+    results = []
+    for paper, score in rows:
+        top_matches = await best_sentences(query_vector, paper.abstract or "", top_k=2)
+        
+        matching_snippet = (
+            top_matches[0][0]
+            if top_matches
+            else (paper.abstract or "")[:SNIPPET_CHARS]
         )
-        for paper, score in rows
-    ]
+
+        results.append(
+            PaperSearchResult(
+                paper_id=paper.id,
+                title=paper.title,
+                authors=paper.authors,
+                category=paper.category,
+                published_date=paper.published_date,
+                matching_snippet=matching_snippet,
+                matches=[{"text": s, "score": sc} for s, sc in top_matches],
+                score=score,
+            )
+        )
+
+    return results

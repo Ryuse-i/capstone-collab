@@ -6,8 +6,6 @@ import ProjectTask from "@/pages/student/ProjectTask";
 import Workload from "@/pages/student/Workload";
 import Team from "@/pages/student/Team";
 import MyTask from "@/pages/student/MyTask";
-import CapstoneView from "@/pages/student/CapstoneView";
-import CapstoneSearch from "@/pages/student/CapstoneSearch";
 import Chat from "@/pages/shared/Chat";
 import Resources from "@/pages/shared/Resources";
 
@@ -17,9 +15,7 @@ export const StudentRoutes = (
     <Route path="/mytask" element={<MyTask />} />
     <Route path="/workload" element={<Workload />} />
     <Route path="/team" element={<Team />} />
-    <Route path="/capstone-search" element={<CapstoneSearch />} />
     <Route path="/chat" element={<Chat />} />
-    <Route path="/capstone-view/:id" element={<CapstoneView />} />
     <Route path="/resources" element={<Resources />} />
   </Route>
 );

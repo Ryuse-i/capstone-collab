@@ -127,11 +127,18 @@ export interface PaperResponse {
   created_at: string; // ISO datetime string
 }
 
+export interface MatchedSentence {
+  text: string;
+  score: number;
+}
+
 export interface PaperSearchResult {
   paper_id: number;
   title: string;
   authors: string[];
+  category?: string;
   published_date?: string | null; // ISO date string
   matching_snippet: string;
-  score: number; // cosine similarity, higher = more relevant (max 1.0)
+  matches: MatchedSentence[]; // Sentence-level matches with scores
+  score: number; // overall paper similarity score
 }

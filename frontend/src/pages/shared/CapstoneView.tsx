@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,10 @@ import {
   useDeletePaper,
   useGetPaperFileUrl,
 } from "@/hooks/usePapers";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { ROLES } from "@/constants/roles";
 
-const BACK_HREF = "/admin/capstone";
+const BACK_BASE_HREF = "/capstone-search";
 
 function truncateTitle(title: string, maxLength = 40) {
   if (!title) return "";
@@ -73,7 +75,26 @@ function CapstoneViewSkeleton() {
 export default function CapstoneView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const paperId = id ? parseInt(id, 10) : 0;
+
+  // Preserve all incoming search/filter params for the back link
+  const backHref = searchParams.toString()
+    ? `${BACK_BASE_HREF}?${searchParams.toString()}`
+    : BACK_BASE_HREF;
+
+  // Smart back navigation: go back in history if possible, else route with search params preserved
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate(backHref, { replace: true });
+    }
+  };
+
+  // Check user role
+  const { data: user } = useCurrentUser();
+  const isAdmin = user?.role?.toLowerCase() === ROLES.ADMIN;
 
   const { data: paper, isLoading, error } = useGetOnePaper(paperId);
   const getFileUrl = useGetPaperFileUrl();
@@ -98,7 +119,7 @@ export default function CapstoneView() {
   const handleDelete = () => {
     deletePaper.mutate(paperId, {
       onSuccess: () => {
-        navigate(BACK_HREF, { replace: true });
+        navigate(backHref, { replace: true });
       },
       onError: (err) => {
         setDeleteError(
@@ -112,14 +133,14 @@ export default function CapstoneView() {
     return (
       <AppLayout
         breadcrumbs={[
-          { label: "Research Repository", href: BACK_HREF },
+          { label: "Research Repository", href: backHref },
           { label: "Error", href: "#" },
         ]}
       >
         <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
           <AlertTriangle className="h-8 w-8 text-destructive" />
           <p className="text-foreground">{error.message}</p>
-          <Button variant="outline" onClick={() => navigate(BACK_HREF)}>
+          <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to repository
           </Button>
@@ -132,7 +153,7 @@ export default function CapstoneView() {
     return (
       <AppLayout
         breadcrumbs={[
-          { label: "Research Repository", href: BACK_HREF },
+          { label: "Research Repository", href: backHref },
           { label: "Loading", href: "#" },
         ]}
       >
@@ -145,7 +166,7 @@ export default function CapstoneView() {
     return (
       <AppLayout
         breadcrumbs={[
-          { label: "Research Repository", href: BACK_HREF },
+          { label: "Research Repository", href: backHref },
           { label: "Not Found", href: "#" },
         ]}
       >
@@ -153,7 +174,7 @@ export default function CapstoneView() {
           <p className="text-muted-foreground">
             We couldn't find that paper. It may have been deleted.
           </p>
-          <Button variant="outline" onClick={() => navigate(BACK_HREF)}>
+          <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to repository
           </Button>
@@ -165,10 +186,12 @@ export default function CapstoneView() {
   return (
     <AppLayout
       breadcrumbs={[
-        { label: "Research Repository", href: BACK_HREF },
+        { label: "Research Repository", href: backHref },
         {
           label: truncateTitle(paper.title, 40),
-          href: `/admin/capstone-view/${paper.id}`,
+          href: `/admin/capstone-view/${paper.id}${
+            searchParams.toString() ? `?${searchParams.toString()}` : ""
+          }`,
         },
       ]}
     >
@@ -177,7 +200,7 @@ export default function CapstoneView() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(BACK_HREF)}
+            onClick={handleBack}
             className="-ml-2 w-fit"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -200,14 +223,18 @@ export default function CapstoneView() {
                     ? "Couldn't open. Retry"
                     : "Open file"}
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setConfirmOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
+
+            {/* Show Delete button ONLY if user is an Admin */}
+            {isAdmin && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setConfirmOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
 
@@ -264,40 +291,43 @@ export default function CapstoneView() {
         </div>
       </div>
 
-      <AlertDialog
-        open={confirmOpen}
-        onOpenChange={(open) => {
-          setConfirmOpen(open);
-          if (!open) setDeleteError(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this paper?</AlertDialogTitle>
-            <AlertDialogDescription>
-              "{paper.title}" and its uploaded file will be removed from the
-              repository and from search results. This can't be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteError && (
-            <p className="text-sm text-destructive">{deleteError}</p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletePaper.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault(); // keep dialog open until the request settles
-                handleDelete();
-              }}
-              disabled={deletePaper.isPending}
-            >
-              {deletePaper.isPending ? "Deleting…" : "Delete paper"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Confirmation Dialog rendered ONLY for Admins */}
+      {isAdmin && (
+        <AlertDialog
+          open={confirmOpen}
+          onOpenChange={(open) => {
+            setConfirmOpen(open);
+            if (!open) setDeleteError(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this paper?</AlertDialogTitle>
+              <AlertDialogDescription>
+                "{paper.title}" and its uploaded file will be removed from the
+                repository and from search results. This can't be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteError && (
+              <p className="text-sm text-destructive">{deleteError}</p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletePaper.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault(); // keep dialog open until the request settles
+                  handleDelete();
+                }}
+                disabled={deletePaper.isPending}
+              >
+                {deletePaper.isPending ? "Deleting…" : "Delete paper"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </AppLayout>
   );
 }

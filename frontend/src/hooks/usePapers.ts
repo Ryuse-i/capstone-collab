@@ -13,7 +13,10 @@ import type {
   PaperFilters,
   PaperSearchParams,
 } from "@/types/capstoneresults";
+import type { MatchedSentence } from "@/services/papers";
 import type { FileUrlResponse } from "@/types/task_attachment";
+
+export type { MatchedSentence };
 
 const url = "/papers/";
 
@@ -45,7 +48,7 @@ const api = {
   ): Promise<PaperResponse[]> => {
     try {
       const response = await apiClient.get<PaperResponse[]>(url, {
-        params: filters, // axios skips undefined values
+        params: filters,
       });
       return response.data;
     } catch (error) {
@@ -105,7 +108,6 @@ const api = {
     }
   },
 
-  // Multipart upload; the backend stores the file and sets file_path on the paper
   uploadFile: async (id: number, file: File): Promise<PaperResponse> => {
     try {
       const form = new FormData();
@@ -167,7 +169,7 @@ export function useSearchPapers(params: PaperSearchParams) {
     queryKey: paperKeys.search(params),
     queryFn: () => api.searchPapers(params),
     enabled: params.query.trim() !== "",
-    placeholderData: keepPreviousData, // keep old results visible while typing
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -224,7 +226,6 @@ export function useUploadPaperFile() {
   });
 }
 
-// Signed URLs expire, so fetch on demand (on click) instead of caching in a query.
 export function useGetPaperFileUrl() {
   return useMutation({
     mutationFn: (id: number) => api.getFileUrl(id),

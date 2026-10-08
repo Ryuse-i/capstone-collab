@@ -15,6 +15,14 @@ export interface PaperSearchParams {
 }
 
 /**
+ * Individual sentence/passage match within a paper
+ */
+export interface SentenceMatch {
+  text: string;
+  score: number;
+}
+
+/**
  * Matches PaperResponse in schema.py
  */
 export interface PaperResponse {
@@ -38,6 +46,7 @@ export interface PaperSearchResult {
   published_date?: string | null; // ISO date string
   matching_snippet: string;
   score: number; // cosine similarity, higher = more relevant (max 1.0)
+  matches?: SentenceMatch[]; // passage-level matches ordered by score
 }
 
 /**

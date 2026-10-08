@@ -157,18 +157,18 @@ const instructorNavMain = [
 
 const adminNavMain = [
   {
-    title: "Overview",
+    title: "Dashboard",
     url: "/dashboard",
     icon: <LayoutGridIcon />,
   },
   {
     title: "User management",
-    url: "/admin/users",
+    url: "/users",
     icon: <UserRoundCog />,
   },
   {
     title: "Capstone Search",
-    url: "/admin/capstone",
+    url: "/capstone-search",
     icon: <BookOpenIcon/>,
   },
 ];
