@@ -12,6 +12,8 @@ from app.modules.papers.schema import (
     PaperSearchResult,
     PaperUpdate,
 )
+from app.modules.files.services import FileService
+from app.core.storage import  signed_url
 
 # Fields that feed build_embedding_text(). Keep in sync with embedding.py:
 # changing any of these requires a re-embed.
@@ -180,7 +182,25 @@ class PaperService:
             raise
     @staticmethod
     async def get_latest_papers(
-        db: AsyncSession, limit: int = 10
+        db: AsyncSession, limit: int = 10, offset: int = 0
     ) -> list[PaperResponse]:
-        papers = await PaperRepo(db).get_latest(limit=limit)
+        papers = await PaperRepo(db).get_latest(limit=limit, offset=offset)
         return [PaperResponse.model_validate(p) for p in papers]
+
+    @staticmethod
+    async def get_file_url(db: AsyncSession, paper_id: int) -> str:
+        paper = await PaperRepo(db).get_by_id(paper_id)
+        if not paper:
+            raise _not_found()
+
+        if not paper.file_path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Paper does not have an attached file",
+            )
+
+        # Call the storage helper with the Supabase file_path
+        # If your storage function is async, add 'await'
+        url = await signed_url(paper.file_path) 
+        
+        return url

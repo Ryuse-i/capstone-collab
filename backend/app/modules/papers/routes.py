@@ -12,9 +12,19 @@ from app.modules.papers.schema import (
 from app.modules.papers.services import PaperService
 from app.modules.users.model import User
 from app.modules.users.services import current_active_user
+from app.modules.files.schema import FileUrlResponse
 
 papers_router = APIRouter()
 
+@papers_router.get("/{paper_id}/file/url/", response_model=FileUrlResponse)
+async def get_paper_file_url(
+    paper_id: int,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    """Generate a signed URL for accessing the paper's PDF file."""
+    url = await PaperService.get_file_url(db, paper_id)
+    return FileUrlResponse(url=url)
 
 @papers_router.get("/", response_model=list[PaperResponse])
 async def list_papers(
@@ -121,7 +131,8 @@ async def delete_paper(
 @papers_router.get("/latest/", response_model=list[PaperResponse])
 async def latest_papers(
     limit: int = Query(10, ge=1, le=50),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    return await PaperService.get_latest_papers(db, limit=limit)
+    return await PaperService.get_latest_papers(db, limit=limit, offset=offset)

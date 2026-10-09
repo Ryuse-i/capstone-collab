@@ -16,7 +16,7 @@ import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import LandingPage from "./pages/LandingPage";
 import Settings from "@/pages/shared/Settings";
 import Chat from "./pages/shared/Chat";
-import CapstoneSearch from "./pages/shared/CapstoneSearch";
+import CapstoneRepository from "./pages/shared/CapstoneRepository";
 import CapstoneView from "./pages/shared/CapstoneView";
 
 export default function App() {
@@ -44,7 +44,7 @@ export default function App() {
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<RoleBasedDashboard />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="/capstone-search" element={<CapstoneSearch />} />
+        <Route path="/capstone-repository" element={<CapstoneRepository/>} />
         <Route path="/capstone-view/:id" element={<CapstoneView/>} />
         <Route element={<RoleRoute role={[ROLES.INSTRUCTOR, ROLES.STUDENT]} />}>
           <Route path="/chat" element={<Chat />} />

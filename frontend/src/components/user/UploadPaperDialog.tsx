@@ -37,6 +37,14 @@ import type { ExtractedPaper } from "@/types/extract";
 const MAX_FILE_MB = 20;
 const ACCEPTED_TYPES = ["application/pdf"];
 
+/** Some browsers/OSes report an empty MIME type for dropped PDFs. */
+function isPdf(file: File): boolean {
+  return (
+    ACCEPTED_TYPES.includes(file.type) ||
+    (file.type === "" && file.name.toLowerCase().endsWith(".pdf"))
+  );
+}
+
 const MIN_YEAR = 1970;
 const MAX_YEAR = 2035;
 const MONTH_LABELS = [
@@ -113,6 +121,9 @@ export default function UploadPaperDialog({
 }: UploadPaperDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentFileRef = useRef<File | null>(null);
+  // Counts nested dragenter/dragleave events so the highlight doesn't flicker
+  // when the cursor moves over child elements inside the drop zone.
+  const dragDepthRef = useRef(0);
 
   const extractPaper = useExtractPaper();
   const uploadPaper = useUploadPaper();
@@ -129,6 +140,7 @@ export default function UploadPaperDialog({
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   // Year currently shown in the month grid (separate from the saved value so
@@ -153,6 +165,8 @@ export default function UploadPaperDialog({
     setFileError(null);
     setSubmitError(null);
     setDatePickerOpen(false);
+    setIsDragging(false);
+    dragDepthRef.current = 0;
     currentFileRef.current = null;
     extractPaper.reset();
     uploadPaper.reset();
@@ -191,11 +205,12 @@ export default function UploadPaperDialog({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = e.target.files?.[0];
-    if (!picked) return;
-
-    if (!ACCEPTED_TYPES.includes(picked.type)) {
+  /**
+   * Shared by the file picker (click) and drag-and-drop: validates the file,
+   * stores it, and kicks off extraction.
+   */
+  const processFile = (picked: File) => {
+    if (!isPdf(picked)) {
       clearFile();
       setFileError("Only PDF files are supported.");
       return;
@@ -216,6 +231,64 @@ export default function UploadPaperDialog({
         if (currentFileRef.current === picked) applyExtracted(data);
       },
     });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+    processFile(picked);
+  };
+
+  /* ---------------------------- Drag and drop ---------------------------- */
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (fieldsDisabled) return;
+    dragDepthRef.current += 1;
+    if (e.dataTransfer.types.includes("Files")) setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    // preventDefault is required for the element to accept a drop.
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = fieldsDisabled ? "none" : "copy";
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current = 0;
+    setIsDragging(false);
+    if (fieldsDisabled) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    if (files.length > 1) {
+      clearFile();
+      setFileError("Please drop only one PDF file.");
+      return;
+    }
+    processFile(files[0]);
+  };
+
+  const openFilePicker = () => {
+    if (!fieldsDisabled) fileInputRef.current?.click();
+  };
+
+  const handleDropZoneKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openFilePicker();
+    }
   };
 
   const canSubmit = Boolean(
@@ -305,7 +378,7 @@ export default function UploadPaperDialog({
           {/* min-h-0 + flex-1 lets this area scroll while the footer stays pinned */}
           <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-6">
             <div className="space-y-6">
-              {/* File picker */}
+              {/* File picker / drop zone */}
               <div className="space-y-2">
                 <Label htmlFor="paper-file">Paper file (PDF)</Label>
                 <input
@@ -336,16 +409,40 @@ export default function UploadPaperDialog({
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-20 w-full border-dashed"
-                    disabled={fieldsDisabled}
-                    onClick={() => fileInputRef.current?.click()}
+                  <div
+                    role="button"
+                    tabIndex={fieldsDisabled ? -1 : 0}
+                    aria-disabled={fieldsDisabled}
+                    aria-label={`Choose or drop a PDF, up to ${MAX_FILE_MB} MB`}
+                    onClick={openFilePicker}
+                    onKeyDown={handleDropZoneKeyDown}
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={cn(
+                      "flex h-28 w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-input px-4 text-center text-sm transition-colors",
+                      "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      isDragging &&
+                        "border-[#7A0C2E] bg-[#7A0C2E]/5 text-[#7A0C2E]",
+                      fieldsDisabled &&
+                        "pointer-events-none cursor-not-allowed opacity-50",
+                    )}
                   >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Choose a PDF (up to {MAX_FILE_MB} MB)
-                  </Button>
+                    <Upload className="h-5 w-5" />
+                    {isDragging ? (
+                      <span className="font-medium">Drop your PDF here</span>
+                    ) : (
+                      <>
+                        <span className="font-medium">
+                          Drag and drop a PDF here, or click to browse
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          PDF only, up to {MAX_FILE_MB} MB
+                        </span>
+                      </>
+                    )}
+                  </div>
                 )}
                 {fileError && (
                   <p className="text-sm text-destructive">{fileError}</p>

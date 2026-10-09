@@ -80,6 +80,7 @@ def _call_gemini(text: str) -> str:
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=ExtractedPaper,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         ),
     )
     return response.text

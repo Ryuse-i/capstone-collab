@@ -75,14 +75,16 @@ class PaperRepo(BaseRepo):
     async def delete(self, paper: Paper) -> None:
         await self.db.delete(paper)
 
-    async def get_latest(self, limit: int = 10) -> list[Paper]:
+    async def get_latest(self, limit: int = 10, offset: int = 0) -> list[Paper]:
         """Most recently published papers; undated ones go last, ties by upload time."""
         stmt = (
             select(Paper)
             .order_by(
                 Paper.published_date.desc().nulls_last(),
                 Paper.created_at.desc(),
+                Paper.id.desc(),
             )
+            .offset(offset)
             .limit(limit)
         )
         result = await self.db.execute(stmt)

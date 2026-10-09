@@ -4,6 +4,8 @@ import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +34,7 @@ import {
 import { useCurrentUser } from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
 
-const BACK_BASE_HREF = "/capstone-search";
+const BACK_BASE_HREF = "/capstone-repository";
 
 function truncateTitle(title: string, maxLength = 40) {
   if (!title) return "";
@@ -102,17 +104,28 @@ export default function CapstoneView() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Open a blank tab synchronously (popup blockers allow this on click), then
-  // point it at the signed URL once it arrives.
+  /**
+   * Open file handler copied/adapted from TaskAttachments:
+   * - Opens a blank window synchronously inside the user click action to avoid popup blockers.
+   * - Retrieves the pre-signed URL via mutation.
+   * - Redirects the opened tab or falls back cleanly to a new window.
+   */
   const handleOpenFile = () => {
     const tab = window.open("", "_blank");
-    if (tab) tab.opener = null;
+
     getFileUrl.mutate(paperId, {
       onSuccess: (url) => {
-        if (tab) tab.location.href = url;
-        else window.location.href = url;
+        if (tab) {
+          tab.opener = null;
+          tab.location.href = url;
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
       },
-      onError: () => tab?.close(),
+      onError: () => {
+        tab?.close();
+        toast.error("Couldn't open this file. Try again.");
+      },
     });
   };
 
@@ -214,14 +227,16 @@ export default function CapstoneView() {
               disabled={!paper.file_path || getFileUrl.isPending}
               onClick={handleOpenFile}
             >
-              <Download className="mr-2 h-4 w-4" />
+              {getFileUrl.isPending ? (
+                <Spinner className="mr-2 size-4" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
               {!paper.file_path
                 ? "No file attached"
                 : getFileUrl.isPending
                   ? "Opening…"
-                  : getFileUrl.isError
-                    ? "Couldn't open. Retry"
-                    : "Open file"}
+                  : "Open file"}
             </Button>
 
             {/* Show Delete button ONLY if user is an Admin */}

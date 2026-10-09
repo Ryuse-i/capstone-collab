@@ -33,6 +33,28 @@ const api = {
     }
   },
 
+  getLatestPapersPage: async (
+    page: number,
+    pageSize: number = 10,
+  ): Promise<{ items: PaperResponse[]; hasNext: boolean }> => {
+    try {
+      const response = await apiClient.get<PaperResponse[]>(`${url}latest/`, {
+        params: {
+          limit: pageSize + 1,
+          offset: (page - 1) * pageSize,
+        },
+      });
+      const data = response.data;
+      return {
+        items: data.slice(0, pageSize),
+        hasNext: data.length > pageSize,
+      };
+    } catch (error) {
+      console.error("Failed to get latest papers page", error);
+      throw error;
+    }
+  },
+
   getOnePaper: async (paper_id: number): Promise<PaperResponse> => {
     try {
       const response = await apiClient.get<PaperResponse>(`${url}${paper_id}/`);
@@ -146,7 +168,8 @@ export const paperKeys = {
     [...paperKeys.searches(), params] as const,
   details: () => [...paperKeys.all, "details"] as const,
   detail: (id: number) => [...paperKeys.details(), id] as const,
-  latest: (limit: number) => [...paperKeys.lists(), "latest", limit] as const,
+  latest: (page: number, pageSize: number) =>
+    [...paperKeys.lists(), "latest", page, pageSize] as const,
 };
 
 export function useGetOnePaper(id: number) {
@@ -232,9 +255,10 @@ export function useGetPaperFileUrl() {
   });
 }
 
-export function useGetLatestPapers(limit: number = 10) {
+export function useLatestPapersPage(page: number, pageSize = 10) {
   return useQuery({
-    queryKey: paperKeys.latest(limit),
-    queryFn: () => api.getLatestPapers(limit),
+    queryKey: paperKeys.latest(page, pageSize),
+    queryFn: () => api.getLatestPapersPage(page, pageSize),
+    placeholderData: keepPreviousData,
   });
 }

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   Search,
   BookOpen,
@@ -14,8 +15,10 @@ import {
   LucideCalendarDays,
   Plus,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { useGetLatestPapers, useSearchPapers } from "@/hooks/usePapers";
+import { useLatestPapersPage, useSearchPapers } from "@/hooks/usePapers";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
 import UploadPaperDialog from "@/components/user/UploadPaperDialog";
@@ -216,7 +219,7 @@ function PaperCard({
   );
 }
 
-export default function CapstoneSearch() {
+export default function CapstoneRepository() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -225,12 +228,25 @@ export default function CapstoneSearch() {
   const isAdmin = user?.role?.toLowerCase() === ROLES.ADMIN;
 
   const urlQuery = searchParams.get("query") ?? "";
+  const PAGE_SIZE = 10;
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+
   const [input, setInput] = useState(urlQuery);
   const debouncedInput = useDebouncedValue(input);
   const trimmedQuery = debouncedInput.trim();
   const isSearching = trimmedQuery !== "";
 
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  const goToPage = (next: number) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next <= 1) params.delete("page");
+      else params.set("page", String(next));
+      return params;
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const {
     data: searchResults = [],
@@ -239,10 +255,14 @@ export default function CapstoneSearch() {
   } = useSearchPapers({ query: trimmedQuery, limit: 20 });
 
   const {
-    data: latestPapers = [],
+    data: latestData,
     isLoading: latestLoading,
+    isPlaceholderData,
     error: latestError,
-  } = useGetLatestPapers(10);
+  } = useLatestPapersPage(page, PAGE_SIZE);
+
+  const latestPapers = latestData?.items ?? [];
+  const hasNext = latestData?.hasNext ?? false;
 
   // Sync debounced input -> URL; replace so history doesn't pile up
   useEffect(() => {
@@ -282,7 +302,7 @@ export default function CapstoneSearch() {
   return (
     <AppLayout
       breadcrumbs={[
-        { label: "Research Repository", href: "/capstone-repository" },
+        { label: "Capstone Repository", href: "/capstone-repository" },
       ]}
     >
       <div className="flex flex-col gap-5">
@@ -290,7 +310,7 @@ export default function CapstoneSearch() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-0">
             <h1 className="my-2 text-2xl font-semibold dark:text-foreground">
-              Research Repository
+              Capstone Repository
             </h1>
             <p className="text-sm text-muted-foreground">
               {isAdmin
@@ -356,7 +376,7 @@ export default function CapstoneSearch() {
         {isLoading ? (
           <ResultsSkeleton />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className={cn("flex flex-col gap-3", isPlaceholderData && "opacity-60")}>
             {papers.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
                 {error ? (
@@ -376,6 +396,32 @@ export default function CapstoneSearch() {
                   onClick={() => navigate(`/capstone-view/${paper.id}`)}
                 />
               ))
+            )}
+
+            {!isSearching && (page > 1 || hasNext) && (
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page === 1 || isPlaceholderData}
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Previous
+                </Button>
+
+                <span className="text-sm text-muted-foreground">Page {page}</span>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(page + 1)}
+                  disabled={!hasNext || isPlaceholderData}
+                >
+                  Next
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
             )}
           </div>
         )}

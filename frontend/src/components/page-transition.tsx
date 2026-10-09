@@ -8,7 +8,6 @@ import { useLocation } from "react-router-dom";
  * user switches to a different section (Dashboard -> Chat -> Settings, etc).
  *
  * The animation is keyed on the FIRST path segment only, so moving between
- * nested routes of the same section (e.g. /capstone-search -> /capstone-view/1
  * or /project-list -> /view-project/1) doesn't re-trigger it.
  */
 export function PageTransition({ children }: { children: React.ReactNode }) {

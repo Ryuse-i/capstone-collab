@@ -197,7 +197,7 @@ function ProjectViewSkeleton() {
               <div className="space-y-3">
                 <Skeleton className="h-8 w-72" />
 
-                <Skeleton className="h-4 w-[32rem] max-w-full" />
+                <Skeleton className="h-4 w-lg max-w-full" />
 
                 <Skeleton className="h-4 w-80 max-w-full" />
               </div>
