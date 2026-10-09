@@ -16,6 +16,13 @@ from app.modules.files.schema import FileUrlResponse
 
 papers_router = APIRouter()
 
+@papers_router.get("/count/", response_model=dict[str, int])
+async def count_papers(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return {"total": await PaperService.count_papers(db)}
+
 @papers_router.get("/{paper_id}/file/url/", response_model=FileUrlResponse)
 async def get_paper_file_url(
     paper_id: int,

@@ -20,7 +20,8 @@ export type { MatchedSentence };
 
 const url = "/papers/";
 
-const api = {
+// API Service Layer
+export const api = {
   getLatestPapers: async (limit: number = 10): Promise<PaperResponse[]> => {
     try {
       const response = await apiClient.get<PaperResponse[]>(`${url}latest/`, {
@@ -51,6 +52,16 @@ const api = {
       };
     } catch (error) {
       console.error("Failed to get latest papers page", error);
+      throw error;
+    }
+  },
+
+  getLatestPapersCount: async (): Promise<number> => {
+    try {
+      const response = await apiClient.get<{ total: number }>(`${url}count/`);
+      return response.data.total;
+    } catch (error) {
+      console.error("Failed to get latest papers count", error);
       throw error;
     }
   },
@@ -159,6 +170,7 @@ const api = {
   },
 };
 
+// Query Key Factory
 export const paperKeys = {
   all: ["papers"] as const,
   lists: () => [...paperKeys.all, "list"] as const,
@@ -170,8 +182,10 @@ export const paperKeys = {
   detail: (id: number) => [...paperKeys.details(), id] as const,
   latest: (page: number, pageSize: number) =>
     [...paperKeys.lists(), "latest", page, pageSize] as const,
+  count: () => [...paperKeys.all, "count"] as const,
 };
 
+// React Query Hooks
 export function useGetOnePaper(id: number) {
   return useQuery({
     queryKey: paperKeys.detail(id),
@@ -196,6 +210,21 @@ export function useSearchPapers(params: PaperSearchParams) {
   });
 }
 
+export function useLatestPapersPage(page: number, pageSize = 10) {
+  return useQuery({
+    queryKey: paperKeys.latest(page, pageSize),
+    queryFn: () => api.getLatestPapersPage(page, pageSize),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useLatestPapersCount() {
+  return useQuery({
+    queryKey: paperKeys.count(),
+    queryFn: () => api.getLatestPapersCount(),
+  });
+}
+
 export function useCreatePaper() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -203,6 +232,7 @@ export function useCreatePaper() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: paperKeys.lists() });
       queryClient.invalidateQueries({ queryKey: paperKeys.searches() });
+      queryClient.invalidateQueries({ queryKey: paperKeys.count() });
     },
   });
 }
@@ -229,6 +259,7 @@ export function useDeletePaper() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: paperKeys.lists() });
       queryClient.invalidateQueries({ queryKey: paperKeys.searches() });
+      queryClient.invalidateQueries({ queryKey: paperKeys.count() });
       queryClient.removeQueries({ queryKey: paperKeys.detail(id) });
     },
   });
@@ -252,13 +283,5 @@ export function useUploadPaperFile() {
 export function useGetPaperFileUrl() {
   return useMutation({
     mutationFn: (id: number) => api.getFileUrl(id),
-  });
-}
-
-export function useLatestPapersPage(page: number, pageSize = 10) {
-  return useQuery({
-    queryKey: paperKeys.latest(page, pageSize),
-    queryFn: () => api.getLatestPapersPage(page, pageSize),
-    placeholderData: keepPreviousData,
   });
 }

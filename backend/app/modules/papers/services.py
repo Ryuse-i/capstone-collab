@@ -204,3 +204,7 @@ class PaperService:
         url = await signed_url(paper.file_path) 
         
         return url
+
+    @staticmethod
+    async def count_papers(db: AsyncSession) -> int:
+        return await PaperRepo(db).count_all()

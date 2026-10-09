@@ -15,10 +15,13 @@ import {
   LucideCalendarDays,
   Plus,
   Sparkles,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
-import { useLatestPapersPage, useSearchPapers } from "@/hooks/usePapers";
+import {
+  useLatestPapersPage,
+  useLatestPapersCount,
+  useSearchPapers,
+} from "@/hooks/usePapers";
+import PagePagination from "@/components/user/PagePagination";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
 import UploadPaperDialog from "@/components/user/UploadPaperDialog";
@@ -229,7 +232,7 @@ export default function CapstoneRepository() {
 
   const urlQuery = searchParams.get("query") ?? "";
   const PAGE_SIZE = 10;
-  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const rawPage = Math.max(1, Number(searchParams.get("page")) || 1);
 
   const [input, setInput] = useState(urlQuery);
   const debouncedInput = useDebouncedValue(input);
@@ -237,16 +240,6 @@ export default function CapstoneRepository() {
   const isSearching = trimmedQuery !== "";
 
   const [uploadOpen, setUploadOpen] = useState(false);
-
-  const goToPage = (next: number) => {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      if (next <= 1) params.delete("page");
-      else params.set("page", String(next));
-      return params;
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   const {
     data: searchResults = [],
@@ -259,10 +252,23 @@ export default function CapstoneRepository() {
     isLoading: latestLoading,
     isPlaceholderData,
     error: latestError,
-  } = useLatestPapersPage(page, PAGE_SIZE);
+  } = useLatestPapersPage(rawPage, PAGE_SIZE);
+
+  const { data: totalPapers = 0 } = useLatestPapersCount();
+  const totalPages = Math.max(1, Math.ceil(totalPapers / PAGE_SIZE));
+  const page = Math.min(rawPage, totalPages);
 
   const latestPapers = latestData?.items ?? [];
-  const hasNext = latestData?.hasNext ?? false;
+
+  const goToPage = (next: number) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next <= 1) params.delete("page");
+      else params.set("page", String(next));
+      return params;
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Sync debounced input -> URL; replace so history doesn't pile up
   useEffect(() => {
@@ -398,29 +404,14 @@ export default function CapstoneRepository() {
               ))
             )}
 
-            {!isSearching && (page > 1 || hasNext) && (
-              <div className="flex items-center justify-between pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => goToPage(page - 1)}
-                  disabled={page === 1 || isPlaceholderData}
-                >
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Previous
-                </Button>
-
-                <span className="text-sm text-muted-foreground">Page {page}</span>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => goToPage(page + 1)}
-                  disabled={!hasNext || isPlaceholderData}
-                >
-                  Next
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
+            {!isSearching && (
+              <div className="pt-3">
+                <PagePagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                  disabled={isPlaceholderData}
+                />
               </div>
             )}
           </div>

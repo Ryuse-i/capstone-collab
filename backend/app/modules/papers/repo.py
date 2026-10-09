@@ -89,3 +89,7 @@ class PaperRepo(BaseRepo):
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def count_all(self) -> int:
+        result = await self.db.execute(select(func.count(Paper.id)))
+        return int(result.scalar_one())
