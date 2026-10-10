@@ -57,18 +57,16 @@ def build_embedding_text(
     abstract: str | None = None,
     keywords: list[str] | None = None,
     research_problem: str | None = None,
-    conclusion: str | None = None,
 ) -> str:
     """
     Build vector representation string using high-signal fields only:
-    title, research problem, abstract, keywords, and conclusion.
+    title, research problem, abstract, keywords.
     """
     parts = [
         ("Title", _clip(title, 200)),
         ("Research Problem", _clip(research_problem, 250)),
         ("Abstract", _clip(abstract, 500)),
         ("Keywords", ", ".join(keywords or [])),
-        ("Conclusion", _clip(conclusion, 250)),
     ]
     return "\n".join(f"{label}: {value}" for label, value in parts if value)
 

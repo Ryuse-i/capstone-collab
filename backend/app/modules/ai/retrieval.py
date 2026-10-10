@@ -58,7 +58,6 @@ async def embed_paper(paper: Paper) -> None:
         abstract=paper.abstract,
         keywords=paper.keywords,
         research_problem=paper.research_problem,
-        conclusion=paper.conclusion,
     )
     paper.embedding = (await embed_texts([paper.embedding_text]))[0]
     paper.embedding_status = "ready"

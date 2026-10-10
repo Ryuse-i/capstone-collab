@@ -28,7 +28,6 @@ class Paper(Base):
     category: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     research_problem: Mapped[str | None] = mapped_column(Text, nullable=True)
     methodology: Mapped[str | None] = mapped_column(Text, nullable=True)
-    conclusion: Mapped[str | None] = mapped_column(Text, nullable=True)
     authors: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
     published_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     file_path: Mapped[str | None] = mapped_column(Text, nullable=True)  # Supabase path

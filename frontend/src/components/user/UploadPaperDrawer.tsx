@@ -135,7 +135,6 @@ export default function UploadPaperDialog({
   const [category, setCategory] = useState("");
   const [researchProblem, setResearchProblem] = useState("");
   const [methodology, setMethodology] = useState("");
-  const [conclusion, setConclusion] = useState("");
   const [publishedDate, setPublishedDate] = useState(""); // Stores YYYY-MM-01
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -159,7 +158,6 @@ export default function UploadPaperDialog({
     setCategory("");
     setResearchProblem("");
     setMethodology("");
-    setConclusion("");
     setPublishedDate("");
     setFile(null);
     setFileError(null);
@@ -188,7 +186,6 @@ export default function UploadPaperDialog({
     setCategory(data.category ?? "");
     setResearchProblem(data.research_problem ?? "");
     setMethodology(data.methodology ?? "");
-    setConclusion(data.conclusion ?? "");
 
     const parsed = data.published_date
       ? parsePublishedDate(data.published_date)
@@ -310,7 +307,6 @@ export default function UploadPaperDialog({
         category: category.trim(),
         research_problem: researchProblem.trim(),
         methodology: methodology.trim(),
-        conclusion: conclusion.trim(),
         published_date: publishedDate, // YYYY-MM-01, or "" if not set
       },
       {
@@ -488,18 +484,34 @@ export default function UploadPaperDialog({
                 />
               </div>
 
-              <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="paper-authors">Authors</Label>
-                  <Input
-                    id="paper-authors"
-                    placeholder="Separate names with commas"
-                    value={authors}
-                    onChange={(e) => setAuthors(e.target.value)}
-                    disabled={fieldsDisabled}
-                  />
-                </div>
+              {/* Authors Section */}
+              <div className="space-y-2">
+                <Label htmlFor="paper-authors">Authors</Label>
+                <Textarea
+                  id="paper-authors"
+                  rows={2}
+                  placeholder="Separate names with commas"
+                  value={authors}
+                  onChange={(e) => setAuthors(e.target.value)}
+                  disabled={fieldsDisabled}
+                />
+              </div>
 
+              {/* Keywords Section */}
+              <div className="space-y-2">
+                <Label htmlFor="paper-keywords">Keywords</Label>
+                <Textarea
+                  id="paper-keywords"
+                  rows={2}
+                  placeholder="e.g. machine learning, healthcare"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                  disabled={fieldsDisabled}
+                />
+              </div>
+
+              {/* Category & Published date shared section */}
+              <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="paper-category">Category</Label>
                   <Input
@@ -507,17 +519,6 @@ export default function UploadPaperDialog({
                     placeholder="e.g. Machine Learning"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    disabled={fieldsDisabled}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="paper-keywords">Keywords</Label>
-                  <Input
-                    id="paper-keywords"
-                    placeholder="e.g. machine learning, healthcare"
-                    value={keywords}
-                    onChange={(e) => setKeywords(e.target.value)}
                     disabled={fieldsDisabled}
                   />
                 </div>
@@ -636,17 +637,6 @@ export default function UploadPaperDialog({
                   rows={3}
                   value={methodology}
                   onChange={(e) => setMethodology(e.target.value)}
-                  disabled={fieldsDisabled}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="paper-conclusion">Conclusion</Label>
-                <Textarea
-                  id="paper-conclusion"
-                  rows={3}
-                  value={conclusion}
-                  onChange={(e) => setConclusion(e.target.value)}
                   disabled={fieldsDisabled}
                 />
               </div>

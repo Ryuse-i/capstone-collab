@@ -39,7 +39,6 @@ const api = {
       if (payload.category) formData.append("category", payload.category);
       if (payload.research_problem) formData.append("research_problem", payload.research_problem);
       if (payload.methodology) formData.append("methodology", payload.methodology);
-      if (payload.conclusion) formData.append("conclusion", payload.conclusion);
       if (payload.published_date) formData.append("published_date", payload.published_date);
 
       // Append array fields (FastAPI expects multiple form entries for lists)

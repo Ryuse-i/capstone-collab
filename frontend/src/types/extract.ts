@@ -5,7 +5,6 @@ export interface ExtractedPaper {
   category?: string;
   research_problem?: string;
   methodology?: string;
-  conclusion?: string;
   authors?: string[];
   published_date?: string; // YYYY-MM-DD
 }
@@ -18,7 +17,6 @@ export interface PaperCreatePayload {
   category?: string;
   research_problem?: string;
   methodology?: string;
-  conclusion?: string;
   authors?: string[];
   published_date?: string; // YYYY-MM-DD
 }
@@ -31,7 +29,6 @@ export interface PaperResponse {
   category?: string;
   research_problem?: string;
   methodology?: string;
-  conclusion?: string;
   authors: string[];
   published_date?: string;
   file_path: string;

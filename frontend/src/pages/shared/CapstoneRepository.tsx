@@ -24,7 +24,7 @@ import {
 import PagePagination from "@/components/user/PagePagination";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
-import UploadPaperDialog from "@/components/user/UploadPaperDialog";
+import UploadPaperDialog from "@/components/user/UploadPaperDrawer";
 import type { SentenceMatch } from "@/types/capstoneresults";
 
 const SNIPPET_CHARS = 300;
@@ -152,7 +152,7 @@ function PaperCard({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left transition-all duration-200 hover:-translate-y-1 hover:border-primary/50 hover:bg-accent/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       {/* Title & Top Metadata */}
       <div className="flex items-start justify-between gap-3">
@@ -216,7 +216,7 @@ function PaperCard({
         </div>
       ) : (
         /* Standard Fallback Abstract Snippet (Latest Papers) */
-        <p className="pl-7 text-sm text-muted-foreground">{paper.snippet}</p>
+        <p className="pl-7 text-sm text-foreground">{paper.snippet}</p>
       )}
     </button>
   );

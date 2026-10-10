@@ -25,50 +25,43 @@ export interface SentenceMatch {
 /**
  * Matches PaperResponse in schema.py
  */
-export interface PaperResponse {
-  id: number;
-  title: string;
-  abstract: string;
-  authors: string[];
-  published_date?: string | null; // ISO date string
-  keywords: string[];
-  file_path?: string | null;
-  created_at: string; // ISO datetime string
-}
-
-/**
- * Matches PaperSearchResult in schema.py
- */
-export interface PaperSearchResult {
-  paper_id: number;
-  title: string;
-  authors: string[];
-  published_date?: string | null; // ISO date string
-  matching_snippet: string;
-  score: number; // cosine similarity, higher = more relevant (max 1.0)
-  matches?: SentenceMatch[]; // passage-level matches ordered by score
-}
-
-/**
- * Matches PaperCreate in schema.py
- */
 export interface PaperCreate {
   title: string;
   abstract: string;
   authors: string[];
-  published_date?: string | null; // ISO date string
   keywords: string[];
+  category?: string | null;
+  research_problem?: string | null;
+  methodology?: string | null;
+  published_date?: string | null;
   file_path?: string | null;
 }
 
-/**
- * Matches PaperUpdate in schema.py
- */
 export interface PaperUpdate {
   title?: string | null;
   abstract?: string | null;
   authors?: string[] | null;
-  published_date?: string | null; // ISO date string
   keywords?: string[] | null;
+  category?: string | null;
+  research_problem?: string | null;
+  methodology?: string | null;
+  published_date?: string | null;
   file_path?: string | null;
+}
+
+export interface PaperResponse extends PaperCreate {
+  id: number;
+  embedding_text?: string | null;
+  created_at?: string | null;
+}
+
+export interface PaperSearchResult {
+  paper_id: number;
+  title: string;
+  authors: string[];
+  category?: string | null;
+  published_date?: string | null;
+  matching_snippet: string;
+  score: number;
+  matches?: SentenceMatch[];
 }

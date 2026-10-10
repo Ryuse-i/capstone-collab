@@ -57,19 +57,6 @@ export async function getPaper(paperId: number) {
   return await fetchWithRefresh<PaperResponse>(`/papers/${paperId}/`);
 }
 
-/**
- * POST /papers/ - Create a new paper
- */
-export async function createPaper(paperData: PaperCreate) {
-  return await fetchWithRefresh<PaperResponse>(
-    "/papers/",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(paperData),
-    }
-  );
-}
 
 /**
  * PATCH /papers/{paper_id}/ - Update an existing paper

@@ -26,12 +26,11 @@ Extract these fields and return JSON only:
 - title: the paper's full title.
 - abstract: the paper's abstract, which must accurately describe the paper.
   * If the paper has its own abstract (an explicit "Abstract" heading, or an executive summary / primary introductory paragraph), extract it verbatim, then check it against the rest of the paper. It must be consistent with the paper's actual problem, methodology, and findings.
-  * If there is no abstract, or the existing one is clearly wrong, truncated, or doesn't match the paper's content, write a new abstract of about 150-250 words in a single paragraph. It should cover the problem, the methods, the main findings, and the conclusion, using only information stated in the text.
+  * If there is no abstract, or the existing one is clearly wrong, truncated, or doesn't match the paper's content, write a new abstract of about 150-250 words in a single paragraph. It should cover the problem, the methods, the main findings, using only information stated in the text.
 - keywords: the author's listed keywords, or 5 relevant topic terms if none are explicitly listed.
 - category: one short discipline or field label (e.g., "Machine Learning", "Information Systems").
 - research_problem: 1-3 sentences describing the core problem or gap the paper addresses.
 - methodology: 1-3 sentences describing the approach, data, algorithms, or methods used.
-- conclusion: 1-3 sentences summarizing the main findings and final conclusion.
 - authors: list of full author names, one entry per author.
 - published_date: YYYY-MM-DD if explicitly stated (use YYYY-MM-01 or YYYY-01-01 if only month/year is provided), otherwise null.
 
@@ -42,7 +41,7 @@ Rules:
 - The only field you may write yourself is a missing or inaccurate abstract. Base it strictly on the paper's text. Every other field must come from the text.
 """
 
-# Front matter and the conclusion matter most; keep both for long papers.
+# Front matter most; keep both for long papers.
 HEAD_CHARS = 45_000
 TAIL_CHARS = 15_000
 
@@ -56,7 +55,6 @@ class ExtractedPaper(BaseModel):
     category: str | None = None
     research_problem: str | None = None
     methodology: str | None = None
-    conclusion: str | None = None
     authors: list[str] = []
     published_date: date | None = None
 

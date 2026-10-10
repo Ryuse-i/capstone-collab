@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Download,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import {
   useGetOnePaper,
@@ -33,6 +34,7 @@ import {
 } from "@/hooks/usePapers";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
+import EditPaperDrawer from "@/components/user/EditPaperDrawer";
 
 const BACK_BASE_HREF = "/capstone-repository";
 
@@ -102,6 +104,7 @@ export default function CapstoneView() {
   const getFileUrl = useGetPaperFileUrl();
   const deletePaper = useDeletePaper();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   /**
@@ -202,7 +205,7 @@ export default function CapstoneView() {
         { label: "Research Repository", href: backHref },
         {
           label: truncateTitle(paper.title, 40),
-          href: `/admin/capstone-view/${paper.id}${
+          href: `/capstone-view/${paper.id}${
             searchParams.toString() ? `?${searchParams.toString()}` : ""
           }`,
         },
@@ -239,24 +242,34 @@ export default function CapstoneView() {
                   : "Open file"}
             </Button>
 
-            {/* Show Delete button ONLY if user is an Admin */}
+            {/* Show Edit and Delete buttons ONLY if user is an Admin */}
             {isAdmin && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setConfirmOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </>
             )}
           </div>
         </div>
 
         {/* Title & meta card */}
         <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6">
-          <div className="flex items-start gap-3">
-            <BookOpen className="mt-1 h-6 w-6 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-3">
+            <BookOpen className="h-6 w-6 shrink-0 text-muted-foreground" />
             <h1 className="text-xl font-semibold leading-snug text-gray-900 dark:text-card-foreground">
               {paper.title}
             </h1>
@@ -300,7 +313,7 @@ export default function CapstoneView() {
               Abstract
             </h2>
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-foreground">
             {paper.abstract}
           </p>
         </div>
@@ -342,6 +355,15 @@ export default function CapstoneView() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      )}
+
+      {/* Edit Paper Drawer rendered ONLY for Admins */}
+      {isAdmin && (
+        <EditPaperDrawer
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          paper={paper}
+        />
       )}
     </AppLayout>
   );

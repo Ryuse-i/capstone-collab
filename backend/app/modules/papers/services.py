@@ -22,7 +22,6 @@ EMBEDDED_FIELDS = {
     "abstract",
     "keywords",
     "research_problem",
-    "conclusion",
 }
 
 def _not_found() -> HTTPException:

@@ -10,7 +10,6 @@ class PaperCreate(BaseModel):
     category: str | None = None
     research_problem: str | None = None
     methodology: str | None = None
-    conclusion: str | None = None
     authors: list[str] = []
     published_date: date | None = None
     file_path: str | None = None
@@ -23,7 +22,6 @@ class PaperUpdate(BaseModel):
     category: str | None = None
     research_problem: str | None = None
     methodology: str | None = None
-    conclusion: str | None = None
     authors: list[str] | None = None
     published_date: date | None = None
     file_path: str | None = None
