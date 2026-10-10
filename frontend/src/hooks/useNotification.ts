@@ -1,136 +1,323 @@
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import axios from "axios";
 import apiClient from "@/services/apiClient";
+
 import type {
   NotificationCreate,
-  NotificationUpdate,
   NotificationResponse,
+  NotificationUpdate,
 } from "@/types/notification";
 
 const url = "/notifications";
 
+/* =========================================================
+   API
+========================================================= */
+
 const api = {
-  getOneNotification: async (id: string): Promise<NotificationResponse> => {
+  /* -------------------------------------------------------
+     Get one notification
+  ------------------------------------------------------- */
+  getOneNotification: async (
+    id: string,
+  ): Promise<NotificationResponse> => {
     try {
-      const response = await apiClient.get(`${url}/${id}`);
+      const response = await apiClient.get(
+        `${url}/${id}`,
+      );
+
       return response.data;
     } catch (error) {
-      console.error("Failed to get notification", error);
+      console.error(
+        "Failed to get notification:",
+        error,
+      );
+
       throw error;
     }
   },
 
-  getAllNotifications: async (): Promise<NotificationResponse[]> => {
+  /* -------------------------------------------------------
+     Get all notifications
+  ------------------------------------------------------- */
+  getAllNotifications: async (): Promise<
+    NotificationResponse[]
+  > => {
     try {
       const response = await apiClient.get(url);
+
       return response.data;
     } catch (error) {
-      console.error("Failed to get notifications", error);
+      console.error(
+        "Failed to get notifications:",
+        error,
+      );
+
       throw error;
     }
   },
 
-  getUserNotification: async (
-    user_id: string,
-  ): Promise<NotificationResponse[] | null> => {
+  /* -------------------------------------------------------
+     Get notifications for a specific user
+  ------------------------------------------------------- */
+  getUserNotifications: async (
+    userId: string,
+  ): Promise<NotificationResponse[]> => {
     try {
-      const response = await apiClient.get(`${url}/${user_id}`);
-      return response.data;
+      const response = await apiClient.get(
+        `${url}/${userId}`,
+      );
+
+      return response.data ?? [];
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        return null;
+      /*
+       * A user with no notifications may return 404
+       * depending on your backend implementation.
+       */
+      if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 404
+      ) {
+        return [];
       }
-      console.error("Failed to fetch notification", error);
+
+      console.error(
+        "Failed to fetch user notifications:",
+        error,
+      );
+
       throw error;
     }
   },
 
-  create: async (
+  /* -------------------------------------------------------
+     Create notification
+  ------------------------------------------------------- */
+  createNotification: async (
     notification: NotificationCreate,
   ): Promise<NotificationResponse> => {
     try {
-      const response = await apiClient.post(url, notification);
+      const response = await apiClient.post(
+        url,
+        notification,
+      );
+
       return response.data;
     } catch (error) {
-      console.error("Failed to create notification", error);
+      console.error(
+        "Failed to create notification:",
+        error,
+      );
+
       throw error;
     }
   },
 
-  update: async (
+  /* -------------------------------------------------------
+     Update notification
+  ------------------------------------------------------- */
+  updateNotification: async (
     id: string,
     notification: NotificationUpdate,
   ): Promise<NotificationResponse> => {
     try {
-      const response = await apiClient.patch(`${url}/${id}`, notification);
+      const response = await apiClient.patch(
+        `${url}/${id}`,
+        notification,
+      );
+
       return response.data;
     } catch (error) {
-      console.error("Failed to update notification", error);
+      console.error(
+        "Failed to update notification:",
+        error,
+      );
+
       throw error;
     }
   },
 
-  delete: async (id: string): Promise<string> => {
+  /* -------------------------------------------------------
+     Delete notification
+  ------------------------------------------------------- */
+  deleteNotification: async (
+    id: string,
+  ): Promise<string> => {
     try {
-      const response = await apiClient.delete(`${url}/${id}`);
+      const response = await apiClient.delete(
+        `${url}/${id}`,
+      );
+
       return response.data;
     } catch (error) {
-      console.error("Failed to delete notification", error);
+      console.error(
+        "Failed to delete notification:",
+        error,
+      );
+
       throw error;
     }
   },
-  markAsRead: async (id: string): Promise<NotificationResponse> => {
+
+  /* -------------------------------------------------------
+     Mark notification as read
+  ------------------------------------------------------- */
+  markAsRead: async (
+    id: string,
+  ): Promise<NotificationResponse> => {
     try {
-      const response = await apiClient.patch(`${url}/mark_as_read/${id}`);
+      const response = await apiClient.patch(
+        `${url}/mark_as_read/${id}`,
+      );
+
       return response.data;
     } catch (error) {
-      console.error("Failed to mark as read", error);
+      console.error(
+        "Failed to mark notification as read:",
+        error,
+      );
+
       throw error;
     }
   },
 };
 
-export const notificatonKeys = {
+/* =========================================================
+   QUERY KEYS
+========================================================= */
+
+export const notificationKeys = {
   all: ["notifications"] as const,
-  list: () => [...notificatonKeys.all, "list"] as const,
-  details: () => [...notificatonKeys.all, "details"] as const,
-  detail: (id: string) => [...notificatonKeys.details(), id] as const,
-  userList: (userId: string) => [...notificatonKeys.all, "userList", userId] as const,
+
+  lists: () =>
+    [...notificationKeys.all, "list"] as const,
+
+  userList: (userId: string) =>
+    [
+      ...notificationKeys.all,
+      "userList",
+      userId,
+    ] as const,
+
+  details: () =>
+    [...notificationKeys.all, "details"] as const,
+
+  detail: (id: string) =>
+    [
+      ...notificationKeys.details(),
+      id,
+    ] as const,
 };
 
-export function useGetOneNotification(id: string) {
+/*
+ * Keep the old name available in case another component
+ * already imports `notificatonKeys`.
+ */
+export const notificatonKeys = notificationKeys;
+
+/* =========================================================
+   GET ONE NOTIFICATION
+========================================================= */
+
+export function useGetOneNotification(
+  id: string,
+) {
   return useQuery({
-    queryKey: notificatonKeys.detail(id),
-    queryFn: () => api.getOneNotification(id),
+    queryKey: notificationKeys.detail(id),
+
+    queryFn: () =>
+      api.getOneNotification(id),
+
+    enabled: Boolean(id),
+
+    staleTime: 30_000,
   });
 }
+
+/* =========================================================
+   GET ALL NOTIFICATIONS
+========================================================= */
 
 export function useGetAllNotifications() {
   return useQuery({
-    queryKey: notificatonKeys.list(),
-    queryFn: api.getAllNotifications,
+    queryKey: notificationKeys.lists(),
+
+    queryFn:
+      api.getAllNotifications,
+
+    staleTime: 30_000,
   });
 }
 
-export function useGetUserNotifications(id: string) {
+/* =========================================================
+   GET USER NOTIFICATIONS
+========================================================= */
+
+export function useGetUserNotifications(
+  userId: string,
+) {
   return useQuery({
-    queryKey: notificatonKeys.userList(id),
-    queryFn: () => api.getUserNotification(id),
+    queryKey:
+      notificationKeys.userList(userId),
+
+    queryFn: () =>
+      api.getUserNotifications(userId),
+
+    enabled: Boolean(userId),
+
+    staleTime: 30_000,
   });
 }
+
+/* =========================================================
+   CREATE NOTIFICATION
+========================================================= */
 
 export function useNotification() {
-  const queryClient = useQueryClient();
+  const queryClient =
+    useQueryClient();
+
   return useMutation({
-    mutationFn: api.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
+    mutationFn:
+      api.createNotification,
+
+    onSuccess: (newNotification) => {
+      /*
+       * Refresh all notifications.
+       */
+      queryClient.invalidateQueries({
+        queryKey:
+          notificationKeys.all,
+      });
+
+      /*
+       * If the created notification belongs
+       * to a specific user, refresh that user's list.
+       */
+      if (newNotification.user_id) {
+        queryClient.invalidateQueries({
+          queryKey:
+            notificationKeys.userList(
+              newNotification.user_id,
+            ),
+        });
+      }
     },
   });
 }
 
+/* =========================================================
+   UPDATE NOTIFICATION
+========================================================= */
+
 export function useUpdateNotification() {
-  const queryClient = useQueryClient();
+  const queryClient =
+    useQueryClient();
+
   return useMutation({
     mutationFn: ({
       id,
@@ -138,33 +325,167 @@ export function useUpdateNotification() {
     }: {
       id: string;
       notification: NotificationUpdate;
-    }) => api.update(id, notification),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
+    }) =>
+      api.updateNotification(
+        id,
+        notification,
+      ),
+
+    onSuccess: (
+      updatedNotification,
+      variables,
+    ) => {
+      /*
+       * Update the individual notification
+       * immediately in the cache.
+       */
+      queryClient.setQueryData(
+        notificationKeys.detail(
+          variables.id,
+        ),
+        updatedNotification,
+      );
+
+      /*
+       * Refresh notification lists.
+       */
       queryClient.invalidateQueries({
-        queryKey: notificatonKeys.detail(variables.id),
+        queryKey:
+          notificationKeys.all,
+      });
+
+      /*
+       * Refresh the specific user's list.
+       */
+      if (updatedNotification.user_id) {
+        queryClient.invalidateQueries({
+          queryKey:
+            notificationKeys.userList(
+              updatedNotification.user_id,
+            ),
+        });
+      }
+    },
+  });
+}
+
+/* =========================================================
+   DELETE NOTIFICATION
+========================================================= */
+
+export function useDeleteNotification() {
+  const queryClient =
+    useQueryClient();
+
+  return useMutation({
+    mutationFn:
+      api.deleteNotification,
+
+    onSuccess: (_, notificationId) => {
+      /*
+       * Remove individual notification
+       * from the detail cache.
+       */
+      queryClient.removeQueries({
+        queryKey:
+          notificationKeys.detail(
+            notificationId,
+          ),
+      });
+
+      /*
+       * Refresh notification lists.
+       */
+      queryClient.invalidateQueries({
+        queryKey:
+          notificationKeys.all,
       });
     },
   });
 }
 
-export function useDeleteNotification() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: api.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
-    },
-  });
-}
+/* =========================================================
+   MARK AS READ
+========================================================= */
 
-export function useMarkAsRead() {
-  const queryClient = useQueryClient();
+export function useMarkAsRead(
+  userId?: string,
+) {
+  const queryClient =
+    useQueryClient();
+
   return useMutation({
-    mutationFn: (id: string) => api.markAsRead(id),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: notificatonKeys.list() });
-      queryClient.invalidateQueries({ queryKey: notificatonKeys.detail(variables) });
+    mutationFn: (
+      notificationId: string,
+    ) =>
+      api.markAsRead(
+        notificationId,
+      ),
+
+    onSuccess: (
+      updatedNotification,
+      notificationId,
+    ) => {
+      /*
+       * Update the individual notification
+       * immediately.
+       */
+      queryClient.setQueryData(
+        notificationKeys.detail(
+          notificationId,
+        ),
+        updatedNotification,
+      );
+
+      /*
+       * Update the notification in the
+       * user's cached notification list.
+       */
+      if (userId) {
+        queryClient.setQueryData<
+          NotificationResponse[]
+        >(
+          notificationKeys.userList(
+            userId,
+          ),
+          (currentNotifications) => {
+            if (!currentNotifications) {
+              return currentNotifications;
+            }
+
+            return currentNotifications.map(
+              (notification) =>
+                notification.id ===
+                notificationId
+                  ? {
+                      ...notification,
+                      ...updatedNotification,
+                      is_read: true,
+                    }
+                  : notification,
+            );
+          },
+        );
+
+        /*
+         * Also make sure the server data is
+         * eventually refreshed.
+         */
+        queryClient.invalidateQueries({
+          queryKey:
+            notificationKeys.userList(
+              userId,
+            ),
+        });
+      }
+
+      /*
+       * Refresh the general notification list.
+       */
+      queryClient.invalidateQueries({
+        queryKey:
+          notificationKeys.lists(),
+      });
     },
   });
 }

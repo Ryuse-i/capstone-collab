@@ -36,7 +36,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { AddTaskDialog } from "@/components/user/AddTaskDialog";
 import EditTaskDialog from "@/components/user/EditTaskDialog";
 
 import type {
@@ -446,17 +445,6 @@ export function TaskTable({
             </SelectContent>
           </Select>
         </div>
-
-        {/* Add task */}
-        <AddTaskDialog
-          projectId={projectId}
-          trigger={
-            <Button size="sm" className="h-8">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              ADD TASK
-            </Button>
-          }
-        />
       </div>
 
       {/* Table */}

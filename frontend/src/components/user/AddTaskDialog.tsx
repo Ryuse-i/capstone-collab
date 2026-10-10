@@ -466,6 +466,10 @@ export function AddTaskDialog({
         const createdTask =
           await createTaskMutation.mutateAsync(payload);
 
+        // Show the success toast as soon as the task exists, so it still
+        // appears even if a later step (attachments, members, reviewer) fails.
+        toast.success("Task created successfully.");
+
         queryClient.invalidateQueries({
           queryKey: taskKeys.listProject(projectId),
         });
@@ -573,8 +577,6 @@ export function AddTaskDialog({
             return;
           }
         }
-
-        toast.success("Task created successfully.");
       } else {
         const payload = {
           project_id: projectId.trim(),

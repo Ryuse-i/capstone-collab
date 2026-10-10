@@ -1,4 +1,10 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import GanttChart, {
   ViewMode,
   type Task as GanttTask,
@@ -31,7 +37,11 @@ const COMPLETED_COLOR = {
 };
 
 const IN_PROGRESS_HUE = 217;
-const MIN_GANTT_ROWS = 8;
+
+// Minimum number of rows (real + invisible filler). 0 means the chart is
+// exactly as tall as its tasks, plus one invisible anchor row that keeps
+// the timeline stretched across the horizon.
+const MIN_GANTT_ROWS = 0;
 const HORIZON_MONTHS = 3;
 
 // Dummy raw object for placeholder tasks
@@ -89,7 +99,10 @@ function pastelColorForProgress(hue: number, progress: number) {
 function normalizeStatus(raw: unknown): TaskStatus {
   if (typeof raw !== "string") return "not_started";
 
-  const key = raw.trim().toLowerCase().replace(/[_\s]+/g, "-");
+  const key = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
 
   switch (key) {
     case "not-started":
@@ -122,10 +135,7 @@ function addMonths(date: Date, months: number): Date {
   return copy;
 }
 
-function safeDate(
-  value: string | null | undefined,
-  fallback: Date,
-): Date {
+function safeDate(value: string | null | undefined, fallback: Date): Date {
   if (!value) return fallback;
 
   const parsed = new Date(value);
@@ -139,13 +149,8 @@ interface Resolved {
   percent: number;
 }
 
-function clampRange(
-  startDate: Date,
-  endDate: Date,
-): [Date, Date] {
-  return endDate < startDate
-    ? [startDate, startDate]
-    : [startDate, endDate];
+function clampRange(startDate: Date, endDate: Date): [Date, Date] {
+  return endDate < startDate ? [startDate, startDate] : [startDate, endDate];
 }
 
 function resolveTask(task: TaskResponseMembers): Resolved {
@@ -172,33 +177,21 @@ function resolveTask(task: TaskResponseMembers): Resolved {
     }
 
     case "in_progress": {
-      const start = safeDate(
-        task.started_at ?? task.created_at,
-        now,
-      );
+      const start = safeDate(task.started_at ?? task.created_at, now);
 
       const end = deadline ?? addDays(start, 7);
 
       const [startDate, endDate] = clampRange(start, end);
 
-      const total =
-        endDate.getTime() - startDate.getTime();
+      const total = endDate.getTime() - startDate.getTime();
 
       const startOfToday = new Date(now);
       startOfToday.setHours(0, 0, 0, 0);
 
-      const elapsed = Math.max(
-        0,
-        startOfToday.getTime() - startDate.getTime(),
-      );
+      const elapsed = Math.max(0, startOfToday.getTime() - startDate.getTime());
 
       const percent =
-        total > 0
-          ? Math.min(
-              99,
-              Math.max(1, (elapsed / total) * 100),
-            )
-          : 1;
+        total > 0 ? Math.min(99, Math.max(1, (elapsed / total) * 100)) : 1;
 
       return {
         startDate,
@@ -208,22 +201,13 @@ function resolveTask(task: TaskResponseMembers): Resolved {
     }
 
     case "submitted": {
-      const start = safeDate(
-        task.started_at ?? task.created_at,
-        now,
-      );
+      const start = safeDate(task.started_at ?? task.created_at, now);
 
       const end = task.completed_at
-        ? safeDate(
-            task.completed_at,
-            addDays(start, 1),
-          )
+        ? safeDate(task.completed_at, addDays(start, 1))
         : (deadline ?? addDays(start, 1));
 
-      const [startDate, endDate] = clampRange(
-        start,
-        end,
-      );
+      const [startDate, endDate] = clampRange(start, end);
 
       return {
         startDate,
@@ -233,19 +217,13 @@ function resolveTask(task: TaskResponseMembers): Resolved {
     }
 
     case "completed": {
-      const start = safeDate(
-        task.started_at ?? task.created_at,
-        now,
-      );
+      const start = safeDate(task.started_at ?? task.created_at, now);
 
       const end = task.completed_at
         ? safeDate(task.completed_at, start)
         : start;
 
-      const [startDate, endDate] = clampRange(
-        start,
-        end,
-      );
+      const [startDate, endDate] = clampRange(start, end);
 
       return {
         startDate,
@@ -255,17 +233,11 @@ function resolveTask(task: TaskResponseMembers): Resolved {
     }
 
     default: {
-      const start = safeDate(
-        task.started_at ?? task.created_at,
-        now,
-      );
+      const start = safeDate(task.started_at ?? task.created_at, now);
 
       const end = deadline ?? addDays(start, 7);
 
-      const [startDate, endDate] = clampRange(
-        start,
-        end,
-      );
+      const [startDate, endDate] = clampRange(start, end);
 
       return {
         startDate,
@@ -280,10 +252,7 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 // Task colors
 // -------------------------------------------------------------------------
 
-function resolveColor(
-  status: TaskStatus,
-  percent: number,
-) {
+function resolveColor(status: TaskStatus, percent: number) {
   switch (status) {
     case "submitted":
       return SUBMITTED_COLOR;
@@ -292,15 +261,121 @@ function resolveColor(
       return COMPLETED_COLOR;
 
     case "in_progress":
-      return solidColorForProgress(
-        IN_PROGRESS_HUE,
-        percent,
-      );
+      return solidColorForProgress(IN_PROGRESS_HUE, percent);
 
     case "not_started":
     default:
       return NOT_STARTED_COLOR;
   }
+}
+
+// -------------------------------------------------------------------------
+// Scroll to today
+// -------------------------------------------------------------------------
+
+function findHorizontalScroller(root: HTMLElement): HTMLElement | null {
+  const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
+
+  for (const el of nodes) {
+    const { overflowX } = getComputedStyle(el);
+    const scrollable = overflowX === "auto" || overflowX === "scroll";
+
+    if (scrollable && el.scrollWidth > el.clientWidth + 1) {
+      return el;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Finds the library's "today" marker. We ignore wide wrapper elements
+ * (which also match the class selectors) and pick the thinnest visible
+ * match, which is the actual marker line / label.
+ */
+function findTodayMarker(root: HTMLElement): HTMLElement | null {
+  const candidates = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      '[class*="today"], [class*="current-date"], [class*="current-marker"]',
+    ),
+  );
+
+  let best: HTMLElement | null = null;
+  let bestWidth = Infinity;
+
+  for (const el of candidates) {
+    const rect = el.getBoundingClientRect();
+
+    const visible = rect.width > 0 || rect.height > 0;
+    if (!visible) continue;
+
+    // Skip wrappers / containers that span a large part of the chart
+    if (rect.width > 200) continue;
+
+    if (rect.width < bestWidth) {
+      best = el;
+      bestWidth = rect.width;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Scrolls the chart so "today" is centered.
+ *
+ * @param allowFallback when true and no marker is found, estimates the
+ * position from the date range instead.
+ * @returns whether a scroll target could be determined.
+ */
+function scrollChartToToday(
+  root: HTMLElement,
+  rangeStart: Date,
+  rangeEnd: Date,
+  allowFallback: boolean,
+): boolean {
+  const scroller = findHorizontalScroller(root);
+  if (!scroller) return false;
+
+  let targetX: number | null = null;
+
+  // 1) Preferred: use the library's own "today" marker position
+  const marker = findTodayMarker(root);
+
+  if (marker) {
+    const markerRect = marker.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+
+    targetX =
+      markerRect.left +
+      markerRect.width / 2 -
+      scrollerRect.left +
+      scroller.scrollLeft;
+  }
+
+  // 2) Fallback: today's position within the full date range
+  if (targetX === null) {
+    if (!allowFallback) return false;
+
+    const total = rangeEnd.getTime() - rangeStart.getTime();
+    if (total <= 0) return false;
+
+    const ratio = Math.min(
+      1,
+      Math.max(0, (Date.now() - rangeStart.getTime()) / total),
+    );
+
+    targetX = ratio * scroller.scrollWidth;
+  }
+
+  const left = Math.max(0, targetX - scroller.clientWidth / 2);
+
+  // Avoid redundant scrolls
+  if (Math.abs(scroller.scrollLeft - left) > 2) {
+    scroller.scrollTo({ left, behavior: "auto" });
+  }
+
+  return true;
 }
 
 // -------------------------------------------------------------------------
@@ -320,13 +395,10 @@ function avatarColorFor(id: string) {
   let hash = 0;
 
   for (let i = 0; i < id.length; i++) {
-    hash =
-      (hash * 31 + id.charCodeAt(i)) >>> 0;
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   }
 
-  return AVATAR_PALETTE[
-    hash % AVATAR_PALETTE.length
-  ];
+  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
 }
 
 function initials(member: UserBase) {
@@ -349,18 +421,11 @@ function AvatarStack({
     return null;
   }
 
-  const visible = members.slice(
-    0,
-    MAX_VISIBLE_AVATARS,
-  );
+  const visible = members.slice(0, MAX_VISIBLE_AVATARS);
 
-  const overflow =
-    members.length - visible.length;
+  const overflow = members.length - visible.length;
 
-  const bubbleStyle = (
-    bg: string,
-    marginLeft: number,
-  ): CSSProperties => ({
+  const bubbleStyle = (bg: string, marginLeft: number): CSSProperties => ({
     width: 22,
     height: 22,
     marginLeft,
@@ -389,19 +454,14 @@ function AvatarStack({
         <div
           key={member.id}
           title={`${member.first_name} ${member.last_name}`}
-          style={bubbleStyle(
-            avatarColorFor(member.id),
-            i === 0 ? 0 : -8,
-          )}
+          style={bubbleStyle(avatarColorFor(member.id), i === 0 ? 0 : -8)}
         >
           {initials(member)}
         </div>
       ))}
 
       {overflow > 0 && (
-        <div style={bubbleStyle("#334155", -8)}>
-          +{overflow}
-        </div>
+        <div style={bubbleStyle("#334155", -8)}>+{overflow}</div>
       )}
     </div>
   );
@@ -424,9 +484,7 @@ interface TaskGanttViewProps {
    */
   supertaskNames?: Record<string, string>;
 
-  onTaskClick?: (
-    task: TaskResponseMembers,
-  ) => void;
+  onTaskClick?: (task: TaskResponseMembers) => void;
 
   isLoading?: boolean;
   isError?: boolean;
@@ -448,14 +506,11 @@ const GANTT_CSS_VARS: CSSProperties = {
   //
   // Dark mode:
   // --background will normally become a dark color.
-  ["--rmg-bg-color" as string]:
-    "hsl(var(--background))",
+  ["--rmg-bg-color" as string]: "hsl(var(--background))",
 
-  ["--rmg-text-color" as string]:
-    "hsl(var(--foreground))",
+  ["--rmg-text-color" as string]: "hsl(var(--foreground))",
 
-  ["--rmg-border-color" as string]:
-    "hsl(var(--border))",
+  ["--rmg-border-color" as string]: "hsl(var(--border))",
 
   ["--rmg-row-height" as string]: "80px",
 
@@ -463,11 +518,35 @@ const GANTT_CSS_VARS: CSSProperties = {
 
   ["--rmg-border-radius" as string]: "6px",
 
-  ["--rmg-marker-color" as string]:
-    "var(--maroon)",
+  ["--rmg-marker-color" as string]: "var(--maroon)",
 
   ["--rmg-today-marker-left" as string]: "0%",
 };
+
+// -------------------------------------------------------------------------
+// Dark mode override for the "Today" label
+// -------------------------------------------------------------------------
+//
+// EDIT HERE to change how the "Today" label looks in dark mode.
+// The selectors are guesses at the library's class names, so if nothing
+// changes, inspect the label in DevTools and swap in its real class.
+// -------------------------------------------------------------------------
+
+const GANTT_DARK_OVERRIDES = `
+  .task-gantt .rmg-timeline-unit-current {
+    background-color: #e5e7eb !important;
+  }
+
+  .dark .task-gantt .rmg-timeline-unit-current {
+    background-color: #4A4A4A !important;
+  }
+
+  .dark .task-gantt [class*="today"],
+  .dark .task-gantt [class*="current-date"],
+  .dark .task-gantt [class*="current-marker"] {
+    color: #ffffff !important;
+  }
+`;
 
 // -------------------------------------------------------------------------
 // Component
@@ -479,33 +558,27 @@ export function TaskGanttView({
   isLoading = false,
   isError = false,
 }: TaskGanttViewProps) {
-  const [
-    selectedTaskId,
-    setSelectedTaskId,
-  ] = useState<
+  const [selectedTaskId, setSelectedTaskId] = useState<
     TaskResponseMembers["id"] | null
   >(null);
 
   const selectedTask = useMemo(
-    () =>
-      tasks.find(
-        (t) => t.id === selectedTaskId,
-      ) ?? null,
+    () => tasks.find((t) => t.id === selectedTaskId) ?? null,
     [tasks, selectedTaskId],
   );
 
-  const [
-    viewDialogOpen,
-    setViewDialogOpen,
-  ] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Latest date range of the chart, read by the scroll-to-today effect
+  const rangeRef = useRef<{ start: Date; end: Date } | null>(null);
 
   // -----------------------------------------------------------------------
   // Task click
   // -----------------------------------------------------------------------
 
-  const handleTaskClick = (
-    task: TaskResponseMembers,
-  ) => {
+  const handleTaskClick = (task: TaskResponseMembers) => {
     if (onTaskClick) {
       onTaskClick(task);
       return;
@@ -515,9 +588,7 @@ export function TaskGanttView({
     setViewDialogOpen(true);
   };
 
-  const handleViewDialogChange = (
-    open: boolean,
-  ) => {
+  const handleViewDialogChange = (open: boolean) => {
     setViewDialogOpen(open);
   };
 
@@ -532,14 +603,9 @@ export function TaskGanttView({
 
     return tasks
       .map((task) => {
-        const status: TaskStatus =
-          normalizeStatus(task.status);
+        const status: TaskStatus = normalizeStatus(task.status);
 
-        const {
-          startDate,
-          endDate,
-          percent,
-        } = resolveTask(task);
+        const { startDate, endDate, percent } = resolveTask(task);
 
         const ganttTask: GanttCustomTask = {
           id: task.id,
@@ -559,8 +625,7 @@ export function TaskGanttView({
       })
       .sort(
         (a, b) =>
-          a.tasks[0].startDate.getTime() -
-          b.tasks[0].startDate.getTime(),
+          a.tasks[0].startDate.getTime() - b.tasks[0].startDate.getTime(),
       );
   }, [tasks]);
 
@@ -573,23 +638,13 @@ export function TaskGanttView({
 
     startOfToday.setHours(0, 0, 0, 0);
 
-    const horizonEnd = addMonths(
-      startOfToday,
-      HORIZON_MONTHS,
-    );
+    const horizonEnd = addMonths(startOfToday, HORIZON_MONTHS);
 
-    const placeholderCount = Math.max(
-      MIN_GANTT_ROWS - realGroups.length,
-      1,
-    );
+    const placeholderCount = Math.max(MIN_GANTT_ROWS - realGroups.length, 1);
 
     const placeholders: TaskGroup[] = [];
 
-    for (
-      let i = 0;
-      i < placeholderCount;
-      i++
-    ) {
+    for (let i = 0; i < placeholderCount; i++) {
       const isAnchor = i === 0;
 
       placeholders.push({
@@ -600,9 +655,7 @@ export function TaskGanttView({
             id: `placeholder-task-${i}`,
             name: "",
             startDate: startOfToday,
-            endDate: isAnchor
-              ? horizonEnd
-              : startOfToday,
+            endDate: isAnchor ? horizonEnd : startOfToday,
             percent: 0,
             status: "not_started",
             raw: dummyRaw,
@@ -611,11 +664,92 @@ export function TaskGanttView({
       });
     }
 
-    return [
-      ...realGroups,
-      ...placeholders,
-    ];
+    return [...realGroups, ...placeholders];
   }, [realGroups]);
+
+  // Keep the latest range available to the scroll effect without making
+  // the effect re-run (and yank the view) on every data refetch.
+  const hasGroups = groups.length > 0;
+
+  useEffect(() => {
+    if (groups.length === 0) {
+      rangeRef.current = null;
+      return;
+    }
+
+    const starts = groups.map((g) => g.tasks[0].startDate.getTime());
+    const ends = groups.map((g) => g.tasks[0].endDate.getTime());
+
+    rangeRef.current = {
+      start: new Date(Math.min(...starts)),
+      end: new Date(Math.max(...ends)),
+    };
+  }, [groups]);
+
+  // -----------------------------------------------------------------------
+  // Scroll the timeline to the current date when the chart first shows.
+  //
+  // The chart lays out asynchronously (and may re-layout), so we keep
+  // re-aligning on a short interval for ~1.5s. As soon as the user
+  // scrolls / touches / clicks, we stop so we never fight them.
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    if (isLoading || isError || !hasGroups) return;
+
+    const root = containerRef.current;
+    if (!root) return;
+
+    const MAX_ATTEMPTS = 25;
+    const INTERVAL_MS = 60;
+
+    let cancelled = false;
+    let userInteracted = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const stopOnInteraction = () => {
+      userInteracted = true;
+    };
+
+    const events: (keyof HTMLElementEventMap)[] = [
+      "wheel",
+      "touchstart",
+      "pointerdown",
+      "keydown",
+    ];
+
+    events.forEach((evt) =>
+      root.addEventListener(evt, stopOnInteraction, { passive: true }),
+    );
+
+    const tick = () => {
+      if (cancelled || userInteracted) return;
+
+      const range = rangeRef.current;
+      if (!range) return;
+
+      attempts += 1;
+      const isLastAttempt = attempts >= MAX_ATTEMPTS;
+
+      // Only use the date-range estimate as a last resort
+      scrollChartToToday(root, range.start, range.end, isLastAttempt);
+
+      if (!isLastAttempt) {
+        timer = setTimeout(tick, INTERVAL_MS);
+      }
+    };
+
+    const raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
+
+      events.forEach((evt) => root.removeEventListener(evt, stopOnInteraction));
+    };
+  }, [isLoading, isError, hasGroups]);
 
   // -----------------------------------------------------------------------
   // Render
@@ -623,8 +757,12 @@ export function TaskGanttView({
 
   return (
     <div className="mt-6">
+      <style>{GANTT_DARK_OVERRIDES}</style>
+
       <div
+        ref={containerRef}
         className="
+          task-gantt
           relative
           overflow-visible
           bg-background
@@ -655,69 +793,47 @@ export function TaskGanttView({
         ) : (
           <GanttChart
             tasks={groups}
-            maxHeight={700}
             showProgress
             editMode={false}
             showCurrentDateMarker
             todayLabel="Today"
-
             // Day-only view
             viewMode={ViewMode.DAY}
             viewModes={false}
             renderHeader={() => null}
             renderTaskList={() => null}
-
             // -------------------------------------------------------------
             // Task colors
             // -------------------------------------------------------------
-
             getTaskColor={({ task }) => {
-              const t =
-                task as GanttCustomTask;
+              const t = task as GanttCustomTask;
 
-              // Placeholder / anchor rows
-              // are completely invisible.
+              // Placeholder / anchor rows are completely invisible.
               if (t.name === "") {
                 return {
-                  backgroundColor:
-                    "transparent",
+                  backgroundColor: "transparent",
                   textColor: "transparent",
                 };
               }
 
-              return resolveColor(
-                t.status,
-                t.percent ?? 0,
-              );
+              return resolveColor(t.status, t.percent ?? 0);
             }}
-
             // -------------------------------------------------------------
             // Custom task renderer
             // -------------------------------------------------------------
+            renderTask={({ task, isHovered }) => {
+              const t = task as GanttCustomTask;
 
-            renderTask={({
-              task,
-              isHovered,
-            }) => {
-              const t =
-                task as GanttCustomTask;
-
-              const color = resolveColor(
-                t.status,
-                t.percent ?? 0,
-              );
+              const color = resolveColor(t.status, t.percent ?? 0);
 
               const taskStyle: CSSProperties = {
                 width: "100%",
-                height:
-                  "var(--rmg-task-height, 85px)",
+                height: "var(--rmg-task-height, 85px)",
                 display: "flex",
                 alignItems: "center",
-                justifyContent:
-                  "space-between",
+                justifyContent: "space-between",
                 gap: 6,
-                padding:
-                  "0 6px 0 14px",
+                padding: "0 6px 0 14px",
                 borderRadius: "7px",
                 fontSize: 13,
                 fontWeight: 600,
@@ -728,8 +844,7 @@ export function TaskGanttView({
                   ? "0 2px 6px rgba(15, 23, 42, 0.12)"
                   : "none",
 
-                transition:
-                  "box-shadow 0.15s ease",
+                transition: "box-shadow 0.15s ease",
               };
 
               // -----------------------------------------------------------
@@ -737,11 +852,9 @@ export function TaskGanttView({
               // -----------------------------------------------------------
 
               if (t.name === "") {
-                taskStyle.backgroundColor =
-                  "transparent";
+                taskStyle.backgroundColor = "transparent";
 
-                taskStyle.pointerEvents =
-                  "none";
+                taskStyle.pointerEvents = "none";
 
                 taskStyle.boxShadow = "none";
               }
@@ -749,24 +862,15 @@ export function TaskGanttView({
               // -----------------------------------------------------------
               // In progress
               // -----------------------------------------------------------
+              else if (t.status === "in_progress") {
+                const passed = solidColorForProgress(
+                  IN_PROGRESS_HUE,
+                  t.percent ?? 0,
+                );
 
-              else if (
-                t.status === "in_progress"
-              ) {
-                const passed =
-                  solidColorForProgress(
-                    IN_PROGRESS_HUE,
-                    t.percent ?? 0,
-                  );
+                const upcoming = pastelColorForProgress(IN_PROGRESS_HUE, 0);
 
-                const upcoming =
-                  pastelColorForProgress(
-                    IN_PROGRESS_HUE,
-                    0,
-                  );
-
-                taskStyle.background =
-                  `linear-gradient(
+                taskStyle.background = `linear-gradient(
                     to right,
                     ${passed.backgroundColor} 0%,
                     ${passed.backgroundColor} ${t.percent ?? 0}%,
@@ -774,32 +878,26 @@ export function TaskGanttView({
                     ${upcoming.backgroundColor} 100%
                   )`;
 
-                taskStyle.color =
-                  passed.textColor;
+                taskStyle.color = passed.textColor;
               }
 
               // -----------------------------------------------------------
               // Other statuses
               // -----------------------------------------------------------
-
               else {
-                taskStyle.backgroundColor =
-                  color.backgroundColor;
+                taskStyle.backgroundColor = color.backgroundColor;
 
-                taskStyle.color =
-                  color.textColor;
+                taskStyle.color = color.textColor;
               }
 
-              const members =
-                t.raw.assigned_members ?? [];
+              const members = t.raw.assigned_members ?? [];
 
               return (
                 <div style={taskStyle}>
                   <span
                     style={{
                       overflow: "hidden",
-                      textOverflow:
-                        "ellipsis",
+                      textOverflow: "ellipsis",
                       minWidth: 0,
                     }}
                   >
@@ -809,26 +907,20 @@ export function TaskGanttView({
                   <AvatarStack
                     members={members}
                     ringColor={
-                      t.status ===
-                      "in_progress"
-                        ? solidColorForProgress(
-                            IN_PROGRESS_HUE,
-                            t.percent ?? 0,
-                          ).backgroundColor
+                      t.status === "in_progress"
+                        ? solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0)
+                            .backgroundColor
                         : color.backgroundColor
                     }
                   />
                 </div>
               );
             }}
-
             // -------------------------------------------------------------
             // Task click
             // -------------------------------------------------------------
-
             onTaskClick={(task) => {
-              const t =
-                task as GanttCustomTask;
+              const t = task as GanttCustomTask;
 
               if (!t.raw?.id) {
                 return;
@@ -845,13 +937,9 @@ export function TaskGanttView({
       {selectedTask && (
         <EditTaskDialog
           task={selectedTask}
-          projectId={
-            selectedTask.project_id
-          }
+          projectId={selectedTask.project_id}
           open={viewDialogOpen}
-          onOpenChange={
-            handleViewDialogChange
-          }
+          onOpenChange={handleViewDialogChange}
         />
       )}
     </div>

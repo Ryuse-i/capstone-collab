@@ -52,9 +52,11 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 import NotificationCenter from "@/components/notifications/NotificationCenter";
 import { PageTransition } from "@/components/page-transition";
+import { RealtimeClock } from "@/components/user/Realtime-clock";
 
 interface BreadcrumbItemType {
   label: string;
@@ -71,7 +73,6 @@ export default function AppLayout({
   breadcrumbs = [],
 }: AppLayoutProps) {
   const [open, setOpen] = React.useState(false);
-
 
   return (
     <SidebarProvider>
@@ -106,12 +107,12 @@ export default function AppLayout({
             </Breadcrumb>
           </div>
 
+          <RealtimeClock className="text-sm tabular-nums text-foreground" />
+
           {/* Right Side: Actions (Search & Connected Notifications) */}
           <div className="flex items-center gap-2">
             {/* Search Command Dialog Trigger */}
             <div>
-              
-            
               <CommandDialog open={open} onOpenChange={setOpen}>
                 <Command>
                   <CommandInput placeholder="Type a command or search..." />
@@ -229,6 +230,9 @@ export default function AppLayout({
           <PageTransition>{children}</PageTransition>
         </div>
       </SidebarInset>
+
+      {/* Renders all toast.success / toast.error calls */}
+      <Toaster position="top-right" />
     </SidebarProvider>
   );
 }

@@ -26,19 +26,19 @@ const categories: CategoryConfig[] = [
   {
     name: "Links",
     icon: Frame,
-    iconClass: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+    iconClass: "bg-violet-100 text-violet-700",
     barClass: "border-violet-400",
   },
   {
     name: "Paper Files",
     icon: FileText,
-    iconClass: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+    iconClass: "bg-blue-100 text-blue-700",
     barClass: "border-blue-400",
   },
   {
     name: "Code",
     icon: Code2,
-    iconClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    iconClass: "bg-emerald-100 text-emerald-700",
     barClass: "border-emerald-400",
   },
 ];
@@ -158,12 +158,6 @@ export default function ProjectResourcesPanel({
             {numberFormat.format(resources.length)} resources · {formatBytes(totalSize)} attached files
           </p>
         </header>
-
-        {message && (
-          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm" role="status">
-            {message}
-          </div>
-        )}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ResourceFilter)}>

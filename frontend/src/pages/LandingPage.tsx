@@ -6,14 +6,12 @@ import workloadBalanceImage from "@/assets/landing page/workload balance.jpg";
 import dashboardImage from "@/assets/landing page/Dashboard.png";
 import psuLogo from "@/assets/psu-logo.jpg";
 import {
-  Activity,
   CheckCircle2,
   ChevronDown,
   LayoutGridIcon,
   Menu,
   RefreshCw,
   Scale,
-  Trophy,
   X,
 } from "lucide-react";
 
@@ -47,19 +45,9 @@ const FEATURES: Feature[] = [
     desc: "System suggests actionable fixes transfer, split, or convert tasks with impact previews.",
   },
   {
-    icon: <Trophy />,
-    title: "Contribution Scoring",
-    desc: "Transparent performance metrics using complexity, effort share, and submission timing.",
-  },
-  {
     icon: <CheckCircle2 />,
     title: "Task Approval Workflow",
     desc: "Structured review pipeline with AI-assisted evaluation and inline comments.",
-  },
-  {
-    icon: <Activity />,
-    title: "Live Activity Monitoring",
-    desc: "Real-time presence system. See who's Active, Idle, or Offline instantly.",
   },
 ];
 

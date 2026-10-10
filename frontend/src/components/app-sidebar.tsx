@@ -109,10 +109,7 @@ const resourcesNavItem = {
   icon: <FolderOpen />,
 };
 
-const studentNoProjectNavMain = [
-  ...commonNavMain,
-  capstoneSearchNavItem,
-];
+const studentNoProjectNavMain = [...commonNavMain, capstoneSearchNavItem];
 
 // Full nav for a student who has joined/created a project
 const studentLeaderNavMain = [
@@ -174,13 +171,7 @@ const adminNavMain = [
 
 // Static class names so Tailwind can generate them
 // (dynamic w-${n} gets purged)
-const skeletonRowWidths = [
-  "w-20",
-  "w-16",
-  "w-24",
-  "w-20",
-  "w-24",
-];
+const skeletonRowWidths = ["w-20", "w-16", "w-24", "w-20", "w-24"];
 
 function AppSidebarSkeleton() {
   return (
@@ -238,53 +229,38 @@ function AppSidebarSkeleton() {
   );
 }
 
-export function AppSidebar({
-  ...props
-}: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
 
-  const {
-    data: currentProject,
-    isLoading: isProjectLoading,
-  } = useGetCurrentProject(user?.id ?? "");
+  const { data: currentProject, isLoading: isProjectLoading } =
+    useGetCurrentProject(user?.id ?? "");
 
-  const {
-    data: member,
-    isLoading: isMemberLoading,
-  } = useGetCurrentMember(user?.id ?? "");
-
-  const { data: projects } = useGetInstructorProjects(
+  const { data: member, isLoading: isMemberLoading } = useGetCurrentMember(
     user?.id ?? "",
   );
 
+  const { data: projects } = useGetInstructorProjects(user?.id ?? "");
+
   // Check if sidebar data is loaded
-  const sidebarDataLoaded =
-    !isProjectLoading &&
-    !isMemberLoading &&
-    !!user;
+  const sidebarDataLoaded = !isProjectLoading && !isMemberLoading && !!user;
 
   const role = user?.role?.toLowerCase();
 
   // TRUE only when the student has joined or created a project
   const hasProject = Boolean(currentProject);
 
-  const shouldShowProjectNav =
-    !isProjectLoading && hasProject;
+  const shouldShowProjectNav = !isProjectLoading && hasProject;
 
   const recentProjects =
     projects
       ?.filter(
         (project) =>
-          project.instructor === user?.id ||
-          project.advisor === user?.id,
+          project.instructor === user?.id || project.advisor === user?.id,
       )
-      .filter(
-        (project, index, allProjects) =>
-          project.id
-            ? allProjects.findIndex(
-                (item) => item.id === project.id,
-              ) === index
-            : true,
+      .filter((project, index, allProjects) =>
+        project.id
+          ? allProjects.findIndex((item) => item.id === project.id) === index
+          : true,
       )
       .filter((project) => project.id)
       .map((project) => ({
@@ -303,8 +279,7 @@ export function AppSidebar({
   ];
 
   // Normalize the member's project role for comparison
-  const memberRole =
-    member?.project_role?.toLocaleLowerCase();
+  const memberRole = member?.project_role?.toLocaleLowerCase();
 
   const isLeaderOrAbove =
     memberRole === "leader" ||
@@ -349,16 +324,11 @@ export function AppSidebar({
       // member role is still loading.
       navMain = studentMemberNavMain;
     } else {
-      navMain = isLeaderOrAbove
-        ? studentLeaderNavMain
-        : studentMemberNavMain;
+      navMain = isLeaderOrAbove ? studentLeaderNavMain : studentMemberNavMain;
     }
   } else if (role === ROLES.ADMIN) {
     navMain = adminNavMain;
-  } else if (
-    role === ROLES.INSTRUCTOR ||
-    role === ROLES.ADVISOR
-  ) {
+  } else if (role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) {
     navMain = instructorNavMain;
   } else {
     navMain = commonNavMain;
@@ -366,23 +336,17 @@ export function AppSidebar({
 
   const sidebarUser = {
     name:
-      [user?.first_name, user?.last_name]
-        .filter(Boolean)
-        .join(" ") ||
+      [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
       user?.email ||
       "User",
 
-    email:
-      user?.email || "user@example.com",
+    email: user?.email || "user@example.com",
 
     avatar: "/avatars/shadcn.jpg",
   };
 
   return (
-    <Sidebar
-      collapsible="icon"
-      {...props}
-    >
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -419,15 +383,13 @@ export function AppSidebar({
           <SidebarContent>
             <NavMain items={navMain} />
 
-            {(role === ROLES.INSTRUCTOR ||
-              role === ROLES.ADVISOR) && (
-              <NavShortcut items={navShortcuts} />
+            {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
+              <div className="group-data-[collapsible=icon]:hidden">
+                <NavShortcut items={navShortcuts} />
+              </div>
             )}
 
-            <NavSecondary
-              items={data.navSecondary}
-              className="mt-auto"
-            />
+            <NavSecondary items={data.navSecondary} className="mt-auto" />
           </SidebarContent>
 
           <SidebarFooter>
