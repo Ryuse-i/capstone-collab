@@ -71,7 +71,7 @@ async def create_user(
     _admin: User = Depends(require_admin),
 ):
     """Create a new user account from the admin dashboard."""
-    user = await AdminUserService.create_instructor(db, payload=payload.model_dump(), user_manager=user_manager)
+    user = await AdminUserService.create_user(db, payload=payload.model_dump(), user_manager=user_manager)
     await ActivityLogService.record(
         db,
         event_type="account_created",

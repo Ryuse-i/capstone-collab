@@ -22,7 +22,7 @@ class AdminUserCreate(AdminUserBase):
     """Model for creating instructor accounts from the admin dashboard."""
 
     password: str = Field(min_length=8)
-    role: Literal["instructor"] = "instructor"
+    role: UserRole
     is_active: bool = True
     must_change_password: Literal[True] = True
 

@@ -24,7 +24,9 @@ You are given the text of a research paper (a thesis, capstone or journal articl
 Extract these fields and return JSON only:
 
 - title: the paper's full title.
-- abstract: the verbatim abstract. If there is no explicit "Abstract" heading, extract the executive summary or primary introductory paragraph that summarizes the entire study.
+- abstract: the paper's abstract, which must accurately describe the paper.
+  * If the paper has its own abstract (an explicit "Abstract" heading, or an executive summary / primary introductory paragraph), extract it verbatim, then check it against the rest of the paper. It must be consistent with the paper's actual problem, methodology, and findings.
+  * If there is no abstract, or the existing one is clearly wrong, truncated, or doesn't match the paper's content, write a new abstract of about 150-250 words in a single paragraph. It should cover the problem, the methods, the main findings, and the conclusion, using only information stated in the text.
 - keywords: the author's listed keywords, or 5 relevant topic terms if none are explicitly listed.
 - category: one short discipline or field label (e.g., "Machine Learning", "Information Systems").
 - research_problem: 1-3 sentences describing the core problem or gap the paper addresses.
@@ -37,6 +39,7 @@ Rules:
 - Do NOT invent or fabricate information not present in the text.
 - Clean up unnecessary line breaks within single sentences or paragraphs.
 - Return null (or an empty list) for any field that cannot be determined.
+- The only field you may write yourself is a missing or inaccurate abstract. Base it strictly on the paper's text. Every other field must come from the text.
 """
 
 # Front matter and the conclusion matter most; keep both for long papers.

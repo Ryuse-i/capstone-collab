@@ -4,7 +4,7 @@ import type {
   AdminUser,
   AdminUserFilters,
   AdminUserListResponse,
-  CreateInstructorPayload,
+  CreateAdminUserPayload,
   UpdateAdminUserPayload,
 } from "@/types/admin_user";
 
@@ -19,7 +19,7 @@ const api = {
   },
 
   createInstructor: async (
-    payload: CreateInstructorPayload,
+    payload: CreateAdminUserPayload,
   ): Promise<AdminUser> => {
     const response = await apiClient.post<AdminUser>(url, payload);
     return response.data;
@@ -90,7 +90,7 @@ function useRefreshAdminUsers() {
     queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
 }
 
-export function useCreateInstructor() {
+export function useCreateAdminUser() {
   const refreshUsers = useRefreshAdminUsers();
   return useMutation({
     mutationFn: api.createInstructor,

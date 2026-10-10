@@ -47,7 +47,7 @@ class AdminUserService:
         return user
 
     @staticmethod
-    async def create_instructor(
+    async def create_user(
         db: AsyncSession,
         *,
         payload: dict,
@@ -60,10 +60,7 @@ class AdminUserService:
         if existing is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User with this email already exists")
 
-        role_value = UserRole(payload.get("role", "instructor"))
-        if role_value != UserRole.INSTRUCTOR:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only instructor accounts can be created here")
-
+        role_value = UserRole(payload.get("role"))
         password = payload["password"]
         user = User(
             email=normalized_email,

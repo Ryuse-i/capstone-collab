@@ -40,7 +40,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -53,7 +59,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/hooks/useAuth";
 import {
   useAdminUsers,
-  useCreateInstructor,
+  useCreateAdminUser,
   useDeactivateAdminUser,
   useReactivateAdminUser,
   useResetAdminUserPassword,
@@ -63,7 +69,7 @@ import {
 import type {
   AdminUser,
   AdminUserRole,
-  CreateInstructorPayload,
+  CreateAdminUserPayload,
   UpdateAdminUserPayload,
 } from "@/types/admin_user";
 
@@ -73,11 +79,12 @@ type RoleFilter = AdminUserRole | "all";
 type StatusFilter = "all" | "active" | "inactive";
 type Feedback = { kind: "success" | "error"; message: string };
 
-interface InstructorForm {
+interface CreateUserForm {
   email: string;
   first_name: string;
   last_name: string;
   password: string;
+  role: AdminUserRole;
   is_active: boolean;
 }
 
@@ -89,11 +96,12 @@ interface EditForm {
   must_change_password: boolean;
 }
 
-const emptyInstructorForm: InstructorForm = {
+const emptyUserForm: CreateUserForm = {
   email: "",
   first_name: "",
   last_name: "",
   password: "",
+  role: "student",
   is_active: true,
 };
 
@@ -119,17 +127,18 @@ function getErrorMessage(error: unknown): string {
   return maybeResponse.message ?? "The request could not be completed.";
 }
 
-
 function roleLabel(role: AdminUserRole): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
-
 
 function UserTableSkeleton() {
   return (
     <div className="space-y-0 divide-y">
       {Array.from({ length: 5 }, (_, index) => (
-        <div key={index} className="flex h-16.5 items-center gap-4 px-4 sm:px-5">
+        <div
+          key={index}
+          className="flex h-16.5 items-center gap-4 px-4 sm:px-5"
+        >
           <Skeleton className="size-9 rounded-md" />
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-3.5 w-36 max-w-full" />
@@ -153,7 +162,7 @@ export default function Dashboard() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<InstructorForm>(emptyInstructorForm);
+  const [createForm, setCreateForm] = useState<CreateUserForm>(emptyUserForm);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
@@ -169,7 +178,7 @@ export default function Dashboard() {
   };
   const usersQuery = useAdminUsers(filters);
 
-  const createMutation = useCreateInstructor();
+  const createMutation = useCreateAdminUser();
   const updateMutation = useUpdateAdminUser();
   const deactivateMutation = useDeactivateAdminUser();
   const reactivateMutation = useReactivateAdminUser();
@@ -215,7 +224,7 @@ export default function Dashboard() {
 
   async function submitCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const payload: CreateInstructorPayload = {
+    const payload: CreateAdminUserPayload = {
       ...createForm,
       role: "instructor",
       must_change_password: true,
@@ -226,7 +235,7 @@ export default function Dashboard() {
     );
     if (succeeded) {
       setCreateOpen(false);
-      setCreateForm(emptyInstructorForm);
+      setCreateForm(emptyUserForm);
       setPage(1);
     }
   }
@@ -269,7 +278,9 @@ export default function Dashboard() {
       : () => reactivateMutation.mutateAsync(user.id);
     const succeeded = await runAction(
       action,
-      user.is_active ? "User account deactivated." : "User account reactivated.",
+      user.is_active
+        ? "User account deactivated."
+        : "User account reactivated.",
     );
     if (succeeded) setPage(1);
   }
@@ -297,15 +308,18 @@ export default function Dashboard() {
   }
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Users" }]}>
+    <AppLayout
+      breadcrumbs={[
+        { label: "Dashboard", href: "/dashboard" },
+        { label: "Users" },
+      ]}
+    >
       <main className="mx-auto w-full max-w-7xl px-2 pb-8 sm:px-4">
         <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <ShieldCheck className="size-4 text-[#7A0C2E]" />
-              Administration
-            </div>
-            <h1 className="text-2xl font-semibold tracking-normal text-foreground">Users</h1>
+            <h1 className="text-2xl font-semibold tracking-normal text-foreground">
+              Users
+            </h1>
           </div>
           <Button
             onClick={() => {
@@ -314,7 +328,7 @@ export default function Dashboard() {
             }}
           >
             <Plus data-icon="inline-start" />
-            Create instructor
+            Create User
           </Button>
         </div>
 
@@ -374,7 +388,10 @@ export default function Dashboard() {
               </Select>
 
               <Select value={status} onValueChange={updateStatusFilter}>
-                <SelectTrigger aria-label="Filter by account status" className="w-36.25">
+                <SelectTrigger
+                  aria-label="Filter by account status"
+                  className="w-36.25"
+                >
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -392,7 +409,9 @@ export default function Dashboard() {
                 onClick={() => void usersQuery.refetch()}
                 disabled={usersQuery.isFetching}
               >
-                <RefreshCw className={usersQuery.isFetching ? "animate-spin" : ""} />
+                <RefreshCw
+                  className={usersQuery.isFetching ? "animate-spin" : ""}
+                />
               </Button>
             </div>
           </div>
@@ -401,11 +420,16 @@ export default function Dashboard() {
             {usersQuery.isError ? (
               <div className="flex min-h-64 flex-col items-center justify-center gap-3 px-5 text-center">
                 <AlertTriangle className="size-7 text-destructive" />
-                <p className="text-sm font-medium text-foreground">Users could not be loaded.</p>
+                <p className="text-sm font-medium text-foreground">
+                  Users could not be loaded.
+                </p>
                 <p className="max-w-md text-sm text-muted-foreground">
                   {getErrorMessage(usersQuery.error)}
                 </p>
-                <Button variant="outline" onClick={() => void usersQuery.refetch()}>
+                <Button
+                  variant="outline"
+                  onClick={() => void usersQuery.refetch()}
+                >
                   Try again
                 </Button>
               </div>
@@ -442,15 +466,19 @@ export default function Dashboard() {
                   <TableRow className="bg-muted/35 hover:bg-muted/35">
                     <TableHead className="pl-5">User</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead className="w-36 pr-4 text-right">Actions</TableHead>
+                    <TableHead className="w-36 pr-4 text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => {
                     const isCurrentUser = user.id === currentUser?.id;
-                    const displayName = `${user.first_name} ${user.last_name}`.trim();
+                    const displayName =
+                      `${user.first_name} ${user.last_name}`.trim();
                     const initials =
-                      `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase() || "U";
+                      `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase() ||
+                      "U";
 
                     return (
                       <TableRow key={user.id}>
@@ -461,12 +489,18 @@ export default function Dashboard() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="truncate font-medium text-foreground">{displayName || "Unnamed user"}</p>
+                                <p className="truncate font-medium text-foreground">
+                                  {displayName || "Unnamed user"}
+                                </p>
                                 {isCurrentUser && (
-                                  <span className="shrink-0 text-xs text-muted-foreground">You</span>
+                                  <span className="shrink-0 text-xs text-muted-foreground">
+                                    You
+                                  </span>
                                 )}
                               </div>
-                              <p className="max-w-70 truncate text-xs text-muted-foreground">{user.email}</p>
+                              <p className="max-w-70 truncate text-xs text-muted-foreground">
+                                {user.email}
+                              </p>
                             </div>
                           </div>
                         </TableCell>
@@ -505,7 +539,11 @@ export default function Dashboard() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              title={user.is_active ? "Deactivate account" : "Reactivate account"}
+                              title={
+                                user.is_active
+                                  ? "Deactivate account"
+                                  : "Reactivate account"
+                              }
                               aria-label={`${user.is_active ? "Deactivate" : "Reactivate"} ${displayName || user.email}`}
                               onClick={() => void toggleActive(user)}
                               disabled={anyActionPending || isCurrentUser}
@@ -539,7 +577,9 @@ export default function Dashboard() {
                 Showing {firstResult}-{lastResult} of {total}
               </p>
               <div className="flex items-center justify-between gap-3 sm:justify-end">
-                <span>Page {page} of {pageCount}</span>
+                <span>
+                  Page {page} of {pageCount}
+                </span>
                 <div className="flex gap-1">
                   <Button
                     variant="outline"
@@ -554,7 +594,9 @@ export default function Dashboard() {
                     variant="outline"
                     size="icon-sm"
                     aria-label="Next page"
-                    onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+                    onClick={() =>
+                      setPage((value) => Math.min(pageCount, value + 1))
+                    }
                     disabled={page >= pageCount || usersQuery.isFetching}
                   >
                     <ChevronRight />
@@ -570,51 +612,94 @@ export default function Dashboard() {
         open={createOpen}
         onOpenChange={(open) => {
           setCreateOpen(open);
-          if (!open) setCreateForm(emptyInstructorForm);
+          if (!open) setCreateForm(emptyUserForm);
         }}
       >
         <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create instructor</DialogTitle>
             <DialogDescription>
-              Provide a temporary password. The account will be marked to change it.
+              Provide a temporary password. The account will be marked to change
+              it.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={(event) => void submitCreate(event)} className="space-y-4">
+          <form
+            onSubmit={(event) => void submitCreate(event)}
+            className="space-y-4"
+          >
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-1.5 text-sm font-medium" htmlFor="create-first-name">
+              <label
+                className="space-y-1.5 text-sm font-medium"
+                htmlFor="create-first-name"
+              >
                 First name
                 <Input
                   id="create-first-name"
                   autoComplete="given-name"
                   value={createForm.first_name}
-                  onChange={(event) => setCreateForm({ ...createForm, first_name: event.target.value })}
+                  onChange={(event) =>
+                    setCreateForm({
+                      ...createForm,
+                      first_name: event.target.value,
+                    })
+                  }
                   required
                 />
               </label>
-              <label className="space-y-1.5 text-sm font-medium" htmlFor="create-last-name">
+              <label
+                className="space-y-1.5 text-sm font-medium"
+                htmlFor="create-last-name"
+              >
                 Last name
                 <Input
                   id="create-last-name"
                   autoComplete="family-name"
                   value={createForm.last_name}
-                  onChange={(event) => setCreateForm({ ...createForm, last_name: event.target.value })}
+                  onChange={(event) =>
+                    setCreateForm({
+                      ...createForm,
+                      last_name: event.target.value,
+                    })
+                  }
                   required
                 />
               </label>
             </div>
-            <label className="block space-y-1.5 text-sm font-medium" htmlFor="create-email">
+            <label
+              className="block space-y-1.5 text-sm font-medium"
+              htmlFor="create-email"
+            >
               Email
               <Input
                 id="create-email"
                 type="email"
                 autoComplete="email"
                 value={createForm.email}
-                onChange={(event) => setCreateForm({ ...createForm, email: event.target.value })}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, email: event.target.value })
+                }
                 required
               />
             </label>
-            <label className="block space-y-1.5 text-sm font-medium" htmlFor="create-password">
+            <Select
+              value={createForm.role}
+              onValueChange={(value) =>
+                setCreateForm({ ...createForm, role: value as AdminUserRole })
+              }
+            >
+              <SelectTrigger id="create-role" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="student">Student</SelectItem>
+                <SelectItem value="instructor">Instructor</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <label
+              className="block space-y-1.5 text-sm font-medium"
+              htmlFor="create-password"
+            >
               Temporary password
               <Input
                 id="create-password"
@@ -622,26 +707,41 @@ export default function Dashboard() {
                 autoComplete="new-password"
                 minLength={8}
                 value={createForm.password}
-                onChange={(event) => setCreateForm({ ...createForm, password: event.target.value })}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, password: event.target.value })
+                }
                 required
               />
-              <span className="block text-xs font-normal text-muted-foreground">At least 8 characters.</span>
+              <span className="block text-xs font-normal text-muted-foreground">
+                At least 8 characters.
+              </span>
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 className="size-4 accent-[#7A0C2E]"
                 checked={createForm.is_active}
-                onChange={(event) => setCreateForm({ ...createForm, is_active: event.target.checked })}
+                onChange={(event) =>
+                  setCreateForm({
+                    ...createForm,
+                    is_active: event.target.checked,
+                  })
+                }
               />
               Active account
             </label>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending && <LoaderCircle className="animate-spin" />}
+                {createMutation.isPending && (
+                  <LoaderCircle className="animate-spin" />
+                )}
                 Create account
               </Button>
             </DialogFooter>
@@ -664,23 +764,42 @@ export default function Dashboard() {
             <DialogDescription>{editingUser?.email}</DialogDescription>
           </DialogHeader>
           {editForm && editingUser && (
-            <form onSubmit={(event) => void submitEdit(event)} className="space-y-4">
+            <form
+              onSubmit={(event) => void submitEdit(event)}
+              className="space-y-4"
+            >
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="space-y-1.5 text-sm font-medium" htmlFor="edit-first-name">
+                <label
+                  className="space-y-1.5 text-sm font-medium"
+                  htmlFor="edit-first-name"
+                >
                   First name
                   <Input
                     id="edit-first-name"
                     value={editForm.first_name}
-                    onChange={(event) => setEditForm({ ...editForm, first_name: event.target.value })}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        first_name: event.target.value,
+                      })
+                    }
                     required
                   />
                 </label>
-                <label className="space-y-1.5 text-sm font-medium" htmlFor="edit-last-name">
+                <label
+                  className="space-y-1.5 text-sm font-medium"
+                  htmlFor="edit-last-name"
+                >
                   Last name
                   <Input
                     id="edit-last-name"
                     value={editForm.last_name}
-                    onChange={(event) => setEditForm({ ...editForm, last_name: event.target.value })}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        last_name: event.target.value,
+                      })
+                    }
                     required
                   />
                 </label>
@@ -689,7 +808,9 @@ export default function Dashboard() {
                 <label htmlFor="edit-role">Role</label>
                 <Select
                   value={editForm.role}
-                  onValueChange={(value) => setEditForm({ ...editForm, role: value as AdminUserRole })}
+                  onValueChange={(value) =>
+                    setEditForm({ ...editForm, role: value as AdminUserRole })
+                  }
                   disabled={editingUser.id === currentUser?.id}
                 >
                   <SelectTrigger id="edit-role" className="w-full">
@@ -708,7 +829,12 @@ export default function Dashboard() {
                   className="size-4 accent-[#7A0C2E]"
                   checked={editForm.is_active}
                   disabled={editingUser.id === currentUser?.id}
-                  onChange={(event) => setEditForm({ ...editForm, is_active: event.target.checked })}
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      is_active: event.target.checked,
+                    })
+                  }
                 />
                 Active account
               </label>
@@ -717,19 +843,32 @@ export default function Dashboard() {
                   type="checkbox"
                   className="size-4 accent-[#7A0C2E]"
                   checked={editForm.must_change_password}
-                  onChange={(event) => setEditForm({ ...editForm, must_change_password: event.target.checked })}
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      must_change_password: event.target.checked,
+                    })
+                  }
                 />
                 Require password change
               </label>
               {editingUser.id === currentUser?.id && (
-                <p className="text-xs text-muted-foreground">Your own role and active status cannot be changed here.</p>
+                <p className="text-xs text-muted-foreground">
+                  Your own role and active status cannot be changed here.
+                </p>
               )}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingUser(null)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending && <LoaderCircle className="animate-spin" />}
+                  {updateMutation.isPending && (
+                    <LoaderCircle className="animate-spin" />
+                  )}
                   Save changes
                 </Button>
               </DialogFooter>
@@ -751,11 +890,18 @@ export default function Dashboard() {
           <DialogHeader>
             <DialogTitle>Reset password</DialogTitle>
             <DialogDescription>
-              Set a temporary password for {resetTarget?.email}. The account will be marked to change it.
+              Set a temporary password for {resetTarget?.email}. The account
+              will be marked to change it.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={(event) => void submitPasswordReset(event)} className="space-y-4">
-            <label className="block space-y-1.5 text-sm font-medium" htmlFor="reset-password">
+          <form
+            onSubmit={(event) => void submitPasswordReset(event)}
+            className="space-y-4"
+          >
+            <label
+              className="block space-y-1.5 text-sm font-medium"
+              htmlFor="reset-password"
+            >
               Temporary password
               <Input
                 id="reset-password"
@@ -766,14 +912,22 @@ export default function Dashboard() {
                 onChange={(event) => setResetPassword(event.target.value)}
                 required
               />
-              <span className="block text-xs font-normal text-muted-foreground">At least 8 characters.</span>
+              <span className="block text-xs font-normal text-muted-foreground">
+                At least 8 characters.
+              </span>
             </label>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setResetTarget(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setResetTarget(null)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={resetMutation.isPending}>
-                {resetMutation.isPending && <LoaderCircle className="animate-spin" />}
+                {resetMutation.isPending && (
+                  <LoaderCircle className="animate-spin" />
+                )}
                 Set password
               </Button>
             </DialogFooter>
@@ -781,12 +935,17 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove this account?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget?.email} will be deactivated and hidden from the user list. Accounts with project memberships or the last active admin cannot be removed.
+              {deleteTarget?.email} will be deactivated and hidden from the user
+              list. Accounts with project memberships or the last active admin
+              cannot be removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -796,7 +955,9 @@ export default function Dashboard() {
               onClick={() => void confirmDelete()}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending && <LoaderCircle className="animate-spin" />}
+              {deleteMutation.isPending && (
+                <LoaderCircle className="animate-spin" />
+              )}
               Remove account
             </AlertDialogAction>
           </AlertDialogFooter>

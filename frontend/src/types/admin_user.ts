@@ -30,12 +30,12 @@ export interface AdminUserFilters {
   page_size: number;
 }
 
-export interface CreateInstructorPayload {
+export interface CreateAdminUserPayload{
   email: string;
   first_name: string;
   last_name: string;
   password: string;
-  role: "instructor";
+  role: AdminUserRole;
   is_active: boolean;
   must_change_password: true;
 }

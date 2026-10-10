@@ -684,10 +684,6 @@ export default function Overview() {
       <main className="mx-auto w-full max-w-7xl space-y-5 px-2 pb-8 sm:px-4">
         <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <ShieldCheck className="size-4 text-[#7A0C2E]" />
-              PSU Collab · Administration
-            </div>
             <h1 className="text-2xl font-semibold text-foreground">System overview</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Current account, project, and task activity across the system.
