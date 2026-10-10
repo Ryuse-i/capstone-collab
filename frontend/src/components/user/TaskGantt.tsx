@@ -37,7 +37,11 @@ const COMPLETED_COLOR = {
 };
 
 const IN_PROGRESS_HUE = 217;
-const MIN_GANTT_ROWS = 8;
+
+// Minimum number of rows (real + invisible filler). 0 means the chart is
+// exactly as tall as its tasks, plus one invisible anchor row that keeps
+// the timeline stretched across the horizon.
+const MIN_GANTT_ROWS = 0;
 const HORIZON_MONTHS = 3;
 
 // Dummy raw object for placeholder tasks
@@ -95,7 +99,10 @@ function pastelColorForProgress(hue: number, progress: number) {
 function normalizeStatus(raw: unknown): TaskStatus {
   if (typeof raw !== "string") return "not_started";
 
-  const key = raw.trim().toLowerCase().replace(/[_\s]+/g, "-");
+  const key = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
 
   switch (key) {
     case "not-started":
@@ -281,10 +288,51 @@ function findHorizontalScroller(root: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/**
+ * Finds the library's "today" marker. We ignore wide wrapper elements
+ * (which also match the class selectors) and pick the thinnest visible
+ * match, which is the actual marker line / label.
+ */
+function findTodayMarker(root: HTMLElement): HTMLElement | null {
+  const candidates = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      '[class*="today"], [class*="current-date"], [class*="current-marker"]',
+    ),
+  );
+
+  let best: HTMLElement | null = null;
+  let bestWidth = Infinity;
+
+  for (const el of candidates) {
+    const rect = el.getBoundingClientRect();
+
+    const visible = rect.width > 0 || rect.height > 0;
+    if (!visible) continue;
+
+    // Skip wrappers / containers that span a large part of the chart
+    if (rect.width > 200) continue;
+
+    if (rect.width < bestWidth) {
+      best = el;
+      bestWidth = rect.width;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Scrolls the chart so "today" is centered.
+ *
+ * @param allowFallback when true and no marker is found, estimates the
+ * position from the date range instead.
+ * @returns whether a scroll target could be determined.
+ */
 function scrollChartToToday(
   root: HTMLElement,
   rangeStart: Date,
   rangeEnd: Date,
+  allowFallback: boolean,
 ): boolean {
   const scroller = findHorizontalScroller(root);
   if (!scroller) return false;
@@ -292,21 +340,23 @@ function scrollChartToToday(
   let targetX: number | null = null;
 
   // 1) Preferred: use the library's own "today" marker position
-  const marker = root.querySelector<HTMLElement>(
-    '[class*="today"], [class*="current-date"], [class*="current-marker"]',
-  );
+  const marker = findTodayMarker(root);
 
   if (marker) {
     const markerRect = marker.getBoundingClientRect();
     const scrollerRect = scroller.getBoundingClientRect();
 
-    if (markerRect.width > 0 || markerRect.height > 0) {
-      targetX = markerRect.left - scrollerRect.left + scroller.scrollLeft;
-    }
+    targetX =
+      markerRect.left +
+      markerRect.width / 2 -
+      scrollerRect.left +
+      scroller.scrollLeft;
   }
 
   // 2) Fallback: today's position within the full date range
   if (targetX === null) {
+    if (!allowFallback) return false;
+
     const total = rangeEnd.getTime() - rangeStart.getTime();
     if (total <= 0) return false;
 
@@ -318,10 +368,12 @@ function scrollChartToToday(
     targetX = ratio * scroller.scrollWidth;
   }
 
-  scroller.scrollTo({
-    left: Math.max(0, targetX - scroller.clientWidth / 2),
-    behavior: "auto",
-  });
+  const left = Math.max(0, targetX - scroller.clientWidth / 2);
+
+  // Avoid redundant scrolls
+  if (Math.abs(scroller.scrollLeft - left) > 2) {
+    scroller.scrollTo({ left, behavior: "auto" });
+  }
 
   return true;
 }
@@ -408,7 +460,9 @@ function AvatarStack({
         </div>
       ))}
 
-      {overflow > 0 && <div style={bubbleStyle("#334155", -8)}>+{overflow}</div>}
+      {overflow > 0 && (
+        <div style={bubbleStyle("#334155", -8)}>+{overflow}</div>
+      )}
     </div>
   );
 }
@@ -470,6 +524,31 @@ const GANTT_CSS_VARS: CSSProperties = {
 };
 
 // -------------------------------------------------------------------------
+// Dark mode override for the "Today" label
+// -------------------------------------------------------------------------
+//
+// EDIT HERE to change how the "Today" label looks in dark mode.
+// The selectors are guesses at the library's class names, so if nothing
+// changes, inspect the label in DevTools and swap in its real class.
+// -------------------------------------------------------------------------
+
+const GANTT_DARK_OVERRIDES = `
+  .task-gantt .rmg-timeline-unit-current {
+    background-color: #e5e7eb !important;
+  }
+
+  .dark .task-gantt .rmg-timeline-unit-current {
+    background-color: #4A4A4A !important;
+  }
+
+  .dark .task-gantt [class*="today"],
+  .dark .task-gantt [class*="current-date"],
+  .dark .task-gantt [class*="current-marker"] {
+    color: #ffffff !important;
+  }
+`;
+
+// -------------------------------------------------------------------------
 // Component
 // -------------------------------------------------------------------------
 
@@ -491,6 +570,9 @@ export function TaskGanttView({
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Latest date range of the chart, read by the scroll-to-today effect
+  const rangeRef = useRef<{ start: Date; end: Date } | null>(null);
 
   // -----------------------------------------------------------------------
   // Task click
@@ -585,45 +667,89 @@ export function TaskGanttView({
     return [...realGroups, ...placeholders];
   }, [realGroups]);
 
-  // -----------------------------------------------------------------------
-  // Scroll the timeline to the current date whenever the view is shown
-  // (or the data finishes loading / changes).
-  // -----------------------------------------------------------------------
+  // Keep the latest range available to the scroll effect without making
+  // the effect re-run (and yank the view) on every data refetch.
+  const hasGroups = groups.length > 0;
 
   useEffect(() => {
-    if (isLoading || isError) return;
-
-    const root = containerRef.current;
-    if (!root || groups.length === 0) return;
+    if (groups.length === 0) {
+      rangeRef.current = null;
+      return;
+    }
 
     const starts = groups.map((g) => g.tasks[0].startDate.getTime());
     const ends = groups.map((g) => g.tasks[0].endDate.getTime());
-    const rangeStart = new Date(Math.min(...starts));
-    const rangeEnd = new Date(Math.max(...ends));
+
+    rangeRef.current = {
+      start: new Date(Math.min(...starts)),
+      end: new Date(Math.max(...ends)),
+    };
+  }, [groups]);
+
+  // -----------------------------------------------------------------------
+  // Scroll the timeline to the current date when the chart first shows.
+  //
+  // The chart lays out asynchronously (and may re-layout), so we keep
+  // re-aligning on a short interval for ~1.5s. As soon as the user
+  // scrolls / touches / clicks, we stop so we never fight them.
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    if (isLoading || isError || !hasGroups) return;
+
+    const root = containerRef.current;
+    if (!root) return;
+
+    const MAX_ATTEMPTS = 25;
+    const INTERVAL_MS = 60;
 
     let cancelled = false;
+    let userInteracted = false;
     let attempts = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
-    // The chart lays out asynchronously, so retry briefly until it's scrollable
-    const tryScroll = () => {
-      if (cancelled) return;
+    const stopOnInteraction = () => {
+      userInteracted = true;
+    };
 
-      const done = scrollChartToToday(root, rangeStart, rangeEnd);
+    const events: (keyof HTMLElementEventMap)[] = [
+      "wheel",
+      "touchstart",
+      "pointerdown",
+      "keydown",
+    ];
 
-      if (!done && attempts++ < 10) {
-        timer = setTimeout(tryScroll, 50);
+    events.forEach((evt) =>
+      root.addEventListener(evt, stopOnInteraction, { passive: true }),
+    );
+
+    const tick = () => {
+      if (cancelled || userInteracted) return;
+
+      const range = rangeRef.current;
+      if (!range) return;
+
+      attempts += 1;
+      const isLastAttempt = attempts >= MAX_ATTEMPTS;
+
+      // Only use the date-range estimate as a last resort
+      scrollChartToToday(root, range.start, range.end, isLastAttempt);
+
+      if (!isLastAttempt) {
+        timer = setTimeout(tick, INTERVAL_MS);
       }
     };
 
-    const raf = requestAnimationFrame(tryScroll);
+    const raf = requestAnimationFrame(tick);
 
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
       if (timer) clearTimeout(timer);
+
+      events.forEach((evt) => root.removeEventListener(evt, stopOnInteraction));
     };
-  }, [groups, isLoading, isError]);
+  }, [isLoading, isError, hasGroups]);
 
   // -----------------------------------------------------------------------
   // Render
@@ -631,9 +757,12 @@ export function TaskGanttView({
 
   return (
     <div className="mt-6">
+      <style>{GANTT_DARK_OVERRIDES}</style>
+
       <div
         ref={containerRef}
         className="
+          task-gantt
           relative
           overflow-visible
           bg-background
@@ -664,7 +793,6 @@ export function TaskGanttView({
         ) : (
           <GanttChart
             tasks={groups}
-            maxHeight={700}
             showProgress
             editMode={false}
             showCurrentDateMarker

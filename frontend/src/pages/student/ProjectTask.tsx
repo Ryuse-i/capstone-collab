@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import {
   AlertTriangle,
@@ -6,6 +6,7 @@ import {
   Clock,
   XSquare,
   BarChart2,
+  PlusCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,14 +24,14 @@ import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { TaskTable } from "@/components/user/TaskTable";
 import { TaskGanttView } from "@/components/user/TaskGantt";
 import { TaskBoard } from "@/components/user/TaskBoard";
+import { AddTaskDialog } from "@/components/user/AddTaskDialog";
+import { Button } from "@/components/ui/button";
 
 type BoardTask = {
   id: string;
   title: string;
   description: string;
 };
-
-
 
 const viewTabs = [
   { id: "table", label: "Table" },
@@ -40,6 +41,28 @@ const viewTabs = [
 
 type ViewMode = (typeof viewTabs)[number]["id"];
 
+// ---------------------------------------------------------------------------
+// Persisted view mode (remembers the last visited view)
+// ---------------------------------------------------------------------------
+
+const VIEW_MODE_STORAGE_KEY = "project-task:view-mode";
+const DEFAULT_VIEW_MODE: ViewMode = "table";
+
+function isViewMode(value: unknown): value is ViewMode {
+  return viewTabs.some((tab) => tab.id === value);
+}
+
+function getStoredViewMode(): ViewMode {
+  if (typeof window === "undefined") return DEFAULT_VIEW_MODE;
+
+  try {
+    const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    return isViewMode(stored) ? stored : DEFAULT_VIEW_MODE;
+  } catch {
+    // localStorage can be unavailable (private mode, blocked storage, etc.)
+    return DEFAULT_VIEW_MODE;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Loading Skeleton
@@ -114,10 +137,19 @@ function ProjectTaskSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function Task() {
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  // Lazy initializer reads the last visited view from localStorage
+  const [viewMode, setViewMode] = useState<ViewMode>(getStoredViewMode);
 
-    useState<BoardTask | null>(null);
+  // Save the active view whenever it changes
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {
+      // Ignore storage errors (private mode, quota exceeded, etc.)
+    }
+  }, [viewMode]);
 
+  useState<BoardTask | null>(null);
 
   // Fetch user data
   const userQuery = useCurrentUser();
@@ -277,10 +309,12 @@ export default function Task() {
             )}
 
           {/* View switcher */}
-          <div className="mt-6">
+          <div className="mt-6 flex items-center justify-between gap-4">
             <Select
               value={viewMode}
-              onValueChange={(value) => setViewMode(value as ViewMode)}
+              onValueChange={(value) => {
+                if (isViewMode(value)) setViewMode(value);
+              }}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Select view" />
@@ -294,6 +328,16 @@ export default function Task() {
                 ))}
               </SelectContent>
             </Select>
+
+            <AddTaskDialog
+              projectId={projectId}
+              trigger={
+                <Button size="sm" className="h-8">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  ADD TASK
+                </Button>
+              }
+            />
           </div>
 
           {/* Table / Board */}
@@ -315,7 +359,6 @@ export default function Task() {
           )}
         </div>
       )}
-
     </AppLayout>
   );
 }
