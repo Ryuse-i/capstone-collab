@@ -25,8 +25,8 @@ Extract these fields and return JSON only:
 
 - title: the paper's full title.
 - abstract: the paper's abstract, which must accurately describe the paper.
-  * If the paper has its own abstract (an explicit "Abstract" heading, or an executive summary / primary introductory paragraph), extract it verbatim, then check it against the rest of the paper. It must be consistent with the paper's actual problem, methodology, and findings.
-  * If there is no abstract, or the existing one is clearly wrong, truncated, or doesn't match the paper's content, write a new abstract of about 150-250 words in a single paragraph. It should cover the problem, the methods, the main findings, using only information stated in the text.
+  * If the paper has its own abstract (an explicit "Abstract" heading, or an executive summary / primary introductory paragraph), extract it verbatim, then check it against the rest of the paper. It must be consistent with what the paper actually covers.
+  * If there is no abstract, or the existing one is clearly wrong, truncated, or doesn't match the paper's content, write a new abstract of 120-200 words in a single paragraph. Give a general overview of what the study is about, what it produced or found, and why it matters. Keep it high level, since the problem, methodology, and conclusion are captured in separate fields. Use only information stated in the text.
 - keywords: the author's listed keywords, or 5 relevant topic terms if none are explicitly listed.
 - category: one short discipline or field label (e.g., "Machine Learning", "Information Systems").
 - research_problem: 1-3 sentences describing the core problem or gap the paper addresses.
