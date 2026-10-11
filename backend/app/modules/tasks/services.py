@@ -177,3 +177,8 @@ class TaskService:
     async def batch_get_task(db: AsyncSession, ids: Sequence[UUID]):
         repo = TaskRepo(db)
         return await repo.batch_get_task(ids)
+
+    @staticmethod
+    async def get_eligible_tasks(db: AsyncSession, ids: Sequence[UUID]):
+        repo = TaskRepo(db)
+        return await repo.get_eligible_tasks(ids)
