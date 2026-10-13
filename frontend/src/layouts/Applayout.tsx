@@ -77,7 +77,10 @@ export default function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="min-w-0">
+      {/* h-svh + overflow-hidden: the inset is exactly one screen tall, so
+          pages can no longer stretch it. Scrolling happens in the content
+          area below instead of on the window. */}
+      <SidebarInset className="h-svh min-w-0 overflow-hidden">
         {/* Header Layout */}
         <header className="sticky top-0 z-10 bg-background flex h-12 shrink-0 items-center justify-between border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           {/* Left Side: Sidebar Toggle & Breadcrumbs */}
@@ -107,12 +110,12 @@ export default function AppLayout({
             </Breadcrumb>
           </div>
 
-          <RealtimeClock className="text-sm tabular-nums text-foreground" />
-
           {/* Right Side: Actions (Search & Connected Notifications) */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-5">
             {/* Search Command Dialog Trigger */}
             <div>
+              <RealtimeClock className="text-sm tabular-nums text-foreground" />
+
               <CommandDialog open={open} onOpenChange={setOpen}>
                 <Command>
                   <CommandInput placeholder="Type a command or search..." />
@@ -225,8 +228,9 @@ export default function AppLayout({
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <div className="flex min-h-0 flex-1 flex-col gap-4 px-2 pb-4 pt-0 min-w-0">
+        {/* Main Content Area: scrolls on its own when a page is taller than
+            the screen. Pages that fit (like Chat) never trigger it. */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pb-4 pt-0">
           <PageTransition>{children}</PageTransition>
         </div>
       </SidebarInset>

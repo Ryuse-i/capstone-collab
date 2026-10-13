@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import AppLayout from "@/layouts/Applayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,12 @@ function useDebouncedValue<T>(value: T, delay = 350) {
     return () => clearTimeout(id);
   }, [value, delay]);
   return debounced;
+}
+
+/** Shortens long titles so they fit nicely inside a toast. */
+function truncateTitle(title: string, maxLength = 50) {
+  if (title.length <= maxLength) return title;
+  return `${title.slice(0, maxLength)}...`;
 }
 
 function ResultsSkeleton() {
@@ -224,6 +231,7 @@ function PaperCard({
 
 export default function CapstoneRepository() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Role check using current user data
@@ -240,6 +248,40 @@ export default function CapstoneRepository() {
   const isSearching = trimmedQuery !== "";
 
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  // Guards against showing the delete toast twice (e.g. React StrictMode)
+  const deleteToastShownRef = useRef(false);
+
+  // Show the toast for a paper deleted on the capstone view page.
+  // That page unmounts on navigation, so the toast is shown here instead.
+  useEffect(() => {
+    const state = location.state as {
+      paperDeleted?: boolean;
+      deletedPaperTitle?: string | null;
+    } | null;
+
+    if (!state?.paperDeleted || deleteToastShownRef.current) return;
+    deleteToastShownRef.current = true;
+
+    const title = state.deletedPaperTitle;
+
+    // Small delay so the Toaster is mounted after the page transition.
+    // Intentionally not cleared on cleanup, since clearing the state below
+    // re-runs this effect.
+    window.setTimeout(() => {
+      toast.success(
+        title
+          ? `"${truncateTitle(title)}" was deleted.`
+          : "Paper deleted successfully."
+      );
+    }, 150);
+
+    // Clear the router state so a refresh or back navigation doesn't repeat it
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: null,
+    });
+  }, [location, navigate]);
 
   const {
     data: searchResults = [],
@@ -311,7 +353,7 @@ export default function CapstoneRepository() {
         { label: "Capstone Repository", href: "/capstone-repository" },
       ]}
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 px-4 pt-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-0">
@@ -345,21 +387,6 @@ export default function CapstoneRepository() {
               onChange={(e) => setInput(e.target.value)}
             />
           </div>
-        </div>
-
-        {/* Example suggestions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">Try these examples</span>
-          {examples.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              onClick={() => setInput(ex)}
-              className="text-xs text-primary underline-offset-4 hover:underline"
-            >
-              {ex}
-            </button>
-          ))}
         </div>
 
         {/* Section label */}

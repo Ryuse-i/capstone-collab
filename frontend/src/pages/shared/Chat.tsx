@@ -19,8 +19,14 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import { useGetProjectMessages, useSendMessage } from "@/hooks/useMessage";
 import { useGetProjectMeetings } from "@/hooks/useMeeting";
+import { markChatSeen } from "@/hooks/useChatUnread";
 import type { MeetingProvider } from "@/types/meeting";
 import { MeetingDialog } from "@/components/meetings/MeetingDialog";
+
+// Exact height of the area AppLayout gives to pages:
+// 100svh - 3rem (header h-12) - 1rem (content pb-4).
+// If you change the header height or the layout padding, change this too.
+const FILL = "h-[calc(100svh-4rem)] min-h-0";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
   if (!firstName && !lastName) return "?";
@@ -49,19 +55,15 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
   ];
 
   return (
-    <div
-      className={`mt-2 flex min-h-0 w-full flex-1 gap-2 ${
-        isInstructor ? "-mb-4" : ""
-      }`}
-    >
+    <div className={`flex w-full gap-2 ${FILL}`}>
       {/* ── Instructor Project Sidebar ─────────────────────────────── */}
       {isInstructor && (
-        <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
+        <aside className="hidden h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
           <div className="border-b px-4 py-3">
             <Skeleton className="h-4 w-20" />
           </div>
 
-          <div className="flex-1 space-y-2 overflow-hidden p-2">
+          <div className="min-h-0 flex-1 space-y-2 overflow-hidden p-2">
             {[1, 2, 3, 4, 5, 6].map((item) => (
               <div key={item} className="rounded-md px-3 py-2">
                 <Skeleton
@@ -76,8 +78,8 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
       )}
 
       {/* ── Chat Card ───────────────────────────────────────────────── */}
-      <div className="h-full min-w-0 flex-1">
-        <Card className="flex h-full w-full flex-1 flex-col overflow-hidden pb-0">
+      <div className="h-full min-h-0 min-w-0 flex-1">
+        <Card className="flex h-full min-h-0 w-full flex-col overflow-hidden pb-0">
           <CardContent className="flex min-h-0 flex-1 flex-col p-0">
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b px-4 pb-2">
@@ -89,7 +91,7 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 min-h-0 overflow-hidden bg-white p-6 dark:bg-[#101014]">
+            <div className="min-h-0 flex-1 overflow-hidden bg-white p-6 dark:bg-[#101014]">
               <div className="flex flex-col gap-5">
                 {messageWidths.map((width, index) => {
                   const isRight = index % 2 === 1;
@@ -217,6 +219,13 @@ export default function Chat() {
     }
   }, [messages, isLoading, isError]);
 
+  // Mark messages as seen while the chat is open so the sidebar dot clears
+  // (and stays clear for messages that arrive while you're viewing).
+  useEffect(() => {
+    if (isLoading || isError || !user?.id || !projectId) return;
+    markChatSeen(user.id, projectId, messages);
+  }, [messages, isLoading, isError, user?.id, projectId]);
+
   const handleSend = () => {
     if (!input.trim() || !projectId) return;
 
@@ -231,13 +240,13 @@ export default function Chat() {
   };
 
   const chatCard = (
-    <div className="h-full min-w-0 flex-1">
-      <Card className="flex h-full w-full flex-1 flex-col overflow-hidden pb-0">
+    <div className="h-full min-h-0 min-w-0 flex-1">
+      <Card className="flex h-full min-h-0 w-full flex-col overflow-hidden pb-0">
         <CardContent className="flex min-h-0 flex-1 flex-col p-0">
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b px-4 pb-2">
-            <div className="flex items-center gap-3">
-              <div className="text-lg font-medium">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="truncate text-lg font-medium">
                 {(isInstructor
                   ? selectedProject?.name
                   : currentProject?.name) || "Project chat"}
@@ -245,7 +254,7 @@ export default function Chat() {
             </div>
 
             {canManageMeetings && (
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -260,17 +269,17 @@ export default function Chat() {
             )}
           </div>
 
-          {/* Messages area */}
+          {/* Messages area: this is the only part that scrolls */}
           <div
             ref={scrollRef}
-            className="custom-scrollbar flex-1 min-h-0 overflow-auto bg-white p-6 dark:bg-[#101014]"
+            className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-white p-6 dark:bg-[#101014]"
           >
             {isFetching && messagesLoading ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 Loading messages...
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
+              <div className="flex min-h-full flex-col gap-4">
                 {meetingsLoading && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
                     Loading meeting details...
@@ -288,7 +297,7 @@ export default function Chat() {
                   .map((meeting) => (
                     <div
                       key={`meeting-${meeting.id}`}
-                      className={`flex ${
+                      className={`flex shrink-0 ${
                         meeting.created_by === user?.id
                           ? "justify-end"
                           : "justify-start"
@@ -348,7 +357,7 @@ export default function Chat() {
                   return (
                     <div
                       key={msg.id}
-                      className={`flex ${
+                      className={`flex shrink-0 ${
                         isMe ? "justify-end" : "justify-start"
                       }`}
                     >
@@ -362,7 +371,7 @@ export default function Chat() {
                       )}
 
                       <div
-                        className={`max-w-[70%] rounded-lg p-3 ${
+                        className={`min-w-0 max-w-[70%] rounded-lg p-3 ${
                           isMe
                             ? "bg-[#800000] text-white dark:bg-[#6a0101]"
                             : "bg-gray-100 text-foreground dark:bg-[#16161a]"
@@ -376,7 +385,9 @@ export default function Chat() {
                           </div>
                         )}
 
-                        <div className="text-sm">{msg.content}</div>
+                        <div className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">
+                          {msg.content}
+                        </div>
 
                         <div className="mt-1 text-right text-[11px] text-muted-foreground">
                           {formatTime(msg.created_at)}
@@ -396,7 +407,7 @@ export default function Chat() {
                 })}
 
                 {!messages?.length && (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
                     No messages yet — say hello.
                   </div>
                 )}
@@ -437,12 +448,13 @@ export default function Chat() {
   );
 
   const instructorSidebar = (
-    <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
-      <div className="border-b px-4 py-3">
+    <aside className="hidden h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
+      <div className="shrink-0 border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Projects</h2>
       </div>
 
-      <div className="custom-scrollbar flex-1 overflow-y-auto p-2">
+      {/* min-h-0 is what lets this list scroll instead of overflowing */}
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2">
         {instructorProjectsLoading ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
             Loading projects...
@@ -483,19 +495,19 @@ export default function Chat() {
     </aside>
   );
 
-  const content = isInstructor ? (
-    <div className="mt-2 flex flex-1 -mb-4 min-h-0 w-full gap-2">
-      {instructorSidebar}
+  const content = (
+    <div className={`flex w-full gap-2 ${FILL}`}>
+      {isInstructor && instructorSidebar}
       {chatCard}
     </div>
-  ) : (
-    <div className="h-full min-h-0 w-full">{chatCard}</div>
   );
 
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
       {isError ? (
-        <div className="flex h-screen flex-col items-center justify-center gap-4">
+        <div
+          className={`flex flex-col items-center justify-center gap-4 ${FILL}`}
+        >
           <AlertTriangle className="h-8 w-8 text-destructive" />
           <p className="text-foreground dark:text-muted-foreground">
             Failed to load chat data. Please try again later.

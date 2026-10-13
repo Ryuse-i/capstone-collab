@@ -36,7 +36,7 @@ function ProjectCard({
   const projectRouteId = project.id ?? slug;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm dark:bg-(--semi-card) sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm dark:bg-background sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-[#F3EFE6] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A0C2E]">
@@ -221,7 +221,7 @@ export default function ProjectsPage() {
       ) : isError ? (
         <ProjectsError />
       ) : (
-        <Card className="border shadow-sm">
+        <Card className="border shadow-sm dark:bg-background">
           {/* Card header */}
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div className="flex items-center gap-2">

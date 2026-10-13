@@ -105,41 +105,62 @@ export default function CapstoneView() {
   const deletePaper = useDeletePaper();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   /**
    * Open file handler copied/adapted from TaskAttachments:
    * - Opens a blank window synchronously inside the user click action to avoid popup blockers.
    * - Retrieves the pre-signed URL via mutation.
    * - Redirects the opened tab or falls back cleanly to a new window.
+   * - Shows a toast for success / failure.
    */
   const handleOpenFile = () => {
     const tab = window.open("", "_blank");
 
     getFileUrl.mutate(paperId, {
       onSuccess: (url) => {
+        if (!url) {
+          tab?.close();
+          toast.error("This paper has no file available to open.");
+          return;
+        }
+
         if (tab) {
           tab.opener = null;
           tab.location.href = url;
         } else {
           window.open(url, "_blank", "noopener,noreferrer");
         }
+        toast.success("File opened in a new tab.");
       },
-      onError: () => {
+      onError: (err) => {
         tab?.close();
-        toast.error("Couldn't open this file. Try again.");
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : "Couldn't open this file. Try again."
+        );
       },
     });
   };
 
   const handleDelete = () => {
+    const deletedTitle = paper?.title ?? null;
+
     deletePaper.mutate(paperId, {
       onSuccess: () => {
-        navigate(backHref, { replace: true });
+        setConfirmOpen(false);
+        // The success toast is shown by the repository page after navigation,
+        // because this page unmounts as soon as we navigate away.
+        navigate(backHref, {
+          replace: true,
+          state: { paperDeleted: true, deletedPaperTitle: deletedTitle },
+        });
       },
       onError: (err) => {
-        setDeleteError(
-          err instanceof Error ? err.message : "Could not delete the paper."
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : "Could not delete the paper. Try again."
         );
       },
     });
@@ -153,7 +174,7 @@ export default function CapstoneView() {
           { label: "Error", href: "#" },
         ]}
       >
-        <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 py-24 text-center pt-4 px-4 sm:px-6 lg:px-8">
           <AlertTriangle className="h-8 w-8 text-destructive" />
           <p className="text-foreground">{error.message}</p>
           <Button variant="outline" onClick={handleBack}>
@@ -186,7 +207,7 @@ export default function CapstoneView() {
           { label: "Not Found", href: "#" },
         ]}
       >
-        <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 py-24 text-center pt-4 px-4 sm:px-6 lg:px-8">
           <p className="text-muted-foreground">
             We couldn't find that paper. It may have been deleted.
           </p>
@@ -211,7 +232,7 @@ export default function CapstoneView() {
         },
       ]}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 px-4 pt-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-2">
           <Button
             variant="ghost"
@@ -321,13 +342,7 @@ export default function CapstoneView() {
 
       {/* Confirmation Dialog rendered ONLY for Admins */}
       {isAdmin && (
-        <AlertDialog
-          open={confirmOpen}
-          onOpenChange={(open) => {
-            setConfirmOpen(open);
-            if (!open) setDeleteError(null);
-          }}
-        >
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete this paper?</AlertDialogTitle>
@@ -336,9 +351,6 @@ export default function CapstoneView() {
                 repository and from search results. This can't be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            {deleteError && (
-              <p className="text-sm text-destructive">{deleteError}</p>
-            )}
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deletePaper.isPending}>
                 Cancel
