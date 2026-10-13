@@ -17,6 +17,8 @@ import {
   useUpdateProjectResource,
   type UpdateProjectResourceInput,
 } from "@/hooks/useResource";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetOneMember } from "@/hooks/useProjectMember";
 import AppLayout from "@/layouts/Applayout";
 import { cn } from "@/lib/utils";
 import type { ProjectResource, ResourceCategory } from "@/types/resource";
@@ -80,7 +82,6 @@ function getAuthor(resource: ProjectResource): string {
 }
 
 function getType(resource: ProjectResource): string {
-  // Resources without a file only carry links (stored as resource_links).
   if (!resource.file) return "Links";
   const extension = resource.file.filename.split(".").pop();
   return extension && extension !== resource.file.filename
@@ -111,6 +112,11 @@ export default function ProjectResourcesPanel({
   const [selectedResource, setSelectedResource] = useState<ProjectResource | null>(null);
   const [editingResource, setEditingResource] = useState<ProjectResource | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Fetch current user and their membership info for this specific project
+  const { data: currentUser } = useCurrentUser();
+  const { data: currentMember } = useGetOneMember(currentUser?.id ?? "");
+
   const resourcesQuery = useProjectResources(projectId);
   const createResource = useCreateProjectResource(projectId ?? "");
   const openResource = useOpenProjectResource(projectId ?? "");
@@ -133,11 +139,14 @@ export default function ProjectResourcesPanel({
     })),
   ];
 
+  // Helper flags for authorization (adjust property names like `role` to match your backend model if needed)
+  const currentUserId = currentUser?.id;
+  const isProjectLeader = currentMember?.project_role === "leader";
+
   async function handleCreate(resource: Parameters<typeof createResource.mutateAsync>[0]) {
     if (!projectId) throw new Error("No project selected.");
     setMessage(null);
     try {
-      // Return the created resource so the dialog can attach its links.
       const created = await createResource.mutateAsync(resource);
       setMessage("Resource added to this project.");
       return created;
@@ -151,7 +160,6 @@ export default function ProjectResourcesPanel({
   async function handleUpdate(resourceId: string, values: UpdateProjectResourceInput) {
     if (!projectId) return;
     setMessage(null);
-    // Errors propagate so EditForm can display them inside the dialog.
     await updateResource.mutateAsync({ resourceId, resource: values });
     setEditingResource(null);
     setMessage("Resource updated.");
@@ -266,6 +274,11 @@ export default function ProjectResourcesPanel({
             {filteredResources.map((resource) => {
               const category = getCategory(resource.category);
               const Icon = category.icon;
+
+              // Authorization check: User is creator OR project leader
+              const isCreator = Boolean(currentUserId && resource.creator?.id === currentUserId);
+              const canEditOrDelete = isCreator || isProjectLeader;
+
               const details = [
                 getType(resource),
                 resource.file ? formatBytes(resource.file.size) : null,
@@ -273,6 +286,7 @@ export default function ProjectResourcesPanel({
               ]
                 .filter(Boolean)
                 .join(" · ");
+
               return (
                 <Card
                   key={resource.id}
@@ -300,10 +314,13 @@ export default function ProjectResourcesPanel({
                   <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3">
                     <p className="truncate text-xs text-muted-foreground">By {getAuthor(resource)}</p>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" type="button" onClick={() => setEditingResource(resource)}>
-                        <Pencil className="size-3.5" />
-                        Edit
-                      </Button>
+                      {/* Show the Edit button only if user created the resource or is the project leader */}
+                      {canEditOrDelete && (
+                        <Button variant="ghost" size="sm" type="button" onClick={() => setEditingResource(resource)}>
+                          <Pencil className="size-3.5" />
+                          Edit
+                        </Button>
+                      )}
                       <Button variant="outline" size="sm" type="button" onClick={() => setSelectedResource(resource)}>
                         Open
                         <ArrowRight className="size-3.5" />
