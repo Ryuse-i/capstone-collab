@@ -18,6 +18,11 @@ from app.modules.users.model import User, UserRole
 
 class ResourceService:
     @staticmethod
+    async def get_resource(db: AsyncSession, resource_id: UUID):
+        repo = ResourceRepo(db)
+        return await repo.get_by_id(resource_id)
+
+    @staticmethod
     async def _get_accessible_project(
         db: AsyncSession, project_id: UUID, user: User
     ) -> Project:
@@ -53,7 +58,6 @@ class ResourceService:
             title=resource.title,
             category=resource.category,
             description=resource.description,
-            source_url=resource.source_url,
             file=resource.file,
             creator=resource.creator,
             pinned=resource.pinned,
@@ -79,7 +83,6 @@ class ResourceService:
         title: str,
         category: ResourceCategory,
         description: str,
-        source_url: str | None,
         attachment: UploadFile | None,
     ) -> ResourceResponse:
         await ResourceService._get_accessible_project(db, project_id, user)
@@ -90,24 +93,6 @@ class ResourceService:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Title and description are required",
-            )
-
-        clean_url = source_url.strip() if source_url and source_url.strip() else None
-        if clean_url:
-            parsed = urlparse(clean_url)
-            if (
-                parsed.scheme not in {"http", "https"}
-                or not parsed.netloc
-                or len(clean_url) > 2048
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Resource links must be a valid HTTP or HTTPS URL",
-                )
-        if not clean_url and attachment is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="A link or file is required",
             )
 
         stored_file = None
@@ -124,7 +109,6 @@ class ResourceService:
                 title=title,
                 category=category,
                 description=description,
-                source_url=clean_url,
             )
             db.add(resource)
             await db.flush()
@@ -152,11 +136,21 @@ class ResourceService:
         )
         await db.flush()
 
-        if resource.source_url:
-            return resource.source_url
-        if resource.file_id is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource file not found")
-        return await FileService.get_url(db, resource.file_id)
+        # Return first link URL if available
+        if resource.links:
+            # Sort by created_at to get the first created link
+            sorted_links = sorted(resource.links, key=lambda l: l.created_at)
+            return sorted_links[0].url
+
+        # Fall back to file if available
+        if resource.file_id is not None:
+            return await FileService.get_url(db, resource.file_id)
+
+        # If neither links nor file, resource has no accessible content
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resource has no accessible content (no links or file)",
+        )
 
     @staticmethod
     async def delete(db: AsyncSession, resource_id: UUID, user: User) -> None:

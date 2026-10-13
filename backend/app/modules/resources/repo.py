@@ -15,7 +15,7 @@ class ResourceRepo(BaseRepo):
     async def get_by_id_with_relations(self, resource_id: UUID) -> Resource | None:
         result = await self.db.execute(
             select(Resource)
-            .options(selectinload(Resource.file), selectinload(Resource.creator))
+            .options(selectinload(Resource.file), selectinload(Resource.creator), selectinload(Resource.links))
             .where(Resource.id == resource_id)
         )
         return result.scalar_one_or_none()
@@ -23,7 +23,7 @@ class ResourceRepo(BaseRepo):
     async def get_by_project(self, project_id: UUID) -> list[Resource]:
         result = await self.db.execute(
             select(Resource)
-            .options(selectinload(Resource.file), selectinload(Resource.creator))
+            .options(selectinload(Resource.file), selectinload(Resource.creator), selectinload(Resource.links))
             .where(Resource.project_id == project_id)
             .order_by(Resource.pinned.desc(), Resource.updated_at.desc(), Resource.id)
         )

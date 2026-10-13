@@ -23,7 +23,6 @@ export interface ProjectResource {
   title: string;
   category: ResourceCategory;
   description: string;
-  source_url: string | null;
   file: ResourceFile | null;
   creator: ResourceCreator | null;
   pinned: boolean;
@@ -36,7 +35,6 @@ export interface CreateProjectResourceInput {
   title: string;
   category: ResourceCategory;
   description: string;
-  source_url: string;
   attachment: File | null;
 }
 

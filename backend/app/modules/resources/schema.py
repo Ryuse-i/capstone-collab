@@ -24,14 +24,9 @@ class ResourceResponse(BaseModel):
     title: str
     category: ResourceCategory
     description: str
-    source_url: str | None
     file: FileResponse | None
     creator: ResourceCreator | None
     pinned: bool
     uses: int
     created_at: datetime
     updated_at: datetime
-
-
-class ResourceUrlResponse(BaseModel):
-    url: str

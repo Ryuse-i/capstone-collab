@@ -9,13 +9,13 @@ from app.modules.users.services import current_active_user
 async def test_project_member_can_create_list_and_open_link_resource(
     ac, test_user, test_project
 ):
+    # First create a resource (without a link)
     response = await ac.post(
         f"/resources/projects/{test_project['id']}",
         data={
             "title": "Design reference",
             "category": "Links",
             "description": "Shared reference for the project team.",
-            "source_url": "https://example.com/design",
         },
     )
     assert response.status_code == 201, response.text
@@ -23,6 +23,17 @@ async def test_project_member_can_create_list_and_open_link_resource(
     assert resource["title"] == "Design reference"
     assert resource["creator"]["id"] == test_user["id"]
     assert resource["file"] is None
+
+    # Then add a link to the resource
+    link_data = {
+        "url": "https://example.com/design",
+        "title": "Design reference",
+    }
+    link_response = await ac.post(
+        f"/resources/{resource['id']}/links",
+        json=link_data,
+    )
+    assert link_response.status_code == 201, link_response.text
 
     listing = await ac.get(f"/resources/projects/{test_project['id']}")
     assert listing.status_code == 200, listing.text

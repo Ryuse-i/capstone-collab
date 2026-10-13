@@ -6,7 +6,6 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import type { CreateProjectResourceInput } from "@/types/resource";
 import {
   Check,
   ChevronDown,
@@ -14,12 +13,13 @@ import {
   FileText,
   Frame,
   ImageIcon,
-  Link2,
   Paperclip,
   PlusCircle,
   Upload,
   X,
+  type LucideIcon,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,6 +39,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import type { CreateProjectResourceInput } from "@/types/resource";
+import { PendingLinks, type PendingLink } from "@/components/user/ResourceLinks";
+import { useCreateResourceLink } from "@/hooks/useResourceLink";
+
+/* -------------------------------------------------------------------------- */
+/* Config & Types                                                             */
+/* -------------------------------------------------------------------------- */
 
 export type ResourceFormValues = CreateProjectResourceInput;
 
@@ -46,6 +53,8 @@ const initialFormValues: ResourceFormValues = {
   title: "",
   category: "Links",
   description: "",
+  // Links are now handled by <PendingLinks /> and saved as resource links
+  // after the resource is created, so the single source_url stays empty.
   source_url: "",
   attachment: null,
 };
@@ -61,41 +70,18 @@ const MAX_ATTACHMENT_SIZE_MB = 50;
 const MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_SIZE_MB * 1024 * 1024;
 const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
 
-function formatFileSize(bytes: number) {
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/**
- * Turns user input into a safe http(s) URL, or null if it isn't one.
- * "example.com/x" becomes "https://example.com/x"; javascript:, data:,
- * mailto:, etc. are rejected.
- */
-function normalizeUrl(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-
-  try {
-    const parsed = new URL(withScheme);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return null;
-    }
-    if (!parsed.hostname.includes(".") && parsed.hostname !== "localhost") {
-      return null;
-    }
-    return parsed.href;
-  } catch {
-    return null;
-  }
-}
-
 /* -------------------------------------------------------------------------- */
-/* Local presentational pieces                                                 */
+/* Local Presentational Subcomponents                                         */
 /* -------------------------------------------------------------------------- */
 
 function SectionHeader({
@@ -103,7 +89,7 @@ function SectionHeader({
   title,
   count,
 }: {
-  icon: typeof Link2;
+  icon: LucideIcon;
   title: string;
   count: number;
 }) {
@@ -147,7 +133,6 @@ function FileDropzone({
   };
 
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    // Ignore leave events fired when moving over a child element.
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       setDragging(false);
     }
@@ -198,7 +183,6 @@ function FileDropzone({
         tabIndex={-1}
         onChange={(e) => {
           onFile(e.target.files?.[0]);
-          // Reset so picking the same file again still fires onChange.
           e.target.value = "";
         }}
       />
@@ -236,26 +220,37 @@ function FileRow({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dialog                                                                      */
+/* Main Component                                                             */
 /* -------------------------------------------------------------------------- */
 
-interface AddResoourceDialogProps {
+export interface AddResourceDialogProps {
   trigger?: ReactNode;
-  onCreate: (resource: ResourceFormValues) => Promise<void>;
+  /**
+   * Must resolve with the created resource so its id can be used to attach
+   * the pending links. If you have a named response type (e.g.
+   * ProjectResourceResponse), use it here instead of `{ id: string }`.
+   */
+  onCreate: (resource: ResourceFormValues) => Promise<{ id: string }>;
   isPending?: boolean;
 }
 
-export default function AddResoourceDialog({
+export default function AddResourceDialog({
   trigger,
   onCreate,
   isPending = false,
-}: AddResoourceDialogProps) {
+}: AddResourceDialogProps) {
   const [open, setOpen] = useState(false);
   const [formValues, setFormValues] =
     useState<ResourceFormValues>(initialFormValues);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Pending links to be added after the resource is created.
+  const [pendingLinks, setPendingLinks] = useState<PendingLink[]>([]);
+  const createResourceLinkMutation = useCreateResourceLink();
+
+  // True while the resource or its links are being saved.
+  const busy = isPending || createResourceLinkMutation.isPending;
 
   const updateField = <K extends keyof ResourceFormValues>(
     field: K,
@@ -268,7 +263,7 @@ export default function AddResoourceDialog({
     setFormValues(initialFormValues);
     setCategoryOpen(false);
     setSubmitError(null);
-    setLinkError(null);
+    setPendingLinks([]);
   };
 
   const handleFile = (file: File | undefined) => {
@@ -289,9 +284,10 @@ export default function AddResoourceDialog({
   };
 
   const handleSubmit = async () => {
+    if (busy) return;
+
     const trimmedTitle = formValues.title.trim();
     const trimmedDescription = formValues.description.trim();
-    const rawUrl = formValues.source_url.trim();
 
     if (!trimmedTitle) {
       toast.error("Title is required.");
@@ -303,28 +299,21 @@ export default function AddResoourceDialog({
       return;
     }
 
-    if (!rawUrl && !formValues.attachment) {
-      toast.error("Add a resource link or attach a file.");
+    if (pendingLinks.length === 0 && !formValues.attachment) {
+      toast.error("Add at least one link or attach a file.");
       return;
     }
 
-    let sourceUrl = "";
-    if (rawUrl) {
-      const normalized = normalizeUrl(rawUrl);
-      if (!normalized) {
-        setLinkError("Enter a valid web link, like https://example.com");
-        return;
-      }
-      sourceUrl = normalized;
-    }
+    setSubmitError(null);
 
+    // Step 1: create the resource. Only a failure here is reported as
+    // "could not add the resource".
+    let createdResource: { id: string };
     try {
-      // The success / error toasts for the request itself come from
-      // useCreateProjectResource, so they aren't duplicated here.
-      await onCreate({
+      createdResource = await onCreate({
         title: trimmedTitle,
         description: trimmedDescription,
-        source_url: sourceUrl,
+        source_url: "",
         category: formValues.category,
         attachment: formValues.attachment,
       });
@@ -334,6 +323,29 @@ export default function AddResoourceDialog({
       );
       return;
     }
+
+    // Step 2: attach the links to the newly created resource.
+    if (pendingLinks.length > 0) {
+      const results = await Promise.allSettled(
+        pendingLinks.map((link) =>
+          createResourceLinkMutation.mutateAsync({
+            resource_id: createdResource.id,
+            link: { url: link.url, title: link.title },
+          }),
+        ),
+      );
+
+      const failed = results.filter(
+        (result) => result.status === "rejected",
+      ).length;
+
+      if (failed > 0) {
+        toast.error(
+          `Resource was created, but ${failed} of ${pendingLinks.length} link(s) failed to save. You can add them by editing the resource.`,
+        );
+      }
+    }
+
     resetForm();
     setOpen(false);
   };
@@ -352,7 +364,7 @@ export default function AddResoourceDialog({
         <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>Add Resource</DialogTitle>
           <DialogDescription>
-            Add a link or attach a file for your team.
+            Add links or attach a file for your team.
           </DialogDescription>
           {submitError && (
             <p className="text-sm text-destructive" role="alert">
@@ -361,7 +373,7 @@ export default function AddResoourceDialog({
           )}
         </DialogHeader>
 
-        {/* min-h-0 + flex-1 lets this area scroll while header/footer stay pinned */}
+        {/* Scrollable body section */}
         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
@@ -371,6 +383,7 @@ export default function AddResoourceDialog({
                 value={formValues.title}
                 onChange={(event) => updateField("title", event.target.value)}
                 placeholder="Capstone UI Mockups"
+                disabled={busy}
               />
             </div>
 
@@ -384,6 +397,7 @@ export default function AddResoourceDialog({
                 }
                 placeholder="Final screen designs and interaction flows for the capstone system."
                 rows={3}
+                disabled={busy}
               />
             </div>
 
@@ -396,6 +410,7 @@ export default function AddResoourceDialog({
                     variant="outline"
                     role="combobox"
                     aria-expanded={categoryOpen}
+                    disabled={busy}
                     className="w-full justify-between text-left font-normal"
                   >
                     {(() => {
@@ -427,7 +442,7 @@ export default function AddResoourceDialog({
                             updateField("category", name);
                             setCategoryOpen(false);
                           }}
-                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                         >
                           <span className="flex items-center gap-2">
                             <CategoryIcon className="size-4 text-muted-foreground" />
@@ -444,31 +459,13 @@ export default function AddResoourceDialog({
               </Popover>
             </div>
 
-            {/* Resource link */}
-            <section className="space-y-2 border-t pt-4 md:col-span-2">
-              <SectionHeader
-                icon={Link2}
-                title="Link"
-                count={formValues.source_url.trim() ? 1 : 0}
+            {/* Links (replaces the old single-link input) */}
+            <section className="border-t pt-4 md:col-span-2">
+              <PendingLinks
+                links={pendingLinks}
+                onChange={setPendingLinks}
+                disabled={busy}
               />
-
-              <Input
-                id="resource-link"
-                type="url"
-                inputMode="url"
-                aria-label="Resource link"
-                aria-invalid={!!linkError}
-                placeholder="Paste a link, e.g. https://docs.google.com/..."
-                value={formValues.source_url}
-                onChange={(event) => {
-                  updateField("source_url", event.target.value);
-                  if (linkError) setLinkError(null);
-                }}
-              />
-
-              {linkError && (
-                <p className="text-xs text-rose-600">{linkError}</p>
-              )}
             </section>
 
             {/* Attachment */}
@@ -488,6 +485,7 @@ export default function AddResoourceDialog({
                       <button
                         type="button"
                         onClick={() => updateField("attachment", null)}
+                        disabled={busy}
                         className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         aria-label={`Remove ${formValues.attachment.name}`}
                       >
@@ -497,21 +495,22 @@ export default function AddResoourceDialog({
                   />
                 </ul>
               ) : (
-                <FileDropzone onFile={handleFile} disabled={isPending} />
+                <FileDropzone onFile={handleFile} disabled={busy} />
               )}
 
               <p className="text-xs text-muted-foreground">
-                Add a link, attach a file, or both.
+                Add at least one link or attach a file. You can add both.
               </p>
             </section>
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 border-t bg-muted/40 px-6 py-3 ">
-          <div className="mb-3">
+        <DialogFooter className="shrink-0 border-t bg-muted/40 px-6 py-2">
+          <div className="flex w-full items-center justify-end gap-2 mb-4">
             <Button
               type="button"
               variant="outline"
+              disabled={busy}
               onClick={() => {
                 resetForm();
                 setOpen(false);
@@ -522,8 +521,8 @@ export default function AddResoourceDialog({
             <Button
               type="button"
               onClick={() => void handleSubmit()}
-              disabled={isPending}
-              className="bg-(--maroon) text-white hover:bg-(--maroon)/90"
+              disabled={busy}
+              className="bg-[#7A0C2E] text-white hover:bg-[#7A0C2E]/90"
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add resource
@@ -535,4 +534,4 @@ export default function AddResoourceDialog({
   );
 }
 
-export { AddResoourceDialog };
+export { AddResourceDialog };

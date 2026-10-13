@@ -11,7 +11,6 @@ import {
   PowerOff,
   RefreshCw,
   Search,
-  ShieldCheck,
   Trash2,
   UserRound,
   UserRoundPen,
@@ -226,7 +225,6 @@ export default function Dashboard() {
     event.preventDefault();
     const payload: CreateAdminUserPayload = {
       ...createForm,
-      role: "instructor",
       must_change_password: true,
     };
     const succeeded = await runAction(

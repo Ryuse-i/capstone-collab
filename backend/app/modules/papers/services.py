@@ -1,3 +1,6 @@
+import os
+import re
+
 from fastapi import HTTPException, status
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +16,7 @@ from app.modules.papers.schema import (
     PaperUpdate,
 )
 from app.modules.files.services import FileService
-from app.core.storage import  signed_url
+from app.core.storage import signed_url
 
 # Fields that feed build_embedding_text(). Keep in sync with embedding.py:
 # changing any of these requires a re-embed.
@@ -26,6 +29,13 @@ EMBEDDED_FIELDS = {
 
 def _not_found() -> HTTPException:
     return HTTPException(status.HTTP_404_NOT_FOUND, "Paper not found")
+
+
+def _safe_filename(title: str, file_path: str) -> str:
+    ext = os.path.splitext(file_path)[1] or ".pdf"
+    name = re.sub(r'[\\/:*?"<>|\r\n]+', " ", title)
+    name = re.sub(r"\s+", " ", name).strip()[:150] or "paper"
+    return f"{name}{ext}"
 
 
 class PaperService:
@@ -179,6 +189,7 @@ class PaperService:
         except Exception:
             await db.rollback()
             raise
+
     @staticmethod
     async def get_latest_papers(
         db: AsyncSession, limit: int = 10, offset: int = 0
@@ -198,11 +209,8 @@ class PaperService:
                 detail="Paper does not have an attached file",
             )
 
-        # Call the storage helper with the Supabase file_path
-        # If your storage function is async, add 'await'
-        url = await signed_url(paper.file_path) 
-        
-        return url
+        filename = _safe_filename(paper.title, paper.file_path)
+        return await signed_url(paper.file_path, download_name=filename)
 
     @staticmethod
     async def count_papers(db: AsyncSession) -> int:
