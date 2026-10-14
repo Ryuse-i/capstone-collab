@@ -8,6 +8,7 @@ from typing import Sequence
 from app.modules.project_members.model import ProjectMember
 
 from app.modules.tasks.schema import TaskResponse
+from app.modules.tasks.model import Status
 
 
 class TaskRepo(BaseRepo):
@@ -63,5 +64,22 @@ class TaskRepo(BaseRepo):
             return []
 
         stmt = select(Task).where(Task.id.in_(ids))
+        results = await self.db.execute(stmt)
+        return results.scalars().all()
+
+    async def get_eligible_tasks(self, ids: Sequence[UUID]) -> list[TaskResponse]:
+        if not ids: 
+            return []
+
+        stmt = (
+            select(Task)
+            .where(Task.id.in_(ids))
+            .where(
+                Task.status.in_([
+                    Status.NOT_STARTED,
+                    Status.IN_PROGRESS,
+                ])
+            )
+        )
         results = await self.db.execute(stmt)
         return results.scalars().all()

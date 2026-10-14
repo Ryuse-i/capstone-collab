@@ -26,7 +26,8 @@ modules = [
     "app.modules.assigned_reviewer.model",
     "app.modules.files.model",
     "app.modules.task_links.model",
-    "app.modules.ai.retrieval"
+    "app.modules.ai.retrieval",
+    "app.modules.resource_links.model"
 ]
 
 

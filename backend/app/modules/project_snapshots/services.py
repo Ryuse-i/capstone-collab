@@ -70,11 +70,9 @@ async def _load_task_inputs(db: AsyncSession, member_id: UUID) -> list[wm.TaskIn
     if not by_task:
         return []
 
-    tasks = await TaskService.batch_get_task(db, list(by_task))
+    tasks = await TaskService.get_eligible_tasks(db, list(by_task))
     inputs: list[wm.TaskInput] = []
     for t in tasks:
-        if getattr(t, "deleted_at", None) is not None:   # ASSUMPTION: soft delete column
-            continue
         state = task_state_from_status(t.status)
         # Get all members assigned to this task to calculate equal share
         task_members = await AssignedMemberService.get_task_members(db, t.id)
@@ -122,13 +120,16 @@ class ProjectSnapshotService:
         trigger (task change, assignment change, settings change, daily job).
         Pass commit=False when the caller owns the transaction.
         """
-        from app.modules.member_snapshots.model import MemberStatus  # lazy
+        from app.modules.member_snapshots.model import MemberStatus 
 
         today = today or app_today()
+
+        #check if config provided
         cfg = config or wm.WorkloadConfig()
 
         await _lock_project(db, project_id)
-        members = await ProjectMemberService.get_all_members_by_project(db, project_id)
+        #get all members except for instructor and advisor 
+        members = await ProjectMemberService.get_elligible_members(db, project_id)
 
         # 1. Fresh inputs for EVERY member (idle members are 0 and stay in the median)
         inputs: list[wm.MemberInput] = []

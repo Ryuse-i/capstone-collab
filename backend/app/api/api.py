@@ -24,8 +24,9 @@ from app.modules.invitations.route import project_invitation_router
 from app.modules.meetings.routes import meeting_router
 from app.modules.messages.routes import message_router
 from app.modules.files.routes import files_router
-from app.modules.task_links.routes import task_link_router 
+from app.modules.task_links.routes import task_link_router
 from app.modules.resources.routes import resources_router
+from app.modules.resource_links.routes import resource_link_router
 
 
 api_router = APIRouter()
@@ -86,3 +87,4 @@ api_router.include_router(meeting_router, prefix="/meetings", tags=["meetings"])
 api_router.include_router(message_router, prefix="/messages", tags=["messages"])
 api_router.include_router(files_router, prefix="/files", tags=["files"])
 api_router.include_router(task_link_router, prefix="/task_links", tags=["task_links"])
+api_router.include_router(resource_link_router, prefix="/resource_links", tags=["resource_links"])

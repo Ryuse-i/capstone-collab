@@ -7,7 +7,7 @@ from app.core.base_repo import BaseRepo
 from app.modules.project_members.schema import ProjectMemberWithSnapshot
 from app.modules.member_snapshots.model import MemberSnapshot
 
-from .model import ProjectMember
+from .model import ProjectMember, ProjectRole
 
 
 class ProjectMemberRepo(BaseRepo):
@@ -104,3 +104,18 @@ class ProjectMemberRepo(BaseRepo):
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+
+    async def get_elligible_members(self, item_id):
+        # item_id = project_id
+        query = (
+            select(ProjectMember)
+            .options(selectinload(ProjectMember.user))
+            .where(
+                ProjectMember.project_id == item_id,
+                ProjectMember.project_role.not_in(
+                    [ProjectRole.INSTRUCTOR, ProjectRole.ADVISOR]
+                ),
+            )
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()

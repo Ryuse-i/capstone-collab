@@ -1,14 +1,24 @@
 import { useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { AlertTriangle, ArrowRight, Code2, FileText, Frame, PlusCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, Code2, FileText, Frame, Pencil, PlusCircle } from "lucide-react";
 
-import { AddResoourceDialog } from "@/components/user/AddResourceDialog";
+import AddResourceDialog from "@/components/user/AddResourceDialog";
+import EditResourceDialog from "@/components/user/EditResourceDialog";
 import ResourceDialog from "@/components/user/ResourceDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCreateProjectResource, useOpenProjectResource, useProjectResources } from "@/hooks/useResource";
+import {
+  useCreateProjectResource,
+  useDeleteProjectResource,
+  useOpenProjectResource,
+  useProjectResources,
+  useUpdateProjectResource,
+  type UpdateProjectResourceInput,
+} from "@/hooks/useResource";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetOneMember } from "@/hooks/useProjectMember";
 import AppLayout from "@/layouts/Applayout";
 import { cn } from "@/lib/utils";
 import type { ProjectResource, ResourceCategory } from "@/types/resource";
@@ -72,7 +82,7 @@ function getAuthor(resource: ProjectResource): string {
 }
 
 function getType(resource: ProjectResource): string {
-  if (!resource.file) return "Live link";
+  if (!resource.file) return "Links";
   const extension = resource.file.filename.split(".").pop();
   return extension && extension !== resource.file.filename
     ? extension.toUpperCase()
@@ -100,10 +110,18 @@ export default function ProjectResourcesPanel({
 }: ProjectResourcesPanelProps) {
   const [activeTab, setActiveTab] = useState<ResourceFilter>("All");
   const [selectedResource, setSelectedResource] = useState<ProjectResource | null>(null);
+  const [editingResource, setEditingResource] = useState<ProjectResource | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Fetch current user and their membership info for this specific project
+  const { data: currentUser } = useCurrentUser();
+  const { data: currentMember } = useGetOneMember(currentUser?.id ?? "");
+
   const resourcesQuery = useProjectResources(projectId);
   const createResource = useCreateProjectResource(projectId ?? "");
   const openResource = useOpenProjectResource(projectId ?? "");
+  const updateResource = useUpdateProjectResource(projectId ?? "");
+  const deleteResource = useDeleteProjectResource(projectId ?? "");
 
   const resources = resourcesQuery.data ?? [];
   const filteredResources = activeTab === "All"
@@ -121,16 +139,42 @@ export default function ProjectResourcesPanel({
     })),
   ];
 
+  // Helper flags for authorization (adjust property names like `role` to match your backend model if needed)
+  const currentUserId = currentUser?.id;
+  const isProjectLeader = currentMember?.project_role === "leader";
+
   async function handleCreate(resource: Parameters<typeof createResource.mutateAsync>[0]) {
-    if (!projectId) return;
+    if (!projectId) throw new Error("No project selected.");
     setMessage(null);
     try {
-      await createResource.mutateAsync(resource);
+      const created = await createResource.mutateAsync(resource);
       setMessage("Resource added to this project.");
+      return created;
     } catch (error) {
       const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
       setMessage(detail ?? "Could not add the resource. Please try again.");
       throw error;
+    }
+  }
+
+  async function handleUpdate(resourceId: string, values: UpdateProjectResourceInput) {
+    if (!projectId) return;
+    setMessage(null);
+    await updateResource.mutateAsync({ resourceId, resource: values });
+    setEditingResource(null);
+    setMessage("Resource updated.");
+  }
+
+  async function handleDelete(resourceId: string) {
+    if (!projectId) return;
+    setMessage(null);
+    try {
+      await deleteResource.mutateAsync(resourceId);
+      setEditingResource(null);
+      setMessage("Resource deleted.");
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      setMessage(detail ?? "Could not delete the resource. Please try again.");
     }
   }
 
@@ -157,6 +201,11 @@ export default function ProjectResourcesPanel({
             {projectName ? `${projectName} · ` : ""}
             {numberFormat.format(resources.length)} resources · {formatBytes(totalSize)} attached files
           </p>
+          {message && (
+            <p className="mt-2 text-sm text-muted-foreground" role="status">
+              {message}
+            </p>
+          )}
         </header>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -182,7 +231,7 @@ export default function ProjectResourcesPanel({
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             {projectSelector}
-            <AddResoourceDialog
+            <AddResourceDialog
               isPending={createResource.isPending}
               onCreate={handleCreate}
               trigger={
@@ -218,13 +267,26 @@ export default function ProjectResourcesPanel({
             <p className="text-sm font-medium">
               {activeTab === "All" ? "No resources added to this project yet." : `No ${activeTab.toLowerCase()} resources yet.`}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Add a link or file for your team.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Add links or a file for your team.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredResources.map((resource) => {
               const category = getCategory(resource.category);
               const Icon = category.icon;
+
+              // Authorization check: User is creator OR project leader
+              const isCreator = Boolean(currentUserId && resource.creator?.id === currentUserId);
+              const canEditOrDelete = isCreator || isProjectLeader;
+
+              const details = [
+                getType(resource),
+                resource.file ? formatBytes(resource.file.size) : null,
+                formatRelativeDate(resource.updated_at),
+              ]
+                .filter(Boolean)
+                .join(" · ");
+
               return (
                 <Card
                   key={resource.id}
@@ -247,16 +309,23 @@ export default function ProjectResourcesPanel({
                     <p className={cn("border-l-2 pl-3 text-sm italic leading-relaxed text-muted-foreground", category.barClass)}>
                       {resource.description}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {getType(resource)} · {resource.file ? formatBytes(resource.file.size) : resource.source_url} · {formatRelativeDate(resource.updated_at)}
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{details}</p>
                   </CardContent>
                   <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3">
                     <p className="truncate text-xs text-muted-foreground">By {getAuthor(resource)}</p>
-                    <Button variant="outline" size="sm" type="button" onClick={() => setSelectedResource(resource)}>
-                      Open
-                      <ArrowRight className="size-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {/* Show the Edit button only if user created the resource or is the project leader */}
+                      {canEditOrDelete && (
+                        <Button variant="ghost" size="sm" type="button" onClick={() => setEditingResource(resource)}>
+                          <Pencil className="size-3.5" />
+                          Edit
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" type="button" onClick={() => setSelectedResource(resource)}>
+                        Open
+                        <ArrowRight className="size-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               );
@@ -271,6 +340,16 @@ export default function ProjectResourcesPanel({
         onOpenChange={(open) => !open && setSelectedResource(null)}
         onOpenResource={handleOpen}
         isOpening={openResource.isPending}
+      />
+
+      <EditResourceDialog
+        resource={editingResource}
+        open={editingResource !== null}
+        onOpenChange={(open) => !open && setEditingResource(null)}
+        onUpdate={handleUpdate}
+        isPending={updateResource.isPending}
+        onDelete={handleDelete}
+        isDeleting={deleteResource.isPending}
       />
     </>
   );

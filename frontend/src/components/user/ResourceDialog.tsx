@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, Code2, FileText, Frame } from "lucide-react";
+import { ArrowRight, Code2, FileText, Frame, Link2 } from "lucide-react";
+import { toast } from "sonner";
 import type { ProjectResource, ResourceCategory } from "@/types/resource";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useGetResourceLinks } from "@/hooks/useResourceLink";
+import { Spinner } from "../ui/spinner";
 
 interface CategoryStyle {
   icon: LucideIcon;
@@ -22,23 +25,28 @@ interface CategoryStyle {
 const CATEGORY_STYLES: Record<ResourceCategory, CategoryStyle> = {
   Links: {
     icon: Frame,
-    iconClass:
-      "bg-violet-100 text-violet-700",
+    iconClass: "bg-violet-100 text-violet-700",
     barClass: "border-violet-400",
   },
   "Paper Files": {
     icon: FileText,
-    iconClass:
-      "bg-blue-100 text-blue-700",
+    iconClass: "bg-blue-100 text-blue-700",
     barClass: "border-blue-400",
   },
   Code: {
     icon: Code2,
-    iconClass:
-      "bg-emerald-100 text-emerald-700",
+    iconClass: "bg-emerald-100 text-emerald-700",
     barClass: "border-emerald-400",
   },
 };
+
+function linkLabel(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
 
 interface ResourceDialogProps {
   resource: ProjectResource | null;
@@ -55,22 +63,34 @@ export default function ResourceDialog({
   onOpenResource,
   isOpening = false,
 }: ResourceDialogProps) {
+  // Hooks must run before any early return, and `links` must exist
+  // before anything below reads it.
+  const {
+    data: links = [],
+    isLoading: linksLoading,
+    isError: linksError,
+    refetch,
+  } = useGetResourceLinks(resource?.id ?? "");
+
   if (!resource) return null;
 
   const category = CATEGORY_STYLES[resource.category];
   const Icon = category.icon;
   const author = resource.creator
-    ? `${resource.creator.first_name} ${resource.creator.last_name}`.trim() || resource.creator.email
+    ? `${resource.creator.first_name} ${resource.creator.last_name}`.trim() ||
+      resource.creator.email
     : "Former member";
   const fileSize = resource.file
     ? resource.file.size < 1024 * 1024
       ? `${(resource.file.size / 1024).toFixed(0)} KB`
       : `${(resource.file.size / (1024 * 1024)).toFixed(1)} MB`
-    : resource.source_url ?? "External link";
+    : links.length > 0
+      ? `${links.length} link${links.length !== 1 ? "s" : ""}`
+      : "No link or file";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg dark:bg-background">
+      <DialogContent className="max-w-lg overflow-hidden dark:bg-background *:min-w-0">
         <DialogHeader>
           <div className="flex items-start gap-3 pr-8">
             <span
@@ -102,7 +122,8 @@ export default function ResourceDialog({
           <div>
             <p className="text-xs text-muted-foreground">Type</p>
             <p className="font-medium">
-              {resource.file?.content_type ?? "Live link"}
+              {resource.file?.content_type ??
+                (links.length > 0 ? "Link" : "No link or file")}
             </p>
           </div>
           <div>
@@ -129,6 +150,71 @@ export default function ResourceDialog({
           </div>
         </div>
 
+        {/* Resource links */}
+        <section className="mt-4 min-w-0">
+          {linksLoading ? (
+            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+              <Spinner className="size-4" />
+              Loading links...
+            </div>
+          ) : linksError ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <span>Couldn't load links.</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (refetch) {
+                    refetch();
+                  } else {
+                    toast.error("Could not load links. Please try again.");
+                  }
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : links.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No links yet.</p>
+          ) : (
+            // Read-only: adding and removing links lives in the Edit dialog.
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Link2 className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Links</h3>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  {links.length}
+                </span>
+              </div>
+              <ul className="space-y-2">
+                {links.map((link) => (
+                  <li key={link.id}>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-lg border bg-muted/10 px-3 py-2 transition-colors hover:bg-muted/30"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#FBF3E7] text-[#7A0C2E]">
+                        <Link2 className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {link.title || linkLabel(link.url)}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {link.url}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+
         <DialogFooter>
           <Button
             variant="outline"
@@ -139,7 +225,7 @@ export default function ResourceDialog({
           </Button>
           <Button
             type="button"
-            disabled={(!resource.source_url && !resource.file) || isOpening}
+            disabled={(links.length === 0 && !resource.file) || isOpening}
             onClick={() => onOpenResource(resource.id)}
             className="bg-(--maroon) text-white hover:bg-(--maroon)/90"
           >

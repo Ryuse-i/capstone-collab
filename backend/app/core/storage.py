@@ -60,7 +60,13 @@ async def delete_file(path: str) -> None:
     await client.storage.from_(BUCKET).remove([path])
 
 
-async def signed_url(path: str, expires: int = 3600) -> str:
+async def signed_url(
+    path: str,
+    expires: int = 3600,
+    download_name: str | None = None,
+) -> str:
     client = await get_supabase()
-    res = await client.storage.from_(BUCKET).create_signed_url(path, expires)
+    res = await client.storage.from_(BUCKET).create_signed_url(
+        path, expires 
+    )
     return res["signedURL"]

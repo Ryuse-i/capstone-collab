@@ -8,6 +8,13 @@ import type {
 
 const url = "/resources";
 
+export type UpdateProjectResourceInput = Partial<
+  Pick<
+    CreateProjectResourceInput,
+    "title" | "category" | "description" | "attachment"
+  >
+>;
+
 const api = {
   listByProject: async (projectId: string): Promise<ProjectResource[]> => {
     const response = await apiClient.get<ProjectResource[]>(
@@ -27,11 +34,31 @@ const api = {
     formData.append("title", resource.title);
     formData.append("category", resource.category);
     formData.append("description", resource.description);
-    if (resource.source_url) formData.append("source_url", resource.source_url);
     if (resource.attachment) formData.append("attachment", resource.attachment);
 
     const response = await apiClient.post<ProjectResource>(
       `${url}/projects/${projectId}`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data;
+  },
+
+  update: async ({
+    resourceId,
+    resource,
+  }: {
+    resourceId: string;
+    resource: UpdateProjectResourceInput;
+  }): Promise<ProjectResource> => {
+    const formData = new FormData();
+    if (resource.title !== undefined) formData.append("title", resource.title);
+    if (resource.category !== undefined) formData.append("category", resource.category);
+    if (resource.description !== undefined) formData.append("description", resource.description);
+    if (resource.attachment) formData.append("attachment", resource.attachment);
+
+    const response = await apiClient.patch<ProjectResource>(
+      `${url}/${resourceId}`,
       formData,
       { headers: { "Content-Type": "multipart/form-data" } },
     );
@@ -68,6 +95,16 @@ export function useCreateProjectResource(projectId: string) {
   return useMutation({
     mutationFn: (resource: CreateProjectResourceInput) =>
       api.create({ projectId, resource }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: resourceKeys.list(projectId) }),
+  });
+}
+
+export function useUpdateProjectResource(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { resourceId: string; resource: UpdateProjectResourceInput }) =>
+      api.update(vars),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: resourceKeys.list(projectId) }),
   });

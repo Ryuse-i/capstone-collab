@@ -15,7 +15,11 @@ def _load_model() -> SentenceTransformer:
     """Load and configure the model once at module import time."""
     logger.info("Loading embedding model %s", MODEL_NAME)
     # Fast CPU execution via ONNX backend
-    model = SentenceTransformer(MODEL_NAME, backend="onnx")
+    model = SentenceTransformer(
+        MODEL_NAME, 
+        backend="onnx",
+        model_kwargs={"file_name": "onnx/model.onnx"},
+    )
     model.max_seq_length = MAX_SEQ_LENGTH
     return model
 

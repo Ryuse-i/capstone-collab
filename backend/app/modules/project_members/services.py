@@ -136,3 +136,8 @@ class ProjectMemberService:
     async def get_members_with_user_and_snapshot(db: AsyncSession, project_id: UUID):
         repo = ProjectMemberRepo(db)
         return await repo.get_members_with_user_and_snapshot(project_id)
+    
+    @staticmethod
+    async def get_elligible_members(db: AsyncSession, project_id: UUID):
+        repo = ProjectMemberRepo(db)
+        return await repo.get_elligible_members(project_id)

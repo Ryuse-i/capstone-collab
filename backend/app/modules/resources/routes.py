@@ -1,13 +1,17 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
-from app.modules.resources.schema import ResourceCategory, ResourceResponse, ResourceUrlResponse
+from app.modules.resources.schema import ResourceCategory, ResourceResponse
 from app.modules.resources.services import ResourceService
 from app.modules.users.model import User
 from app.modules.users.services import current_active_user
+
+class ResourceUrlResponse(BaseModel):
+    url: str
 
 resources_router = APIRouter()
 
@@ -31,7 +35,6 @@ async def create_project_resource(
     title: str = Form(...),
     category: ResourceCategory = Form(...),
     description: str = Form(...),
-    source_url: str | None = Form(default=None),
     attachment: UploadFile | None = File(default=None),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
@@ -43,12 +46,11 @@ async def create_project_resource(
         title=title,
         category=category,
         description=description,
-        source_url=source_url,
         attachment=attachment,
     )
 
 
-@resources_router.post("/{resource_id}/open", response_model=ResourceUrlResponse)
+@resources_router.post("/{resource_id}/open", )
 async def open_resource(
     resource_id: UUID,
     db: AsyncSession = Depends(get_async_session),
