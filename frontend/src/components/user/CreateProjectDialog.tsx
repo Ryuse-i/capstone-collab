@@ -445,7 +445,7 @@ function ReviewRow({ label, value }: { label: string; value: React.ReactNode }) 
   return (
     <div className="grid grid-cols-[112px_1fr] gap-3 py-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="text-foreground break-words whitespace-pre-wrap">
+      <span className="text-foreground wrap-break-word whitespace-pre-wrap">
         {value}
       </span>
     </div>

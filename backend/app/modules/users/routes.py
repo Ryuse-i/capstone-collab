@@ -18,6 +18,11 @@ from app.core.db import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from pydantic import BaseModel
+from fastapi import Query
+from typing import List
+from .auth import get_user_db, UserDB
+from .schema import UserResponse 
+
 
 
 class RefreshTokenRequest(BaseModel):
@@ -25,6 +30,26 @@ class RefreshTokenRequest(BaseModel):
 
 
 router = APIRouter()
+
+
+
+@router.get(
+    "/users/search_users",
+    response_model=List[UserResponse],
+    tags=["users"],
+)
+async def search_users(
+    email: str = Query(..., min_length=1, description="Partial email to match (case-insensitive)"),
+    role: UserRole = Query(..., description="Role to filter by"),
+    user_db: UserDB = Depends(get_user_db),
+    current_user: User = Depends(current_active_user),
+):
+    """
+    Search users by partial email and exact role.
+    Returns a list of matching users (empty list if none match).
+    """
+    users = await user_db.search_by_email_and_role(email, role)
+    return [u for u in users if u.deleted_at is None]
 
 
 # Custom login endpoint
