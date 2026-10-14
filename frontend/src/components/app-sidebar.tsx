@@ -16,6 +16,7 @@ import {
   useGetCurrentProject,
   useGetInstructorProjects,
 } from "@/hooks/useProject";
+import { useSidebarReady } from "@/hooks/useSidebarReady";
 import { getLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
 import { getLastVisitedProjects } from "@/lib/lastVisitedProjects";
 import {
@@ -166,7 +167,7 @@ const adminNavMain = [
   {
     title: "Capstone Repository",
     url: "/capstone-repository",
-    icon: <BookOpenIcon/>,
+    icon: <BookOpenIcon />,
   },
 ];
 
@@ -260,8 +261,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { data: projects } = useGetInstructorProjects(user?.id ?? "");
 
-  // Check if sidebar data is loaded
-  const sidebarDataLoaded = !isProjectLoading && !isMemberLoading && !!user;
+  // Shared with AppLayout so the header and page content stay in skeleton
+  // until the sidebar has finished loading.
+  const sidebarDataLoaded = useSidebarReady();
 
   const role = user?.role?.toLowerCase();
 

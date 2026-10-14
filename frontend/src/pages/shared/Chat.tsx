@@ -19,7 +19,7 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import { useGetProjectMessages, useSendMessage } from "@/hooks/useMessage";
 import { useGetProjectMeetings } from "@/hooks/useMeeting";
-import { markChatSeen } from "@/hooks/useChatUnread";
+import { markChatSeen, useChatUnread } from "@/hooks/useChatUnread";
 import type { MeetingProvider } from "@/types/meeting";
 import { MeetingDialog } from "@/components/meetings/MeetingDialog";
 
@@ -40,19 +40,71 @@ function formatTime(iso: string) {
   });
 }
 
+function ProjectItem({
+  project,
+  active,
+  userId,
+  onSelect,
+}: {
+  project: { id: string; name: string };
+  active: boolean;
+  userId: string;
+  onSelect: (id: string) => void;
+}) {
+  const hasUnread = useChatUnread(userId, project.id);
+  const unread = hasUnread && !active;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(project.id)}
+      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground dark:text-foreground"
+          : "text-foreground hover:bg-muted dark:hover:bg-[#222228]"
+      }`}
+    >
+      <span
+        className={`block min-w-0 flex-1 truncate ${unread ? "font-bold" : ""}`}
+      >
+        {project.name}
+      </span>
+
+      {unread && (
+        <span
+          aria-label="Unread messages"
+          className="h-2.5 w-2.5 shrink-0 rounded-full bg-(--maroon)"
+        />
+      )}
+    </button>
+  );
+}
+
+const selectedProjectKey = (userId: string) =>
+  `chat-selected-project:${userId}`;
+
+function readSelectedProject(userId: string): string | null {
+  try {
+    return localStorage.getItem(selectedProjectKey(userId));
+  } catch {
+    return null;
+  }
+}
+
+function writeSelectedProject(userId: string, projectId: string) {
+  try {
+    localStorage.setItem(selectedProjectKey(userId), projectId);
+  } catch {
+    /* ignore */
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Chat Skeleton
 // ---------------------------------------------------------------------------
 
 function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
-  const messageWidths = [
-    "w-64",
-    "w-80",
-    "w-52",
-    "w-72",
-    "w-60",
-    "w-96",
-  ];
+  const messageWidths = ["w-64", "w-80", "w-52", "w-72", "w-60", "w-96"];
 
   return (
     <div className={`flex w-full gap-2 ${FILL}`}>
@@ -67,9 +119,7 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
             {[1, 2, 3, 4, 5, 6].map((item) => (
               <div key={item} className="rounded-md px-3 py-2">
                 <Skeleton
-                  className={`h-4 ${
-                    item % 2 === 0 ? "w-40" : "w-32"
-                  }`}
+                  className={`h-4 ${item % 2 === 0 ? "w-40" : "w-32"}`}
                 />
               </div>
             ))}
@@ -114,9 +164,7 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
                       >
                         {!isRight && <Skeleton className="h-3 w-24" />}
 
-                        <Skeleton
-                          className={`h-4 ${width} max-w-[45vw]`}
-                        />
+                        <Skeleton className={`h-4 ${width} max-w-[45vw]`} />
 
                         {index === 1 || index === 4 ? (
                           <Skeleton className="h-4 w-48 max-w-[40vw]" />
@@ -168,16 +216,30 @@ export default function Chat() {
     null,
   );
 
+  // Restore the last opened project once we know who the user is
+  useEffect(() => {
+    if (!isInstructor || !user?.id) return;
+    setSelectedProjectId(readSelectedProject(user.id));
+  }, [isInstructor, user?.id]);
+
+  // Ignore a saved id that is no longer in the instructor's project list
+  const validSelectedId = instructorProjects.some(
+    (project) => project.id === selectedProjectId,
+  )
+    ? selectedProjectId
+    : null;
+
   const projectId = isInstructor
-    ? (selectedProjectId ?? instructorProjects[0]?.id ?? "")
+    ? (validSelectedId ?? instructorProjects[0]?.id ?? "")
     : (currentProject?.id ?? "");
 
   const selectedProject = instructorProjects.find(
     (project) => project.id === projectId,
   );
 
-  const { data: currentMember, isLoading: memberLoading } =
-    useGetCurrentMember(user?.id ?? "");
+  const { data: currentMember, isLoading: memberLoading } = useGetCurrentMember(
+    user?.id ?? "",
+  );
 
   const currentMemberRole = currentMember?.project_role.toLowerCase();
 
@@ -197,8 +259,7 @@ export default function Chat() {
     isFetching,
   } = useGetProjectMessages(projectId);
 
-  const { mutate: sendMessage, isPending: sending } =
-    useSendMessage(projectId);
+  const { mutate: sendMessage, isPending: sending } = useSendMessage(projectId);
 
   const [input, setInput] = useState("");
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
@@ -236,6 +297,7 @@ export default function Chat() {
 
   const handleProjectSelect = (nextProjectId: string) => {
     setSelectedProjectId(nextProjectId);
+    if (user?.id) writeSelectedProject(user.id, nextProjectId);
     setInput("");
   };
 
@@ -363,10 +425,7 @@ export default function Chat() {
                     >
                       {!isMe && (
                         <div className="mr-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
-                          {getInitials(
-                            sender?.first_name,
-                            sender?.last_name,
-                          )}
+                          {getInitials(sender?.first_name, sender?.last_name)}
                         </div>
                       )}
 
@@ -396,10 +455,7 @@ export default function Chat() {
 
                       {isMe && (
                         <div className="ml-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
-                          {getInitials(
-                            user?.first_name,
-                            user?.last_name,
-                          )}
+                          {getInitials(user?.first_name, user?.last_name)}
                         </div>
                       )}
                     </div>
@@ -450,10 +506,9 @@ export default function Chat() {
   const instructorSidebar = (
     <aside className="hidden h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
       <div className="shrink-0 border-b px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Projects</h2>
+        <p className="text-lg font-semibold text-foreground">Projects</p>
       </div>
 
-      {/* min-h-0 is what lets this list scroll instead of overflowing */}
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2">
         {instructorProjectsLoading ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
@@ -469,26 +524,17 @@ export default function Chat() {
           </div>
         ) : (
           <div className="space-y-1">
-            {instructorProjects.map((project) => {
-              const id = project.id;
-
-              if (!id) return null;
-
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => handleProjectSelect(id)}
-                  className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                    id === projectId
-                      ? "bg-primary text-primary-foreground dark:text-foreground"
-                      : "text-foreground hover:bg-muted dark:hover:bg-[#222228]"
-                  }`}
-                >
-                  <span className="block truncate">{project.name}</span>
-                </button>
-              );
-            })}
+            {instructorProjects.map((project) =>
+              project.id ? (
+                <ProjectItem
+                  key={project.id}
+                  project={{ id: project.id, name: project.name }}
+                  active={project.id === projectId}
+                  userId={user?.id ?? ""}
+                  onSelect={handleProjectSelect}
+                />
+              ) : null,
+            )}
           </div>
         )}
       </div>
