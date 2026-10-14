@@ -224,9 +224,7 @@ export default function NotificationCenter() {
             h-2.5
             w-2.5
             rounded-full
-            bg-red-500
-            ring-2
-            ring-background
+            bg-(--light-maroon)
           "
         />
       )}

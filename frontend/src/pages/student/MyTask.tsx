@@ -322,7 +322,7 @@ export default function MyTask() {
                 return (
                   <Card
                     key={project.id}
-                    className="gap-3 border border-border/70 py-0 transition-all hover:-translate-y-0.5 hover:border-(--maroon)/40 hover:shadow-md"
+                    className="gap-3 border border-border/70 py-0 transition-all hover:-translate-y-0.5 hover:border-(--maroon)/40 hover:bg-accent/40 hover:shadow-md"
                   >
                     <CardHeader className="pt-4">
                       <div className="flex items-start gap-3">

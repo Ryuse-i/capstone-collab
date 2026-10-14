@@ -24,10 +24,10 @@ const roleStyles: Record<ProjectRole, string> = {
   admin: "border-purple-400 text-purple-600 bg-purple-50 dark:bg-purple-950/20",
   advisor: "border-blue-400 text-blue-600 bg-blue-50 dark:bg-blue-950/20",
   instructor:
-    "border-indigo-400 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20",
+    "border-indigo-400 text-indigo-600 bg-indigo-50 dark:text-blue-300 dark:bg-indigo-950/20",
   leader:
     "border-orange-400 text-orange-600 bg-orange-50 dark:bg-orange-950/20",
-  member: "border-gray-400 text-gray-600 bg-gray-50 dark:bg-gray-800/40",
+  member: "border-gray-400 text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-800/40",
 };
 
 const workloadStyles: Record<MemberStatus, WorkloadStyle> = {

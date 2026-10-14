@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { useRegister } from "@/hooks/useAuth";
@@ -12,9 +13,21 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 
+/** Maps FastAPI Users error codes to readable messages. */
+function getRegisterErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : "";
+
+  switch (raw) {
+    case "REGISTER_USER_ALREADY_EXISTS":
+      return "An account with this email already exists.";
+    case "REGISTER_INVALID_PASSWORD":
+      return "That password isn't valid. Please choose a stronger one.";
+    default:
+      return raw || "Something went wrong. Please try again.";
+  }
+}
 
 export function SignupForm({
   className,
@@ -28,21 +41,19 @@ export function SignupForm({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [localError, setLocalError] = useState("");
 
   const register = useRegister();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLocalError("");
 
     if (password !== confirmPassword) {
-      setLocalError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
 
     if (password.length < 8) {
-      setLocalError("Password must be at least 8 characters.");
+      toast.error("Password must be at least 8 characters.");
       return;
     }
 
@@ -56,6 +67,14 @@ export function SignupForm({
       {
         onSuccess: () => {
           navigate("/dashboard");
+        },
+        onError: (error) => {
+          toast.error(getRegisterErrorMessage(error), {
+            classNames: {
+              title: "!text-red-400",
+              icon: "!text-red-400",
+            },
+          });
         },
       },
     );
@@ -71,19 +90,6 @@ export function SignupForm({
           Enter your details below to create your account.
         </p>
       </div>
-
-      {(localError || register.isError) && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {localError
-              ? localError
-              : register.error instanceof Error
-                ? register.error.message
-                : "Something went wrong."}
-          </AlertDescription>
-        </Alert>
-      )}
 
       <form onSubmit={handleSubmit}>
         <FieldGroup>

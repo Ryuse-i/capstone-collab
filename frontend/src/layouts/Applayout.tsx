@@ -53,7 +53,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Toaster } from "@/components/ui/sonner";
 
 import NotificationCenter from "@/components/notifications/NotificationCenter";
 import { PageTransition } from "@/components/page-transition";
@@ -267,17 +266,16 @@ export default function AppLayout({
         {/* Main Content Area: scrolls on its own when a page is taller than
             the screen. Pages that fit (like Chat) never trigger it.
             Stays in skeleton until the sidebar has finished loading. */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pb-4 pt-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pt-0">
           {ready ? (
-            <PageTransition>{children}</PageTransition>
+            <div className="flex min-h-full shrink-0 flex-col pb-4">
+              <PageTransition>{children}</PageTransition>
+            </div>
           ) : (
             <AppContentSkeleton />
           )}
         </div>
       </SidebarInset>
-
-      {/* Renders all toast.success / toast.error calls */}
-      <Toaster position="top-right" />
     </SidebarProvider>
   );
 }

@@ -10,6 +10,7 @@ import GuestRoute from "./components/GuestRoute";
 import { AdminRoutes } from "@/routes/AdminRoutes";
 import { ROLES } from "./constants/roles";
 import { useQueryClient } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/sonner";
 import LoginPage from "@/pages/AuthPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
@@ -33,28 +34,35 @@ export default function App() {
   }, [navigate, queryClient]);
 
   return (
-    <Routes>
-      <Route element={<GuestRoute/>}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<LoginPage />} />
-      </Route>
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="/" element={<LandingPage />} />
-
-      <Route element={<PrivateRoute />}>
-        <Route path="/dashboard" element={<RoleBasedDashboard />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/capstone-repository" element={<CapstoneRepository/>} />
-        <Route path="/capstone-view/:id" element={<CapstoneView/>} />
-        <Route element={<RoleRoute role={[ROLES.INSTRUCTOR, ROLES.STUDENT]} />}>
-          <Route path="/chat" element={<Chat />} />
+    <>
+      <Routes>
+        <Route element={<GuestRoute />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<LoginPage />} />
         </Route>
-        {StudentRoutes}
-        {InstructorRoutes}
-        {AdminRoutes}
-      </Route>
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/" element={<LandingPage />} />
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route element={<PrivateRoute />}>
+          <Route path="/dashboard" element={<RoleBasedDashboard />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/capstone-repository" element={<CapstoneRepository />} />
+          <Route path="/capstone-view/:id" element={<CapstoneView />} />
+          <Route
+            element={<RoleRoute role={[ROLES.INSTRUCTOR, ROLES.STUDENT]} />}
+          >
+            <Route path="/chat" element={<Chat />} />
+          </Route>
+          {StudentRoutes}
+          {InstructorRoutes}
+          {AdminRoutes}
+        </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+
+      {/* Single app-wide toaster: covers login/signup and the dashboard */}
+      <Toaster position="top-right" />
+    </>
   );
 }

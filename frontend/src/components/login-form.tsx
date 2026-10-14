@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
 import { useLogin } from "@/hooks/useAuth";
 
@@ -11,8 +13,21 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+
+/** Maps FastAPI Users error codes to readable messages. */
+function getLoginErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : "";
+
+  switch (raw) {
+    case "LOGIN_BAD_CREDENTIALS":
+      return "Invalid email or password.";
+    case "LOGIN_USER_NOT_VERIFIED":
+      return "Your account hasn't been verified yet.";
+    default:
+      return raw || "Invalid credentials";
+  }
+}
 
 export function LoginForm({
   className,
@@ -26,8 +41,6 @@ export function LoginForm({
 
   const login = useLogin();
 
-  // If already logged in, redirect away from login page
-
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -38,13 +51,11 @@ export function LoginForm({
           navigate("/dashboard", { replace: true });
         },
         onError: (error) => {
-          const message =
-            error instanceof Error ? error.message : "Unknown login error";
-
-          console.error("Login failed for instructor/advisor attempt:", {
-            email,
-            message,
-            rawError: error,
+          toast.error(getLoginErrorMessage(error), {
+            classNames: {
+              title: "!text-red-400",
+              icon: "!text-red-400",
+            },
           });
         },
       },
@@ -53,7 +64,7 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <div className=" flex-col gap-0 text-center md:text-left">
+      <div className="flex-col gap-0 text-center md:text-left">
         <h1 className="text-2xl text-[#701d0b] dark:text-foreground">
           Welcome back
         </h1>
@@ -61,17 +72,6 @@ export function LoginForm({
           Sign in to your Capstone Collab account.
         </p>
       </div>
-
-      {login.isError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {login.error instanceof Error
-              ? login.error.message
-              : "Invalid credentials"}
-          </AlertDescription>
-        </Alert>
-      )}
 
       <form onSubmit={handleSubmit}>
         <FieldGroup>
@@ -83,23 +83,25 @@ export function LoginForm({
               type="email"
               placeholder="m@example.com"
               required
+              autoComplete="email"
               disabled={login.isPending}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-11 border-[#E5DED3] focus-visible:ring-[#C9A84C]"
             />
           </Field>
+
           {/* PASSWORD */}
           <Field>
             <div className="flex items-center">
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              
             </div>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 required
+                autoComplete="current-password"
                 disabled={login.isPending}
                 value={password}
                 className="h-11 border-[#E5DED3] pr-10 focus-visible:ring-[#C9A84C]"
@@ -119,11 +121,12 @@ export function LoginForm({
               </button>
             </div>
           </Field>
+
           {/* SUBMIT */}
           <Field>
             <Button
               type="submit"
-              className="h-11 w-full bg-primary text-white hover:bg-[#701d0b] "
+              className="h-11 w-full bg-primary text-white hover:bg-[#701d0b]"
               disabled={login.isPending}
             >
               {login.isPending ? (

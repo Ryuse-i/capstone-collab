@@ -71,6 +71,7 @@ export default function NotificationCard({
   description,
   timestamp,
   showStatusIcon,
+  isRead,
   actions,
 }: NotificationCardProps) {
   const {
@@ -82,7 +83,7 @@ export default function NotificationCard({
   return (
     <Card
       className={cn(
-        "relative gap-0 overflow-hidden py-0 before:pointer-events-none before:absolute before:-top-20 before:left-1/2 before:h-20 before:w-1/2 before:-translate-x-1/2 before:rounded-full before:opacity-10 before:blur-2xl before:content-[''] dark:before:opacity-20",
+        "relative gap-0 border-2 overflow-hidden py-0 before:pointer-events-none before:absolute before:-top-20 before:left-1/2 before:h-20 before:w-1/2 before:-translate-x-1/2 before:rounded-full before:opacity-10 before:blur-2xl before:content-[''] dark:before:opacity-20",
         glowClassName,
       )}
     >
@@ -100,10 +101,18 @@ export default function NotificationCard({
           )}
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
               <CardTitle className="text-sm font-semibold leading-5 text-(--notification-card-foreground)">
                 {title}
               </CardTitle>
+
+              {!isRead && (
+                <span
+                  role="status"
+                  aria-label="Unread notification"
+                  className="mt-1.5 size-2.5 shrink-0 rounded-full bg-(--light-maroon)"
+                />
+              )}
             </div>
 
             <CardDescription className="mt-1 line-clamp-2 text-xs leading-4 text-(--notification-card-muted)">

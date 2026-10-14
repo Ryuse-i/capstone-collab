@@ -4,7 +4,7 @@ import {
   AlertTriangle,
   CheckSquare,
   Clock,
-  XSquare,
+  ClockAlert,
   BarChart2,
   PlusCircle,
 } from "lucide-react";
@@ -222,7 +222,7 @@ export default function Task() {
       label: "IN PROGRESS",
     },
     {
-      icon: <XSquare className="h-6 w-6 text-red-500" />,
+      icon: <ClockAlert className="h-6 w-6 text-red-500" />,
       change: "+28%",
       value: overdueTaskCounter,
       label: "OVERDUE",

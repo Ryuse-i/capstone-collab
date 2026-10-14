@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, PlusCircle } from "lucide-react";
+import { Check, PlusCircle, ClockAlert, ClockAlertIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -517,14 +517,21 @@ export function TaskTable({
                           </Badge>
                         </TableCell>
                         {/* Assigned */}
-                        <TableCell>
+                        <TableCell> 
                           <AssigneeList members={getAssignees(task)} />
                         </TableCell>
                         {/* Due Date */}
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-muted-foreground flex items-center">
                           {task.deadline
                             ? new Date(task.deadline).toLocaleDateString()
                             : "No deadline"}
+                           {task.deadline && new Date(task.deadline) < new Date() && status !== "completed" ? (
+                            <span className="ml-2 text-red-500">
+                              <ClockAlert size={24}/>
+                            </span>
+                          ) : null}
+
+                           
                         </TableCell>
                         {/* Complexity */}
                         <TableCell>
