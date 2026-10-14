@@ -1,9 +1,11 @@
 import { useDeferredValue, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import {
   AlertTriangle,
-  Check,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   KeyRound,
   LoaderCircle,
   Plus,
@@ -15,7 +17,6 @@ import {
   UserRound,
   UserRoundPen,
   UsersRound,
-  X,
 } from "lucide-react";
 import AppLayout from "@/layouts/Applayout";
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +77,6 @@ const PAGE_SIZE = 10;
 
 type RoleFilter = AdminUserRole | "all";
 type StatusFilter = "all" | "active" | "inactive";
-type Feedback = { kind: "success" | "error"; message: string };
 
 interface CreateUserForm {
   email: string;
@@ -158,10 +158,10 @@ export default function Dashboard() {
   const [role, setRole] = useState<RoleFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateUserForm>(emptyUserForm);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
@@ -198,14 +198,14 @@ export default function Dashboard() {
   async function runAction(
     action: () => Promise<unknown>,
     successMessage: string,
+    errorTitle: string,
   ): Promise<boolean> {
-    setFeedback(null);
     try {
       await action();
-      setFeedback({ kind: "success", message: successMessage });
+      toast.success(successMessage);
       return true;
     } catch (error) {
-      setFeedback({ kind: "error", message: getErrorMessage(error) });
+      toast.error(errorTitle, { description: getErrorMessage(error) });
       return false;
     }
   }
@@ -227,14 +227,26 @@ export default function Dashboard() {
       ...createForm,
       must_change_password: true,
     };
-    const succeeded = await runAction(
-      () => createMutation.mutateAsync(payload),
-      "Instructor account created.",
-    );
-    if (succeeded) {
+
+    try {
+      await createMutation.mutateAsync(payload);
+
+      const fullName =
+        `${createForm.first_name} ${createForm.last_name}`.trim();
+      toast.success(`${createForm.role} account created.`, {
+        description: fullName
+          ? `${fullName} (${createForm.email})`
+          : createForm.email,
+      });
+
       setCreateOpen(false);
       setCreateForm(emptyUserForm);
+      setShowCreatePassword(false);
       setPage(1);
+    } catch (error) {
+      toast.error("Could not create account", {
+        description: getErrorMessage(error),
+      });
     }
   }
 
@@ -245,6 +257,7 @@ export default function Dashboard() {
     const succeeded = await runAction(
       () => updateMutation.mutateAsync({ id: editingUser.id, payload }),
       "User account updated.",
+      "Could not update account",
     );
     if (succeeded) {
       setEditingUser(null);
@@ -263,6 +276,7 @@ export default function Dashboard() {
           password: resetPassword,
         }),
       "Temporary password set. The account is marked to change it.",
+      "Could not reset password",
     );
     if (succeeded) {
       setResetTarget(null);
@@ -279,6 +293,9 @@ export default function Dashboard() {
       user.is_active
         ? "User account deactivated."
         : "User account reactivated.",
+      user.is_active
+        ? "Could not deactivate account"
+        : "Could not reactivate account",
     );
     if (succeeded) setPage(1);
   }
@@ -288,6 +305,7 @@ export default function Dashboard() {
     const succeeded = await runAction(
       () => deleteMutation.mutateAsync(deleteTarget.id),
       "User account removed.",
+      "Could not remove account",
     );
     if (succeeded) {
       setDeleteTarget(null);
@@ -319,42 +337,11 @@ export default function Dashboard() {
               Users
             </h1>
           </div>
-          <Button
-            onClick={() => {
-              setFeedback(null);
-              setCreateOpen(true);
-            }}
-          >
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus data-icon="inline-start" />
             Create User
           </Button>
         </div>
-
-        {feedback && (
-          <div
-            role={feedback.kind === "error" ? "alert" : "status"}
-            className={`mt-4 flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
-              feedback.kind === "error"
-                ? "border-destructive/30 bg-destructive/5 text-destructive"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
-            }`}
-          >
-            {feedback.kind === "error" ? (
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            ) : (
-              <Check className="mt-0.5 size-4 shrink-0" />
-            )}
-            <span className="min-w-0 flex-1">{feedback.message}</span>
-            <button
-              type="button"
-              aria-label="Dismiss message"
-              className="rounded p-0.5 opacity-70 hover:opacity-100"
-              onClick={() => setFeedback(null)}
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        )}
 
         <section className="mt-5" aria-label="User account list">
           <div className="flex flex-col gap-3 pb-4 md:flex-row md:items-center md:justify-between">
@@ -610,7 +597,10 @@ export default function Dashboard() {
         open={createOpen}
         onOpenChange={(open) => {
           setCreateOpen(open);
-          if (!open) setCreateForm(emptyUserForm);
+          if (!open) {
+            setCreateForm(emptyUserForm);
+            setShowCreatePassword(false);
+          }
         }}
       >
         <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-lg">
@@ -694,26 +684,43 @@ export default function Dashboard() {
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
-            <label
-              className="block space-y-1.5 text-sm font-medium"
-              htmlFor="create-password"
-            >
-              Temporary password
-              <Input
-                id="create-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                value={createForm.password}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, password: event.target.value })
-                }
-                required
-              />
+            <div className="space-y-1.5 text-sm font-medium">
+              <label htmlFor="create-password">Temporary password</label>
+              <div className="relative">
+                <Input
+                  id="create-password"
+                  type={showCreatePassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="pr-10"
+                  value={createForm.password}
+                  onChange={(event) =>
+                    setCreateForm({
+                      ...createForm,
+                      password: event.target.value,
+                    })
+                  }
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowCreatePassword((prev) => !prev)}
+                  aria-label={
+                    showCreatePassword ? "Hide password" : "Show password"
+                  }
+                >
+                  {showCreatePassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               <span className="block text-xs font-normal text-muted-foreground">
                 At least 8 characters.
               </span>
-            </label>
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"

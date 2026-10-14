@@ -10,11 +10,13 @@ import { NavUser } from "@/components/nav-user";
 import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useChatUnread } from "@/hooks/useChatUnread";
 import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import {
   useGetCurrentProject,
   useGetInstructorProjects,
 } from "@/hooks/useProject";
+import { useSidebarReady } from "@/hooks/useSidebarReady";
 import { getLastVisitedCapstone } from "@/lib/lastVisitedCapstone";
 import { getLastVisitedProjects } from "@/lib/lastVisitedProjects";
 import {
@@ -165,9 +167,27 @@ const adminNavMain = [
   {
     title: "Capstone Repository",
     url: "/capstone-repository",
-    icon: <BookOpenIcon/>,
+    icon: <BookOpenIcon />,
   },
 ];
+
+// Chat icon with an optional green "new message" dot.
+// size-4 is set explicitly because the wrapper span means the sidebar
+// button's direct-child svg sizing no longer applies.
+function ChatNavIcon({ showDot }: { showDot: boolean }) {
+  return (
+    <span className="relative inline-flex">
+      <MessageCircleMore className="size-4" />
+
+      {showDot && (
+        <span
+          aria-label="New messages"
+          className="absolute -right-1 -top-1 size-2.5 rounded-full bg-green-500 ring-2 ring-sidebar"
+        />
+      )}
+    </span>
+  );
+}
 
 // Static class names so Tailwind can generate them
 // (dynamic w-${n} gets purged)
@@ -241,10 +261,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { data: projects } = useGetInstructorProjects(user?.id ?? "");
 
-  // Check if sidebar data is loaded
-  const sidebarDataLoaded = !isProjectLoading && !isMemberLoading && !!user;
+  // Shared with AppLayout so the header and page content stay in skeleton
+  // until the sidebar has finished loading.
+  const sidebarDataLoaded = useSidebarReady();
 
   const role = user?.role?.toLowerCase();
+
+  const isInstructorOrAdvisor =
+    role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR;
+
+  // Same default project the Chat page opens with.
+  const chatProjectId = isInstructorOrAdvisor
+    ? (projects?.[0]?.id ?? "")
+    : (currentProject?.id ?? "");
+
+  const hasUnreadChat = useChatUnread(user?.id ?? "", chatProjectId);
 
   // TRUE only when the student has joined or created a project
   const hasProject = Boolean(currentProject);
@@ -334,6 +365,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     navMain = commonNavMain;
   }
 
+  // Swap in the Chat icon with the green dot when there's something unread.
+  const navMainWithBadges = navMain.map((item) =>
+    item.url === "/chat"
+      ? { ...item, icon: <ChatNavIcon showDot={hasUnreadChat} /> }
+      : item,
+  );
+
   const sidebarUser = {
     name:
       [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
@@ -381,7 +419,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ) : (
         <>
           <SidebarContent>
-            <NavMain items={navMain} />
+            <NavMain items={navMainWithBadges} />
 
             {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
               <div className="group-data-[collapsible=icon]:hidden">

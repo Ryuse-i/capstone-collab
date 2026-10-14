@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { AxiosError } from "axios";
 import { format, isValid, parseISO } from "date-fns";
+import { toast } from "sonner";
 import {
   CalendarIcon,
   ChevronLeft,
@@ -91,6 +92,12 @@ function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
+/** Shortens long titles so they fit nicely inside a toast. */
+function truncateTitle(title: string, maxLength = 50) {
+  if (title.length <= maxLength) return title;
+  return `${title.slice(0, maxLength)}...`;
+}
+
 /**
  * Safely parses YYYY, YYYY-MM or YYYY-MM-DD strings (and, as a fallback,
  * free-form strings like "March 2023") into a local Date.
@@ -137,8 +144,6 @@ export default function UploadPaperDialog({
   const [methodology, setMethodology] = useState("");
   const [publishedDate, setPublishedDate] = useState(""); // Stores YYYY-MM-01
   const [file, setFile] = useState<File | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -160,8 +165,6 @@ export default function UploadPaperDialog({
     setMethodology("");
     setPublishedDate("");
     setFile(null);
-    setFileError(null);
-    setSubmitError(null);
     setDatePickerOpen(false);
     setIsDragging(false);
     dragDepthRef.current = 0;
@@ -209,23 +212,30 @@ export default function UploadPaperDialog({
   const processFile = (picked: File) => {
     if (!isPdf(picked)) {
       clearFile();
-      setFileError("Only PDF files are supported.");
+      toast.error("Only PDF files are supported.");
       return;
     }
     if (picked.size > MAX_FILE_MB * 1024 * 1024) {
       clearFile();
-      setFileError(`File must be ${MAX_FILE_MB} MB or smaller.`);
+      toast.error(`File must be ${MAX_FILE_MB} MB or smaller.`);
       return;
     }
 
-    setFileError(null);
-    setSubmitError(null);
     setFile(picked);
     currentFileRef.current = picked;
 
     extractPaper.mutate(picked, {
       onSuccess: (data) => {
-        if (currentFileRef.current === picked) applyExtracted(data);
+        // Ignore results from a file the user has since replaced or removed.
+        if (currentFileRef.current !== picked) return;
+        applyExtracted(data);
+        toast.success("Paper details filled in. Review them before saving.");
+      },
+      onError: (err) => {
+        if (currentFileRef.current !== picked) return;
+        toast.error(
+          `${errorMessage(err, "Could not analyze this file.")} You can still fill in the fields manually.`,
+        );
       },
     });
   };
@@ -271,7 +281,7 @@ export default function UploadPaperDialog({
     if (files.length === 0) return;
     if (files.length > 1) {
       clearFile();
-      setFileError("Please drop only one PDF file.");
+      toast.error("Please drop only one PDF file.");
       return;
     }
     processFile(files[0]);
@@ -295,12 +305,14 @@ export default function UploadPaperDialog({
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!file || !canSubmit) return;
-    setSubmitError(null);
+
+    // Capture before reset() clears the form on success.
+    const savedTitle = title.trim();
 
     uploadPaper.mutate(
       {
         file,
-        title: title.trim(),
+        title: savedTitle,
         abstract: abstract.trim(),
         authors: splitList(authors),
         keywords: splitList(keywords),
@@ -311,11 +323,14 @@ export default function UploadPaperDialog({
       },
       {
         onSuccess: () => {
+          toast.success(
+            `"${truncateTitle(savedTitle)}" was added to the repository.`,
+          );
           reset();
           onOpenChange(false);
         },
         onError: (err) =>
-          setSubmitError(errorMessage(err, "Could not save the paper.")),
+          toast.error(errorMessage(err, "Could not save the paper. Try again.")),
       },
     );
   };
@@ -440,9 +455,6 @@ export default function UploadPaperDialog({
                     )}
                   </div>
                 )}
-                {fileError && (
-                  <p className="text-sm text-destructive">{fileError}</p>
-                )}
               </div>
 
               {extracting && (
@@ -450,15 +462,6 @@ export default function UploadPaperDialog({
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Analyzing the paper…
                 </div>
-              )}
-              {extractPaper.isError && (
-                <p className="text-sm text-destructive">
-                  {errorMessage(
-                    extractPaper.error,
-                    "Could not analyze this file.",
-                  )}{" "}
-                  You can still fill in the fields manually.
-                </p>
               )}
 
               <div className="space-y-2">
@@ -640,12 +643,6 @@ export default function UploadPaperDialog({
                   disabled={fieldsDisabled}
                 />
               </div>
-
-              {submitError && (
-                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                  {submitError}
-                </p>
-              )}
             </div>
           </div>
 

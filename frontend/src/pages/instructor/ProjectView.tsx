@@ -457,7 +457,7 @@ export default function ProjectView() {
           Back to projects
         </button>
 
-        <Card className="overflow-hidden border shadow-sm">
+        <Card className="overflow-hidden border shadow-sm bg-background">
           {/* Project Header */}
           <div className="m-2 rounded-lg border-4 border-neutral-200 p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">

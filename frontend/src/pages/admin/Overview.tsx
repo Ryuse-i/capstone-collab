@@ -66,7 +66,7 @@ function MetricCard({
     <Card className="rounded-md py-4 shadow-none">
       <CardContent className="flex items-start justify-between gap-3 px-4">
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-sm text-foreground">{label}</p>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
             {numberFormat.format(value)}
           </p>
@@ -141,7 +141,7 @@ function RoleComposition({ metrics }: { metrics: AdminMetricsOverview["users"] }
           <span className="px-1.5">/</span>
           {numberFormat.format(metrics.inactive)} inactive
         </div>
-        <Button asChild variant="link" className="h-auto justify-start p-0 text-xs">
+        <Button asChild variant="link" className="h-auto justify-start p-0 text-xs text-(--maroon) dark:text-[#DB2124]">
           <Link to="/admin/users">Manage user accounts</Link>
         </Button>
       </div>

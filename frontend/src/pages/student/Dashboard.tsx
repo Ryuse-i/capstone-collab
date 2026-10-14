@@ -22,14 +22,73 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetTasksForUser } from "@/hooks/useTask";
 import { useGetMemberActivities } from "@/hooks/useMemberActivity";
 
-
-
 // Task status distribution for the bar chart replacement
 type TaskStatusDistribution = {
   not_started: number;
   in_progress: number;
   submitted: number;
   completed: number;
+};
+
+// ---------------------------------------------------------------------------
+// Health level helpers
+// ---------------------------------------------------------------------------
+
+type HealthLevel = "good" | "warning" | "bad";
+
+// Adjust these lists to match the exact status strings your backend returns.
+const statusLevels: Record<HealthLevel, string[]> = {
+  good: ["healthy", "good", "on_track", "on track"],
+  warning: ["warning", "at_risk", "at risk", "caution", "moderate"],
+  bad: ["critical", "bad", "unhealthy", "danger", "off_track", "off track"],
+};
+
+function getHealthLevel(status: string, score: number): HealthLevel {
+  const normalized = String(status ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (statusLevels.good.includes(normalized)) return "good";
+  if (statusLevels.warning.includes(normalized)) return "warning";
+  if (statusLevels.bad.includes(normalized)) return "bad";
+
+  // Fallback for unknown statuses: use the health score
+  if (score >= 70) return "good";
+  if (score >= 40) return "warning";
+  return "bad";
+}
+
+const healthStyles: Record<
+  HealthLevel,
+  {
+    border: string;
+    icon: string;
+    title: string;
+    badge: string;
+    heading: string;
+  }
+> = {
+  good: {
+    border: "border-green-500 dark:border-green-500",
+    icon: "text-green-500",
+    title: "text-green-700 dark:text-green-500",
+    badge: "border-green-600 text-green-600",
+    heading: "Project Health On Track",
+  },
+  warning: {
+    border: "border-yellow-500 dark:border-yellow-500",
+    icon: "text-yellow-500",
+    title: "text-yellow-700 dark:text-yellow-500",
+    badge: "border-yellow-600 text-yellow-600",
+    heading: "Project Health Warning",
+  },
+  bad: {
+    border: "border-red-500 dark:border-red-500",
+    icon: "text-red-500",
+    title: "text-red-700 dark:text-red-500",
+    badge: "border-red-600 text-red-600",
+    heading: "Project Health Alert",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -103,19 +162,14 @@ function DashboardSkeleton() {
           </div>
 
           <div className="mt-4 space-y-4">
-            {[
-              "w-36",
-              "w-52",
-              "w-40",
-              "w-20",
-              "w-44",
-              "w-48",
-            ].map((width, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <Skeleton className="h-4 w-16 shrink-0" />
-                <Skeleton className={`h-5 ${width} rounded-md`} />
-              </div>
-            ))}
+            {["w-36", "w-52", "w-40", "w-20", "w-44", "w-48"].map(
+              (width, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <Skeleton className="h-4 w-16 shrink-0" />
+                  <Skeleton className={`h-5 ${width} rounded-md`} />
+                </div>
+              ),
+            )}
           </div>
         </Card>
 
@@ -175,10 +229,8 @@ export default function Dashboard() {
     error: tasksError,
   } = useGetTasksForUser(user?.id ?? "");
 
-  const {
-    data: memberActivities,
-    isLoading: isActivitiesLoading,
-  } = useGetMemberActivities(currentProject?.id ?? "");
+  const { data: memberActivities, isLoading: isActivitiesLoading } =
+    useGetMemberActivities(currentProject?.id ?? "");
 
   if (isError) {
     console.error("Dashboard project error", error);
@@ -204,14 +256,15 @@ export default function Dashboard() {
   const healthScore = currentProject?.snapshot?.health_score ?? 0;
   const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
   const scheduleVariance = currentProject?.snapshot?.schedule_variance ?? 0;
-  const isAtRisk = scheduleVariance < 0 || healthStatus !== "healthy";
-  const progressPercentage =
-    currentProject?.snapshot?.progress_percentage ?? 0;
+  const progressPercentage = currentProject?.snapshot?.progress_percentage ?? 0;
   const completedTasks = currentProject?.snapshot?.completed_tasks ?? 0;
-  const totalWorkload =
-    currentProject?.snapshot?.total_workload_points ?? 0;
-  const expectedPercentage =
-    currentProject?.snapshot?.expected_percentage ?? 0;
+  const totalWorkload = currentProject?.snapshot?.total_workload_points ?? 0;
+  const expectedPercentage = currentProject?.snapshot?.expected_percentage ?? 0;
+
+  // Banner color/level: good = green, warning = yellow, bad = red
+  const healthLevel = getHealthLevel(healthStatus, Number(healthScore));
+  const healthStyle = healthStyles[healthLevel];
+  const healthNeedsAttention = healthLevel !== "good";
 
   // Calculate task status distribution for the bar chart replacement
   const taskStatusDistribution: TaskStatusDistribution = {
@@ -221,7 +274,7 @@ export default function Dashboard() {
     completed: 0,
   };
 
-  userTasks?.forEach(task => {
+  userTasks?.forEach((task) => {
     if (task.status === "not_started") {
       taskStatusDistribution.not_started++;
     } else if (task.status === "in_progress") {
@@ -266,60 +319,39 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* ── Project Health Banner ─────────────────────────────── */}
             <Card
-              className={`flex items-start justify-between rounded-lg border-4 p-4 lg:col-span-2 ${
-                isAtRisk
-                  ? "border-red-500 dark:border-red-500"
-                  : "border-yellow-500 dark:border-yellow-500"
-              }`}
+              className={`relative flex items-start justify-between rounded-lg border-4 p-4 lg:col-span-2 ${healthStyle.border}`}
             >
+              {/* Status badge pinned to the top right corner */}
+              <span
+                className={`absolute right-4 top-4 rounded-full border px-3 py-1 text-xs capitalize ${healthStyle.badge}`}
+              >
+                {healthStatus}
+              </span>
+
+              {/* Left: heading + description */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <TriangleAlert
-                    className={`h-5 w-5 ${
-                      isAtRisk ? "text-red-500" : "text-yellow-500"
-                    }`}
-                  />
-                  <h2
-                    className={`font-semibold ${
-                      isAtRisk
-                        ? "text-red-700 dark:text-red-500"
-                        : "text-gray-900 dark:text-yellow-500"
-                    }`}
-                  >
-                    {isAtRisk
-                      ? "Project Health Alert"
-                      : "Project Health On Track"}
+                  {healthNeedsAttention && (
+                    <TriangleAlert className={`h-5 w-5 ${healthStyle.icon}`} />
+                  )}
+                  <h2 className={`font-semibold ${healthStyle.title}`}>
+                    {healthStyle.heading}
                   </h2>
                 </div>
 
                 <p className="text-sm text-gray-500 dark:text-card-foreground">
-                  {scheduleVariance < 0 && healthStatus !== "healthy"
+                  {scheduleVariance < 0 && healthNeedsAttention
                     ? "The project is behind schedule and its overall health needs attention."
                     : scheduleVariance < 0
                       ? "The project is behind schedule. Review task progress and deadlines."
-                      : healthStatus !== "healthy"
+                      : healthNeedsAttention
                         ? "The project's overall health needs attention. Review workload and task progress."
                         : "Project is on track. Keep up the great work!"}
                 </p>
-
-                <p className="text-sm text-gray-600 dark:text-card-foreground">
-                  Status
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  <span
-                    className={`rounded-full border px-3 py-1 text-xs capitalize ${
-                      isAtRisk
-                        ? "border-red-600 text-red-600"
-                        : "border-gray-300 text-gray-600 dark:text-card-foreground"
-                    }`}
-                  >
-                    {healthStatus}
-                  </span>
-                </div>
               </div>
 
-              <div className="text-right">
+              {/* Right: health score, pushed below the badge */}
+              <div className="mt-10 text-right">
                 <p className="text-3xl font-bold text-foreground">
                   {Number(healthScore).toFixed(0)}%
                 </p>
@@ -355,7 +387,7 @@ export default function Dashboard() {
 
                 <div className="h-2 w-full rounded-full bg-gray-200">
                   <div
-                    className="h-2 rounded-full bg-yellow-400 transition_all duration-500"
+                    className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
                     style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
@@ -394,7 +426,9 @@ export default function Dashboard() {
             <Card className="rounded-lg p-4 shadow-sm">
               <CardHeader>
                 <CardTitle>Task Status Distribution</CardTitle>
-                <CardDescription>Current project task breakdown</CardDescription>
+                <CardDescription>
+                  Current project task breakdown
+                </CardDescription>
               </CardHeader>
 
               <CardContent>
@@ -421,11 +455,7 @@ export default function Dashboard() {
                       content={<ChartTooltipContent hideLabel />}
                     />
 
-                    <Bar
-                      dataKey="desktop"
-                      fill="var(--primary)"
-                      radius={5}
-                    />
+                    <Bar dataKey="desktop" fill="var(--primary)" radius={5} />
                   </BarChart>
                 </ChartContainer>
               </CardContent>
@@ -470,7 +500,8 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
-              ) : memberActivities === null || memberActivities === undefined ? (
+              ) : memberActivities === null ||
+                memberActivities === undefined ? (
                 <div className="text-center py-4 text-gray-500">
                   No activities
                 </div>

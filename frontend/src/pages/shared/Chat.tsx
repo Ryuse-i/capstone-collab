@@ -19,8 +19,14 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentMember } from "@/hooks/useProjectMember";
 import { useGetProjectMessages, useSendMessage } from "@/hooks/useMessage";
 import { useGetProjectMeetings } from "@/hooks/useMeeting";
+import { markChatSeen, useChatUnread } from "@/hooks/useChatUnread";
 import type { MeetingProvider } from "@/types/meeting";
 import { MeetingDialog } from "@/components/meetings/MeetingDialog";
+
+// Exact height of the area AppLayout gives to pages:
+// 100svh - 3rem (header h-12) - 1rem (content pb-4).
+// If you change the header height or the layout padding, change this too.
+const FILL = "h-[calc(100svh-4rem)] min-h-0";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
   if (!firstName && !lastName) return "?";
@@ -34,40 +40,86 @@ function formatTime(iso: string) {
   });
 }
 
+function ProjectItem({
+  project,
+  active,
+  userId,
+  onSelect,
+}: {
+  project: { id: string; name: string };
+  active: boolean;
+  userId: string;
+  onSelect: (id: string) => void;
+}) {
+  const hasUnread = useChatUnread(userId, project.id);
+  const unread = hasUnread && !active;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(project.id)}
+      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground dark:text-foreground"
+          : "text-foreground hover:bg-muted dark:hover:bg-[#222228]"
+      }`}
+    >
+      <span
+        className={`block min-w-0 flex-1 truncate ${unread ? "font-bold" : ""}`}
+      >
+        {project.name}
+      </span>
+
+      {unread && (
+        <span
+          aria-label="Unread messages"
+          className="h-2.5 w-2.5 shrink-0 rounded-full bg-(--maroon)"
+        />
+      )}
+    </button>
+  );
+}
+
+const selectedProjectKey = (userId: string) =>
+  `chat-selected-project:${userId}`;
+
+function readSelectedProject(userId: string): string | null {
+  try {
+    return localStorage.getItem(selectedProjectKey(userId));
+  } catch {
+    return null;
+  }
+}
+
+function writeSelectedProject(userId: string, projectId: string) {
+  try {
+    localStorage.setItem(selectedProjectKey(userId), projectId);
+  } catch {
+    /* ignore */
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Chat Skeleton
 // ---------------------------------------------------------------------------
 
 function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
-  const messageWidths = [
-    "w-64",
-    "w-80",
-    "w-52",
-    "w-72",
-    "w-60",
-    "w-96",
-  ];
+  const messageWidths = ["w-64", "w-80", "w-52", "w-72", "w-60", "w-96"];
 
   return (
-    <div
-      className={`mt-2 flex min-h-0 w-full flex-1 gap-2 ${
-        isInstructor ? "-mb-4" : ""
-      }`}
-    >
+    <div className={`flex w-full gap-2 ${FILL}`}>
       {/* ── Instructor Project Sidebar ─────────────────────────────── */}
       {isInstructor && (
-        <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
+        <aside className="hidden h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
           <div className="border-b px-4 py-3">
             <Skeleton className="h-4 w-20" />
           </div>
 
-          <div className="flex-1 space-y-2 overflow-hidden p-2">
+          <div className="min-h-0 flex-1 space-y-2 overflow-hidden p-2">
             {[1, 2, 3, 4, 5, 6].map((item) => (
               <div key={item} className="rounded-md px-3 py-2">
                 <Skeleton
-                  className={`h-4 ${
-                    item % 2 === 0 ? "w-40" : "w-32"
-                  }`}
+                  className={`h-4 ${item % 2 === 0 ? "w-40" : "w-32"}`}
                 />
               </div>
             ))}
@@ -76,8 +128,8 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
       )}
 
       {/* ── Chat Card ───────────────────────────────────────────────── */}
-      <div className="h-full min-w-0 flex-1">
-        <Card className="flex h-full w-full flex-1 flex-col overflow-hidden pb-0">
+      <div className="h-full min-h-0 min-w-0 flex-1">
+        <Card className="flex h-full min-h-0 w-full flex-col overflow-hidden pb-0">
           <CardContent className="flex min-h-0 flex-1 flex-col p-0">
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b px-4 pb-2">
@@ -89,7 +141,7 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 min-h-0 overflow-hidden bg-white p-6 dark:bg-[#101014]">
+            <div className="min-h-0 flex-1 overflow-hidden bg-white p-6 dark:bg-[#101014]">
               <div className="flex flex-col gap-5">
                 {messageWidths.map((width, index) => {
                   const isRight = index % 2 === 1;
@@ -112,9 +164,7 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
                       >
                         {!isRight && <Skeleton className="h-3 w-24" />}
 
-                        <Skeleton
-                          className={`h-4 ${width} max-w-[45vw]`}
-                        />
+                        <Skeleton className={`h-4 ${width} max-w-[45vw]`} />
 
                         {index === 1 || index === 4 ? (
                           <Skeleton className="h-4 w-48 max-w-[40vw]" />
@@ -166,16 +216,30 @@ export default function Chat() {
     null,
   );
 
+  // Restore the last opened project once we know who the user is
+  useEffect(() => {
+    if (!isInstructor || !user?.id) return;
+    setSelectedProjectId(readSelectedProject(user.id));
+  }, [isInstructor, user?.id]);
+
+  // Ignore a saved id that is no longer in the instructor's project list
+  const validSelectedId = instructorProjects.some(
+    (project) => project.id === selectedProjectId,
+  )
+    ? selectedProjectId
+    : null;
+
   const projectId = isInstructor
-    ? (selectedProjectId ?? instructorProjects[0]?.id ?? "")
+    ? (validSelectedId ?? instructorProjects[0]?.id ?? "")
     : (currentProject?.id ?? "");
 
   const selectedProject = instructorProjects.find(
     (project) => project.id === projectId,
   );
 
-  const { data: currentMember, isLoading: memberLoading } =
-    useGetCurrentMember(user?.id ?? "");
+  const { data: currentMember, isLoading: memberLoading } = useGetCurrentMember(
+    user?.id ?? "",
+  );
 
   const currentMemberRole = currentMember?.project_role.toLowerCase();
 
@@ -195,8 +259,7 @@ export default function Chat() {
     isFetching,
   } = useGetProjectMessages(projectId);
 
-  const { mutate: sendMessage, isPending: sending } =
-    useSendMessage(projectId);
+  const { mutate: sendMessage, isPending: sending } = useSendMessage(projectId);
 
   const [input, setInput] = useState("");
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
@@ -217,6 +280,13 @@ export default function Chat() {
     }
   }, [messages, isLoading, isError]);
 
+  // Mark messages as seen while the chat is open so the sidebar dot clears
+  // (and stays clear for messages that arrive while you're viewing).
+  useEffect(() => {
+    if (isLoading || isError || !user?.id || !projectId) return;
+    markChatSeen(user.id, projectId, messages);
+  }, [messages, isLoading, isError, user?.id, projectId]);
+
   const handleSend = () => {
     if (!input.trim() || !projectId) return;
 
@@ -227,17 +297,18 @@ export default function Chat() {
 
   const handleProjectSelect = (nextProjectId: string) => {
     setSelectedProjectId(nextProjectId);
+    if (user?.id) writeSelectedProject(user.id, nextProjectId);
     setInput("");
   };
 
   const chatCard = (
-    <div className="h-full min-w-0 flex-1">
-      <Card className="flex h-full w-full flex-1 flex-col overflow-hidden pb-0">
+    <div className="h-full min-h-0 min-w-0 flex-1">
+      <Card className="flex h-full min-h-0 w-full flex-col overflow-hidden pb-0">
         <CardContent className="flex min-h-0 flex-1 flex-col p-0">
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b px-4 pb-2">
-            <div className="flex items-center gap-3">
-              <div className="text-lg font-medium">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="truncate text-lg font-medium">
                 {(isInstructor
                   ? selectedProject?.name
                   : currentProject?.name) || "Project chat"}
@@ -245,7 +316,7 @@ export default function Chat() {
             </div>
 
             {canManageMeetings && (
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -260,17 +331,17 @@ export default function Chat() {
             )}
           </div>
 
-          {/* Messages area */}
+          {/* Messages area: this is the only part that scrolls */}
           <div
             ref={scrollRef}
-            className="custom-scrollbar flex-1 min-h-0 overflow-auto bg-white p-6 dark:bg-[#101014]"
+            className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-white p-6 dark:bg-[#101014]"
           >
             {isFetching && messagesLoading ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 Loading messages...
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
+              <div className="flex min-h-full flex-col gap-4">
                 {meetingsLoading && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
                     Loading meeting details...
@@ -288,7 +359,7 @@ export default function Chat() {
                   .map((meeting) => (
                     <div
                       key={`meeting-${meeting.id}`}
-                      className={`flex ${
+                      className={`flex shrink-0 ${
                         meeting.created_by === user?.id
                           ? "justify-end"
                           : "justify-start"
@@ -348,21 +419,18 @@ export default function Chat() {
                   return (
                     <div
                       key={msg.id}
-                      className={`flex ${
+                      className={`flex shrink-0 ${
                         isMe ? "justify-end" : "justify-start"
                       }`}
                     >
                       {!isMe && (
                         <div className="mr-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
-                          {getInitials(
-                            sender?.first_name,
-                            sender?.last_name,
-                          )}
+                          {getInitials(sender?.first_name, sender?.last_name)}
                         </div>
                       )}
 
                       <div
-                        className={`max-w-[70%] rounded-lg p-3 ${
+                        className={`min-w-0 max-w-[70%] rounded-lg p-3 ${
                           isMe
                             ? "bg-[#800000] text-white dark:bg-[#6a0101]"
                             : "bg-gray-100 text-foreground dark:bg-[#16161a]"
@@ -376,7 +444,9 @@ export default function Chat() {
                           </div>
                         )}
 
-                        <div className="text-sm">{msg.content}</div>
+                        <div className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">
+                          {msg.content}
+                        </div>
 
                         <div className="mt-1 text-right text-[11px] text-muted-foreground">
                           {formatTime(msg.created_at)}
@@ -385,10 +455,7 @@ export default function Chat() {
 
                       {isMe && (
                         <div className="ml-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
-                          {getInitials(
-                            user?.first_name,
-                            user?.last_name,
-                          )}
+                          {getInitials(user?.first_name, user?.last_name)}
                         </div>
                       )}
                     </div>
@@ -396,7 +463,7 @@ export default function Chat() {
                 })}
 
                 {!messages?.length && (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
                     No messages yet — say hello.
                   </div>
                 )}
@@ -437,12 +504,12 @@ export default function Chat() {
   );
 
   const instructorSidebar = (
-    <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Projects</h2>
+    <aside className="hidden h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
+      <div className="shrink-0 border-b px-4 py-3">
+        <p className="text-lg font-semibold text-foreground">Projects</p>
       </div>
 
-      <div className="custom-scrollbar flex-1 overflow-y-auto p-2">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2">
         {instructorProjectsLoading ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
             Loading projects...
@@ -457,45 +524,36 @@ export default function Chat() {
           </div>
         ) : (
           <div className="space-y-1">
-            {instructorProjects.map((project) => {
-              const id = project.id;
-
-              if (!id) return null;
-
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => handleProjectSelect(id)}
-                  className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                    id === projectId
-                      ? "bg-primary text-primary-foreground dark:text-foreground"
-                      : "text-foreground hover:bg-muted dark:hover:bg-[#222228]"
-                  }`}
-                >
-                  <span className="block truncate">{project.name}</span>
-                </button>
-              );
-            })}
+            {instructorProjects.map((project) =>
+              project.id ? (
+                <ProjectItem
+                  key={project.id}
+                  project={{ id: project.id, name: project.name }}
+                  active={project.id === projectId}
+                  userId={user?.id ?? ""}
+                  onSelect={handleProjectSelect}
+                />
+              ) : null,
+            )}
           </div>
         )}
       </div>
     </aside>
   );
 
-  const content = isInstructor ? (
-    <div className="mt-2 flex flex-1 -mb-4 min-h-0 w-full gap-2">
-      {instructorSidebar}
+  const content = (
+    <div className={`flex w-full gap-2 ${FILL}`}>
+      {isInstructor && instructorSidebar}
       {chatCard}
     </div>
-  ) : (
-    <div className="h-full min-h-0 w-full">{chatCard}</div>
   );
 
   return (
     <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
       {isError ? (
-        <div className="flex h-screen flex-col items-center justify-center gap-4">
+        <div
+          className={`flex flex-col items-center justify-center gap-4 ${FILL}`}
+        >
           <AlertTriangle className="h-8 w-8 text-destructive" />
           <p className="text-foreground dark:text-muted-foreground">
             Failed to load chat data. Please try again later.
