@@ -1,6 +1,6 @@
 """drop source_url from resources
 
-Revision ID: 20261013_drop_resource_source_url
+Revision ID: 20261013_drop_source_url
 Revises: 0376ca9364f7_add_resource_links
 Create Date: 2026-10-13 19:00:00.000000
 
@@ -12,8 +12,8 @@ from alembic import op
 
 
 # revision identifiers, used by Alembic.
-revision: str = "20261013_drop_resource_source_url"
-down_revision: Union[str, Sequence[str], None] = "0376ca9364f7_add_resource_links"
+revision: str = "20261013_drop_source_url"
+down_revision: Union[str, Sequence[str], None] = "0376ca9364f7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

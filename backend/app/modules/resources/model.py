@@ -39,4 +39,4 @@ class Resource(Base):
     project = relationship("Project", foreign_keys=[project_id])
     creator = relationship("User", foreign_keys=[created_by])
     file = relationship("StoredFile", foreign_keys=[file_id])
-    links: Mapped[list["ResourceLink"]] = relationship("ResourceLink", back_populates="resource")
+    links: Mapped[list["ResourceLink"]] = relationship("ResourceLink", back_populates="resource", cascade="all, delete-orphan",)

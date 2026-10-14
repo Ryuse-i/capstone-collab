@@ -40,6 +40,18 @@ async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
 # 2. DYNAMIC / PARAMETERIZED PATHS LAST
 # =====================================================================
 
+@project_member_router.get(
+    "/by-user/{user_id}",
+    response_model=ProjectMemberResponse,
+    status_code=HTTP_200_OK,
+)
+async def get_project_member_by_user_id(
+    user_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    member = await ProjectMemberService.get_project_member_user_id(db, user_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Project member not found")
+    return member
 
 @project_member_router.get(
     "/with-user-snapshot/{project_id}",

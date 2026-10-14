@@ -119,3 +119,8 @@ class ProjectMemberRepo(BaseRepo):
         )
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def get_project_member_user_id(self, user_id: UUID):
+        query = select(ProjectMember).where(ProjectMember.user_id == user_id)
+        result = await self.db.execute(query)
+        return result.scalars().first()
