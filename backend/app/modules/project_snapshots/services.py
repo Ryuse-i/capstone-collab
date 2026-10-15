@@ -27,6 +27,7 @@ from app.modules.project_members.services import ProjectMemberService
 from app.modules.project_snapshots.repo import ProjectSnapshotRepo
 from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
 from app.modules.redistribution_recommendations import workload_math as wm
+from app.modules.redistribution_recommendations.workload_math import urgency_multiplier
 
 APP_TZ = ZoneInfo("Asia/Manila")  # move to app/core/clock.py and import from there
 
@@ -49,44 +50,40 @@ async def _lock_project(db: AsyncSession, project_id: UUID) -> None:
     await db.execute(select(Project.id).where(Project.id == project_id).with_for_update())
 
 
-def task_state_from_status(status) -> wm.TaskState:
-    """Single whitelist: only NOT_STARTED (or None) and IN_PROGRESS count toward workload.
-    COMPLETED, SUBMITTED and anything else are INACTIVE."""
-    from app.modules.tasks.enums import Status as TaskStatus  # lazy
-    if status is None or status == TaskStatus.NOT_STARTED:
-        return wm.TaskState.NOT_STARTED
-    if status == TaskStatus.IN_PROGRESS:
-        return wm.TaskState.IN_PROGRESS
-    return wm.TaskState.INACTIVE
 
-async def _load_task_inputs(db: AsyncSession, member_id: UUID) -> list[wm.TaskInput]:
+#loads all eligible task for the member 
+async def _member_points(db: AsyncSession, member_id: UUID) -> Decimal:
     """Read one member's tasks and convert to pure TaskInput objects."""
     from app.modules.assigned_members.services import AssignedMemberService  # lazy
-    from app.modules.tasks.enums import Status as TaskStatus                 # lazy
     from app.modules.tasks.services import TaskService                       # lazy
 
+
+    #get all instances where the member is assigned
+    #this would return all joint table rows for the assigned member
     assigned = await AssignedMemberService.get_members(db, member_id)
+    #get all tasks ids 
     by_task = {am.task_id: am for am in assigned if am.task_id is not None}
     if not by_task:
-        return []
+        return Decimal("0")
 
+    #get all task with not-started and in-progress. completed and submited is not included here
     tasks = await TaskService.get_eligible_tasks(db, list(by_task))
-    inputs: list[wm.TaskInput] = []
+
+    total_effective_points = Decimal("0")
     for t in tasks:
-        state = task_state_from_status(t.status)
         # Get all members assigned to this task to calculate equal share
         task_members = await AssignedMemberService.get_task_members(db, t.id)
+        #how many member is assigned for this task 
         member_count = len(task_members)
-        # Avoid division by zero - if no members assigned, share is 0 (shouldn't happen if current member is assigned)
-        share = Decimal("1") / Decimal(member_count) if member_count > 0 else Decimal("0")
-        inputs.append(wm.TaskInput(
-            state=state,
-            complexity_points=wm.complexity_to_points(t.complexity),
-            deadline=t.deadline,
-            effort_share=Decimal(str(share)) if share else None,
-            is_parent=bool(getattr(t, "has_subtasks", False)),     # ASSUMPTION
-        ))
-    return inputs
+        #splits the points of the task 
+        #calculate the workload points of the task
+        weighted_points = Decimal(t.complexity_points) * urgency_multiplier(t.deadline, app_today())
+        #split the points for how many member is assigned for this task
+        effective_points = weighted_points / member_count
+        total_effective_points += effective_points
+
+
+    return total_effective_points 
 
 
 class ProjectSnapshotService:
@@ -113,7 +110,6 @@ class ProjectSnapshotService:
         *,
         today: date | None = None,
         config: wm.WorkloadConfig | None = None,
-        commit: bool = True,
     ) -> wm.ProjectWorkload:
         """
         Recompute and persist workload for the whole project. Safe to call from any
@@ -121,6 +117,7 @@ class ProjectSnapshotService:
         Pass commit=False when the caller owns the transaction.
         """
         from app.modules.member_snapshots.model import MemberStatus 
+        from app.modules.member_snapshots.services import MemberSnapshotService
 
         today = today or app_today()
 
@@ -131,19 +128,20 @@ class ProjectSnapshotService:
         #get all members except for instructor and advisor 
         members = await ProjectMemberService.get_elligible_members(db, project_id)
 
-        # 1. Fresh inputs for EVERY member (idle members are 0 and stay in the median)
+
         inputs: list[wm.MemberInput] = []
         for pm in members:
-            tasks = await _load_task_inputs(db, pm.id)
-            raw, eff = wm.member_totals(tasks, today)
+            #get total_effective_points of each member 
+            member_points = await _member_points(db, pm.id)
+            member_snapshot = await MemberSnapshotService.get_latest_snapshot(db, pm.id)
+
+            #containes all the points of the members
+            #do i still need the id of the member to be a key-value-pair
             inputs.append(wm.MemberInput(
-                member_id=pm.id,
-                total_points=raw,
-                total_effective_points=eff,
-                # ASSUMPTION: ProjectMember is the single source of truth for both settings
-                capacity_multiplier=getattr(pm, "capacity_multiplier", None),
-                silence_warning=bool(getattr(pm, "silence_warning", False)),
-                is_counted=is_counted_member(pm),
+                member_id = pm.id,
+                total_effective_points = member_points,
+                capacity_multiplier = member_snapshot.capacity_multiplier,
+                silence_warning = member_snapshot.silence_warning
             ))
 
         # 2. Pure pass: median, expected_load, status
@@ -152,14 +150,10 @@ class ProjectSnapshotService:
         # 3. Persist EVERY member (non-counted get NORMAL, so no stale OVERLOADED rows)
         for r in result.members:
             fields = dict(
-                total_points=r.total_points,                  # ASSUMPTION: new columns (see guide step 4)
                 total_effective_points=r.total_effective_points,
                 expected_load=r.expected_load,
                 workload_status=MemberStatus[r.status.name],  # true status, even when silenced
-                is_over_threshold=r.is_over_threshold,
             )
-            if not r.is_over_threshold:
-                fields["consecutive_fallback_count"] = 0      # spec 8.1 reset rule
             await MemberSnapshotService.upsert_today_member_snapshot(
                 db, r.member_id, MemberSnapshotUpsert(**fields)
             )
@@ -171,10 +165,6 @@ class ProjectSnapshotService:
             ProjectSnapshotUpsert(total_workload_points=wm.round_half_up_int(result.total_effective_points)),
         )
 
-        # 5. TODO: progress %, expected progress and variance
-
-        if commit:
-            await db.commit()
         return result
 
     @staticmethod

@@ -7,6 +7,11 @@ from .schema import (
 from .services import ProjectSnapshotService
 from app.modules.users.services import current_active_user
 from app.modules.users.model import User
+from dataclasses import asdict, is_dataclass
+from datetime import date
+from uuid import UUID
+
+from fastapi import Query
 
 project_snapshot_router = APIRouter()
 
@@ -49,3 +54,28 @@ async def get_latest_snapshot(
     current_user: User = Depends(current_active_user),
 ):
     return await ProjectSnapshotService.get_latest_snapshot(db, project_id)
+
+
+@project_snapshot_router.post("/{project_id}/recalculate-workload")
+async def recalculate_workload(
+    project_id: UUID,
+    today: date | None = Query(None, description="Override today's date for testing"),
+    db: AsyncSession = Depends(get_async_session),
+):
+    """TEMP: manually trigger a workload recalculation for testing."""
+    try:
+        result = await ProjectSnapshotService.calculate_project_workload(
+            db, project_id, today=today
+        )
+        # The method doesn't commit itself, so persist the snapshots here
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    # Return something JSON-friendly regardless of what wm.ProjectWorkload is
+    if is_dataclass(result):
+        return asdict(result)
+    if hasattr(result, "model_dump"):
+        return result.model_dump()
+    return result

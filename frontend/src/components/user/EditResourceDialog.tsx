@@ -440,7 +440,7 @@ function EditForm({
         </div>
       </div>
 
-      <DialogFooter className="shrink-0 border-t bg-muted/40 px-6 pt-3 sm:justify-between">
+      <DialogFooter className="shrink-0 border-t bg-muted/40 px-6 pt-3 pb-6 sm:justify-between">
         {/* Far left: delete (asks for confirmation first) */}
         <Button
           type="button"

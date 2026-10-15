@@ -18,7 +18,7 @@ import {
   type UpdateProjectResourceInput,
 } from "@/hooks/useResource";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetOneMember } from "@/hooks/useProjectMember";
+import { useGetProjectMemberByUserId} from "@/hooks/useProjectMember";
 import AppLayout from "@/layouts/Applayout";
 import { cn } from "@/lib/utils";
 import type { ProjectResource, ResourceCategory } from "@/types/resource";
@@ -115,7 +115,7 @@ export default function ProjectResourcesPanel({
 
   // Fetch current user and their membership info for this specific project
   const { data: currentUser } = useCurrentUser();
-  const { data: currentMember } = useGetOneMember(currentUser?.id ?? "");
+  const { data: currentMember } = useGetProjectMemberByUserId(currentUser?.id ?? "");
 
   const resourcesQuery = useProjectResources(projectId);
   const createResource = useCreateProjectResource(projectId ?? "");

@@ -72,24 +72,19 @@ class TaskInput:
 @dataclass(frozen=True)
 class MemberInput:
     member_id: UUID
-    total_points: Decimal
     total_effective_points: Decimal
     capacity_multiplier: Optional[Decimal] = None
     silence_warning: bool = False
-    is_counted: bool = True  # False for ADVISOR / INSTRUCTOR
 
 
 @dataclass(frozen=True)
 class MemberResult:
     member_id: UUID
-    total_points: Decimal
     total_effective_points: Decimal
     capacity_multiplier: Decimal
     expected_load: Decimal
     status: Flag               # TRUE status, never hidden by silence
-    is_over_threshold: bool    # status == OVERLOADED
-    warning_suppressed: bool   # over threshold AND silenced -> don't nag, but data stays
-    is_counted: bool
+    silence_warning : bool = False    
 
 
 @dataclass(frozen=True)
@@ -149,9 +144,9 @@ def complexity_to_points(complexity) -> int:
 def clean_capacity_multiplier(value) -> Decimal:
     """
     ONE rule used everywhere:
-      None / not a number -> 1.0 (unset means default)
-      <= 0                -> 0.01 (strictly positive floor)
-      > 2.0               -> 2.0
+    None / not a number -> 1.0 (unset means default)
+    <= 0                -> 0.01 (strictly positive floor)
+    > 2.0               -> 2.0
     """
     if value is None:
         return DEFAULT_CAPACITY_MULTIPLIER
@@ -214,7 +209,7 @@ def compute_baseline(values: Sequence[Decimal]) -> Decimal:
 
 
 def compute_expected_load(baseline: Decimal, capacity_multiplier, cfg: WorkloadConfig) -> Decimal:
-    raw = baseline * clean_capacity_multiplier(capacity_multiplier)
+    raw = baseline * capacity_multiplier
     return q2(max(raw, cfg.min_expected_load))
 
 
@@ -239,36 +234,29 @@ def compute_project_workload(
     snapshots are rewritten (no stale OVERLOADED), but never feed the median or total.
     """
     cfg = cfg or WorkloadConfig()
-    counted = [m for m in members if m.is_counted]
 
-    if cfg.normalize_by_capacity:
-        basis = [m.total_effective_points / clean_capacity_multiplier(m.capacity_multiplier) for m in counted]
-    else:
-        basis = [m.total_effective_points for m in counted]
+    #get all effective points for each member 
+    basis = [m.total_effective_points for m in members]
+    #get the baseline median for all points 
     baseline = compute_baseline(basis)
 
     results: list[MemberResult] = []
     for m in members:
-        cm = clean_capacity_multiplier(m.capacity_multiplier)
-        if not m.is_counted:
-            results.append(MemberResult(
-                member_id=m.member_id, total_points=m.total_points,
-                total_effective_points=m.total_effective_points, capacity_multiplier=cm,
-                expected_load=D0, status=Flag.NORMAL, is_over_threshold=False,
-                warning_suppressed=False, is_counted=False,
-            ))
-            continue
-        expected = compute_expected_load(baseline, cm, cfg)
+        #get the expected load of the member
+        expected = compute_expected_load(baseline, m.capacity_multiplier, cfg)
+        #checks the status by comparing the total_points towards the expected points
         status = classify(m.total_effective_points, expected, cfg)
-        over = status is Flag.OVERLOADED
         results.append(MemberResult(
-            member_id=m.member_id, total_points=m.total_points,
-            total_effective_points=m.total_effective_points, capacity_multiplier=cm,
-            expected_load=expected, status=status, is_over_threshold=over,
-            warning_suppressed=over and m.silence_warning, is_counted=True,
+            member_id=m.member_id, 
+            total_effective_points=m.total_effective_points,
+            capacity_multiplier=m.capacity_multiplier,
+            expected_load=expected, 
+            status=status,
+            silence_warning=m.silence_warning
         ))
 
-    total = q2(sum((r.total_effective_points for r in results if r.is_counted), D0))
+    #gets the total project workload points
+    total = q2(sum((r.total_effective_points for r in results), D0))
     return ProjectWorkload(baseline_points=baseline, members=results, total_effective_points=total)
 
 

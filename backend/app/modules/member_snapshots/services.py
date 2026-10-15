@@ -3,12 +3,12 @@ from uuid import UUID
 
 from .model import MemberSnapshot
 from .repo import MemberSnapshotRepo
-from .schema import MemberSnapshotUpsert
+from .schema import MemberSnapshotUpsert, MemberSnapshotResponse
 
 
 class MemberSnapshotService:
     @staticmethod
-    async def get_one_member_snapshot(db: AsyncSession, member_snapshot_id):
+    async def get_one_member_snapshot(db: AsyncSession, member_snapshot_id) -> MemberSnapshotResponse:
         repo = MemberSnapshotRepo(db)
         return await repo.get_by_id(member_snapshot_id)
 

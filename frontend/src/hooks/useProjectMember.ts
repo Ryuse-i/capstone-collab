@@ -104,6 +104,20 @@ const api = {
       throw error;
     }
   },
+
+    getProjectMemberByUserId: async (
+    user_id: string,
+  ): Promise<ProjectMemberResponse> => {
+    try {
+      const response = await apiClient.get<ProjectMemberResponse>(
+        `${url}/by-user/${user_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get project member by user id", error);
+      throw error;
+    }
+  },
 };
 
 export const memberKeys = {
@@ -116,6 +130,7 @@ export const memberKeys = {
   snapshots: () => [...memberKeys.all, "snapshot"] as const,
   snapshotByProject: (id: string) =>
     [...memberKeys.snapshots(), id] as const,
+  byUser: (user_id: string) => [...memberKeys.all, user_id, "by-user"] as const,
 };
 
 export function useGetMembers() {
@@ -193,5 +208,13 @@ export function useGetMembersWithUserSnapshot(project_id: string) {
     queryKey: memberKeys.snapshotByProject(project_id),
     queryFn: () => api.getMemberWithUserSnapshot(project_id),
     enabled: !!project_id,
+  });
+}
+
+export function useGetProjectMemberByUserId(user_id: string) {
+  return useQuery({
+    queryKey: memberKeys.byUser(user_id),
+    queryFn: () => api.getProjectMemberByUserId(user_id),
+    enabled: !!user_id,
   });
 }

@@ -176,3 +176,13 @@ async def delete_project_member(
     if not db_item:
         raise HTTPException(status_code=404, detail="Member not found")
     await ProjectMemberService.delete_member(db, db_item)
+
+@project_member_router.get(
+    "/eligible/{project_id}",
+    response_model=List[ProjectMemberResponse],
+    status_code=HTTP_200_OK,
+)
+async def get_eligible_members(
+    project_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    return await ProjectMemberService.get_elligible_members(db, project_id)

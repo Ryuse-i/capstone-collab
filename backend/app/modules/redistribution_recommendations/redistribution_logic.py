@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID
 from decimal import Decimal
 from app.modules.project_snapshots.services import (
-    ProjectSnapshotService, is_counted_member, app_today, task_state_from_status,
+    ProjectSnapshotService, is_counted_member, app_today, 
 )
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +33,7 @@ def _task_effective(task: Task, today: date) -> Decimal:
     """Effective points of the whole task, using the same rules as the service."""
     return wm.effective_points(
         wm.TaskInput(
-            state=task_state_from_status(task.status),
+            state=task.status,
             complexity_points=wm.complexity_to_points(task.complexity),
             deadline=task.deadline,
             effort_share=None,
@@ -127,7 +127,6 @@ async def generate_redistribution_options(
     # Filter out completed tasks
     overloaded_member_tasks = [
         task for task in overloaded_member_tasks
-        if task_state_from_status(task.status) is not wm.TaskState.INACTIVE
     ]
 
     # Step 5: Get all members in the project (for eligibility checking)
