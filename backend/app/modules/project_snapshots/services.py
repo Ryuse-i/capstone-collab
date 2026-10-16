@@ -162,7 +162,7 @@ class ProjectSnapshotService:
         #    so an empty project shows 0 instead of a stale number.
         await ProjectSnapshotService.upsert_today_snapshot(
             db, project_id,
-            ProjectSnapshotUpsert(total_workload_points=wm.round_half_up_int(result.total_effective_points), avg_workload=result.avg_points),
+            ProjectSnapshotUpsert(total_workload_points=result.total_effective_points, avg_workload=result.avg_points),
         )
 
         return result

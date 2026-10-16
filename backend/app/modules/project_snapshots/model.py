@@ -33,7 +33,7 @@ class ProjectSnapshot(Base):
         PG_UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="CASCADE"),
     )
-    total_workload_points: Mapped[int] = mapped_column(default=0)
+    total_workload_points: Mapped[Decimal] = mapped_column(default=0.0)
     avg_workload: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
     progress_score: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
     progress_percentage: Mapped[int] = mapped_column(default=0)
