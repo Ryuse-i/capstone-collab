@@ -151,7 +151,7 @@ class ProjectSnapshotService:
         for r in result.members:
             fields = dict(
                 total_effective_points=r.total_effective_points,
-                expected_load=r.expected_load,
+                expected_points=r.expected_load,
                 workload_status=MemberStatus[r.status.name],  # true status, even when silenced
             )
             await MemberSnapshotService.upsert_today_member_snapshot(

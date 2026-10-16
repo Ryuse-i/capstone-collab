@@ -9,6 +9,7 @@ class MemberSnapshotUpsert(BaseModel):
     member_id: UUID | None = None
     workload_status: MemberStatus | None = None
     total_effective_points: Decimal | None = None
+    expected_points: Decimal | None = None
     capacity_multiplier: Decimal | None = Field(default=None, gt=0, le=2.0)
     silence_warning: bool | None = None
     consecutive_fallback_count: int | None = None
@@ -20,6 +21,7 @@ class MemberSnapshotResponse(BaseModel):
     member_id: UUID
     workload_status: MemberStatus
     total_effective_points: Decimal
+    expected_points: Decimal
     capacity_multiplier: Decimal
     silence_warning: bool
     consecutive_fallback_count: int

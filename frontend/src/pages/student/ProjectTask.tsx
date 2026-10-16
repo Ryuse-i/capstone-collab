@@ -19,8 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetCurrentProject } from "@/hooks/useProject";
-import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
+import { useGetCurrentProject, useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { TaskTable } from "@/components/user/TaskTable";
 import { TaskGanttView } from "@/components/user/TaskGantt";
 import { TaskBoard } from "@/components/user/TaskBoard";

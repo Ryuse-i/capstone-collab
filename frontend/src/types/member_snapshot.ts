@@ -10,5 +10,6 @@ export interface MemberSnapshotBase {
 
 export interface MemberSnapshotResponse extends MemberSnapshotBase {
   id: string;
+  expected_points: number;
   snapshot_date: string;
 }

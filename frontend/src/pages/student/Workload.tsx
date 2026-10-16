@@ -4,6 +4,7 @@ import {
   ArrowRight,
   AlertTriangle,
   RefreshCw,
+  Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,10 +41,25 @@ const workloadStyles: Record<MemberStatus, { bar: string; text: string }> = {
 // Project roles that supervise the project but don't carry workload.
 const NON_MEMBER_ROLES = ["instructor", "advisor"];
 
+// Show the "split tasks" tip when high-complexity tasks are at least this
+// share of all tasks, and there are enough tasks for the ratio to be meaningful.
+const HIGH_COMPLEXITY_TIP_RATIO = 0.4;
+const HIGH_COMPLEXITY_TIP_MIN_TASKS = 3;
+
 function memberName(member: {
   user: { first_name: string; last_name: string };
 }) {
   return `${member.user.first_name} ${member.user.last_name}`.trim();
+}
+
+// Progress bar fill: current points / expected points, capped at 100%.
+// If expected points is 0 (or missing), show full when there is any workload,
+// otherwise empty.
+function workloadPercent(points: number, expectedPoints: number) {
+  if (expectedPoints > 0) {
+    return Math.min(Math.max((points / expectedPoints) * 100, 0), 100);
+  }
+  return points > 0 ? 100 : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,14 +237,14 @@ export default function Workload() {
         ? Number(latestSnapshot.total_effective_points)
         : 0;
 
-      const capacityMultiplier = latestSnapshot
-        ? Number(latestSnapshot.capacity_multiplier)
+      const expectedPoints = latestSnapshot
+        ? Number(latestSnapshot.expected_points)
         : 0;
 
       return {
         name: memberName(member),
         pts: points,
-        capacityMultiplier,
+        expectedPoints,
         status: latestSnapshot?.workload_status ?? "normal",
       };
     });
@@ -258,6 +274,11 @@ export default function Workload() {
       color: complexityColors[complexity],
     }),
   );
+
+  const showSplitTaskTip =
+    complexityCounts.high >= HIGH_COMPLEXITY_TIP_MIN_TASKS &&
+    totalComplexityTasks > 0 &&
+    complexityCounts.high / totalComplexityTasks >= HIGH_COMPLEXITY_TIP_RATIO;
 
   const overloadedCount = memberWorkload.filter(
     (member) => member.status === "overloaded",
@@ -428,9 +449,9 @@ export default function Workload() {
                 </p>
               ) : (
                 memberWorkload.map((member) => {
-                  const pct = Math.min(
-                    Math.max(member.capacityMultiplier * 50, 0),
-                    100,
+                  const pct = workloadPercent(
+                    member.pts,
+                    member.expectedPoints,
                   );
 
                   const style =
@@ -446,8 +467,8 @@ export default function Workload() {
                         <span
                           className={`text-xs font-semibold ${style.text}`}
                         >
-                          {member.pts.toFixed(1)} pts ·{" "}
-                          {member.capacityMultiplier.toFixed(1)}x capacity
+                          {member.pts.toFixed(1)} pts /{" "}
+                          {member.expectedPoints.toFixed(1)}
                         </span>
                       </div>
 
@@ -522,6 +543,17 @@ export default function Workload() {
                   </div>
                 ))}
               </div>
+
+              {showSplitTaskTip && (
+                <div className="mt-4 flex items-start gap-2 rounded-lg border border-yellow-500/50 bg-yellow-50 p-3 dark:bg-yellow-500/10">
+                  <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-500" />
+                  <p className="text-sm text-yellow-900 dark:text-yellow-500">
+                    <span className="font-semibold">Tip:</span> Consider
+                    splitting complex or heavy tasks into smaller ones so the
+                    workload is easier to spread across members.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

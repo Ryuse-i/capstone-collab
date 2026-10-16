@@ -49,6 +49,7 @@ class MemberSnapshot(Base):
 
     # Deadline weighted sum, this is the actual workload of member
     total_effective_points: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
+    expected_points: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.0)
     # adjusts personal expected load base on the baseline
     capacity_multiplier: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=1.0)
     # hides overload warning
