@@ -67,6 +67,8 @@ interface BreadcrumbItemType {
 interface AppLayoutProps {
   children: React.ReactNode;
   breadcrumbs?: BreadcrumbItemType[];
+  // Uses a small left/right padding instead of the default wide one.
+  tightSides?: boolean;
 }
 
 // Shown in the main content area until the sidebar has finished loading.
@@ -89,6 +91,7 @@ function AppContentSkeleton() {
 export default function AppLayout({
   children,
   breadcrumbs = [],
+  tightSides = false,
 }: AppLayoutProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -265,10 +268,15 @@ export default function AppLayout({
 
         {/* Main Content Area: scrolls on its own when a page is taller than
             the screen. Pages that fit (like Chat) never trigger it.
-            Stays in skeleton until the sidebar has finished loading. */}
+            Stays in skeleton until the sidebar has finished loading.
+            noSidePadding removes only the left/right padding. */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pt-0">
           {ready ? (
-            <div className="flex min-h-full shrink-0 flex-col pb-4">
+            <div
+              className={`flex min-h-full shrink-0 flex-col pb-4 ${
+                tightSides ? "px-2" : "sm:px-6 lg:px-8"
+              }`}
+            >
               <PageTransition>{children}</PageTransition>
             </div>
           ) : (

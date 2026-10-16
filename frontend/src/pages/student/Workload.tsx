@@ -32,6 +32,7 @@ const workloadStyles: Record<MemberStatus, { bar: string; text: string }> = {
 // Project roles that supervise the project but don't carry workload.
 const NON_MEMBER_ROLES = ["instructor", "advisor"];
 
+
 function memberName(member: {
   user: { first_name: string; last_name: string };
 }) {

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import AppLayout from "@/layouts/Applayout";
 import GetStartedPage from "@/components/user/GetStartedPage";
 import { TriangleAlert, TrendingUp } from "lucide-react";
@@ -19,8 +20,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetTasksForUser } from "@/hooks/useTask";
+import { useGetAllProjectTask } from "@/hooks/useTask";
 import { useGetMemberActivities } from "@/hooks/useMemberActivity";
+import { Link } from "react-router-dom"; // change if you use a different router
+import { Button } from "@/components/ui/button";
+import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
+import type { MemberStatus } from "@/types/member_snapshot";
 
 // Task status distribution for the bar chart replacement
 type TaskStatusDistribution = {
@@ -91,6 +96,86 @@ const healthStyles: Record<
   },
 };
 
+const workloadStyles: Record<MemberStatus, { bar: string; text: string }> = {
+  overloaded: { bar: "bg-red-500", text: "text-red-500" },
+  underutilized: { bar: "bg-yellow-400", text: "text-yellow-600" },
+  normal: { bar: "bg-green-500", text: "text-green-600" },
+};
+
+// Project roles that supervise the project but don't carry workload.
+const NON_MEMBER_ROLES = ["instructor", "advisor"];
+
+// ---------------------------------------------------------------------------
+// Health Ring (circular progress, maroon)
+// ---------------------------------------------------------------------------
+
+function HealthRing({
+  value,
+  size = 120,
+  stroke = 10,
+  label = "Project health",
+}: {
+  value: number;
+  size?: number;
+  stroke?: number;
+  label?: string;
+}) {
+  const gradientId = useId();
+  const clamped = Math.min(Math.max(value, 0), 100);
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (clamped / 100) * circumference;
+
+  return (
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#c4637d" }} />
+            <stop offset="100%" style={{ stopColor: "var(--maroon)" }} />
+          </linearGradient>
+        </defs>
+
+        {/* Track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          className="stroke-gray-200 dark:stroke-white/10"
+        />
+
+        {/* Progress */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          stroke={`url(#${gradientId})`}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-[stroke-dashoffset] duration-700 ease-out"
+        />
+      </svg>
+
+      <div className="absolute flex flex-col items-center">
+        <span className="text-2xl font-bold text-foreground">
+          {clamped.toFixed(0)}%
+        </span>
+        <span className="text-xs text-gray-500 dark:text-(--semi-foreground)">
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Dashboard Skeleton
 // ---------------------------------------------------------------------------
@@ -120,8 +205,7 @@ function DashboardSkeleton() {
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-30 w-30 rounded-full" />
           </div>
         </Card>
 
@@ -227,7 +311,7 @@ export default function Dashboard() {
     data: userTasks,
     isLoading: isTasksLoading,
     error: tasksError,
-  } = useGetTasksForUser(user?.id ?? "");
+  } = useGetAllProjectTask(currentProject?.id ?? "");
 
   const { data: memberActivities, isLoading: isActivitiesLoading } =
     useGetMemberActivities(currentProject?.id ?? "");
@@ -240,6 +324,9 @@ export default function Dashboard() {
     console.error("Dashboard tasks error", tasksError);
   }
 
+  const { data: members = [], isLoading: isMembersLoading } =
+    useGetMembersWithUserSnapshot(currentProject?.id ?? "");
+
   const hasProject = Boolean(currentProject);
 
   // Keep the skeleton visible while project data is loading.
@@ -251,7 +338,8 @@ export default function Dashboard() {
     isLoading ||
     (!!currentProject && !currentProject.snapshot) ||
     isTasksLoading ||
-    isActivitiesLoading;
+    isActivitiesLoading ||
+    isMembersLoading;
 
   const healthScore = currentProject?.snapshot?.health_score ?? 0;
   const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
@@ -260,6 +348,24 @@ export default function Dashboard() {
   const completedTasks = currentProject?.snapshot?.completed_tasks ?? 0;
   const totalWorkload = currentProject?.snapshot?.total_workload_points ?? 0;
   const expectedPercentage = currentProject?.snapshot?.expected_percentage ?? 0;
+
+  const topMembers = members
+    .filter(
+      (member) =>
+        !NON_MEMBER_ROLES.includes(member.project_role?.toLowerCase() ?? ""),
+    )
+    .map((member) => {
+      const latest = member.snapshots[0];
+      return {
+        id: member.id,
+        name: `${member.user.first_name} ${member.user.last_name}`.trim(),
+        pts: latest ? Number(latest.total_effective_points) : 0,
+        capacityMultiplier: latest ? Number(latest.capacity_multiplier) : 0,
+        status: (latest?.workload_status ?? "normal") as MemberStatus,
+      };
+    })
+    .sort((a, b) => b.pts - a.pts)
+    .slice(0, 3);
 
   // Banner color/level: good = green, warning = yellow, bad = red
   const healthLevel = getHealthLevel(healthStatus, Number(healthScore));
@@ -288,14 +394,14 @@ export default function Dashboard() {
 
   // Prepare data for the task status bar chart
   const taskChartData = [
-    { month: "Not Started", desktop: taskStatusDistribution.not_started },
-    { month: "In Progress", desktop: taskStatusDistribution.in_progress },
-    { month: "Submitted", desktop: taskStatusDistribution.submitted },
-    { month: "Completed", desktop: taskStatusDistribution.completed },
+    { status: "Not Started", count: taskStatusDistribution.not_started },
+    { status: "In Progress", count: taskStatusDistribution.in_progress },
+    { status: "Submitted", count: taskStatusDistribution.submitted },
+    { status: "Completed", count: taskStatusDistribution.completed },
   ];
 
   const taskChartConfig: ChartConfig = {
-    desktop: { label: "Task Count", color: "var(--chart-1)" },
+    count: { label: "Task Count", color: "var(--chart-1)" },
   };
 
   return (
@@ -316,7 +422,7 @@ export default function Dashboard() {
             Overview of project health and team performance
           </h1>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* ── Project Health Banner ─────────────────────────────── */}
             <Card
               className={`relative flex items-start justify-between rounded-lg border-4 p-4 lg:col-span-2 ${healthStyle.border}`}
@@ -350,14 +456,9 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              {/* Right: health score, pushed below the badge */}
-              <div className="mt-10 text-right">
-                <p className="text-3xl font-bold text-foreground">
-                  {Number(healthScore).toFixed(0)}%
-                </p>
-                <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
-                  Project health
-                </p>
+              {/* Right: health score ring, pushed below the badge */}
+              <div className="mt-8">
+                <HealthRing value={Number(healthScore)} />
               </div>
             </Card>
 
@@ -422,47 +523,119 @@ export default function Dashboard() {
               </div>
             </Card>
 
+            {/* ── Member Workload ───────────────────────────────────── */}
+            <Card className="flex h-full flex-col rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-semibold text-foreground dark:text-card-foreground">
+                    Member Workload
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
+                    Top members by workload points
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-1 flex-col gap-4 pt-4">
+                {topMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No member snapshot data available.
+                  </p>
+                ) : (
+                  topMembers.map((member) => {
+                    const pct = Math.min(
+                      Math.max(member.capacityMultiplier * 50, 0),
+                      100,
+                    );
+                    const style =
+                      workloadStyles[member.status] ?? workloadStyles.normal;
+
+                    return (
+                      <div key={member.id} className="flex flex-col gap-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium text-card-foreground">
+                            {member.name}
+                          </span>
+                          <span
+                            className={`text-xs font-semibold ${style.text}`}
+                          >
+                            {member.pts.toFixed(1)} pts ·{" "}
+                            {member.capacityMultiplier.toFixed(1)}x
+                          </span>
+                        </div>
+
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                          <div
+                            className={`h-full rounded-full ${style.bar}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div className="bottom-0 flex justify-center">
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/workload">See all</Link>
+                </Button>
+              </div>
+            </Card>
+
             {/* ── Task Status Distribution ────────────────────────── */}
-            <Card className="rounded-lg p-4 shadow-sm">
-              <CardHeader>
-                <CardTitle>Task Status Distribution</CardTitle>
-                <CardDescription>
-                  Current project task breakdown
-                </CardDescription>
+            <Card className="rounded-lg p-4 shadow-sm lg:col-span-2">
+              <CardHeader className="flex justify-between">
+                <div>
+                  <CardTitle>Task Status Distribution</CardTitle>
+                  <CardDescription>
+                    Current project task breakdown
+                  </CardDescription>
+                </div>
+                <div className="item-center ">
+                  Total tasks:{" "}
+                  <span className="rounded-full bg-(--maroon) px-3 py-1 text-sm font-medium text-white">
+                    {userTasks?.length ?? 0}
+                  </span>
+                </div>
               </CardHeader>
 
               <CardContent>
-                <ChartContainer config={taskChartConfig}>
+                <ChartContainer
+                  config={taskChartConfig}
+                  className="min-h-[200px] w-full h-[200px]"
+                >
                   <BarChart
                     accessibilityLayer
                     data={taskChartData}
                     layout="vertical"
-                    margin={{ left: -20 }}
+                    margin={{ left: 30 }}
                   >
-                    <XAxis type="number" dataKey="desktop" hide />
-
                     <YAxis
-                      dataKey="month"
+                      dataKey="status"
                       type="category"
                       tickLine={false}
                       tickMargin={10}
                       axisLine={false}
-                      tickFormatter={(v) => v}
                     />
+                    <XAxis type="number" allowDecimals={false} hide />
 
                     <ChartTooltip
                       cursor={false}
                       content={<ChartTooltipContent hideLabel />}
                     />
 
-                    <Bar dataKey="desktop" fill="var(--primary)" radius={5} />
+                    <Bar
+                      dataKey="count"
+                      fill="var(--primary)"
+                      radius={[5, 5, 0, 0]}
+                    />
                   </BarChart>
                 </ChartContainer>
               </CardContent>
             </Card>
 
             {/* ── Recent Activity ───────────────────────────────────── */}
-            <Card className="rounded-2xl border p-6 shadow-sm lg:col-span-2">
+            <Card className="rounded-2xl border p-6 shadow-sm lg:col-span-3">
               <div className="mb-1 flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">

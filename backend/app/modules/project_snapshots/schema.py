@@ -6,7 +6,7 @@ from .model import Severity, Status
 
 
 class ProjectSnapshotUpsert(BaseModel):
-    total_workload_points: int | None = None
+    total_workload_points: Decimal | None = None
     avg_workload: Decimal | None = None
     progress_score: Decimal | None = None
     progress_percentage: int | None = None
@@ -23,7 +23,7 @@ class ProjectSnapshotUpsert(BaseModel):
 class ProjectSnapshotResponse(BaseModel):
     id: int
     project_id: UUID
-    total_workload_points: int
+    total_workload_points: Decimal
     avg_workload: Decimal
     progress_score: Decimal
     progress_percentage: int

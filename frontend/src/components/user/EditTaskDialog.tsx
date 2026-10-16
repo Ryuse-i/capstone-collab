@@ -732,7 +732,7 @@ export default function EditTaskDialog({
                               handleTaskFieldChange("priority", option.value);
                               setPriorityOpen(false);
                             }}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
                           >
                             <span className="flex items-center gap-1.5">
                               <span
@@ -791,7 +791,7 @@ export default function EditTaskDialog({
                       <button
                         type="button"
                         onClick={() => handleSupertaskChange(null)}
-                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                       >
                         <span>No supertask</span>
 
@@ -826,7 +826,7 @@ export default function EditTaskDialog({
                               onClick={() =>
                                 handleSupertaskChange(String(supertask.id))
                               }
-                              className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                              className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                             >
                               <span>{supertask.name}</span>
 
@@ -887,7 +887,7 @@ export default function EditTaskDialog({
                               handlePrimarySkillChange(option.value);
                               setPrimarySkillOpen(false);
                             }}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
                           >
                             <span>{option.label}</span>
 
@@ -953,7 +953,7 @@ export default function EditTaskDialog({
                             key={option.value}
                             type="button"
                             onClick={() => toggleSecondarySkill(option.value)}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
                           >
                             <span>{option.label}</span>
 
@@ -1055,7 +1055,7 @@ export default function EditTaskDialog({
                             key={member.member_id}
                             type="button"
                             onClick={() => toggleAssignedMember(member)}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                            className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                           >
                             <div className="flex items-center gap-2">
                               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
@@ -1168,7 +1168,7 @@ export default function EditTaskDialog({
                             key={member.member_id}
                             type="button"
                             onClick={() => toggleReviewer(member)}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-neutral-100"
+                            className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                           >
                             <div className="flex items-center gap-2">
                               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">

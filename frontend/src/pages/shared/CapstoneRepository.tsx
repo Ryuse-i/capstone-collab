@@ -346,7 +346,7 @@ export default function CapstoneRepository() {
         { label: "Capstone Repository", href: "/capstone-repository" },
       ]}
     >
-      <div className="flex flex-col gap-5 px-4 pt-4 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-5 pt-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-0">

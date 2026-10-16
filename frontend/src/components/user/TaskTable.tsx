@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, PlusCircle, ClockAlert, ClockAlertIcon } from "lucide-react";
+import { Check, PlusCircle, ClockAlert, } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 

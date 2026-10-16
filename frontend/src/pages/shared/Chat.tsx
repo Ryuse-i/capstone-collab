@@ -107,7 +107,7 @@ function ChatSkeleton({ isInstructor }: { isInstructor: boolean }) {
   const messageWidths = ["w-64", "w-80", "w-52", "w-72", "w-60", "w-96"];
 
   return (
-    <div className={`flex w-full gap-2 ${FILL}`}>
+    <div className={`flex w-full gap-2  ${FILL}`}>
       {/* ── Instructor Project Sidebar ─────────────────────────────── */}
       {isInstructor && (
         <aside className="hidden h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-lg border bg-card dark:bg-[#101014] md:flex">
@@ -549,7 +549,10 @@ export default function Chat() {
   );
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]}>
+    <AppLayout
+      breadcrumbs={[{ label: "Chat", href: "/chat" }]}
+      tightSides
+    >
       {isError ? (
         <div
           className={`flex flex-col items-center justify-center gap-4 ${FILL}`}

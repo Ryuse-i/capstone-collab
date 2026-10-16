@@ -161,17 +161,17 @@ function AttachmentDropzone({
       onDrop={handleDrop}
       className={cn(
         "flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-5 text-center transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0C2E]/40",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--maroon)/40",
         dragging
-          ? "border-[#7A0C2E] bg-[#FBF3E7]"
-          : "border-border hover:border-[#7A0C2E]/50 hover:bg-[#FBF3E7]/50",
+          ? "border-(--maroon) bg-[#FBF3E7]"
+          : "border-border hover:border-(--maroon)/50 hover:bg-[#FBF3E7]/50",
         disabled && "pointer-events-none opacity-60",
       )}
     >
       {busy ? (
-        <Spinner className="size-5 text-[#7A0C2E]" />
+        <Spinner className="size-5 text-(--maroon)" />
       ) : (
-        <Upload className="size-5 text-[#7A0C2E]" />
+        <Upload className="size-5 text-(--maroon)" />
       )}
 
       <p className="text-sm text-foreground">
@@ -179,7 +179,7 @@ function AttachmentDropzone({
           "Uploading..."
         ) : (
           <>
-            <span className="font-medium text-[#7A0C2E]">Click to upload</span>{" "}
+            <span className="font-medium text-(--maroon)">Click to upload</span>{" "}
             or drag files here
           </>
         )}
@@ -220,7 +220,7 @@ function AttachmentRow({
 }) {
   return (
     <li className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#FBF3E7] text-[#7A0C2E]">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#FBF3E7] text-(--maroon)">
         <FileTypeIcon name={name} />
       </div>
 
@@ -231,7 +231,7 @@ function AttachmentRow({
             onClick={onOpen}
             disabled={opening}
             title="Open file"
-            className="group flex max-w-full items-center gap-1.5 text-left text-sm font-medium text-foreground hover:text-[#7A0C2E] focus-visible:outline-none focus-visible:underline disabled:opacity-60"
+            className="group flex max-w-full items-center gap-1.5 text-left text-sm font-medium text-foreground hover:text-(--maroon) focus-visible:outline-none focus-visible:underline disabled:opacity-60"
           >
             <span className="truncate">{name}</span>
             {opening ? (
