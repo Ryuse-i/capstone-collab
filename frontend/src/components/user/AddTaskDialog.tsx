@@ -1,10 +1,27 @@
-import { useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Check, ChevronDown, Layers, ListTodo, Users, X } from "lucide-react";
+import {
+  CalendarIcon,
+  Check,
+  ChevronDown,
+  Info,
+  Layers,
+  ListTodo,
+  Loader2,
+  Users,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useCreateTask, taskKeys } from "@/hooks/useTask";
+import { useCreateTask, useAnalyzeTask, taskKeys } from "@/hooks/useTask";
 import {
   useCreateSupertask,
   useGetAllProjectSupertasks,
@@ -55,7 +72,8 @@ import { cn } from "@/lib/utils";
 import type { Skill } from "@/types/project_member";
 import type {
   CreateTask as CreateTaskPayload,
-  TaskCategory,
+  TaskAnalysis,
+  TaskAnalysisRequest,
   TaskPriority,
 } from "@/types/task";
 
@@ -65,6 +83,12 @@ import { useUploadTaskAttachment } from "@/hooks/useTaskAttachment";
 // NOTE: adjust this import path to wherever your TaskLinks file lives.
 import { PendingLinks, type PendingLink } from "@/components/user/TaskLinks";
 import { useCreateTaskLink } from "@/hooks/useTaskLink";
+
+// NOTE: adjust this import path to wherever you place the rationale dialog.
+import {
+  ComplexityBadge,
+  TaskRationaleDialog,
+} from "@/components/user/TaskRationaleDialog";
 
 type TaskType = "task" | "supertask";
 
@@ -80,7 +104,6 @@ type TaskFormState = {
   name: string;
   description: string;
   priority: TaskPriority;
-  category: TaskCategory;
   deadline: string;
   primary_skill: Skill | "";
   secondary_skills: Skill[];
@@ -97,7 +120,6 @@ const initialTaskForm: TaskFormState = {
   name: "",
   description: "",
   priority: "medium",
-  category: "document",
   deadline: "",
   primary_skill: "",
   secondary_skills: [],
@@ -108,6 +130,9 @@ const initialSupertaskForm: SupertaskFormState = {
   name: "",
   description: "",
 };
+
+// Wait this long after the user stops typing before calling the AI.
+const ANALYZE_DEBOUNCE_MS = 800;
 
 const PRIORITY_OPTIONS: {
   value: TaskPriority;
@@ -179,8 +204,21 @@ export function AddTaskDialog({
   const [selectedReviewerId, setSelectedReviewerId] =
     useState<string | null>(null);
 
+  // AI complexity analysis state
+  const [analysis, setAnalysis] = useState<TaskAnalysis | null>(null);
+  const [analyzedKey, setAnalyzedKey] = useState<string | null>(null);
+  const [failedKey, setFailedKey] = useState<string | null>(null);
+  const [rationaleOpen, setRationaleOpen] = useState(false);
+
+  // The key of the most recent analysis request. Used to skip duplicate
+  // requests and to ignore results that arrive after the inputs changed.
+  const requestedKeyRef = useRef<string | null>(null);
+
   const createTaskMutation = useCreateTask();
   const createSupertaskMutation = useCreateSupertask();
+
+  const { mutateAsync: analyzeAsync, isPending: isAnalyzing } =
+    useAnalyzeTask();
 
   const createAssignedMemberMutation =
     useCreateAssignedMember();
@@ -262,6 +300,88 @@ export function AddTaskDialog({
     [projectSupertasks, taskForm.supertask_id],
   );
 
+  // The analysis only runs when name, description and primary skill are all
+  // filled in. Until then this is null and nothing fires.
+  const analysisInput = useMemo<TaskAnalysisRequest | null>(() => {
+    const name = taskForm.name.trim();
+    const description = taskForm.description.trim();
+
+    if (
+      taskType !== "task" ||
+      !name ||
+      !description ||
+      !taskForm.primary_skill
+    ) {
+      return null;
+    }
+
+    return {
+      name,
+      description,
+      primary_skill: taskForm.primary_skill as Skill,
+    };
+  }, [
+    taskType,
+    taskForm.name,
+    taskForm.description,
+    taskForm.primary_skill,
+  ]);
+
+  const currentKey = useMemo(
+    () => (analysisInput ? JSON.stringify(analysisInput) : null),
+    [analysisInput],
+  );
+
+  // True only when the stored result matches what is currently in the form.
+  const analysisIsCurrent =
+    !!analysis && !!currentKey && analyzedKey === currentKey;
+
+  const analysisFailed = !!currentKey && failedKey === currentKey;
+
+  const runAnalysis = useCallback(
+    async (
+      payload: TaskAnalysisRequest,
+      key: string,
+    ): Promise<TaskAnalysis | null> => {
+      requestedKeyRef.current = key;
+      setFailedKey(null);
+
+      try {
+        const result = await analyzeAsync(payload);
+
+        // The inputs changed while we were waiting; drop this result.
+        if (requestedKeyRef.current !== key) return null;
+
+        setAnalysis(result);
+        setAnalyzedKey(key);
+        return result;
+      } catch (err) {
+        console.error("Failed to analyze task", err);
+
+        if (requestedKeyRef.current === key) {
+          setFailedKey(key);
+        }
+
+        return null;
+      }
+    },
+    [analyzeAsync],
+  );
+
+  // Debounced auto-analysis.
+  useEffect(() => {
+    if (!open || !analysisInput || !currentKey) return;
+    if (requestedKeyRef.current === currentKey) return;
+
+    const timer = setTimeout(() => {
+      // Re-check in case a submit already started this exact request.
+      if (requestedKeyRef.current === currentKey) return;
+      void runAnalysis(analysisInput, currentKey);
+    }, ANALYZE_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [open, analysisInput, currentKey, runAnalysis]);
+
   const resetForms = () => {
     setTaskForm(initialTaskForm);
     setSupertaskForm(initialSupertaskForm);
@@ -277,6 +397,12 @@ export function AddTaskDialog({
     setSelectedReviewerId(null);
     setPendingFiles([]);
     setPendingLinks([]);
+
+    setAnalysis(null);
+    setAnalyzedKey(null);
+    setFailedKey(null);
+    setRationaleOpen(false);
+    requestedKeyRef.current = null;
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -385,6 +511,11 @@ export function AddTaskDialog({
     handleSupertaskChange(null);
   };
 
+  const handleRetryAnalysis = () => {
+    if (!analysisInput || !currentKey) return;
+    void runAnalysis(analysisInput, currentKey);
+  };
+
   const handleSubmit = async () => {
     setError(null);
 
@@ -448,13 +579,36 @@ export function AddTaskDialog({
 
     try {
       if (taskType === "task") {
+        if (!analysisInput || !currentKey) {
+          setError(
+            "Name, description and primary skill are required to rate the task.",
+          );
+          return;
+        }
+
+        // Reuse the on-screen result when it matches the form; otherwise
+        // analyze now so the saved rating always matches what is submitted.
+        const analysisResult =
+          analysisIsCurrent && analysis
+            ? analysis
+            : await runAnalysis(analysisInput, currentKey);
+
+        if (!analysisResult) {
+          setError(
+            "Couldn't analyze the task complexity. Please try again.",
+          );
+          return;
+        }
+
         const payload: CreateTaskPayload = {
           project_id: projectId.trim(),
           name: taskForm.name.trim(),
           description: taskForm.description.trim(),
           created_by: user!.id,
           priority: taskForm.priority,
-          category: taskForm.category,
+          category: analysisResult.category,
+          complexity: analysisResult.complexity,
+          complexity_points: analysisResult.complexity_points,
           deadline: taskForm.deadline,
           primary_skill: taskForm.primary_skill as Skill,
           secondary_skills: taskForm.secondary_skills,
@@ -611,6 +765,8 @@ export function AddTaskDialog({
     createAssignedReviewerMutation.isPending ||
     uploadAttachmentMutation.isPending ||
     createTaskLinkMutation.isPending;
+
+  const blockedByAnalysis = taskType === "task" && isAnalyzing;
 
   return (
     <Dialog
@@ -1446,6 +1602,61 @@ export function AddTaskDialog({
                   </Popover>
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Complexity</Label>
+
+                  <div className="flex h-9 items-center gap-2 rounded-md border bg-muted/30 px-3 text-sm">
+                    {analysisIsCurrent && analysis ? (
+                      <>
+                        <ComplexityBadge
+                          complexity={analysis.complexity}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRationaleOpen(true)
+                          }
+                          className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-[#7A0C2E]/10 hover:text-[#7A0C2E]"
+                          aria-label="Why was this complexity chosen?"
+                          title="Why this complexity?"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : !analysisInput ? (
+                      <span className="text-muted-foreground">
+                        Fill in name, description and primary
+                        skill
+                      </span>
+                    ) : analysisFailed ? (
+                      <>
+                        <span className="text-rose-600">
+                          Couldn't analyze.
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={handleRetryAnalysis}
+                          className="text-xs font-medium text-[#7A0C2E] underline-offset-2 hover:underline"
+                        >
+                          Retry
+                        </button>
+                      </>
+                    ) : (
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Rated automatically by AI. Click the info
+                    icon to see why.
+                  </p>
+                </div>
+
                 <div className="sm:col-span-2">
                   <PendingAttachments
                     files={pendingFiles}
@@ -1485,15 +1696,24 @@ export function AddTaskDialog({
 
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || blockedByAnalysis}
           >
             {isSubmitting
               ? "Creating..."
-              : taskType === "task"
-                ? "Create task"
-                : "Create supertask"}
+              : blockedByAnalysis
+                ? "Analyzing..."
+                : taskType === "task"
+                  ? "Create task"
+                  : "Create supertask"}
           </Button>
         </DialogFooter>
+
+        <TaskRationaleDialog
+          open={rationaleOpen}
+          onOpenChange={setRationaleOpen}
+          analysis={analysisIsCurrent ? analysis : null}
+          taskName={taskForm.name.trim() || undefined}
+        />
       </DialogContent>
     </Dialog>
   );

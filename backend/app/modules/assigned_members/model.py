@@ -27,7 +27,7 @@ class AssignedMember(Base):
     task_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE")
     )
-    effort_share: Mapped[float | None ] = mapped_column(default=None, nullable=True)
+    effort_share: Mapped[float | None ] = mapped_column(default=1.0, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

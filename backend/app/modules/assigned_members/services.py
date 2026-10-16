@@ -22,17 +22,19 @@ class AssignedMemberService:
     async def create_assigned_member(
         db: AsyncSession, assigned_member: AssignedMemberCreate
     ):
-        repo = AssignedMemberRepo(db)
-        member = await repo.create(assigned_member)
-        # calculate the member workload
-        from app.modules.member_snapshots.services import MemberSnapshotService
-        await MemberSnapshotService.calculate_member_workload(db, member.member_id)
-        # Fetch the task to get project_id
         from app.modules.tasks.repo import TaskRepo
+        from app.modules.project_snapshots.services import ProjectSnapshotService
+        repo = AssignedMemberRepo(db)
         task_repo = TaskRepo(db)
+
+        member = await repo.create(assigned_member)
+        
+        # Fetch the task to get project_id
         task = await task_repo.get_by_id(member.task_id)
         project_id = task.project_id
         await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+        #calculate project workload
+        project_workload = await ProjectSnapshotService.calculate_project_workload(db, project_id)
 
         return member
 
@@ -42,20 +44,40 @@ class AssignedMemberService:
         db_item: AssignedMemberUpdate,
         assigned_member: AssignedMemberUpdate,
     ):
+        from app.modules.tasks.repo import TaskRepo
+        task_repo = TaskRepo(db)
         repo = AssignedMemberRepo(db)
+        #get project id 
+        # Fetch the task to get project_id
+        task = await task_repo.get_by_id(db_item.id)
+        project_id = task.project_id
+        #sync the unassigned tasks
+        await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+
+        #Calculate the project workload 
+        project_workload = await ProjectSnapshotService.calculate_project_workload(db, project_id)
+
         return await repo.update(db_item, assigned_member)
 
     @staticmethod
     async def delete_assigned_member(db: AsyncSession, db_item: AssignedMember):
+        from app.modules.tasks.repo import TaskRepo
+        from app.modules.project_snapshots.services import ProjectSnapshotService
+        
+        task_repo = TaskRepo(db)
         repo = AssignedMemberRepo(db)
+
         task_id = db_item.task_id
         result = await repo.delete(db_item)
+
         # Fetch the task to get project_id
-        from app.modules.tasks.repo import TaskRepo
-        task_repo = TaskRepo(db)
         task = await task_repo.get_by_id(task_id)
         project_id = task.project_id
+        #sync the unassigned tasks
         await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+
+        #Calculate the project workload 
+        project_workload = await ProjectSnapshotService.calculate_project_workload(db, project_id)
         return result
 
     @staticmethod
@@ -71,14 +93,27 @@ class AssignedMemberService:
     async def batch_create_members(
         db: AsyncSession, members: list[AssignedMemberCreate]
     ):
-        repo = AssignedMemberRepo(db)
+        from app.modules.project_snapshots.services import ProjectSnapshotService
+        from app.modules.tasks.repo import TaskRepo
 
+        repo = AssignedMemberRepo(db)
+        task_repo = TaskRepo(db)
+
+        project_id = 0
+        result = []
         for member in members:
             response = await repo.create(member)
-
-            result = []
             result.append(response.users)
-            return result
+
+            #get the project id from the task
+            task = await task_repo.get_by_id(member.task_id)
+            project_id = task.project_id
+
+        #check the unassinged tasks
+        await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+        #update the project_workload
+        project_workload = await ProjectSnapshotService.calculate_project_workload(db, project_id)
+        return result
 
     @staticmethod
     async def get_members(

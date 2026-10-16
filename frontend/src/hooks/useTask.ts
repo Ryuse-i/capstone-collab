@@ -5,6 +5,8 @@ import type {
   UpdateTask,
   TaskResponse,
   TaskResponseMembers,
+  TaskAnalysis, 
+  TaskAnalysisRequest
 } from "@/types/task";
 
 const url = "/tasks";
@@ -86,9 +88,7 @@ const api = {
     }
   },
 
-  getTasksForUser: async (
-    user_id: string,
-  ): Promise<TaskResponseMembers[]> => {
+  getTasksForUser: async (user_id: string): Promise<TaskResponseMembers[]> => {
     try {
       const response = await apiClient.get<TaskResponseMembers[]>(
         `${url}/assigned-members/user/${user_id}`,
@@ -96,6 +96,18 @@ const api = {
       return response.data;
     } catch (error) {
       console.error("Failed to get tasks for user", error);
+      throw error;
+    }
+  },
+  analyzeTask: async (payload: TaskAnalysisRequest): Promise<TaskAnalysis> => {
+    try {
+      const response = await apiClient.post<TaskAnalysis>(
+        `${url}/analyze-task`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to analyze task", error);
       throw error;
     }
   },
@@ -214,5 +226,11 @@ export function useGetTasksForUser(user_id: string) {
     queryKey: ["tasks", "forUser", user_id],
     queryFn: () => api.getTasksForUser(user_id),
     enabled: !!user_id,
+  });
+}
+
+export function useAnalyzeTask() {
+  return useMutation({
+    mutationFn: api.analyzeTask,
   });
 }

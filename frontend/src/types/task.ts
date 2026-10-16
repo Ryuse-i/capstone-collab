@@ -41,3 +41,16 @@ export interface TaskResponse extends TaskBase {
 export interface TaskResponseMembers extends TaskResponse {
   assigned_members: UserBase[];
 }
+
+export interface TaskAnalysisRequest {
+  name: string;
+  description: string;
+  primary_skill: Skill;
+}
+
+export interface TaskAnalysis {
+  category: TaskCategory;
+  complexity: TaskComplexity;
+  complexity_points: number;
+  rationale: string;
+}

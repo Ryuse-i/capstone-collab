@@ -53,6 +53,6 @@ class MemberSnapshotService:
             return None
 
         await ProjectSnapshotService.calculate_project_workload(
-            db, member.project_id, commit=commit
+            db, member.project_id, 
         )
         return await MemberSnapshotRepo(db).get_latest_member_snapshot(member_id)

@@ -1,5 +1,12 @@
 import AppLayout from "@/layouts/Applayout";
-import { TriangleAlert, ArrowRight, AlertTriangle } from "lucide-react";
+import {
+  TriangleAlert,
+  ArrowRight,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,6 +22,7 @@ import { useGetCurrentProject } from "@/hooks/useProject";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useGetProjectRecommendations } from "@/hooks/useRedistributionRecommendation";
+import { useRecalculateWorkload } from "@/hooks/useProjectSnapshot";
 import type { MemberStatus } from "@/types/member_snapshot";
 
 const complexityColors = {
@@ -186,6 +194,21 @@ export default function Workload() {
 
   const snapshot = project?.snapshot;
 
+  const recalculateWorkload = useRecalculateWorkload();
+
+  const isRefreshing = recalculateWorkload.isPending;
+
+  const handleRefresh = async () => {
+    if (!projectId) return;
+
+    try {
+      await recalculateWorkload.mutateAsync({ project_id: projectId });
+      toast.success("Workload recalculated.");
+    } catch {
+      toast.error("Couldn't recalculate the workload. Please try again.");
+    }
+  };
+
   const memberWorkload = members
     .filter(
       (member) =>
@@ -281,9 +304,27 @@ export default function Workload() {
         <WorkloadSkeleton />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <h1 className="my-2 text-2xl font-bold text-(--text-h) dark:text-card-foreground">
-            Track and optimize task distribution across team members
-          </h1>
+          {/* ── Page Heading + Recalculate ─────────────────────────── */}
+          <div className="flex items-center justify-between gap-4 lg:col-span-2">
+            <h1 className="my-2 text-2xl font-bold text-(--text-h) dark:text-card-foreground">
+              Track and optimize task distribution across team members
+            </h1>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || !projectId}
+              className="shrink-0"
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
+              {isRefreshing ? "Recalculating..." : "Recalculate"}
+            </Button>
+          </div>
 
           {/* ── Workload Health Banner ─────────────────────────────── */}
           <Card

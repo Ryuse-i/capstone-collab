@@ -1,6 +1,8 @@
 from typing import Literal
 
 from pydantic import BaseModel, computed_field, field_validator
+from app.modules.tasks.model import Category, Complexity
+from app.modules.project_members.model import Skills
 
 
 ComplexityLevel = Literal["Low", "Moderate", "High"]
@@ -54,3 +56,17 @@ class TaskComplexityResult(BaseModel):
             _LEVEL_TO_INT[scores.component_load],
             _LEVEL_TO_INT[scores.coordinative_load],
         )
+
+
+
+class TaskAnalysisRequest(BaseModel):
+    name: str
+    description: str
+    primary_skill: Skills
+
+
+class TaskAnalysis(BaseModel):
+    category: Category
+    complexity: Complexity
+    complexity_points: int
+    rationale: str

@@ -41,22 +41,8 @@ class TaskService:
     async def create_task(db: AsyncSession, task: TaskCreate):
         repo = TaskRepo(db)
 
-        ai_result = await score_task_complexity(task.name, task.description)
-        category = TaskService._determine_task_category(task.primary_skill)
-        complexity = _VERDICT_TO_COMPLEXITY[ai_result.verdict]
-        complexity_points = ai_result.verdict
-
-        task_item = task.model_copy(
-            update={
-                "category": category,
-                "complexity": complexity,
-                "complexity_points": complexity_points,
-            }
-        )
-
         # Create the task first
-        created_task = await repo.create(task_item)
-
+        created_task = await repo.create(task)
         # Sync the unassigned tasks count for the project
         await ProjectSnapshotService.sync_unassigned_tasks(db, created_task.project_id)
 
@@ -70,12 +56,14 @@ class TaskService:
     @staticmethod
     async def delete_task(db: AsyncSession, db_item: Task):
         from app.modules.task_attachments.services import TaskAttachmentService
+        from app.modules.project_snapshots.services import ProjectSnapshotService
         repo = TaskRepo(db)
         project_id = db_item.project_id
         for att in await TaskAttachmentService.get_by_task(db, db_item.id):
             await TaskAttachmentService.delete(db, att.id)
         result = await repo.delete(db_item)
         await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+        project_workload = await ProjectSnapshotService.calculate_project_workload(db, db_item.project_id)
         return result
 
     @staticmethod

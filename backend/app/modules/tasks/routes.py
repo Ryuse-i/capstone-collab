@@ -14,6 +14,8 @@ from app.modules.users.services import current_active_user
 from app.modules.users.model import User
 from app.modules.admin.activity_service import ActivityLogService
 from app.modules.tasks.enums import Status
+from app.modules.ai.service import analyze_task
+from app.modules.ai.schema import TaskAnalysis, TaskAnalysisRequest
 
 # Standardizing on task_router - no prefix here, paths are full
 task_router = APIRouter()
@@ -149,3 +151,16 @@ async def get_tasks_for_user(
     current_user: User = Depends(current_active_user),
 ):
     return await TaskService.get_tasks_for_user(db, user_id)
+
+
+@task_router.post("/analyze-task", response_model=TaskAnalysis)
+async def analyze_task_route(
+    request: TaskAnalysisRequest,
+    current_user: User = Depends(current_active_user),
+):
+    try:
+        return await analyze_task(
+            request.name, request.description, request.primary_skill
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))

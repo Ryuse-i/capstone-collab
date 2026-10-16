@@ -92,6 +92,7 @@ class ProjectWorkload:
     baseline_points: Decimal
     members: list[MemberResult] = field(default_factory=list)
     total_effective_points: Decimal = D0
+    avg_points: Decimal = D0
 
 
 # --------------------------------------------------------------------------- #
@@ -257,7 +258,7 @@ def compute_project_workload(
 
     #gets the total project workload points
     total = q2(sum((r.total_effective_points for r in results), D0))
-    return ProjectWorkload(baseline_points=baseline, members=results, total_effective_points=total)
+    return ProjectWorkload(baseline_points=baseline, members=results, total_effective_points=total, avg_points=baseline)
 
 
 # --------------------------------------------------------------------------- #

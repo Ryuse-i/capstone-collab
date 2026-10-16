@@ -4,7 +4,9 @@ import logging
 
 from app.modules.ai.client import call_ai
 from pydantic import ValidationError
-from .schema import TaskComplexityResult
+from .schema import TaskComplexityResult, TaskAnalysis
+from app.modules.tasks.model import Category, Complexity
+from app.modules.project_members.model import Skills
 
 logger = logging.getLogger(__name__)
 
@@ -224,4 +226,55 @@ async def score_task_complexity(
     # implicit None-returning path.
     raise AssertionError(
         f"score_task_complexity exhausted retries unexpectedly: {last_error}"
+    )
+
+
+_VERDICT_TO_COMPLEXITY: dict[int, Complexity] = {
+    1: Complexity.LOW,
+    2: Complexity.MEDIUM,
+    3: Complexity.HIGH,
+}
+
+_CATEGORY_SKILLS: dict[Category, list[Skills]] = {
+    Category.DEVELOPMENT: [
+        Skills.BACKEND_DEVELOPMENT, Skills.FRONTEND_DEVELOPMENT,
+        Skills.MOBILE_DEVELOPMENT, Skills.IOT_DEVELOPMENT,
+        Skills.DATABASE_DESIGN, Skills.SYSTEM_ARCHITECTURE,
+        Skills.UI_UX_DESIGN, Skills.TESTING_AND_QUALITY_ASSURANCE,
+    ],
+    Category.RESEARCH: [
+        Skills.LITERATURE_REVIEW, Skills.DATA_COLLECTION,
+        Skills.SURVEY_AND_QUESTIONNAIRE_DESIGN,
+        Skills.INTERVIEW_AND_OBSERVATION, Skills.DATA_ANALYSIS,
+    ],
+    Category.DOCUMENT: [
+        Skills.TECHNICAL_WRITING, Skills.DOCUMENTATION,
+        Skills.DIAGRAM_AND_MODELING, Skills.EDITING_AND_PROOFREADING,
+    ],
+    Category.FINANCE: [
+        Skills.FINANCIAL_DOCUMENTATION, Skills.BUDGET_PLANNING,
+        Skills.RESOURCE_MANAGEMENT,
+    ],
+}
+
+
+def determine_task_category(primary_skill: Skills) -> Category:
+    for category, skills in _CATEGORY_SKILLS.items():
+        if primary_skill in skills:
+            return category
+    raise ValueError(f"No category found for skill: {primary_skill}")
+
+
+async def analyze_task(
+    name: str, description: str, primary_skill: Skills
+) -> TaskAnalysis:
+    # Resolve category first so a bad skill fails before spending an AI call
+    category = determine_task_category(primary_skill)
+    ai_result = await score_task_complexity(name, description)
+
+    return TaskAnalysis(
+        category=category,
+        complexity=_VERDICT_TO_COMPLEXITY[ai_result.verdict],
+        complexity_points=ai_result.verdict,
+        rationale=ai_result.rationale,
     )
