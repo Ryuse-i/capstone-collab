@@ -24,6 +24,7 @@ import {
   StepperTrigger,
 } from "@/components/reui/stepper";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   CheckIcon,
@@ -530,6 +531,9 @@ const STEPS = [
 
 export default function CreateProjectDialog() {
   const [currentStep, setCurrentStep] = useState(1);
+  // Which way the user is moving, so step content slides in from the
+  // matching side (right when going forward, left when going back).
+  const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const [formData, setFormData] = useState(emptyData());
   const [instructorEmail, setInstructorEmail] = useState<string>("");
   const [instructorLabel, setInstructorLabel] = useState<string>("");
@@ -551,12 +555,18 @@ export default function CreateProjectDialog() {
     useCreateMember();
   const queryClient = useQueryClient();
 
+  function goToStep(next: number) {
+    setDirection(next > currentStep ? "forward" : "backward");
+    setCurrentStep(next);
+  }
+
   function resetForm() {
     setFormData(emptyData());
     setMembers([]);
     setMemberEmail("");
     setInstructorEmail("");
     setInstructorLabel("");
+    setDirection("forward");
     setCurrentStep(1);
   }
 
@@ -711,7 +721,7 @@ export default function CreateProjectDialog() {
 
           <Stepper
             value={currentStep}
-            onValueChange={setCurrentStep}
+            onValueChange={goToStep}
             indicators={{
               completed: <CheckIcon className="size-3.5" />,
               loading: <LoaderCircleIcon className="size-3.5 animate-spin" />,
@@ -725,7 +735,7 @@ export default function CreateProjectDialog() {
                     className="flex grow flex-col items-start justify-center gap-2.5"
                     asChild
                   >
-                    <StepperIndicator className="data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-muted-foreground data-[state=completed]:bg-primary data-[state=completed]:border-primary size-8 border-2 data-[state=completed]:text-primary-foreground data-[state=inactive]:bg-transparent transition-colors">
+                    <StepperIndicator className="step-indicator-flip data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-muted-foreground data-[state=completed]:bg-primary data-[state=completed]:border-primary size-8 border-2 data-[state=completed]:text-primary-foreground data-[state=inactive]:bg-transparent transition-colors">
                       {step.icon}
                     </StepperIndicator>
                     <div className="flex flex-col items-start gap-0.5">
@@ -738,17 +748,26 @@ export default function CreateProjectDialog() {
                     </div>
                   </StepperTrigger>
                   {STEPS.length > index + 1 && (
-                    <StepperSeparator className="group-data-[state=completed]/step:bg-primary absolute inset-x-0 inset-s-9 top-4 m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none" />
+                    <StepperSeparator className="absolute inset-x-0 inset-s-9 top-4 m-0 overflow-hidden group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none after:absolute after:inset-0 after:origin-left after:scale-x-0 after:bg-primary after:transition-transform after:duration-500 after:ease-out group-data-[state=completed]/step:after:scale-x-100 motion-reduce:after:transition-none" />
                   )}
                 </StepperItem>
               ))}
             </StepperNav>
 
-            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 py-5">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-6 py-5">
               <StepperPanel className="text-sm">
                 {STEPS.map((_step, index) => (
                   <StepperContent key={index} value={index + 1}>
-                    {renderStep(index + 1)}
+                    <div
+                      className={cn(
+                        "animate-in fade-in-0 duration-300 ease-out motion-reduce:animate-none",
+                        direction === "forward"
+                          ? "slide-in-from-right-6"
+                          : "slide-in-from-left-6",
+                      )}
+                    >
+                      {renderStep(index + 1)}
+                    </div>
                   </StepperContent>
                 ))}
               </StepperPanel>
@@ -759,9 +778,8 @@ export default function CreateProjectDialog() {
             <div className="w-full flex justify-between mb-4">
               <Button
                 variant="ghost"
-                onClick={() => setCurrentStep((prev) => prev - 1)}
+                onClick={() => goToStep(currentStep - 1)}
                 disabled={currentStep === 1}
-
               >
                 Previous
               </Button>
@@ -778,7 +796,7 @@ export default function CreateProjectDialog() {
                 </Button>
               ) : (
                 <Button
-                  onClick={() => setCurrentStep((prev) => prev + 1)}
+                  onClick={() => goToStep(currentStep + 1)}
                   disabled={!isStepValid(currentStep)}
                 >
                   Next

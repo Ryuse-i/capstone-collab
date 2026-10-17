@@ -291,7 +291,7 @@ export default function CapstoneView() {
         <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-3">
             <BookOpen className="h-6 w-6 shrink-0 text-muted-foreground" />
-            <h1 className="text-xl font-semibold leading-snug text-gray-900 dark:text-card-foreground">
+            <h1 className="text-xl font-semibold leading-snug text-foreground">
               {paper.title}
             </h1>
           </div>
@@ -330,7 +330,7 @@ export default function CapstoneView() {
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-muted-foreground" />
-            <h2 className="font-semibold text-gray-900 dark:text-card-foreground">
+            <h2 className="font-semibold text-foreground">
               Abstract
             </h2>
           </div>

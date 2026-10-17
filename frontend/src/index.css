@@ -378,6 +378,7 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: #7b1113;
   --maroon: #7b1113;
+  --light-maroon: #d52a2d;
   --primary-foreground: oklch(100% 0.00011 271.152);
   --secondary: #d4a843;
   --secondary-foreground: oklch(0.15 0 0);
@@ -442,6 +443,7 @@
   --popover-foreground: oklch(0.985 0 0);
   --primary: #7b1113;
   --maroon: #7b1113;
+  --light-maroon: #d52a2d;
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -770,5 +772,31 @@
   [data-sidebar="menu-button"],
   [data-sidebar="menu-sub-button"] {
     transition-duration: 0ms !important;
+  }
+}
+
+/* ─── Create-project dialog: step indicator flip ─── */
+
+@keyframes step-indicator-flip {
+  from {
+    transform: perspective(300px) rotateY(-180deg) scale(0.8);
+  }
+  to {
+    transform: perspective(300px) rotateY(0deg) scale(1);
+  }
+}
+
+.step-indicator-flip {
+  backface-visibility: hidden;
+}
+
+/* Plays once, at the moment the step becomes "completed" (icon → check) */
+.step-indicator-flip[data-state="completed"] {
+  animation: step-indicator-flip 550ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-indicator-flip[data-state="completed"] {
+    animation: none;
   }
 }

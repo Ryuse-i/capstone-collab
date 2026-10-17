@@ -40,7 +40,10 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { CreateProjectResourceInput } from "@/types/resource";
-import { PendingLinks, type PendingLink } from "@/components/user/ResourceLinks";
+import {
+  PendingLinks,
+  type PendingLink,
+} from "@/components/user/ResourceLinks";
 import { useCreateResourceLink } from "@/hooks/useResourceLink";
 
 /* -------------------------------------------------------------------------- */
@@ -55,7 +58,6 @@ const initialFormValues: ResourceFormValues = {
   description: "",
   // Links are now handled by <PendingLinks /> and saved as resource links
   // after the resource is created, so the single source_url stays empty.
-  source_url: "",
   attachment: null,
 };
 
@@ -313,7 +315,6 @@ export default function AddResourceDialog({
       createdResource = await onCreate({
         title: trimmedTitle,
         description: trimmedDescription,
-        source_url: "",
         category: formValues.category,
         attachment: formValues.attachment,
       });

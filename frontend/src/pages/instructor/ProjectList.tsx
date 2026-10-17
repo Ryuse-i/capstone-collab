@@ -250,7 +250,7 @@ export default function ProjectsPage() {
                 />
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
+              <div className="rounded-2xl border border-dashed border-neutral-200 bg-background p-6 text-center text-sm text-neutral-500">
                 {emptyMessage}
               </div>
             )}

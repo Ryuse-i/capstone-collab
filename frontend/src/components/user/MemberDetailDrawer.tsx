@@ -397,7 +397,7 @@ export default function MemberDetailDrawer({
                               onClick={() => toggleSkill(skill)}
                               className={`flex items-center gap-1 rounded-sm border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
                                 selected
-                                  ? "border-[#7A0C2E] bg-[#7A0C2E] text-white"
+                                  ? "border-[#7A0C2E] bg-(--maroon) text-white"
                                   : "border-[#7A0C2E]/20 bg-[#FBF3E7] text-[#7A0C2E] hover:border-[#7A0C2E]/50"
                               }`}
                             >
@@ -446,7 +446,7 @@ export default function MemberDetailDrawer({
                   {currentSkills.map((skill) => (
                     <span
                       key={skill}
-                      className="rounded-sm border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs font-medium text-[#7A0C2E]"
+                      className="rounded-sm border border-[#7A0C2E]/20 bg-(--maroon) px-2 py-0.5 text-xs font-medium text-white"
                     >
                       {skill}
                     </span>

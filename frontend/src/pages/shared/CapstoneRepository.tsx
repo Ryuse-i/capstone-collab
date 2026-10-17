@@ -30,13 +30,6 @@ import type { SentenceMatch } from "@/types/capstoneresults";
 
 const SNIPPET_CHARS = 300;
 
-const examples = [
-  "machine learning for disease prediction",
-  "AI in healthcare",
-  "blockchain supply chain",
-  "computer vision autonomous",
-  "sentiment analysis social media",
-];
 
 // Utility to bold/highlight search query terms inside passage text
 function highlightQueryTerms(text: string, query: string) {
@@ -353,7 +346,7 @@ export default function CapstoneRepository() {
         { label: "Capstone Repository", href: "/capstone-repository" },
       ]}
     >
-      <div className="flex flex-col gap-5 px-4 pt-4 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-5 pt-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-0">
@@ -377,7 +370,7 @@ export default function CapstoneRepository() {
         </div>
 
         {/* Search input */}
-        <div className="sticky top-12 z-10 bg-background/95 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
+        <div className="sticky top-0 z-10 bg-background/95 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input

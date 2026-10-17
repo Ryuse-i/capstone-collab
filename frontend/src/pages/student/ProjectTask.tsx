@@ -4,7 +4,7 @@ import {
   AlertTriangle,
   CheckSquare,
   Clock,
-  XSquare,
+  ClockAlert,
   BarChart2,
   PlusCircle,
 } from "lucide-react";
@@ -205,35 +205,31 @@ export default function Task() {
 
   const stats = [
     {
-      icon: <CheckSquare className="h-6 w-6 text-green-500" />,
-      change: "+3%",
+      icon: <BarChart2 className="h-6 w-6 text-purple-400" />,
       value: (allProjectTasks ?? []).filter(
-        (task) => task.status === "completed",
+        (task) => task.status === "not_started",
       ).length,
-      label: "TASKS COMPLETED",
+      label: "Not Started",
     },
     {
       icon: <Clock className="h-6 w-6 text-yellow-500" />,
-      change: "+22%",
       value: (allProjectTasks ?? []).filter(
         (task) => task.status === "in_progress",
       ).length,
       label: "IN PROGRESS",
     },
     {
-      icon: <XSquare className="h-6 w-6 text-red-500" />,
-      change: "+28%",
+      icon: <ClockAlert className="h-6 w-6 text-red-500" />,
       value: overdueTaskCounter,
       label: "OVERDUE",
       valueColor: "text-red-500",
     },
     {
-      icon: <BarChart2 className="h-6 w-6 text-purple-400" />,
-      change: "+36%",
+      icon: <CheckSquare className="h-6 w-6 text-green-500" />,
       value: (allProjectTasks ?? []).filter(
-        (task) => task.status === "not_started",
+        (task) => task.status === "completed",
       ).length,
-      label: "Not Started",
+      label: "TASKS COMPLETED",
     },
   ];
 
@@ -269,10 +265,7 @@ export default function Task() {
                 <CardContent className="flex flex-col gap-2 p-4">
                   <div className="flex items-center justify-between">
                     {stat.icon}
-
-                    <span className="text-xs font-medium text-green-500">
-                      {stat.change} ↑
-                    </span>
+              
                   </div>
 
                   <p
