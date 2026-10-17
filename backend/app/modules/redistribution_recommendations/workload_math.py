@@ -22,7 +22,9 @@ from uuid import UUID
 
 D0 = Decimal("0")
 D1 = Decimal("1")
+D100 = Decimal("100")
 TWO_PLACES = Decimal("0.01")
+FOUR_PLACES = Decimal("0.0001")
 
 MIN_CAPACITY_MULTIPLIER = Decimal("0.01")  # strictly positive (spec 2.5)
 MAX_CAPACITY_MULTIPLIER = Decimal("2.0")   # spec 2.5
@@ -59,6 +61,21 @@ class WorkloadConfig:
     # False = spec (median of raw effective points). True = median of points / capacity.
     normalize_by_capacity: bool = False
 
+    # ---- Workload balance (project-level rollup) ------------------------- #
+    # MAD at or above this value = "fully unbalanced" -> spread_score 0.
+    balance_spread_cutoff: Decimal = Decimal("0.5")
+    # How far above 1.0 the WORST member's load ratio can go before severity_score hits 0.
+    # 1.0 means a max ratio of 2.0x scores 0.
+    balance_severity_span: Decimal = D1
+    # Weights for the final balance score. They are divided by their sum, so they do not
+    # have to add to exactly 1.
+    balance_weight_spread: Decimal = Decimal("0.4")
+    balance_weight_overload: Decimal = Decimal("0.3")
+    balance_weight_severity: Decimal = Decimal("0.3")
+    # Below this many members MAD is too noisy: the spread term is still reported but gets
+    # zero weight, and the overload and severity terms share the score.
+    balance_min_members_for_spread: int = 4
+
 
 @dataclass(frozen=True)
 class TaskInput:
@@ -75,6 +92,9 @@ class MemberInput:
     total_effective_points: Decimal
     capacity_multiplier: Optional[Decimal] = None
     silence_warning: bool = False
+    # Optional, display only. Pass the first value returned by member_totals() if you
+    # want raw vs. effective points shown on the project rollup.
+    total_raw_points: Optional[Decimal] = None
 
 
 @dataclass(frozen=True)
@@ -85,6 +105,33 @@ class MemberResult:
     expected_load: Decimal
     status: Flag               # TRUE status, never hidden by silence
     silence_warning : bool = False    
+    # total_effective_points / expected_load, rounded to 4 places.
+    # 1.0 = exactly at threshold, above = overloaded, below = spare capacity.
+    load_ratio: Decimal = D1
+    total_raw_points: Optional[Decimal] = None
+
+
+@dataclass(frozen=True)
+class WorkloadBalance:
+    """Project-level balance rollup. Scores are 0-100 (higher = healthier).
+    When applicable is False (no members, or baseline_points is 0 because everyone's
+    work is done) every score is None and the UI should show "N/A"."""
+    applicable: bool = False
+    # False when the team is too small for MAD to be meaningful: spread_score is still
+    # reported but carries zero weight in the score.
+    spread_used: bool = True
+    score: Optional[Decimal] = None
+    spread_score: Optional[Decimal] = None
+    overload_score: Optional[Decimal] = None
+    severity_score: Optional[Decimal] = None
+    median_ratio: Decimal = D0
+    mad: Decimal = D0
+    total_members: int = 0
+    overloaded_count: int = 0            # excludes silence_warning members
+    overloaded_pct: Decimal = D0         # overloaded_count / total_members (0-1)
+    max_load_ratio: Decimal = D0
+    max_load_member_id: Optional[UUID] = None
+    underutilized_member_ids: list[UUID] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -93,6 +140,8 @@ class ProjectWorkload:
     members: list[MemberResult] = field(default_factory=list)
     total_effective_points: Decimal = D0
     avg_points: Decimal = D0
+    total_raw_points: Optional[Decimal] = None  # None when no member supplied raw points
+    balance: WorkloadBalance = field(default_factory=WorkloadBalance)
 
 
 # --------------------------------------------------------------------------- #
@@ -111,6 +160,14 @@ def to_decimal(value, default: Decimal = D0) -> Decimal:
 
 def q2(value: Decimal) -> Decimal:
     return value.quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
+
+
+def q4(value: Decimal) -> Decimal:
+    return value.quantize(FOUR_PLACES, rounding=ROUND_HALF_UP)
+
+
+def clamp01(value: Decimal) -> Decimal:
+    return min(max(value, D0), D1)
 
 
 def round_half_up_int(value) -> int:
@@ -226,6 +283,122 @@ def classify(total_effective_points: Decimal, expected_load: Decimal, cfg: Workl
     return Flag.NORMAL
 
 
+def compute_load_ratio(total_effective_points: Decimal, expected_load: Decimal) -> Decimal:
+    """
+    load_ratio = total_effective_points / expected_load
+
+    1.0 = exactly at threshold, above 1.0 = overloaded, below 1.0 = spare capacity.
+    expected_load already includes capacity_multiplier, so a 1.5x hero dev is not
+    penalised for carrying more.
+
+    expected_load <= 0 (median is 0 and no floor configured) would divide by zero:
+      * holding work -> MAX_OVERAGE_RATIO (consistent with extension_days)
+      * holding none -> 1.0 (nothing expected, nothing held, so exactly on threshold)
+    """
+    if expected_load <= 0:
+        return MAX_OVERAGE_RATIO if total_effective_points > 0 else D1
+    return q4(total_effective_points / expected_load)
+
+
+# --------------------------------------------------------------------------- #
+# Workload balance (project-level rollup)
+# --------------------------------------------------------------------------- #
+def compute_workload_balance(
+    members: Sequence[MemberResult],
+    cfg: Optional[WorkloadConfig] = None,
+    baseline_points: Optional[Decimal] = None,
+) -> WorkloadBalance:
+    """
+    Combines three 0-100 sub-scores into one workload_balance score:
+
+      spread_score   = 100 * (1 - min(1, MAD / cutoff))          how scattered the ratios are
+      overload_score = 100 * (1 - overloaded / total_members)     how many people are over
+      severity_score = 100 * (1 - min(1, max(0, max_ratio-1)/span))   how bad the worst case is
+
+      workload_balance = w_spread*spread + w_overload*overload + w_severity*severity
+
+    Spread uses MAD (median absolute deviation) to match the median baseline: one hero
+    outlier distorts a standard deviation but barely moves the MAD.
+
+    silence_warning members:
+      * INCLUDED in ratios, median, MAD, max ratio, and total_members (their data is real)
+      * EXCLUDED only from overloaded_count, so a muted person does not keep nagging
+    Underutilized members come from the same classify() as everywhere else
+    (display only, not scored).
+
+    Not applicable (applicable=False, every score None) when there are no members or
+    baseline_points is 0 (everyone's work is done), so nothing divides by zero and the
+    UI shows "N/A" instead of a misleading number.
+
+    Small teams: below cfg.balance_min_members_for_spread members the spread term gets
+    zero weight (MAD is noisy with 3-4 people) and overload + severity carry the score.
+    """
+    cfg = cfg or WorkloadConfig()
+    n = len(members)
+    if n == 0 or (baseline_points is not None and baseline_points <= 0):
+        return WorkloadBalance(applicable=False, total_members=n)
+
+    # --- spread -------------------------------------------------------------
+    ratios = [m.load_ratio for m in members]
+    median_ratio = Decimal(median(ratios))
+    mad = Decimal(median([abs(r - median_ratio) for r in ratios]))
+
+    cutoff = cfg.balance_spread_cutoff
+    if cutoff > 0:
+        spread_penalty = clamp01(mad / cutoff)
+    else:  # misconfigured cutoff: any spread at all counts as fully unbalanced
+        spread_penalty = D1 if mad > 0 else D0
+    spread_score = D100 * (D1 - spread_penalty)
+
+    # --- overload share -----------------------------------------------------
+    overloaded = [m for m in members if m.status is Flag.OVERLOADED and not m.silence_warning]
+    overloaded_pct = Decimal(len(overloaded)) / Decimal(n)
+    overload_score = D100 * (D1 - overloaded_pct)
+
+    # --- severity of the worst member --------------------------------------
+    worst = max(members, key=lambda m: m.load_ratio)
+    span = cfg.balance_severity_span
+    over_by = max(D0, worst.load_ratio - D1)  # clamp: everyone under 1.0 must not exceed 100
+    if span > 0:
+        severity_penalty = clamp01(over_by / span)
+    else:
+        severity_penalty = D1 if over_by > 0 else D0
+    severity_score = D100 * (D1 - severity_penalty)
+
+    # --- combine ------------------------------------------------------------
+    use_spread = n >= cfg.balance_min_members_for_spread
+    w_spread = max(cfg.balance_weight_spread, D0) if use_spread else D0
+    w_overload = max(cfg.balance_weight_overload, D0)
+    w_severity = max(cfg.balance_weight_severity, D0)
+    w_total = w_spread + w_overload + w_severity
+    if w_total <= 0:  # misconfigured: fall back to the spec weights for the terms in play
+        if use_spread:
+            w_spread, w_overload, w_severity = Decimal("0.4"), Decimal("0.3"), Decimal("0.3")
+        else:
+            w_spread, w_overload, w_severity = D0, Decimal("0.5"), Decimal("0.5")
+        w_total = D1
+    score = (
+        w_spread * spread_score + w_overload * overload_score + w_severity * severity_score
+    ) / w_total
+
+    return WorkloadBalance(
+        applicable=True,
+        spread_used=use_spread,
+        score=q2(score),
+        spread_score=q2(spread_score),
+        overload_score=q2(overload_score),
+        severity_score=q2(severity_score),
+        median_ratio=q4(median_ratio),
+        mad=q4(mad),
+        total_members=n,
+        overloaded_count=len(overloaded),
+        overloaded_pct=q4(overloaded_pct),
+        max_load_ratio=worst.load_ratio,
+        max_load_member_id=worst.member_id,
+        underutilized_member_ids=[m.member_id for m in members if m.status is Flag.UNDERUTILIZED],
+    )
+
+
 def compute_project_workload(
     members: Sequence[MemberInput], cfg: Optional[WorkloadConfig] = None
 ) -> ProjectWorkload:
@@ -233,6 +406,9 @@ def compute_project_workload(
     Spec 2.7 steps 3-5 in one pass. Every member is judged against the SAME fresh
     baseline. Non-counted members (advisor/instructor) get a NORMAL row so their
     snapshots are rewritten (no stale OVERLOADED), but never feed the median or total.
+
+    Also rolls the per-member results up into a project-level WorkloadBalance
+    (see compute_workload_balance).
     """
     cfg = cfg or WorkloadConfig()
 
@@ -247,18 +423,34 @@ def compute_project_workload(
         expected = compute_expected_load(baseline, m.capacity_multiplier, cfg)
         #checks the status by comparing the total_points towards the expected points
         status = classify(m.total_effective_points, expected, cfg)
+        #points / expected load, the input to the balance score
+        ratio = compute_load_ratio(m.total_effective_points, expected)
         results.append(MemberResult(
             member_id=m.member_id, 
             total_effective_points=m.total_effective_points,
             capacity_multiplier=m.capacity_multiplier,
             expected_load=expected, 
             status=status,
-            silence_warning=m.silence_warning
+            silence_warning=m.silence_warning,
+            load_ratio=ratio,
+            total_raw_points=m.total_raw_points,
         ))
 
     #gets the total project workload points
     total = q2(sum((r.total_effective_points for r in results), D0))
-    return ProjectWorkload(baseline_points=baseline, members=results, total_effective_points=total, avg_points=baseline)
+
+    #raw total is display only; None unless at least one member supplied it
+    raw_values = [r.total_raw_points for r in results if r.total_raw_points is not None]
+    total_raw = q2(sum(raw_values, D0)) if raw_values else None
+
+    return ProjectWorkload(
+        baseline_points=baseline,
+        members=results,
+        total_effective_points=total,
+        avg_points=baseline,
+        total_raw_points=total_raw,
+        balance=compute_workload_balance(results, cfg, baseline_points=baseline),
+    )
 
 
 # --------------------------------------------------------------------------- #

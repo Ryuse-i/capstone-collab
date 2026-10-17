@@ -1,3 +1,4 @@
+import { useState } from "react";
 import AppLayout from "@/layouts/Applayout";
 import {
   TriangleAlert,
@@ -23,7 +24,10 @@ import { useGetCurrentProject } from "@/hooks/useProject";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import { useGetProjectRecommendations } from "@/hooks/useRedistributionRecommendation";
-import { useRecalculateWorkload } from "@/hooks/useProjectSnapshot";
+import {
+  useRecalculateWorkloadBalance,
+  useWorkloadBalanceBreakdown,
+} from "@/hooks/useWorkloadBalance";
 import type { MemberStatus } from "@/types/member_snapshot";
 
 const complexityColors = {
@@ -37,6 +41,50 @@ const workloadStyles: Record<MemberStatus, { bar: string; text: string }> = {
   underutilized: { bar: "bg-yellow-400", text: "text-yellow-600" },
   normal: { bar: "bg-green-500", text: "text-green-600" },
 };
+
+// Banner colors by imbalance severity:
+// green = good (low), yellow = warning (medium), red = severe (high/critical).
+const bannerTones = {
+  good: {
+    border: "border-green-500",
+    icon: "text-green-500",
+    title: "text-green-700 dark:text-green-500",
+    heading: "Workload Is Well Balanced",
+  },
+  warning: {
+    border: "border-yellow-500",
+    icon: "text-yellow-500",
+    title: "text-yellow-900 dark:text-yellow-500",
+    heading: "Workload Imbalance Warning",
+  },
+  severe: {
+    border: "border-red-500",
+    icon: "text-red-500",
+    title: "text-red-700 dark:text-red-500",
+    heading: "Severe Workload Imbalance Detected",
+  },
+  neutral: {
+    border: "border-gray-300 dark:border-gray-600",
+    icon: "text-gray-400",
+    title: "text-card-foreground",
+    heading: "Workload Balance Status",
+  },
+} as const;
+
+function getBannerTone(severity: string, hasSnapshot: boolean) {
+  if (!hasSnapshot) return bannerTones.neutral;
+
+  switch (severity) {
+    case "low":
+      return bannerTones.good;
+    case "high":
+    case "critical":
+      return bannerTones.severe;
+    default:
+      // "medium" (or any other in-between value)
+      return bannerTones.warning;
+  }
+}
 
 // Project roles that supervise the project but don't carry workload.
 const NON_MEMBER_ROLES = ["instructor", "advisor"];
@@ -183,6 +231,7 @@ export default function Workload() {
     isLoading: isProjectLoading,
     isError: isProjectError,
     error: projectErrorObj,
+    refetch: refetchProject,
   } = useGetCurrentProject(user?.id ?? "");
 
   const projectId = project?.id ?? "";
@@ -192,6 +241,7 @@ export default function Workload() {
     isLoading: isMembersLoading,
     isError: isMembersError,
     error: membersErrorObj,
+    refetch: refetchMembers,
   } = useGetMembersWithUserSnapshot(projectId);
 
   const {
@@ -199,6 +249,7 @@ export default function Workload() {
     isLoading: isTasksLoading,
     isError: isTasksError,
     error: tasksErrorObj,
+    refetch: refetchTasks,
   } = useGetAllTaskAssignedMembers(projectId);
 
   const {
@@ -206,22 +257,44 @@ export default function Workload() {
     isLoading: isRecommendationsLoading,
     isError: isRecommendationsError,
     error: recommendationsErrorObj,
+    refetch: refetchRecommendations,
   } = useGetProjectRecommendations(projectId);
 
   const snapshot = project?.snapshot;
 
-  const recalculateWorkload = useRecalculateWorkload();
+  const recalculateWorkload = useRecalculateWorkloadBalance();
+  //add data: breakdown when adding back the workload breakdown
+  const { refetch: refetchBreakdown } =
+    useWorkloadBalanceBreakdown(projectId);
 
-  const isRefreshing = recalculateWorkload.isPending;
+  // Covers both the recalculation and the refetch that follows it.
+  const [isSyncing, setIsSyncing] = useState(false);
+  const isRefreshing = recalculateWorkload.isPending || isSyncing;
 
   const handleRefresh = async () => {
     if (!projectId) return;
 
+    setIsSyncing(true);
+
     try {
-      await recalculateWorkload.mutateAsync({ project_id: projectId });
+      await recalculateWorkload.mutateAsync({ projectId });
+
+      // Pull fresh data everywhere the recalculation can change it:
+      // project snapshot, per-member snapshots, tasks, recommendations,
+      // and the balance breakdown.
+      await Promise.all([
+        refetchProject(),
+        refetchMembers(),
+        refetchTasks(),
+        refetchRecommendations(),
+        refetchBreakdown(),
+      ]);
+
       toast.success("Workload recalculated.");
     } catch {
       toast.error("Couldn't recalculate the workload. Please try again.");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -289,7 +362,7 @@ export default function Workload() {
   ).length;
 
   const severity = snapshot?.imbalance_severity ?? "low";
-  const isBad = severity === "high" || severity === "critical";
+  const bannerTone = getBannerTone(severity, !!snapshot);
 
   const isLoading =
     isProjectLoading ||
@@ -349,28 +422,14 @@ export default function Workload() {
 
           {/* ── Workload Health Banner ─────────────────────────────── */}
           <Card
-            className={`flex items-start justify-between rounded-lg border-4 bg-card p-4 lg:col-span-2 ${
-              isBad ? "border-red-500" : "border-yellow-500"
-            }`}
+            className={`flex items-start justify-between rounded-lg border-4 bg-card p-4 lg:col-span-2 ${bannerTone.border}`}
           >
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <TriangleAlert
-                  className={`h-5 w-5 ${
-                    isBad ? "text-red-500" : "text-yellow-500"
-                  }`}
-                />
+                <TriangleAlert className={`h-5 w-5 ${bannerTone.icon}`} />
 
-                <h2
-                  className={`font-semibold ${
-                    isBad
-                      ? "text-red-700 dark:text-red-500"
-                      : "text-yellow-900 dark:text-yellow-500"
-                  }`}
-                >
-                  {isBad
-                    ? "Severe Workload Imbalance Detected"
-                    : "Workload Balance Status"}
+                <h2 className={`font-semibold ${bannerTone.title}`}>
+                  {bannerTone.heading}
                 </h2>
               </div>
 
@@ -386,7 +445,9 @@ export default function Workload() {
                 </span>
 
                 <span className="rounded-full border px-3 py-1 text-xs">
-                  {snapshot?.workload_balance ?? 0}% balance
+                  {snapshot?.workload_balance != null
+                    ? `${Number(snapshot.workload_balance).toFixed(0)}% balance`
+                    : "Balance N/A"}
                 </span>
               </div>
             </div>
@@ -433,6 +494,9 @@ export default function Workload() {
               </Card>
             ))}
           </div>
+
+          {/* ── Workload Balance Breakdown ─────────────────────────── */}
+          {/* TODO: implement a proper breakdown later for the balance */}
 
           {/* ── Member Workload ────────────────────────────────────── */}
           <Card className="rounded-xl border shadow-sm">
