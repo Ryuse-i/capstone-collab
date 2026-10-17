@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import {
   useGetCurrentProject,
   useGetInstructorProjects,
@@ -31,6 +33,36 @@ const FILL = "h-[calc(100svh-4rem)] min-h-0";
 function getInitials(firstName?: string | null, lastName?: string | null) {
   if (!firstName && !lastName) return "?";
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
+}
+
+/**
+ * Same avatar style as the task dialogs. Declared at module level so it
+ * isn't recreated on every render.
+ */
+function ChatAvatar({
+  firstName,
+  lastName,
+  className,
+}: {
+  firstName?: string | null;
+  lastName?: string | null;
+  className?: string;
+}) {
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
+  return (
+    <Avatar
+      title={fullName || undefined}
+      className={cn(
+        "size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800",
+        className,
+      )}
+    >
+      <AvatarFallback className="flex size-full items-center justify-center rounded-full bg-primary text-10 font-bold uppercase leading-none text-primary-foreground dark:bg-gray-800 dark:text-foreground">
+        {getInitials(firstName, lastName)}
+      </AvatarFallback>
+    </Avatar>
+  );
 }
 
 function formatTime(iso: string) {
@@ -419,14 +451,16 @@ export default function Chat() {
                   return (
                     <div
                       key={msg.id}
-                      className={`flex shrink-0 ${
+                      className={`flex shrink-0 items-end ${
                         isMe ? "justify-end" : "justify-start"
                       }`}
                     >
                       {!isMe && (
-                        <div className="mr-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
-                          {getInitials(sender?.first_name, sender?.last_name)}
-                        </div>
+                        <ChatAvatar
+                          firstName={sender?.first_name}
+                          lastName={sender?.last_name}
+                          className="mr-3 shrink-0"
+                        />
                       )}
 
                       <div
@@ -454,9 +488,11 @@ export default function Chat() {
                       </div>
 
                       {isMe && (
-                        <div className="ml-3 mt-7 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white dark:bg-gray-800">
-                          {getInitials(user?.first_name, user?.last_name)}
-                        </div>
+                        <ChatAvatar
+                          firstName={user?.first_name}
+                          lastName={user?.last_name}
+                          className="ml-3 shrink-0"
+                        />
                       )}
                     </div>
                   );
@@ -549,10 +585,7 @@ export default function Chat() {
   );
 
   return (
-    <AppLayout
-      breadcrumbs={[{ label: "Chat", href: "/chat" }]}
-      tightSides
-    >
+    <AppLayout breadcrumbs={[{ label: "Chat", href: "/chat" }]} tightSides>
       {isError ? (
         <div
           className={`flex flex-col items-center justify-center gap-4 ${FILL}`}

@@ -48,8 +48,10 @@ function CommentAvatar({
   className?: string;
 }) {
   return (
-    <Avatar className={cn("h-8 w-8 shrink-0 rounded-full bg-primary", className)}>
-      <AvatarFallback className="rounded-full font-bold ring-1 dark:bg-gray-800 dark:ring-gray-600">
+    <Avatar
+      className={cn("h-8 w-8 shrink-0 rounded-full bg-primary mt-1.5", className)}
+    >
+      <AvatarFallback className="flex size-full items-center justify-center rounded-full bg-primary text-xs font-bold leading-none text-primary-foreground ring-1 dark:bg-gray-800 dark:text-foreground dark:ring-gray-600">
         {label}
       </AvatarFallback>
     </Avatar>

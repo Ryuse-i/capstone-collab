@@ -191,11 +191,11 @@ function ContributionList({
         </div>
 
         {/* Scrollable list: 6 rows visible (6 × 64px + 5 × 8px gaps) */}
-        <div className="flex h-[424px] flex-col gap-2 overflow-y-auto pr-1">
+        <div className="flex h-[424px] flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
           {sorted.map((person, index) => (
             <div
               key={person.id}
-              className="flex h-16 shrink-0 items-center gap-3 rounded-lg border border-primary/40 bg-primary/5 px-3 dark:border-primary/40 dark:bg-primary/20"
+              className="flex h-16 shrink-0 items-center gap-3 rounded-lg border border-muted/40 bg-muted/5 px-3 dark:border-muted/40 dark:bg-muted/20"
             >
               <span className="w-4 text-center text-xs font-semibold text-gray-400 dark:text-gray-500">
                 {index + 1}

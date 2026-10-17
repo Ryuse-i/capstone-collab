@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { TaskComments } from "@/components/user/TaskComments";
 import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 import { TaskAttachments } from "./TaskAttachments";
@@ -156,6 +157,43 @@ function formStateFromTask(task: TaskResponseMembers): TaskFormState {
     primary_skill: (task.primary_skill as Skill) ?? "",
     secondary_skills: (task.secondary_skills as Skill[]) ?? [],
   };
+}
+
+/**
+ * Declared at module level (not inside the component) so it isn't
+ * recreated on every render.
+ */
+function MemberAvatar({
+  member,
+  className,
+  textClassName,
+}: {
+  member: AssignableMember;
+  className?: string;
+  textClassName?: string;
+}) {
+  const name = `${member.first_name} ${member.last_name}`.trim();
+  const initials =
+    `${member.first_name?.[0] ?? ""}${member.last_name?.[0] ?? ""}` || "?";
+
+  return (
+    <Avatar
+      title={name}
+      className={cn(
+        "size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800",
+        className,
+      )}
+    >
+      <AvatarFallback
+        className={cn(
+          "rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground dark:bg-gray-800 dark:text-foreground",
+          textClassName,
+        )}
+      >
+        {initials}
+      </AvatarFallback>
+    </Avatar>
+  );
 }
 
 export interface EditTaskDialogProps {
@@ -744,7 +782,7 @@ export default function EditTaskDialog({
                             </span>
 
                             {selected && (
-                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                              <Check className="h-4 w-4 text-popover-foreground" />
                             )}
                           </button>
                         );
@@ -796,7 +834,7 @@ export default function EditTaskDialog({
                         <span>No supertask</span>
 
                         {!taskForm.supertask_id && (
-                          <Check className="h-4 w-4 text-[#7A0C2E]" />
+                          <Check className="h-4 w-4 text-popover-foreground" />
                         )}
                       </button>
 
@@ -831,7 +869,7 @@ export default function EditTaskDialog({
                               <span>{supertask.name}</span>
 
                               {selected && (
-                                <Check className="h-4 w-4 text-[#7A0C2E]" />
+                                <Check className="h-4 w-4 text-popover-foreground" />
                               )}
                             </button>
                           );
@@ -892,7 +930,7 @@ export default function EditTaskDialog({
                             <span>{option.label}</span>
 
                             {selected && (
-                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                              <Check className="h-4 w-4 text-popover-foreground" />
                             )}
                           </button>
                         );
@@ -958,7 +996,7 @@ export default function EditTaskDialog({
                             <span>{option.label}</span>
 
                             {selected && (
-                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                              <Check className="h-4 w-4 text-popover-foreground" />
                             )}
                           </button>
                         );
@@ -972,7 +1010,7 @@ export default function EditTaskDialog({
                     {taskForm.secondary_skills.map((skill) => (
                       <span
                         key={skill}
-                        className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
+                        className="flex items-center gap-1 rounded-sm border border-[#7A0C2E]/20 bg-(--maroon) px-2 py-0.5 text-xs font-medium text-white"
                       >
                         {SKILL_OPTIONS.find((o) => o.value === skill)?.label}
 
@@ -1058,10 +1096,7 @@ export default function EditTaskDialog({
                             className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
-                                {member.first_name?.charAt(0)}
-                                {member.last_name?.charAt(0)}
-                              </div>
+                              <MemberAvatar member={member} />
 
                               <span>
                                 {member.first_name} {member.last_name}
@@ -1069,7 +1104,7 @@ export default function EditTaskDialog({
                             </div>
 
                             {selected && (
-                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                              <Check className="h-4 w-4 text-popover-foreground" />
                             )}
                           </button>
                         );
@@ -1083,13 +1118,18 @@ export default function EditTaskDialog({
                     {selectedMembers.map((member) => (
                       <span
                         key={member.member_id}
-                        className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
+                        className="flex items-center gap-1.5 rounded-full border border-(--maroon)/20 bg-[#FBF3E7] py-0.5 pl-0.5 pr-2 text-xs text-[#231A2E] dark:bg-[#FBF3E7]/20 dark:text-[#FBF3E7]"
                       >
+                        <MemberAvatar
+                          member={member}
+                          className="size-6"
+                          textClassName="text-[9px]"
+                        />
                         {member.first_name} {member.last_name}
                         <button
                           type="button"
                           onClick={() => toggleAssignedMember(member)}
-                          className="rounded-full hover:bg-[#7A0C2E]/10"
+                          className="rounded-full hover:bg-(--maroon)/10"
                           aria-label={`Remove ${member.first_name} ${member.last_name}`}
                         >
                           <X className="h-3 w-3" />
@@ -1171,10 +1211,7 @@ export default function EditTaskDialog({
                             className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF3E7] text-xs font-medium text-[#7A0C2E]">
-                                {member.first_name?.charAt(0)}
-                                {member.last_name?.charAt(0)}
-                              </div>
+                              <MemberAvatar member={member} />
 
                               <span>
                                 {member.first_name} {member.last_name}
@@ -1182,7 +1219,7 @@ export default function EditTaskDialog({
                             </div>
 
                             {selected && (
-                              <Check className="h-4 w-4 text-[#7A0C2E]" />
+                              <Check className="h-4 w-4 text-popover-foreground" />
                             )}
                           </button>
                         );
@@ -1195,13 +1232,18 @@ export default function EditTaskDialog({
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     <span
                       key={currentReviewer.member_id}
-                      className="flex items-center gap-1 rounded-full border border-[#7A0C2E]/20 bg-[#FBF3E7] px-2 py-0.5 text-xs text-[#231A2E]"
+                      className="flex items-center gap-1.5 rounded-full border border-(--maroon)/20 bg-[#FBF3E7] py-0.5 pl-0.5 pr-2 text-xs text-[#231A2E] dark:bg-[#FBF3E7]/20 dark:text-[#FBF3E7]"
                     >
+                      <MemberAvatar
+                        member={currentReviewer}
+                        className="size-6"
+                        textClassName="text-[9px]"
+                      />
                       {currentReviewer.first_name} {currentReviewer.last_name}
                       <button
                         type="button"
                         onClick={() => toggleReviewer(currentReviewer)}
-                        className="rounded-full hover:bg-[#7A0C2E]/10"
+                        className="rounded-full hover:bg-(--maroon)/10"
                         aria-label={`Remove ${currentReviewer.first_name} ${currentReviewer.last_name}`}
                       >
                         <X className="h-3 w-3" />

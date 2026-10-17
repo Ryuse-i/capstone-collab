@@ -357,7 +357,7 @@ export function TaskAttachments({ taskId, className }: TaskAttachmentsProps) {
           Loading attachments...
         </div>
       ) : isError ? (
-        <div className="flex items-center justify-between gap-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-popover dark:text-popover-foreground">
           <span>Couldn't load attachments.</span>
           <Button
             type="button"

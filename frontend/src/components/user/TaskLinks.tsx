@@ -268,7 +268,7 @@ export function TaskLinks({ taskId, className }: TaskLinksProps) {
           Loading links...
         </div>
       ) : isError ? (
-        <div className="flex items-center justify-between gap-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-popover dark:text-popover-foreground">
           <span>Couldn't load links.</span>
           <Button
             type="button"

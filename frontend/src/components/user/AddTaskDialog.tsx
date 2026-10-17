@@ -318,12 +318,6 @@ export function AddTaskDialog({
     setPrimarySkillOpen(false);
   };
 
-  const clearPrimarySkill = () => {
-    setTaskForm((prev) => ({
-      ...prev,
-      primary_skill: "",
-    }));
-  };
 
 function MemberAvatar({
   member,
@@ -639,7 +633,7 @@ function MemberAvatar({
         {trigger ?? <Button>+ Add Task</Button>}
       </DialogTrigger>
 
-      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden bg-card p-0 sm:max-w-2xl">
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden bg-popover p-0 sm:max-w-2xl">
         <DialogHeader className="shrink-0 border-b px-6 py-5">
           <DialogTitle>Create item for this project</DialogTitle>
 
@@ -924,25 +918,7 @@ function MemberAvatar({
                     </PopoverContent>
                   </Popover>
 
-                  {taskForm.primary_skill && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      <span className="flex items-center gap-1 rounded-sm border border-[#7A0C2E]/20 bg-(--maroon) px-2 py-0.5 text-xs font-medium text-white">
-                        {
-                          SKILL_OPTIONS.find(
-                            (o) => o.value === taskForm.primary_skill,
-                          )?.label
-                        }
-
-                        <button
-                          type="button"
-                          onClick={clearPrimarySkill}
-                          className="rounded-full hover:bg-(--maroon)/10"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    </div>
-                  )}
+                 
                 </div>
 
                 <div className="space-y-2">

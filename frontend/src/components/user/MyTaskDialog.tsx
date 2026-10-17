@@ -11,12 +11,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "../ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Drawer,
   DrawerClose,
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
 import { useUpdateTask } from "@/hooks/useTask";
 import { useEffect, useState } from "react";
 import type {
@@ -77,10 +79,69 @@ const complexityDotStyle: Record<TaskComplexity, string> = {
   low: "bg-gray-400",
 };
 
+// Same chip style used for skills in AddTaskDialog.
+const skillChipClass =
+  "flex items-center gap-1 rounded-sm border border-[#7A0C2E]/20 bg-(--maroon) px-2 py-0.5 text-xs font-medium text-white";
+
+// Same chip style used for members/reviewer in AddTaskDialog and EditTaskDialog.
+const memberChipClass =
+  "flex items-center gap-1.5 rounded-full border border-(--maroon)/20 bg-[#FBF3E7] py-0.5 pl-0.5 pr-2 text-xs text-[#231A2E] dark:bg-[#FBF3E7]/20 dark:text-[#FBF3E7]";
+
 // Normalizes status strings so comparisons work regardless of whether the
 // backend sends "in-progress", "in_progress", "In Progress", etc.
 function normalizeStatus(status?: string | null): string {
   return (status ?? "").toLowerCase().replace(/[\s_]+/g, "-");
+}
+
+type AvatarMember = {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+};
+
+function getMemberName(member: AvatarMember): string {
+  const fullName = [member.first_name, member.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  return fullName || member.email || "Member";
+}
+
+/**
+ * Declared at module level (not inside the component) so it isn't
+ * recreated on every render.
+ */
+function MemberAvatar({
+  member,
+  className,
+  textClassName,
+}: {
+  member: AvatarMember;
+  className?: string;
+  textClassName?: string;
+}) {
+  const initials =
+    `${member.first_name?.[0] ?? ""}${member.last_name?.[0] ?? ""}` ||
+    (member.email?.[0] ?? "?");
+
+  return (
+    <Avatar
+      title={getMemberName(member)}
+      className={cn(
+        "size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800",
+        className,
+      )}
+    >
+      <AvatarFallback
+        className={cn(
+          "rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground dark:bg-gray-800 dark:text-foreground",
+          textClassName,
+        )}
+      >
+        {initials}
+      </AvatarFallback>
+    </Avatar>
+  );
 }
 
 interface MyTaskDialogProps {
@@ -291,24 +352,16 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                   Assigned Members
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {task.assigned_members.map((member) => {
-                    const memberName =
-                      [member.first_name, member.last_name]
-                        .filter(Boolean)
-                        .join(" ") ||
-                      member.email ||
-                      "Member";
-
-                    return (
-                      <Badge
-                        key={member.id}
-                        variant="secondary"
-                        className="bg-background text-foreground ring-1 ring-border/60"
-                      >
-                        {memberName}
-                      </Badge>
-                    );
-                  })}
+                  {task.assigned_members.map((member) => (
+                    <span key={member.id} className={cn(memberChipClass, "pr-3")}>
+                      <MemberAvatar
+                        member={member}
+                        className="size-6"
+                        textClassName="text-[9px]"
+                      />
+                      {getMemberName(member)}
+                    </span>
+                  ))}
                 </div>
               </div>
             ) : null}
@@ -389,9 +442,7 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                   icon={<Tag className="size-4" />}
                   label="Primary Skill"
                 >
-                  <Badge variant="secondary" className="font-normal bg-muted">
-                    {task.primary_skill}
-                  </Badge>
+                  <span className={skillChipClass}>{task.primary_skill}</span>
                 </MetaRow>
               )}
 
@@ -402,13 +453,9 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                   label="Secondary Skills"
                 >
                   {task.secondary_skills.map((skill) => (
-                    <Badge
-                      key={skill}
-                      variant="secondary"
-                      className="font-normal bg-muted"
-                    >
+                    <span key={skill} className={skillChipClass}>
                       {skill}
-                    </Badge>
+                    </span>
                   ))}
                 </MetaRow>
               )}
