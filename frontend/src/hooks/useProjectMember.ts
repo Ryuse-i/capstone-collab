@@ -12,6 +12,20 @@ import apiClient from "@/services/apiClient";
 const url = "/project_members";
 
 const api = {
+  getMemberByUserAndProject: async (
+    user_id: string,
+    project_id: string,
+  ): Promise<ProjectMemberResponse | null> => {
+    try {
+      const response = await apiClient.get<ProjectMemberResponse | null>(
+        `${url}/by-user/${user_id}/project/${project_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get member by user and project", error);
+      throw error;
+    }
+  },
   getAll: async (): Promise<MemberBase[]> => {
     try {
       const response = await apiClient.get<MemberBase[]>(url);
@@ -105,7 +119,7 @@ const api = {
     }
   },
 
-    getProjectMemberByUserId: async (
+  getProjectMemberByUserId: async (
     user_id: string,
   ): Promise<ProjectMemberResponse> => {
     try {
@@ -128,9 +142,10 @@ export const memberKeys = {
   userDetail: (id: string) => [...memberKeys.details(), id, "user"] as const,
   byProject: (id: string) => [...memberKeys.all, id, "project"] as const,
   snapshots: () => [...memberKeys.all, "snapshot"] as const,
-  snapshotByProject: (id: string) =>
-    [...memberKeys.snapshots(), id] as const,
+  snapshotByProject: (id: string) => [...memberKeys.snapshots(), id] as const,
   byUser: (user_id: string) => [...memberKeys.all, user_id, "by-user"] as const,
+  byUserAndProject: (user_id: string, project_id: string) =>
+    [...memberKeys.all, user_id, project_id, "by-user-project"] as const,
 };
 
 export function useGetMembers() {
@@ -216,5 +231,17 @@ export function useGetProjectMemberByUserId(user_id: string) {
     queryKey: memberKeys.byUser(user_id),
     queryFn: () => api.getProjectMemberByUserId(user_id),
     enabled: !!user_id,
+  });
+}
+
+export function useGetMemberByUserAndProject(
+  user_id: string,
+  project_id: string,
+) {
+  return useQuery({
+    queryKey: memberKeys.byUserAndProject(user_id, project_id),
+    queryFn: () => api.getMemberByUserAndProject(user_id, project_id),
+    enabled: !!user_id && !!project_id,
+    retry: false,
   });
 }

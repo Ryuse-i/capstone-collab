@@ -41,6 +41,21 @@ async def get_all_members_detail(db: AsyncSession = Depends(get_async_session)):
 # =====================================================================
 
 @project_member_router.get(
+    "/by-user/{user_id}/project/{project_id}",
+    response_model=Optional[ProjectMemberResponse],
+    status_code=HTTP_200_OK,
+)
+async def get_member_by_user_and_project(
+    user_id: UUID,
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await ProjectMemberService.get_member_by_user_and_project(
+        db, user_id, project_id
+    )
+
+@project_member_router.get(
     "/by-user/{user_id}",
     response_model=ProjectMemberResponse,
     status_code=HTTP_200_OK,
@@ -185,4 +200,4 @@ async def delete_project_member(
 async def get_eligible_members(
     project_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
-    return await ProjectMemberService.get_elligible_members(db, project_id)
+    return await ProjectMemberService.getone_or_none_elligible_members(db, project_id)

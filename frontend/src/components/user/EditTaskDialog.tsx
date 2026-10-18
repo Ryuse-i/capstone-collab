@@ -32,6 +32,7 @@ import { TaskComments } from "@/components/user/TaskComments";
 import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskLinks } from "./TaskLinks";
+import { TaskRevisionNotes } from "./TaskRevisionNotes";
 
 import {
   Drawer,
@@ -143,9 +144,8 @@ const SKILL_OPTIONS: {
 ];
 
 function formStateFromTask(task: TaskResponseMembers): TaskFormState {
-  const rawSupertaskId = (
-    task as { supertask_id?: string | number | null }
-  ).supertask_id;
+  const rawSupertaskId = (task as { supertask_id?: string | number | null })
+    .supertask_id;
 
   return {
     supertask_id: rawSupertaskId != null ? String(rawSupertaskId) : null,
@@ -1305,6 +1305,8 @@ export default function EditTaskDialog({
                 {error}
               </p>
             )}
+
+            <TaskRevisionNotes taskId={task.id} />
 
             {/* Attachments: saved immediately, independent of "Save changes" */}
             <div className="border-t pt-6">

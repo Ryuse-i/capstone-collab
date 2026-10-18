@@ -5,13 +5,26 @@ import type {
   UpdateTask,
   TaskResponse,
   TaskResponseMembers,
-  TaskAnalysis, 
-  TaskAnalysisRequest
+  TaskAnalysis,
+  TaskAnalysisRequest,
 } from "@/types/task";
 
 const url = "/tasks";
 
 const api = {
+  getTasksForReviewer: async (
+    user_id: string, project_id: string,
+  ): Promise<[TaskResponseMembers]> => {
+    try {
+      const response = await apiClient.get<[TaskResponseMembers]>(
+        `${url}/assigned-reviewers/user/${user_id}/project/${project_id}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to get tasks for reviewer", error);
+      throw error;
+    }
+  },
   getOneTask: async (task_id: string): Promise<TaskResponse> => {
     try {
       const response = await apiClient.get<TaskResponse>(`${url}/${task_id}`);
@@ -124,6 +137,9 @@ export const taskKeys = {
   assignedMembersAll: () => [...taskKeys.all, "assignedMembers"] as const,
   assignedMembers: (project_id: string) =>
     [...taskKeys.assignedMembersAll(), project_id] as const,
+  forReviewerAll: () => [...taskKeys.all, "forReviewer"] as const,
+  forReviewer: (user_id: string) =>
+    [...taskKeys.forReviewerAll(), user_id] as const,
 };
 
 export function useGetOneTask(id: string) {
@@ -192,6 +208,7 @@ export function useUpdateTask() {
       queryClient.invalidateQueries({ queryKey: ["tasks", "forUser"] });
       // Also invalidate with prefix match to cover ["tasks", "forUser", userId]
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.forReviewerAll() });
     },
   });
 }
@@ -209,6 +226,7 @@ export function useDeleteTask() {
       });
       // Invalidate tasks for all users to refetch MyTask page
       queryClient.invalidateQueries({ queryKey: ["tasks", "forUser"] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.forReviewerAll() });
     },
   });
 }
@@ -232,5 +250,13 @@ export function useGetTasksForUser(user_id: string) {
 export function useAnalyzeTask() {
   return useMutation({
     mutationFn: api.analyzeTask,
+  });
+}
+
+export function useGetTasksForReviewer(user_id: string, project_id: string) {
+  return useQuery({
+    queryKey: taskKeys.forReviewer(user_id),
+    queryFn: () => api.getTasksForReviewer(user_id, project_id),
+    enabled: !!user_id && !!project_id,
   });
 }

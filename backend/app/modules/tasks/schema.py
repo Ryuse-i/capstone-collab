@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime, date
 from uuid import UUID
 from app.modules.tasks.enums import Status, Priority, Complexity, Category
@@ -71,3 +71,4 @@ class TaskResponseWithMembers(TaskResponse):
     assigned_members: list[UserResponse]
 
     model_config = ConfigDict(from_attributes=True)
+

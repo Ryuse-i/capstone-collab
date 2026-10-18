@@ -11,7 +11,7 @@ import psuLogo from "@/assets/psu-logo.jpg";
 import { ROLES } from "@/constants/roles";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useChatUnread } from "@/hooks/useChatUnread";
-import { useGetCurrentMember } from "@/hooks/useProjectMember";
+import { useGetMemberByUserAndProject } from "@/hooks/useProjectMember";
 import {
   useGetCurrentProject,
   useGetInstructorProjects,
@@ -66,12 +66,7 @@ const capstoneSearchNavItem = {
   title: "Capstone Repository",
   url: "/capstone-repository",
   icon: <BookOpenIcon />,
-  // CapstoneView (/capstone-view/:id) has no sidebar entry of its own —
-  // it's only reachable by clicking into a result from Capstone Search —
-  // so treat it as part of the same section for active-state highlighting.
   matchPrefixes: ["/capstone-view"],
-
-  // path the user last visited, instead of always resetting to the list.
   getLastVisited: getLastVisitedCapstone,
 };
 
@@ -113,7 +108,6 @@ const resourcesNavItem = {
 
 const studentNoProjectNavMain = [...commonNavMain, capstoneSearchNavItem];
 
-// Full nav for a student who has joined/created a project
 const studentLeaderNavMain = [
   ...commonNavMain,
   projectTaskNavItem,
@@ -125,7 +119,6 @@ const studentLeaderNavMain = [
   capstoneSearchNavItem,
 ];
 
-// Reduced nav for a student who is just a project member
 const studentMemberNavMain = [
   ...commonNavMain,
   myTaskNavItem,
@@ -140,13 +133,7 @@ const instructorNavMain = [
     title: "Projects",
     url: "/project-list",
     icon: <FileText />,
-    // ProjectView (/view-project/:id) has no sidebar entry of its own —
-    // it's only reachable by clicking "View" from the Projects list —
-    // so treat it as part of the same section for active-state highlighting.
     matchPrefixes: ["/view-project"],
-
-    // Clicking this item returns to whichever project-list/view-project
-    // path the user last visited, instead of always resetting to the list.
     getLastVisited: getLastVisitedProjects,
   },
   chatNavItem,
@@ -171,9 +158,6 @@ const adminNavMain = [
   },
 ];
 
-// Chat icon with an optional green "new message" dot.
-// size-4 is set explicitly because the wrapper span means the sidebar
-// button's direct-child svg sizing no longer applies.
 function ChatNavIcon({ showDot }: { showDot: boolean }) {
   return (
     <span className="relative inline-flex">
@@ -189,22 +173,18 @@ function ChatNavIcon({ showDot }: { showDot: boolean }) {
   );
 }
 
-// Static class names so Tailwind can generate them
-// (dynamic w-${n} gets purged)
 const skeletonRowWidths = ["w-20", "w-16", "w-24", "w-20", "w-24"];
 
 function AppSidebarSkeleton() {
   return (
     <>
       <SidebarContent className="relative isolate">
-        {/* Mirrors NavMain: SidebarGroup > SidebarMenu > item */}
         <SidebarGroup>
           <SidebarMenu>
             {skeletonRowWidths.map((width, index) => (
               <SidebarMenuItem key={index}>
                 <div className="flex h-8 items-center gap-2 rounded-md px-2">
                   <Skeleton className="size-4 shrink-0 rounded-md" />
-
                   <Skeleton
                     className={`h-4 ${width} group-data-[collapsible=icon]:hidden`}
                   />
@@ -214,13 +194,11 @@ function AppSidebarSkeleton() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Mirrors NavSecondary (Settings), pinned to the bottom */}
         <SidebarGroup className="mt-auto">
           <SidebarMenu>
             <SidebarMenuItem>
               <div className="flex h-8 items-center gap-2 rounded-md px-2">
                 <Skeleton className="size-4 shrink-0 rounded-md" />
-
                 <Skeleton className="h-4 w-16 group-data-[collapsible=icon]:hidden" />
               </div>
             </SidebarMenuItem>
@@ -228,18 +206,15 @@ function AppSidebarSkeleton() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Mirrors NavUser */}
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex h-12 items-center gap-2 rounded-md p-2 group-data-[collapsible=icon]:p-0">
               <Skeleton className="size-8 shrink-0 rounded-lg" />
-
               <div className="grid flex-1 gap-1.5 group-data-[collapsible=icon]:hidden">
                 <Skeleton className="h-3.5 w-24" />
                 <Skeleton className="h-3 w-32" />
               </div>
-
               <Skeleton className="ml-auto size-4 rounded-md group-data-[collapsible=icon]:hidden" />
             </div>
           </SidebarMenuItem>
@@ -252,34 +227,30 @@ function AppSidebarSkeleton() {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: user } = useCurrentUser();
 
-  const { data: currentProject, isLoading: isProjectLoading } =
-    useGetCurrentProject(user?.id ?? "");
-
-  const { data: member, isLoading: isMemberLoading } = useGetCurrentMember(
-    user?.id ?? "",
-  );
-
-  const { data: projects } = useGetInstructorProjects(user?.id ?? "");
-
-  // Shared with AppLayout so the header and page content stay in skeleton
-  // until the sidebar has finished loading.
-  const sidebarDataLoaded = useSidebarReady();
-
   const role = user?.role?.toLowerCase();
-
   const isInstructorOrAdvisor =
     role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR;
 
-  // Same default project the Chat page opens with.
+  const { data: currentProject, isLoading: isProjectLoading } =
+    useGetCurrentProject(user?.id ?? "");
+
+  const { data: member, isLoading: isMemberLoading } =
+    useGetMemberByUserAndProject(
+      role === ROLES.STUDENT ? (user?.id ?? "") : "",
+      currentProject?.id ?? "",
+    );
+
+  const { data: projects } = useGetInstructorProjects(user?.id ?? "");
+
+  const sidebarDataLoaded = useSidebarReady();
+
   const chatProjectId = isInstructorOrAdvisor
     ? (projects?.[0]?.id ?? "")
     : (currentProject?.id ?? "");
 
   const hasUnreadChat = useChatUnread(user?.id ?? "", chatProjectId);
 
-  // TRUE only when the student has joined or created a project
   const hasProject = Boolean(currentProject);
-
   const shouldShowProjectNav = !isProjectLoading && hasProject;
 
   const recentProjects =
@@ -309,9 +280,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ];
 
-  // Normalize the member's project role for comparison
   const memberRole = member?.project_role?.toLocaleLowerCase();
-
   const isLeaderOrAbove =
     memberRole === "leader" ||
     memberRole === "advisor" ||
@@ -321,51 +290,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   let navMain;
 
   if (role === ROLES.STUDENT) {
-    /*
-     * STUDENT NAVIGATION
-     *
-     * No project:
-     *   Dashboard
-     *   Capstone Search
-     *
-     * With project + regular member:
-     *   Dashboard
-     *   My Task
-     *   Chat
-     *   Resources
-     *   Capstone Search
-     *
-     * With project + leader:
-     *   Dashboard
-     *   Project Task
-     *   My Task
-     *   Workload
-     *   Team
-     *   Chat
-     *   Resources
-     *   Capstone Search
-     */
-
     if (!shouldShowProjectNav) {
-      // IMPORTANT:
-      // Resources is NOT included here.
       navMain = studentNoProjectNavMain;
     } else if (isMemberLoading) {
-      // Avoid a flash of the wrong navigation while
-      // member role is still loading.
       navMain = studentMemberNavMain;
     } else {
       navMain = isLeaderOrAbove ? studentLeaderNavMain : studentMemberNavMain;
     }
   } else if (role === ROLES.ADMIN) {
     navMain = adminNavMain;
-  } else if (role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) {
+  } else if (isInstructorOrAdvisor) {
     navMain = instructorNavMain;
   } else {
     navMain = commonNavMain;
   }
 
-  // Swap in the Chat icon with the green dot when there's something unread.
   const navMainWithBadges = navMain.map((item) =>
     item.url === "/chat"
       ? { ...item, icon: <ChatNavIcon showDot={hasUnreadChat} /> }
@@ -377,9 +316,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
       user?.email ||
       "User",
-
     email: user?.email || "user@example.com",
-
     avatar: "/avatars/shadcn.jpg",
   };
 
@@ -421,7 +358,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarContent>
             <NavMain items={navMainWithBadges} />
 
-            {(role === ROLES.INSTRUCTOR || role === ROLES.ADVISOR) && (
+            {isInstructorOrAdvisor && (
               <div className="group-data-[collapsible=icon]:hidden">
                 <NavShortcut items={navShortcuts} />
               </div>

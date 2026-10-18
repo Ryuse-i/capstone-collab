@@ -36,7 +36,7 @@ class ProjectMemberRepo(BaseRepo):
             ProjectMember.project_id == project_id,
         )
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.scalars().first()
 
     async def get_all_members_by_project(self, project_id: UUID):
         query = (

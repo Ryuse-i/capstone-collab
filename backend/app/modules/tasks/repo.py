@@ -9,6 +9,9 @@ from app.modules.project_members.model import ProjectMember
 
 from app.modules.tasks.schema import TaskResponse
 from app.modules.tasks.model import Status
+from app.modules.assigned_reviewer.model import AssignedReviewer
+
+
 
 
 class TaskRepo(BaseRepo):
@@ -83,3 +86,23 @@ class TaskRepo(BaseRepo):
         )
         results = await self.db.execute(stmt)
         return results.scalars().all()
+
+    async def get_tasks_by_reviewer(self, user_id: UUID, project_id: UUID) -> Sequence[Task]:
+        """Submitted tasks where the user is an assigned reviewer (via any membership)."""
+        stmt = (
+            select(Task)
+            .join(AssignedReviewer, AssignedReviewer.task_id == Task.id)
+            .join(ProjectMember, ProjectMember.id == AssignedReviewer.member_id)
+            .where(
+                ProjectMember.user_id == user_id,
+                Task.status == Status.SUBMITTED,
+                Task.project_id == project_id,
+            )
+            .options(
+                selectinload(Task.assigned_members)
+                .selectinload(AssignedMember.members)
+                .selectinload(ProjectMember.user),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().unique().all()

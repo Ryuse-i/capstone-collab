@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.modules.peer_evaluations.model import PeerEvaluation
     from app.modules.projects.model import Project
     from app.modules.supertasks.model import Supertask
+    from app.modules.revision_notes.model import RevisionNote
 
 
 task_skills_enum = SAENUM(
@@ -136,6 +137,13 @@ class Task(Base):
         cascade="all, delete-orphan",
     )
 
+    revision_notes: Mapped[list["RevisionNote"]] = relationship(
+        "RevisionNote",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="RevisionNote.revision_number.desc()",
+    )
+
     # supertask_id: Mapped[UUID | None] = mapped_column(
     #    PG_UUID(as_uuid=True), ForeignKey("supertasks.id"), default=None, nullable=True
     # )
@@ -180,3 +188,4 @@ class Task(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=True,
     )
+    

@@ -42,10 +42,6 @@ function ProjectCard({
           <span className="rounded-full bg-[#F3EFE6] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A0C2E]">
             {role}
           </span>
-
-          <span className="text-xs text-neutral-400">
-            {project.created_by}
-          </span>
         </div>
 
         <h3 className="mt-2 text-base font-semibold text-foreground">

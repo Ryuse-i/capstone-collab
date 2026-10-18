@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { useUpdateTask } from "@/hooks/useTask";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   TaskStatus,
   TaskComplexity,
@@ -32,6 +32,7 @@ import { formatStatusLabel } from "@/components/user/TaskTable";
 import { TaskComments } from "./TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskLinks } from "./TaskLinks";
+import { TaskRevisionNotes } from "./TaskRevisionNotes";
 
 // Soft pill badges (outline-tinted, like the reference "In Research" / "Low" pills)
 // rather than solid-fill badges — reserved for the header meta rows.
@@ -178,18 +179,30 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
   const [submissionOpen, setSubmissionOpen] = useState(false);
   const [submissionNotes, setSubmissionNotes] = useState("");
   const [submissionLink, setSubmissionLink] = useState("");
+  const submissionFormRef = useRef<HTMLDivElement>(null);
+
+  const resetSubmissionForm = () => {
+    setSubmissionOpen(false);
+    setSubmissionNotes("");
+    setSubmissionLink("");
+  };
 
   // Reset the submission form whenever the selected task changes (or the
   // dialog closes) so stale state from a previous task can't leak through.
   useEffect(() => {
-    const resetSubmissionForm = () => {
-      setSubmissionOpen(false);
-      setSubmissionNotes("");
-      setSubmissionLink("");
-    };
-
     resetSubmissionForm();
   }, [task?.id, open]);
+
+  // The form sits mid-page inside the scroll area, so bring it into view
+  // when it opens. Otherwise it's easy to miss on tasks with long content.
+  useEffect(() => {
+    if (submissionOpen) {
+      submissionFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [submissionOpen]);
 
   const normalizedStatus = normalizeStatus(task?.status);
   const isNotStarted = normalizedStatus === "not-started";
@@ -211,6 +224,7 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
       {
         onSuccess: () => {
           toast.success("Task started.");
+          onOpenChange(false);
         },
         onError: (err) => {
           toast.error(
@@ -231,17 +245,15 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
         id: task.id,
         task: {
           status: "submitted",
-          // Note: Assuming backend accepts notes and link fields for submission
-          // If these fields don't exist on the task model, they'll be ignored
-          // TODO: Check if backend has submission-specific fields
+          // TODO: submissionNotes and submissionLink are NOT sent yet.
+          // Add matching fields to the backend schema, then include them here.
         },
       },
       {
         onSuccess: () => {
           toast.success("Task submitted successfully.");
-          setSubmissionOpen(false);
-          setSubmissionNotes("");
-          setSubmissionLink("");
+          resetSubmissionForm();
+          onOpenChange(false);
         },
         onError: (err) => {
           toast.error(
@@ -288,6 +300,8 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
     return null;
   };
 
+  const deadlineUrgency = getDeadlineUrgency();
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="ml-auto h-full w-full overflow-hidden rounded-none p-0 sm:max-w-2xl">
@@ -315,17 +329,17 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
               </h2>
 
               {/* Deadline Urgency Banner */}
-              {getDeadlineUrgency() && (
+              {deadlineUrgency && (
                 <div className="shrink-0 rounded-lg">
-                  {getDeadlineUrgency()?.type === "overdue" ? (
+                  {deadlineUrgency.type === "overdue" ? (
                     <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
                       <TriangleAlert className="mr-1.5 inline-block size-4 text-red-600" />
-                      {getDeadlineUrgency()?.message}
+                      {deadlineUrgency.message}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-3 text-sm font-medium text-yellow-700">
                       <TriangleAlert className="mr-1.5 inline-block size-4 text-yellow-600" />
-                      {getDeadlineUrgency()?.message}
+                      {deadlineUrgency.message}
                     </div>
                   )}
                 </div>
@@ -344,6 +358,8 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                 </p>
               </div>
             )}
+
+<TaskRevisionNotes taskId={task.id} />
 
             {/* Assigned members */}
             {task?.assigned_members?.length ? (
@@ -473,9 +489,13 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
               )}
             </div>
 
-            {/* Submission Form (for in-progress tasks only) */}
+            {/* Submission Form (for in-progress tasks only).
+                The Cancel / Submit actions live in the pinned footer. */}
             {isInProgress && submissionOpen && (
-              <div className="mt-4 p-4 border-t border-border/60">
+              <div
+                ref={submissionFormRef}
+                className="mt-4 p-4 border-t border-border/60"
+              >
                 <div className="mb-3">
                   <p className="text-sm font-semibold text-foreground mb-1">
                     Submit Task
@@ -496,6 +516,7 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                       placeholder="Add notes about your submission..."
                       className="w-full px-3 py-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
                       rows={3}
+                      disabled={updateTaskMutation.isPending}
                     />
                   </div>
 
@@ -509,36 +530,9 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                       onChange={(e) => setSubmissionLink(e.target.value)}
                       placeholder="https://example.com/your-work"
                       className="w-full px-3 py-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
+                      disabled={updateTaskMutation.isPending}
                     />
                   </div>
-                </div>
-
-                <div className="flex items-center justify-end pt-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSubmissionOpen(false);
-                      setSubmissionNotes("");
-                      setSubmissionLink("");
-                    }}
-                    className="mr-2"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="default"
-                    onClick={handleSubmitTask}
-                    disabled={updateTaskMutation.isPending}
-                  >
-                    {updateTaskMutation.isPending ? (
-                      <>
-                        <Spinner className="mr-2 size-4" />
-                        Submitting...
-                      </>
-                    ) : (
-                      "Submit Task"
-                    )}
-                  </Button>
                 </div>
               </div>
             )}
@@ -592,20 +586,44 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                 </>
               ) : isInProgress ? (
                 <>
-                  <DrawerClose asChild>
-                    <Button variant="outline" className="min-w-24 mr-2">
-                      Close
-                    </Button>
-                  </DrawerClose>
-                  {!submissionOpen && (
+                  {submissionOpen ? (
                     <Button
-                      variant="default"
-                      onClick={() => setSubmissionOpen(true)}
-                      className="min-w-24"
+                      variant="outline"
+                      className="min-w-24 mr-2"
+                      onClick={resetSubmissionForm}
+                      disabled={updateTaskMutation.isPending}
                     >
-                      Submit Task
+                      Cancel
                     </Button>
+                  ) : (
+                    <DrawerClose asChild>
+                      <Button variant="outline" className="min-w-24 mr-2">
+                        Close
+                      </Button>
+                    </DrawerClose>
                   )}
+
+                  <Button
+                    variant="default"
+                    className="min-w-24"
+                    disabled={updateTaskMutation.isPending}
+                    onClick={() =>
+                      submissionOpen
+                        ? handleSubmitTask()
+                        : setSubmissionOpen(true)
+                    }
+                  >
+                    {updateTaskMutation.isPending ? (
+                      <>
+                        <Spinner className="mr-2 size-4" />
+                        Submitting...
+                      </>
+                    ) : submissionOpen ? (
+                      "Confirm Submit"
+                    ) : (
+                      "Submit Task"
+                    )}
+                  </Button>
                 </>
               ) : isSubmitted ? (
                 <>

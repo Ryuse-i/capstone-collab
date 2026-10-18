@@ -7,6 +7,7 @@ import {
   ClockAlert,
   BarChart2,
   PlusCircle,
+  Inbox,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,21 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
+import { useGetAllTaskAssignedMembers, useGetTasksForReviewer } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentProject, useGetOneProjectWithSpanshot } from "@/hooks/useProject";
 import { TaskTable } from "@/components/user/TaskTable";
 import { TaskGanttView } from "@/components/user/TaskGantt";
 import { TaskBoard } from "@/components/user/TaskBoard";
+import { SubmissionsTable } from "@/components/user/SubmissionTable";
 import { AddTaskDialog } from "@/components/user/AddTaskDialog";
 import { Button } from "@/components/ui/button";
 
-type BoardTask = {
-  id: string;
-  title: string;
-  description: string;
-};
-
+// View modes exclude "submissions" now since it's a separate tab/button mode
 const viewTabs = [
   { id: "table", label: "Table" },
   { id: "timeline", label: "Timeline" },
@@ -138,6 +135,8 @@ function ProjectTaskSkeleton() {
 export default function Task() {
   // Lazy initializer reads the last visited view from localStorage
   const [viewMode, setViewMode] = useState<ViewMode>(getStoredViewMode);
+  // Separate state to track whether submissions view is active
+  const [showSubmissions, setShowSubmissions] = useState(false);
 
   // Save the active view whenever it changes
   useEffect(() => {
@@ -147,8 +146,6 @@ export default function Task() {
       // Ignore storage errors (private mode, quota exceeded, etc.)
     }
   }, [viewMode]);
-
-  useState<BoardTask | null>(null);
 
   // Fetch user data
   const userQuery = useCurrentUser();
@@ -175,6 +172,14 @@ export default function Task() {
     isLoading: isTasksLoading,
     isError: isTasksError,
   } = tasksQuery;
+
+  // Fetch reviewer tasks for submissions view (depends on user ID)
+  
+  const {
+    data: reviewerTasks,
+    isLoading: isReviewerTasksLoading,
+    isError: isReviewerTasksError,
+  } = useGetTasksForReviewer(userData?.id ?? "", projectId ?? "");
 
   // Fetch project snapshot (depends on projectId)
   const projectQuery = useGetOneProjectWithSpanshot(projectId);
@@ -265,7 +270,6 @@ export default function Task() {
                 <CardContent className="flex flex-col gap-2 p-4">
                   <div className="flex items-center justify-between">
                     {stat.icon}
-              
                   </div>
 
                   <p
@@ -300,26 +304,41 @@ export default function Task() {
               </div>
             )}
 
-          {/* View switcher */}
+          {/* View switcher and actions bar */}
           <div className="mt-6 flex items-center justify-between gap-4">
-            <Select
-              value={viewMode}
-              onValueChange={(value) => {
-                if (isViewMode(value)) setViewMode(value);
-              }}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Select view" />
-              </SelectTrigger>
+            <div className="flex items-center gap-2">
+              <Select
+                value={showSubmissions ? undefined : viewMode}
+                onValueChange={(value) => {
+                  if (isViewMode(value)) {
+                    setViewMode(value);
+                    setShowSubmissions(false);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder={showSubmissions ? "View mode" : "Select view"} />
+                </SelectTrigger>
 
-              <SelectContent>
-                {viewTabs.map((tab) => (
-                  <SelectItem key={tab.id} value={tab.id}>
-                    {tab.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectContent>
+                  {viewTabs.map((tab) => (
+                    <SelectItem key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant={showSubmissions ? "default" : "outline"}
+                size="sm"
+                className="h-9 gap-2"
+                onClick={() => setShowSubmissions((prev) => !prev)}
+              >
+                <Inbox className="h-4 w-4" />
+                Submissions
+              </Button>
+            </div>
 
             <AddTaskDialog
               projectId={projectId}
@@ -332,8 +351,14 @@ export default function Task() {
             />
           </div>
 
-          {/* Table / Board */}
-          {viewMode === "table" ? (
+          {/* Table / Timeline / Board / Submissions */}
+          {showSubmissions ? (
+            <SubmissionsTable
+              tasks={reviewerTasks ?? []}
+              isLoading={isReviewerTasksLoading}
+              isError={isReviewerTasksError}
+            />
+          ) : viewMode === "table" ? (
             <TaskTable
               tasks={allProjectTasks ?? []}
               projectId={projectId}

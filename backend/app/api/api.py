@@ -29,6 +29,7 @@ from app.modules.resources.routes import resources_router
 from app.modules.resource_links.routes import resource_link_router
 from app.modules.project_health.routes import project_health_router
 from app.modules.workload.routes import workload_balance_router
+from app.modules.revision_notes.routes import revision_note_router
 
 
 api_router = APIRouter()
@@ -92,3 +93,4 @@ api_router.include_router(task_link_router, prefix="/task_links", tags=["task_li
 api_router.include_router(resource_link_router, prefix="/resource_links", tags=["resource_links"])
 api_router.include_router(project_health_router, prefix="/project_health", tags=["project_health"])
 api_router.include_router(workload_balance_router, prefix="/workload_balance", tags=["workload_balance"])
+api_router.include_router(revision_note_router, prefix="/revision_note", tags=["revision_note"])

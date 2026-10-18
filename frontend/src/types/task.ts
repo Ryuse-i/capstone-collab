@@ -54,3 +54,8 @@ export interface TaskAnalysis {
   complexity_points: number;
   rationale: string;
 }
+
+export interface TaskResponseMembers extends TaskResponse {
+  assigned_members: UserBase[];
+  member_id?: string | null;
+}

@@ -152,6 +152,18 @@ async def get_tasks_for_user(
 ):
     return await TaskService.get_tasks_for_user(db, user_id)
 
+@task_router.get(
+    "/assigned-reviewers/user/{user_id}/project/{project_id}", response_model=list[TaskResponseWithMembers]
+)
+async def get_tasks_for_reviewer(
+    user_id: UUID,
+    project_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    """Fetch all tasks where the given user is an assigned reviewer."""
+    return await TaskService.get_tasks_for_reviewer(db, user_id, project_id)
+
 
 @task_router.post("/analyze-task", response_model=TaskAnalysis)
 async def analyze_task_route(

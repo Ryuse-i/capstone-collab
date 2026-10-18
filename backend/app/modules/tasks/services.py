@@ -170,3 +170,31 @@ class TaskService:
     async def get_eligible_tasks(db: AsyncSession, ids: Sequence[UUID]):
         repo = TaskRepo(db)
         return await repo.get_eligible_tasks(ids)
+
+
+    @staticmethod
+    async def get_tasks_for_reviewer(db: AsyncSession, user_id: UUID, project_id: UUID):
+        repo = TaskRepo(db)
+        tasks = await repo.get_tasks_by_reviewer(user_id, project_id)
+
+        result = []
+        for task in tasks:
+            assigned_members_obj = task.assigned_members or []
+
+            assigned_members = [
+                am.members.user
+                for am in assigned_members_obj
+                if am.members and am.members.user
+            ]
+
+            task_dict = {
+                col: getattr(task, col) for col in task.__table__.columns.keys()
+            }
+            task_dict["assigned_members"] = assigned_members
+            task_dict["member_id"] = (
+                assigned_members_obj[0].member_id if assigned_members_obj else None
+            )
+
+            result.append(TaskResponseWithMembers.model_validate(task_dict))
+
+        return result
