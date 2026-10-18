@@ -9,6 +9,10 @@ PURE workload logic. Rules for this file:
 
 Services load data, convert it into the small dataclasses below, call
 compute_project_workload(), and persist the result. Nothing else.
+
+Eligibility: ONLY tasks that are NOT_STARTED or IN_PROGRESS count toward workload
+(and therefore toward the workload balance score). Completed, submitted, cancelled,
+archived, unknown and parent tasks are ignored.
 """
 from __future__ import annotations
 
@@ -30,6 +34,9 @@ MIN_CAPACITY_MULTIPLIER = Decimal("0.01")  # strictly positive (spec 2.5)
 MAX_CAPACITY_MULTIPLIER = Decimal("2.0")   # spec 2.5
 DEFAULT_CAPACITY_MULTIPLIER = D1           # spec 2.4
 
+# Cap on the overage ratio used by extension_days and compute_load_ratio.
+MAX_OVERAGE_RATIO = Decimal("3")
+
 
 # --------------------------------------------------------------------------- #
 # Types
@@ -46,6 +53,27 @@ class TaskState(str, Enum):
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     INACTIVE = "inactive"  # COMPLETED, SUBMITTED, cancelled, archived, unknown ... anything else
+
+
+# Whitelist: the ONLY states that count toward workload.
+ELIGIBLE_STATES = frozenset({TaskState.NOT_STARTED, TaskState.IN_PROGRESS})
+
+
+def to_task_state(status) -> TaskState:
+    """
+    Map any status (Enum or string, any casing) to a TaskState.
+    Only not_started / in_progress are eligible; completed, submitted,
+    cancelled, archived, unknown, None -> INACTIVE.
+    """
+    if status is None:
+        return TaskState.INACTIVE
+    for candidate in (getattr(status, "name", None), getattr(status, "value", status)):
+        key = str(candidate).strip().lower().replace(" ", "_").replace("-", "_")
+        if key == "not_started":
+            return TaskState.NOT_STARTED
+        if key == "in_progress":
+            return TaskState.IN_PROGRESS
+    return TaskState.INACTIVE
 
 
 @dataclass(frozen=True)
@@ -104,7 +132,7 @@ class MemberResult:
     capacity_multiplier: Decimal
     expected_load: Decimal
     status: Flag               # TRUE status, never hidden by silence
-    silence_warning : bool = False    
+    silence_warning: bool = False
     # total_effective_points / expected_load, rounded to 4 places.
     # 1.0 = exactly at threshold, above = overloaded, below = spare capacity.
     load_ratio: Decimal = D1
@@ -215,6 +243,16 @@ def clean_capacity_multiplier(value) -> Decimal:
 # --------------------------------------------------------------------------- #
 # Task level
 # --------------------------------------------------------------------------- #
+def is_eligible(task: TaskInput) -> bool:
+    """
+    The ONE definition of 'this task counts toward workload'.
+    Only NOT_STARTED and IN_PROGRESS leaf tasks count. Completed, submitted,
+    cancelled, archived, unknown states and parent tasks never count.
+    The state is normalised first, so raw strings such as "completed" are safe.
+    """
+    return to_task_state(task.state) in ELIGIBLE_STATES and not task.is_parent
+
+
 def urgency_multiplier(deadline: Union[date, datetime, None], today: date) -> Decimal:
     d = to_date(deadline)
     if d is None:
@@ -236,17 +274,17 @@ def _share(task: TaskInput) -> Decimal:
 
 
 def counted_points(task: TaskInput) -> Decimal:
-    """Raw points this task adds to the member (0 for finished/unknown/parent tasks)."""
-    if task.state is TaskState.INACTIVE or task.is_parent:
+    """Raw points this task adds to the member. Only eligible tasks count; else 0."""
+    if not is_eligible(task):
         return D0
     return Decimal(max(task.complexity_points, 0)) * _share(task)
 
 
 def effective_points(task: TaskInput, today: date) -> Decimal:
-    base = counted_points(task)
+    base = counted_points(task)  # already 0 for anything not eligible
     if base == 0:
         return D0
-    if task.state is TaskState.NOT_STARTED:
+    if to_task_state(task.state) is TaskState.NOT_STARTED:
         return base * urgency_multiplier(task.deadline, today)
     return base  # IN_PROGRESS: no urgency scaling
 
@@ -316,6 +354,9 @@ def compute_workload_balance(
       severity_score = 100 * (1 - min(1, max(0, max_ratio-1)/span))   how bad the worst case is
 
       workload_balance = w_spread*spread + w_overload*overload + w_severity*severity
+
+    Only eligible tasks (NOT_STARTED / IN_PROGRESS) feed these numbers: member points
+    come from counted_points(), which ignores completed, submitted and all other states.
 
     Spread uses MAD (median absolute deviation) to match the median baseline: one hero
     outlier distorts a standard deviation but barely moves the MAD.
@@ -407,39 +448,44 @@ def compute_project_workload(
     baseline. Non-counted members (advisor/instructor) get a NORMAL row so their
     snapshots are rewritten (no stale OVERLOADED), but never feed the median or total.
 
+    Member totals are expected to come from member_totals(), so they only include
+    eligible (NOT_STARTED / IN_PROGRESS) tasks.
+
     Also rolls the per-member results up into a project-level WorkloadBalance
     (see compute_workload_balance).
     """
     cfg = cfg or WorkloadConfig()
 
-    #get all effective points for each member 
+    # get all effective points for each member
     basis = [m.total_effective_points for m in members]
-    #get the baseline median for all points 
+    # get the baseline median for all points
     baseline = compute_baseline(basis)
 
     results: list[MemberResult] = []
     for m in members:
-        #get the expected load of the member
-        expected = compute_expected_load(baseline, m.capacity_multiplier, cfg)
-        #checks the status by comparing the total_points towards the expected points
+        # capacity_multiplier can be None or out of range: clean it once, use it everywhere
+        cap = clean_capacity_multiplier(m.capacity_multiplier)
+        # get the expected load of the member
+        expected = compute_expected_load(baseline, cap, cfg)
+        # checks the status by comparing the total_points towards the expected points
         status = classify(m.total_effective_points, expected, cfg)
-        #points / expected load, the input to the balance score
+        # points / expected load, the input to the balance score
         ratio = compute_load_ratio(m.total_effective_points, expected)
         results.append(MemberResult(
-            member_id=m.member_id, 
+            member_id=m.member_id,
             total_effective_points=m.total_effective_points,
-            capacity_multiplier=m.capacity_multiplier,
-            expected_load=expected, 
+            capacity_multiplier=cap,
+            expected_load=expected,
             status=status,
             silence_warning=m.silence_warning,
             load_ratio=ratio,
             total_raw_points=m.total_raw_points,
         ))
 
-    #gets the total project workload points
+    # gets the total project workload points
     total = q2(sum((r.total_effective_points for r in results), D0))
 
-    #raw total is display only; None unless at least one member supplied it
+    # raw total is display only; None unless at least one member supplied it
     raw_values = [r.total_raw_points for r in results if r.total_raw_points is not None]
     total_raw = q2(sum(raw_values, D0)) if raw_values else None
 
@@ -456,9 +502,6 @@ def compute_project_workload(
 # --------------------------------------------------------------------------- #
 # Redistribution helpers (spec 4.4.1 and 5.1) with the gaps fixed
 # --------------------------------------------------------------------------- #
-MAX_OVERAGE_RATIO = Decimal("3")
-
-
 def extension_days(
     complexity_points: int,
     base_days_per_point: int,

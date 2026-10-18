@@ -40,10 +40,13 @@ DateLike = Union[date, datetime, None]
 # --------------------------------------------------------------------------- #
 class ScheduleState(str, Enum):
     """Task state as the schedule metrics see it. The service maps its own statuses:
-    COMPLETED (and SUBMITTED, if you count it as done) -> COMPLETED;
+    COMPLETED (and only COMPLETED) -> COMPLETED;
+    SUBMITTED (awaiting review)    -> SUBMITTED (never counted as completed, and not
+                                      counted in completion points at all);
     cancelled / archived / unknown -> EXCLUDED (ignored everywhere)."""
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
+    SUBMITTED = "submitted"
     COMPLETED = "completed"
     EXCLUDED = "excluded"
 
@@ -112,9 +115,9 @@ class ScheduleMetrics:
     overdue_rate: Decimal = D0          # overdue open tasks / open tasks (0-1)
     at_risk_tasks: int = 0
     at_risk_rate: Decimal = D0          # Not Started due in 0..at_risk_days / open tasks (0-1)
-    total_points: Decimal = D0
-    completed_points: Decimal = D0
-    remaining_points: Decimal = D0
+    total_points: Decimal = D0          # completed + open (SUBMITTED not counted)
+    completed_points: Decimal = D0      # ONLY ScheduleState.COMPLETED
+    remaining_points: Decimal = D0      # open tasks only (NOT_STARTED / IN_PROGRESS)
     completion_pct: Optional[Decimal] = None   # points-weighted, 0-100
     planned_points: Decimal = D0        # points of tasks whose deadline <= today
     earned_points: Decimal = D0         # ...of which are completed
@@ -208,9 +211,13 @@ def compute_schedule_metrics(
     overdue rate   = open tasks past their deadline / open tasks
     at-risk rate   = Not Started tasks due in 0..at_risk_days / open tasks
                      (overdue tasks are NOT also counted here, so nothing is double counted)
-    completion %   = completed points / total points (points-weighted, not task count)
+    completion %   = completed points / (completed points + open points), points-weighted.
+                     ONLY ScheduleState.COMPLETED adds to completed points. SUBMITTED tasks
+                     are not counted in completion at all (not in the numerator, not in
+                     the total, not in remaining).
     SPI            = earned / planned, where planned = points of tasks with deadline <= today
                      and earned = the completed ones among them. 1.0 = on track, < 1 = behind.
+                     (unchanged: a SUBMITTED task never adds to earned.)
     schedule score = 100 * (w_spi*min(1, SPI) + w_overdue*(1 - overdue_rate)
                             + w_at_risk*(1 - at_risk_rate)), weights renormalised.
                      SPI is treated as 1.0 when nothing has been planned yet.
@@ -232,13 +239,13 @@ def compute_schedule_metrics(
     overdue_rate = _rate(len(overdue), len(open_tasks))
     at_risk_rate = _rate(len(at_risk), len(open_tasks))
 
-    # points-weighted completion
+    # points-weighted completion: only COMPLETED counts; SUBMITTED is ignored here
     completed_points = sum((_points(t) for t in done), D0)
     remaining_points = sum((_points(t) for t in open_tasks), D0)
     total_points = completed_points + remaining_points
     completion_pct = q2(completed_points / total_points * D100) if total_points > 0 else None
 
-    # SPI
+    # SPI (unchanged)
     planned = [t for t in live if (_days_to_deadline(t, today) is not None
                                    and _days_to_deadline(t, today) <= 0)]
     planned_points = sum((_points(t) for t in planned), D0)

@@ -160,6 +160,7 @@ export function useGetAllProjectTask(project_id: string) {
   return useQuery({
     queryKey: taskKeys.listProject(project_id),
     queryFn: () => api.getAllProjectTask(project_id),
+    enabled: !!project_id
   });
 }
 

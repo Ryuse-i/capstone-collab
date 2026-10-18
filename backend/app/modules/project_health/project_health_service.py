@@ -36,10 +36,6 @@ EligibleCounter = Callable[[AsyncSession, Any, list], Awaitable[int]]
 # Fallback rule (3.3): share (0-1) of overloaded members' tasks with no eligible recipient.
 RecipientRateFn = Callable[[AsyncSession, UUID, list], Awaitable[Optional[Decimal]]]
 
-# SUBMITTED means the student is done and it is waiting on review. True = it counts as
-# completed for schedule metrics. Set False to leave it as open work.
-SUBMITTED_COUNTS_AS_DONE = True
-
 
 # --------------------------------------------------------------------------- #
 # Mapping: your models -> the pure dataclasses
@@ -51,8 +47,8 @@ def to_schedule_state(status) -> hm.ScheduleState:
     mapping = {
         "NOT_STARTED": hm.ScheduleState.NOT_STARTED,
         "IN_PROGRESS": hm.ScheduleState.IN_PROGRESS,
+        "SUBMITTED": hm.ScheduleState.SUBMITTED,
         "COMPLETED": hm.ScheduleState.COMPLETED,
-        "SUBMITTED": hm.ScheduleState.COMPLETED if SUBMITTED_COUNTS_AS_DONE else hm.ScheduleState.IN_PROGRESS,
     }
     return mapping.get(key, hm.ScheduleState.EXCLUDED)
 
