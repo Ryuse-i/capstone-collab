@@ -245,7 +245,7 @@ function SubScoreTile({
       <p className="text-sm font-medium text-gray-500 dark:text-(--semi-foreground)">{title}</p>
 
       <p className={`text-2xl font-bold ${style ? style.text : "text-gray-400"}`}>
-        {score === null ? "N/A" : Math.round(score)}
+        {score === null ? "None" : Math.round(score)}
       </p>
 
       <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
@@ -355,7 +355,7 @@ export default function ProjectOverview({
           <>
             <StatCard
               label="Progress"
-              value={completion === null ? "N/A" : `${Math.round(completion)}%`}
+              value={completion === null ? "None" : `${Math.round(completion)}%`}
               caption={
                 spi === null
                   ? "No points due yet"
@@ -371,7 +371,7 @@ export default function ProjectOverview({
               value={health ? healthStatusLabel[health.status] : "Unavailable"}
               caption={
                 health
-                  ? `Score ${health.score === null ? "N/A" : Math.round(health.score)} / 100`
+                  ? `Score ${health.score === null ? "None" : Math.round(health.score)} / 100`
                   : "Couldn't load project health"
               }
               icon={<Activity className="h-4 w-4 text-[#C9A84C]" />}
@@ -393,56 +393,64 @@ export default function ProjectOverview({
 
         <StatCard
           label="Workload balance"
-          value={hasBalance ? `${Number(workloadBalance).toFixed(0)}%` : "N/A"}
+          value={hasBalance ? `${Number(workloadBalance).toFixed(0)}%` : "None"}
           caption={imbalanceSeverity ? `${capitalize(imbalanceSeverity)} imbalance` : "No severity data"}
           icon={<BarChart3 className="h-4 w-4 text-[#7A0C2E]" />}
         />
       </div>
 
       {/* ── Health summary banner ───────────────────────────────── */}
-      {isHealthLoading ? (
-        <Card className="rounded-lg border-4 p-4">
-          <Skeleton className="h-5 w-48" />
-          <Skeleton className="mt-3 h-4 w-full max-w-lg" />
-        </Card>
-      ) : isHealthError || !health ? (
-        <Card className="rounded-lg border-4 border-gray-300 p-4 dark:border-gray-600">
-          <h2 className="font-semibold text-foreground">Health unavailable</h2>
-          <p className="text-sm text-gray-500 dark:text-card-foreground">
-            We couldn&apos;t load the project health right now.
-          </p>
-        </Card>
-      ) : (
-        <Card className={`rounded-lg border-4 p-4 ${levelStyles[statusToLevel[health.status]].border}`}>
-          <div className="flex items-center gap-2">
-            {statusToLevel[health.status] !== "good" && (
-              <TriangleAlert className={`h-5 w-5 ${levelStyles[statusToLevel[health.status]].icon}`} />
-            )}
-            <h2 className={`font-semibold ${levelStyles[statusToLevel[health.status]].title}`}>
-              {levelStyles[statusToLevel[health.status]].heading}
-            </h2>
-          </div>
-
-          <p className="mt-2 text-sm text-gray-500 dark:text-card-foreground">
-            {getOverrideExplanation(health) ?? levelStyles[statusToLevel[health.status]].message}
-          </p>
-
-          {attentionItems.length > 0 ? (
-            <ul className="mt-3 space-y-1">
-              {attentionItems.map((item) => (
-                <li key={item.key} className="flex items-center gap-3 px-1 py-1 text-sm">
-                  <span className={`h-3 w-3 rounded-full ${levelStyles[scoreToLevel(item.score) ?? "bad"].bar}`} />
-                  <span className="text-gray-700 dark:text-card-foreground">{item.message}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-gray-500 dark:text-(--semi-foreground)">
-              {hasAnyScore ? "Nothing needs attention right now." : "Not enough data yet to highlight anything."}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {isHealthLoading ? (
+          <Card className="rounded-lg border-4 p-4">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="mt-3 h-4 w-full max-w-lg" />
+          </Card>
+        ) : isHealthError || !health ? (
+          <Card className="rounded-lg border-4 border-gray-300 p-4 dark:border-gray-600">
+            <h2 className="font-semibold text-foreground">Health unavailable</h2>
+            <p className="text-sm text-gray-500 dark:text-card-foreground">
+              We couldn&apos;t load the project health right now.
             </p>
-          )}
-        </Card>
-      )}
+          </Card>
+        ) : (
+          <Card className={`rounded-lg border-4 p-4 ${levelStyles[statusToLevel[health.status]].border}`}>
+            <div className="flex items-center gap-2">
+              {statusToLevel[health.status] !== "good" && (
+                <TriangleAlert className={`h-5 w-5 ${levelStyles[statusToLevel[health.status]].icon}`} />
+              )}
+              <h2 className={`font-semibold ${levelStyles[statusToLevel[health.status]].title}`}>
+                {levelStyles[statusToLevel[health.status]].heading}
+              </h2>
+            </div>
+            <p className="mt-2 text-sm text-gray-500 dark:text-card-foreground">
+              {getOverrideExplanation(health) ?? levelStyles[statusToLevel[health.status]].message}
+            </p>
+            {attentionItems.length > 0 ? (
+              <ul className="mt-3 space-y-1">
+                {attentionItems.map((item) => (
+                  <li key={item.key} className="flex items-center gap-3 px-1 py-1 text-sm">
+                    <span className={`h-3 w-3 rounded-full ${levelStyles[scoreToLevel(item.score) ?? "bad"].bar}`} />
+                    <span className="text-gray-700 dark:text-card-foreground">{item.message}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-gray-500 dark:text-(--semi-foreground)">
+                {hasAnyScore ? "Nothing needs attention right now." : "Not enough data yet to highlight anything."}
+              </p>
+            )}
+          </Card>
+        )}
+                <Card className="border p-4">
+            <h2 className="text-lg font-semibold text-foreground">Project contacts</h2>
+            <div className="mt-4 space-y-3 text-sm text-neutral-600">
+              <DetailRow label="Project leader" value={leaderName} />
+              <DetailRow label="Instructor" value={instructorName} />
+              <DetailRow label="Advisor" value={advisorName} />
+            </div>
+          </Card>
+      </div>
 
       {/* ── Sub-score tiles ─────────────────────────────────────── */}
       {isHealthLoading ? (
@@ -464,7 +472,7 @@ export default function ProjectOverview({
             detail={
               health.schedule.applicable
                 ? `${toPct(health.schedule.overdue_rate)}% overdue · SPI ${
-                    health.schedule.spi === null ? "N/A" : health.schedule.spi.toFixed(2)
+                    health.schedule.spi === null ? "None" : health.schedule.spi.toFixed(2)
                   }`
                 : "No live tasks"
             }
@@ -520,7 +528,7 @@ export default function ProjectOverview({
                 <DetailRow label="Due within 7 days" value={String(health.schedule.at_risk_tasks)} />
                 <DetailRow
                   label="Total workload points"
-                  value={typeof totalWorkloadPoints === "number" ? formatPoints(totalWorkloadPoints) : "N/A"}
+                  value={typeof totalWorkloadPoints === "number" ? formatPoints(totalWorkloadPoints) : "None"}
                 />
               </>
             ) : (
@@ -566,16 +574,6 @@ export default function ProjectOverview({
                 );
               })
             )}
-          </div>
-        </Card>
-
-        <Card className="border p-4 lg:col-span-2">
-          <h2 className="text-lg font-semibold text-foreground">Project contacts</h2>
-
-          <div className="mt-4 grid gap-3 text-sm text-neutral-600 md:grid-cols-3">
-            <DetailRow label="Project leader" value={leaderName} />
-            <DetailRow label="Instructor" value={instructorName} />
-            <DetailRow label="Advisor" value={advisorName} />
           </div>
         </Card>
       </div>

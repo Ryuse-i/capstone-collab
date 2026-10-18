@@ -21,7 +21,6 @@ import { TaskTable } from "@/components/user/TaskTable";
 import { SubmissionsTable } from "@/components/user/SubmissionTable";
 import ProjectResourcesPanel from "@/components/user/ProjectResourcesPanel";
 import ProjectOverview, {
-  healthBadgeClasses,
   healthStatusLabel,
 } from "@/components/user/ProjectOverview";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
@@ -30,9 +29,7 @@ import {
   useGetTasksForReviewer,
 } from "@/hooks/useTask";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
-import TeamMembersPanel, {
-  TeamMembersSkeleton,
-} from "@/components/user/TeamMembersPanel";
+import TeamMembersPanel from "@/components/user/TeamMembersPanel";
 import { useProjectHealth } from "@/hooks/useProjectHealth";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
@@ -78,6 +75,22 @@ const tabs: {
 ];
 
 const DAY_MS = 86_400_000;
+
+// Header border colors, same as the Overview health banner.
+const headerBorderClasses = {
+  healthy: "border-green-500",
+  watch: "border-yellow-500",
+  at_risk: "border-red-500",
+} as const;
+
+// Header badges: card background, with the border and text in the health color.
+const headerBadgeClasses = {
+  healthy: "border-green-500 text-green-600 dark:text-green-400",
+  watch: "border-yellow-500 text-yellow-600 dark:text-yellow-400",
+  at_risk: "border-red-500 text-red-600 dark:text-red-400",
+} as const;
+
+const headerBadgeFallback = "border-neutral-300 text-neutral-600";
 
 function formatNumber(value?: number | null, digits = 1) {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -150,7 +163,7 @@ function StatRow({
 }
 
 /* ------------------------------------------------------------------ */
-/* Project View Skeleton                                              */
+/* Project View Skeleton (single skeleton for the whole page)         */
 /* ------------------------------------------------------------------ */
 
 function ProjectViewSkeleton() {
@@ -159,15 +172,13 @@ function ProjectViewSkeleton() {
       <div className="min-h-screen w-full py-2">
         <Skeleton className="mb-5 h-5 w-32" />
 
-        <Card className="overflow-hidden border shadow-sm">
+        <Card className="overflow-hidden border bg-background shadow-sm">
           {/* Project Header */}
           <div className="m-2 rounded-lg border-4 border-neutral-200 p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="space-y-3">
                 <Skeleton className="h-8 w-72" />
-
                 <Skeleton className="h-4 w-lg max-w-full" />
-
                 <Skeleton className="h-4 w-80 max-w-full" />
               </div>
 
@@ -181,12 +192,11 @@ function ProjectViewSkeleton() {
           <div className="p-6">
             {/* Tabs */}
             <div className="flex flex-wrap gap-2">
-              {Array.from({ length: 5 }).map((_, index) => (
+              {Array.from({ length: tabs.length }).map((_, index) => (
                 <Skeleton key={index} className="h-9 w-24 rounded-md" />
               ))}
             </div>
 
-            {/* Overview */}
             <div className="mt-6 space-y-6">
               {/* Overview cards */}
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -243,7 +253,7 @@ export default function ProjectView() {
 
   // Fetch current user data
   const userQuery = useCurrentUser();
-  const { data: userData } = userQuery;
+  const { data: userData, isLoading: isUserLoading } = userQuery;
 
   const {
     data: project,
@@ -253,8 +263,6 @@ export default function ProjectView() {
 
   const snapshot = project?.snapshot;
 
-  // Health loads on its own so a slow or failing health call only affects
-  // the health sections, not the whole page.
   const {
     data: health,
     isLoading: isHealthLoading,
@@ -280,6 +288,17 @@ export default function ProjectView() {
     isError: isMembersError,
   } = useGetMembersWithUserSnapshot(projectId);
 
+  // One flag for the whole page: stay on the skeleton until everything the
+  // tabs rely on has finished (success or error). Errors don't count as
+  // loading, so a failed request never traps the page on the skeleton.
+  const isPageLoading =
+    isLoading ||
+    isUserLoading ||
+    isHealthLoading ||
+    isTasksLoading ||
+    isReviewerTasksLoading ||
+    isMembersLoading;
+
   const getMemberName = (role: string) => {
     const member = projectMembersData?.find((m) => m.project_role === role);
     if (!member?.user) return "None";
@@ -292,14 +311,6 @@ export default function ProjectView() {
   };
 
   const { leaderName, advisorName, instructorName } = (() => {
-    if (isMembersLoading) {
-      return {
-        leaderName: "Loading...",
-        advisorName: "Loading...",
-        instructorName: "Loading...",
-      };
-    }
-
     if (isMembersError || !projectMembersData) {
       return {
         leaderName: "None",
@@ -357,18 +368,16 @@ export default function ProjectView() {
     };
   }, [allProjectTasks]);
 
-  if (isLoading) {
-    return <ProjectViewSkeleton />;
-  }
-
-  if (isError || !project) {
+  // The project itself failed: show the error right away instead of waiting
+  // on the other requests.
+  if (isError) {
     return (
       <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
         <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
             <button
               onClick={() => navigate("/project-list")}
-              className="mb-4 flex items-center gap-2 text-sm font-medium text-[#7A0C2E]"
+              className="mb-4 flex items-center gap-2 text-sm font-medium text-(--maroon)"
             >
               <ArrowLeft size={16} />
               Back to projects
@@ -385,6 +394,11 @@ export default function ProjectView() {
         </div>
       </AppLayout>
     );
+  }
+
+  // Single skeleton until all data is ready.
+  if (isPageLoading || !project) {
+    return <ProjectViewSkeleton />;
   }
 
   // `applicable` is false when the project has no live tasks; treat as N/A.
@@ -415,15 +429,19 @@ export default function ProjectView() {
       <div className="min-h-screen w-full py-2">
         <button
           onClick={() => navigate("/project-list")}
-          className="mb-5 flex items-center gap-2 text-sm font-medium text-[#7A0C2E]"
+          className="mb-5 flex items-center gap-2 text-sm font-medium text-(--maroon)"
         >
           <ArrowLeft size={16} />
           Back to projects
         </button>
 
-        <Card className="overflow-hidden border shadow-sm bg-background">
+        <Card className="overflow-hidden border bg-background shadow-sm">
           {/* Project Header */}
-          <div className="m-2 rounded-lg border-4 border-neutral-200 p-6">
+          <div
+            className={`m-2 rounded-lg border-4 p-6 ${
+              health ? headerBorderClasses[health.status] : "border-neutral-200"
+            }`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="mt-2 text-2xl font-bold text-foreground">
@@ -437,17 +455,25 @@ export default function ProjectView() {
 
               <div className="flex flex-wrap gap-2">
                 <span
-                  className={`rounded-full px-3 py-1 text-sm font-semibold bg-card dark:ring-1 ring-foreground/10 ${healthBadgeClasses(
-                    health?.status,
-                  )}`}
+                  className={`rounded-full border-2 bg-card px-3 py-1 text-sm font-semibold shadow-sm ${
+                    health
+                      ? headerBadgeClasses[health.status]
+                      : headerBadgeFallback
+                  }`}
                 >
                   {health ? healthStatusLabel[health.status] : "Unknown"}
                 </span>
 
-                <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-[#7A0C2E] shadow-sm dark:bg-card dark:ring-1 ring-foreground/10">
+                <span
+                  className={`rounded-full border-2 bg-card px-3 py-1 text-sm font-semibold shadow-sm ${
+                    health
+                      ? headerBadgeClasses[health.status]
+                      : headerBadgeFallback
+                  }`}
+                >
                   {health?.schedule.completion_pct != null
                     ? `${Math.round(health.schedule.completion_pct)}%`
-                    : "N/A"}{" "}
+                    : "None"}{" "}
                   progress
                 </span>
               </div>
@@ -475,13 +501,13 @@ export default function ProjectView() {
             {activeTab === "overview" && (
               <ProjectOverview
                 health={health}
-                isHealthLoading={isHealthLoading}
+                isHealthLoading={false}
                 isHealthError={isHealthError}
                 workloadBalance={snapshot?.workload_balance}
                 imbalanceSeverity={snapshot?.imbalance_severity}
                 totalWorkloadPoints={snapshot?.total_workload_points}
                 tasks={allProjectTasks ?? []}
-                isTasksLoading={isTasksLoading}
+                isTasksLoading={false}
                 projectId={projectId}
                 leaderName={leaderName}
                 instructorName={instructorName}
@@ -496,7 +522,7 @@ export default function ProjectView() {
                   {/* Task progress */}
                   <Card className="border p-4">
                     <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                      <Target className="h-5 w-5 text-[#7A0C2E]" />
+                      <Target className="h-5 w-5 text-(--maroon)" />
                       Task progress
                     </div>
 
@@ -504,12 +530,6 @@ export default function ProjectView() {
                       <p className="mt-4 text-sm text-rose-600">
                         Couldn't load progress data.
                       </p>
-                    ) : isHealthLoading ? (
-                      <div className="mt-4 space-y-3">
-                        <Skeleton className="h-6 w-full" />
-                        <Skeleton className="h-9 w-full" />
-                        <Skeleton className="h-9 w-full" />
-                      </div>
                     ) : (
                       <>
                         {/* Points-weighted progress bar */}
@@ -530,13 +550,13 @@ export default function ProjectView() {
                             <span className="font-semibold">
                               {schedule?.completion_pct != null
                                 ? `${Math.round(schedule.completion_pct)}%`
-                                : "N/A"}
+                                : "None"}
                             </span>
                           </div>
 
                           <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--semi-card)">
                             <div
-                              className="h-full rounded-full bg-[#7A0C2E]"
+                              className="h-full rounded-full bg-(--maroon)"
                               style={{
                                 width: `${Math.min(
                                   100,
@@ -579,12 +599,6 @@ export default function ProjectView() {
                       <p className="mt-4 text-sm text-rose-600">
                         Couldn't load schedule data.
                       </p>
-                    ) : isHealthLoading ? (
-                      <div className="mt-4 space-y-3">
-                        <Skeleton className="h-5 w-32" />
-                        <Skeleton className="h-9 w-full" />
-                        <Skeleton className="h-9 w-full" />
-                      </div>
                     ) : (
                       <>
                         <p
@@ -613,9 +627,7 @@ export default function ProjectView() {
                           Next deadlines
                         </p>
                         <div className="mt-2 space-y-1 text-sm text-foreground">
-                          {isTasksLoading ? (
-                            <Skeleton className="h-5 w-full" />
-                          ) : taskStats.upcoming.length === 0 ? (
+                          {taskStats.upcoming.length === 0 ? (
                             <p className="text-muted-foreground">
                               No upcoming deadlines.
                             </p>
@@ -654,7 +666,7 @@ export default function ProjectView() {
                 <TaskTable
                   tasks={allProjectTasks ?? []}
                   projectId={projectId}
-                  isLoading={isTasksLoading}
+                  isLoading={false}
                   isError={isTasksError}
                 />
               </div>
@@ -664,7 +676,7 @@ export default function ProjectView() {
             {activeTab === "submissions" && (
               <SubmissionsTable
                 tasks={reviewerTasks ?? []}
-                isLoading={isReviewerTasksLoading}
+                isLoading={false}
                 isError={isReviewerTasksError}
               />
             )}
@@ -672,9 +684,7 @@ export default function ProjectView() {
             {/* Members */}
             {activeTab === "members" && (
               <div className="mt-6">
-                {isMembersLoading ? (
-                  <TeamMembersSkeleton />
-                ) : isMembersError ? (
+                {isMembersError ? (
                   <p className="text-sm text-rose-600">
                     Couldn't load project members.
                   </p>
@@ -682,7 +692,7 @@ export default function ProjectView() {
                   <TeamMembersPanel
                     members={projectMembersData ?? []}
                     tasks={allProjectTasks ?? []}
-                    isTasksLoading={isTasksLoading}
+                    isTasksLoading={false}
                     isTasksError={isTasksError}
                     currentUserId={userData?.id ?? ""}
                   />
@@ -695,7 +705,7 @@ export default function ProjectView() {
               <ProjectResourcesPanel
                 projectId={projectId}
                 projectName={project?.name}
-                projectLoading={isLoading}
+                projectLoading={false}
                 projectError={isError}
                 withLayout={false}
               />

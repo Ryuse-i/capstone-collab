@@ -75,9 +75,9 @@ function AssigneeList({ members }: { members: UserBase[] }) {
         <Avatar
           key={member.id}
           title={getUserName(member)}
-          className="size-8 border-2 border-background"
+          className="size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800"
         >
-          <AvatarFallback className="rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground">
+          <AvatarFallback className="rounded-full bg-primary dark:bg-gray-800 text-10 font-bold uppercase text-primary-foreground dark:text-foreground">
             {getInitials(member)}
           </AvatarFallback>
         </Avatar>
@@ -121,9 +121,7 @@ export function SubmissionsTable({
   const [statusFilter, setStatusFilter] = useState("all");
   const [memberFilter, setMemberFilter] = useState("all");
 
-  const submittedTasks = tasks.filter(
-    (task) => task.status === "submitted"
-  );
+  const submittedTasks = tasks.filter((task) => task.status === "submitted");
 
   const memberOptions = Array.from(
     new Map(

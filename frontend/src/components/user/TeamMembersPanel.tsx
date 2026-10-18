@@ -691,7 +691,7 @@ export default function TeamMembersPanel({
               No regular team members found for this project.
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {regularMembers.map((m) => (
                 <MemberCard key={m.id} member={m} canEdit={canEdit} />
               ))}
