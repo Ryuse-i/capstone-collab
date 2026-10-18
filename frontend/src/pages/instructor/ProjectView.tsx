@@ -691,9 +691,6 @@ export default function ProjectView() {
                 ) : (
                   <TeamMembersPanel
                     members={projectMembersData ?? []}
-                    tasks={allProjectTasks ?? []}
-                    isTasksLoading={false}
-                    isTasksError={isTasksError}
                     currentUserId={userData?.id ?? ""}
                   />
                 )}
