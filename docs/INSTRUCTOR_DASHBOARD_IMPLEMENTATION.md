@@ -13,12 +13,23 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
 - Instructor/advisor role assignments (via project member service)
 
 **Requires new work:**
-- Health status mapping (backend uses `healthy/watch/at_risk`, frontend expects `healthy/watch/at_risk` - direct mapping)
-- Primary role by stage determination (needs investigation of existing stage/phase concepts)
-- Pending submissions count per project (needs refinement to user-specific pending items)
-- "Currently your turn" concept (needs investigation of existing stage/phase concepts)
+- Health status verification (use backend's three levels directly)
+- Stage concept investigation (supertasks may represent stages but needs verification)
+- Pending submissions count per project (needs refinement to user-specific pending items via assigned_reviewer)
+- "Currently your turn" concept (requires stage concept verification)
 - Deadline data with notes (may need new endpoint or extension)
 - Activity feed formatting (needs processing of raw comment data)
+
+## Changes from previous draft
+
+- Removed "Projects by stage" chart per product owner decision
+- Corrected health mapping to use backend's three levels directly (`healthy/watch/at_risk`)
+- Fixed guidance-only role claims - now marked as unverified pending permission investigation
+- Corrected "pending submissions" definition to be user-specific
+- Fixed contradictory architecture - now using single aggregated endpoint approach
+- Verified file paths and corrected assumptions (e.g., mock health is hardcoded, not random)
+- Updated deadline fields to use verified sources where possible
+- Corrected activity feed to use real timestamps and proper sorting
 
 ## Codebase Findings
 
@@ -37,7 +48,28 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
 - Instructors and advisors are identified via `project_members` table with `project_role` = `instructor` or `advisor`
 - Projects store direct references: `instructor_id` and `advisor_id` (nullable UUIDs to users)
 - Endpoint `/projects/me/roles` returns projects where user is instructor or advisor
-- No special dashboard-specific permissions needed - reuse existing project access patterns
+- **Permission verification needed**: Could not find evidence of different permissions between instructor and advisor roles in the codebase
+
+### Permissions Table: Instructor vs Advisor Capabilities
+Based on codebase investigation, instructors and advisors appear to have identical permissions:
+
+| Action | Instructor | Advisor | Evidence (file + symbol) |
+|--------|------------|---------|--------------------------|
+| Access projects where assigned | ✓ | ✓ | `/backend/app/modules/projects/repo.py:get_projects_for_instructor` - checks `(Project.instructor == user_id) | (Project.advisor == user_id)` |
+| View project details | ✓ | ✓ | `/backend/app/modules/projects/routes.py:get_one_project` - uses `current_active_user` only |
+| View tasks in project | ✓ | ✓ | `/backend/app/modules/tasks/routes.py:get_all_tasks` - uses `current_active_user` only |
+| View task submissions | ✓ | ✓ | `/backend/app/modules/task_submissions/routes.py:get_all_task_submissions` - uses `current_active_user` only |
+| View task comments | ✓ | ✓ | `/backend/app/modules/task_comments/routes.py:get_task_comments` - uses `current_active_user` only |
+| Create task comments | ✓ | ✓ | `/backend/app/modules/task_comments/routes.py:create_task_comment` - uses `current_active_user` only |
+| Create task submissions | ✓ | ✓ | `/backend/app/modules/task_submissions/routes.py:create_task_submission` - uses `current_active_user` only |
+| Be assigned as project member | ✓ | ✓ | `/backend/app/modules/invitations/service.py:accept_invitation` - sets `project.instructor` or `project.advisor` based on role |
+| Be assigned to work on tasks (as AssignedMember) | ✓ | ✓ | `/backend/app/modules/assigned_members/repo.py:get_task_members` - no role restrictions |
+| Excluded from workload calculations | ✓ | ✓ | `/backend/app/modules/project_snapshots/services.py:is_counted_member` and `.get_elligible_members` - excludes `[ProjectRole.INSTRUCTOR, ProjectRole.ADVISOR]` |
+| Considered non-working members for task assignment | ✓ | ✓ | `/backend/app/modules/redistribution_recommendations/test_redistribution_logic.py:test_non_working_member_never_recipient_even_when_skilled` - advisors never selected as recipients |
+| Invite others to project | ✓ | ✓ | `/backend/app/modules/invitations/service.py:create_invitation` - uses `current_active_user` only |
+| Accept project invitations | ✓ | ✓ | `/backend/app/modules/invitations/service.py:accept_invitation` - uses `current_active_user` only |
+
+**Key finding**: No evidence found of differential treatment between instructor and advisor roles - both appear to have identical capabilities throughout the system.
 
 ## Data Mapping Table
 
@@ -45,15 +77,15 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
 |---------------------------|--------------------------------------|----------------------------------------|
 | **Project list** (id, name) | `backend/app/modules/projects/repo.py:get_projects_for_instructor` | Ready - returns basic project info |
 | **Project role** (instructor/advisor) | `backend/app/modules/project_members/model.py:ProjectMember.project_role` | Ready - available via project member query |
-| **Stage ID** | `backend/app/modules/tasks/model.py:Task` (no explicit stage) | **Missing** - tasks don't have stage concept; need to derive from supertasks or create stage model |
-| **Health status** | `backend/app/modules/project_health/project_health_service.py:calculate_project_health` | Needs adjustment - returns `healthy/watch/at_risk`, frontend expects same three levels (direct mapping with UI label/color changes) |
+| **Stage ID** | `backend/app/modules/supertasks/model.py:Supertask` (may represent stages) | **Investigation needed** - Supertasks documented as "big chunk of a project that is broken down into individual tasks"; may represent stages but needs verification of usage patterns |
+| **Health status** | `backend/app/modules/project_health/project_health_service.py:calculate_project_health` | Ready - returns `healthy/watch/at_risk`; use backend's three levels directly with UI label/color adjustments only |
 | **Progress %** | `backend/app/modules/project_snapshots/model.py:ProjectSnapshot.progress_percentage` | Ready - but requires snapshot service call |
-| **Pending submissions** | `backend/app/modules/task_submissions/model.py:TaskSubmission` | Needs adjustment - requires counting submissions with `result = PENDING` per project |
+| **Pending submissions** | `backend/app/modules/task_submissions/model.py:TaskSubmission` + `/backend/app/modules/assigned_reviewer/model.py:AssignedReviewer` | Needs adjustment - requires counting submissions with `result = PENDING` where the task has an assigned reviewer matching the current user's project membership |
 | **Last activity** | `backend/app/modules/task_comments/model.py:TaskComment.created_at` | Ready - but requires aggregation per project |
-| **Last activity time** (formatted) | Frontend formatting function | Ready - can reuse existing formatting |
-| **Deadline data** (title, student name, note, days) | `backend/app/modules/tasks/model.py:Task` + `backend/app/modules/task_submissions/model.py` | Partial - has title/deadline but lacks student name/note; may need new endpoint |
+| **Last activity time** (ISO timestamp) | `backend/app/modules/task_comments/model.py:TaskComment.created_at` or `backend/app/modules/task_submissions/model.py:TaskSubmission.submitted_at` | Needs adjustment - must return ISO timestamps from API for frontend to format as "time ago" |
+| **Deadline data** (title, student name, note, days) | `backend/app/modules/tasks/model.py:Task` + `/backend/app/modules/assigned_members/model.py:AssignedMember` + `/backend/app/modules/project_members/model.py:ProjectMember` | Partial - has title/deadline; student name from task assignees (via AssignedMember→ProjectMember→User) or project members; note field requires verification (may use task description or need new field); days from now calculated from deadline date |
 | **Projects by stage** (bar chart) | **REMOVED** - Chart removed per product owner decision | **N/A** - Chart removed, stage badges and filters remain but need investigation |
-| **Recent activity feed** | `backend/app/modules/task_comments/model.py:TaskComment` | Needs adjustment - requires processing and limiting to recent items |
+| **Recent activity feed** | `backend/app/modules/task_comments/model.py:TaskComment` + `backend/app/modules/task_submissions/model.py:TaskSubmission` | Needs adjustment - requires processing, limiting to recent items, and returning ISO timestamps (not pre-formatted "time ago" strings) |
 
 ## Gap Analysis
 
@@ -66,7 +98,7 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
 
 2. **Progress %**: Available from `ProjectSnapshot.progress_percentage` via snapshot service
 
-3. **Pending Submissions**: Count of `TaskSubmission` records where `result = 'PENDING'` AND submission is assigned to current user for review. Needs refinement to user-specific pending items.
+3. **Pending Submissions**: Count of `TaskSubmission` records where `result = 'PENDING'` AND the task has an assigned reviewer matching the current user's project membership (requires joining task_submissions → tasks → assigned_reviewer → project_members → users). Needs refinement to user-specific pending items.
 
 4. **Last Activity**: Most recent `TaskComment.created_at` or `TaskSubmission.submitted_at` for the project
 
@@ -86,17 +118,17 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
      - Health status (via join to project_health materialized view or calculated field)
      - Pending submission count (subquery or hybrid property, refined to user-specific)
      - Last activity timestamp (subquery or hybrid property)
-     - *Note: Stage-related fields removed pending investigation*
 
 3. **Deadlines Endpoint** (new):
    - GET `/dashboard/instructor/deadlines` with filters
    - Returns: upcoming task deadlines with student names, notes, days until due
-   - Joins: tasks → submissions → users for student info
-   - Includes: task title, note field (could use task description or custom field)
+   - Joins: tasks → assigned_members → project_members → users for student name
+   - Includes: task title, note field (requires verification - may use task description or need dedicated instructor_notes field)
 
 4. **Activity Feed Endpoint** (optional enhancement):
    - GET `/dashboard/instructor/activity` 
    - Returns: recent comments/submissions across advised/instructed projects
+   - Must return ISO timestamps from API (not pre-formatted) for proper sorting and formatting
    - Could reuse admin activity service logic with project filtering
 
 ## Proposed Dashboard Changes
@@ -108,7 +140,7 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
 
 2. **Replace "Currently your turn"** → "Primary reviewer for current stage"
    - More accurate description of the guidance role
-   - Based on actual stage-primary_role mapping (requires backend verification)
+   - Requires verification of stage concept (supertasks as stages) and primary role mapping
 
 3. **Revise "Needs your attention" sorting**:
    - Keep health-based sorting but clarify meaning:
@@ -117,9 +149,9 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
    - Add secondary sort by days overdue (from deadline data)
 
 4. **Update Deadline Notes**:
-   - Current mock notes are overly specific; replace with generic helpful text
-   - Example: "Advisor sign-off needed before proceeding to next stage"
-   - Source from task description or dedicated instructor_notes field
+   - Current mock notes are overly specific; replace with generic helpful text or remove if no suitable source exists
+   - Example: "Advisor review recommended before proceeding"
+   - Source requires verification: may use task description or need dedicated instructor_notes field
 
 5. **Improve Activity Feed**:
    - Show meaningful actions: "Submitted literature review", "Commented on methodology"
@@ -128,9 +160,9 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
 
 6. **Stage Investigation Required**:
    - Stage badges, "Primary reviewer for current stage" stat, and "Needs your attention" filter (`isPrimary`) reference stage concepts
-   - **Open decision**: Investigate whether explicit stage/phase model exists in backend
-   - If using supertasks: Fetch distinct supertasks for user's projects and map to stage labels
-   - If no supertasks exist, determine minimal stage tracking additions needed
+   - **Open decision**: Investigate whether supertasks represent stages (based on model documentation) or if explicit stage model is needed
+   - If using supertasks as stages: Fetch distinct supertasks for user's projects and map to stage labels
+   - If not using supertasks: Determine if explicit stage tracking is required or if stage references should be removed
 
 ### Bugs/Fixes in Mock Implementation
 1. **Activity Feed Sorting**: Uses string comparison on `lastActivityTime` like "3h ago" → incorrect
@@ -139,14 +171,15 @@ The Instructor/Advisor dashboard can be largely implemented using existing backe
 2. **Deadline Date Calculation**: Uses `daysFromNow` added to current date → no timezone handling
    - Fix: Use actual deadline timestamps from database with proper date formatting
 
-3. **Health Logic**: Mock uses random assignment; real implementation should use project health service
+3. **Health Logic**: Mock uses hardcoded values (not random assignment); real implementation should use project health service
+   - **Verification needed**: Confirm actual health threshold values in project_health_service.py
 
 ## API Design
 
 ### Proposed Endpoint
 **GET** `/dashboard/instructor` 
 - Returns aggregated dashboard data for instructor/advisor
-- Alternative: Keep existing endpoints and compose in frontend hook (preferred for flexibility)
+- Single endpoint approach avoids per-project calls from frontend
 
 ### Response TypeScript Types
 ```typescript
@@ -158,7 +191,7 @@ interface InstructorDashboardProject {
   progress: number; // 0-100
   pendingSubmissions: number; // User-specific pending items
   lastActivity: string; // Description of last activity
-  lastActivityTime: string; // Formatted time ago (e.g., "2h ago")
+  lastActivityTime: string; // ISO timestamp from API (to be formatted as "time ago" on frontend)
   isPrimaryReviewer: boolean; // Requires backend verification - see open decision
 }
 
@@ -198,7 +231,7 @@ interface InstructorDashboardResponse {
 ### Authorization
 - User sees only projects where they are `instructor` or `advisor` (via `project_members` or direct project fields)
 - Reuse existing `/projects/me/roles` authorization logic
-- No additional permissions needed - instructors/advisors already have read access to their projects
+- **Permission verification needed**: Could not find evidence of different permissions between instructor and advisor roles; verify if role-based data filtering is required
 
 ## Frontend Integration Plan
 
