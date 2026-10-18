@@ -106,7 +106,7 @@ export function useUpdateResourceLink() {
 export function useDeleteResourceLink() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ link_id, resource_id }: { link_id: string; resource_id: string }) =>
+    mutationFn: ({ link_id }: { link_id: string; resource_id: string }) =>
       api.delete(link_id),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
