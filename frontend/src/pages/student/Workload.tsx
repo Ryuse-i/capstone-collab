@@ -6,8 +6,10 @@ import {
   AlertTriangle,
   RefreshCw,
   Lightbulb,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,18 +25,44 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
-import { useGetProjectRecommendations } from "@/hooks/useRedistributionRecommendation";
+import {
+  useGetProjectRecommendations,
+  useGenerateRecommendations,
+} from "@/hooks/useRedistributionRecommendation";
 import {
   useRecalculateWorkloadBalance,
   useWorkloadBalanceBreakdown,
 } from "@/hooks/useWorkloadBalance";
 import type { MemberStatus } from "@/types/member_snapshot";
+import { buildTaskLink, goLabels } from "@/lib/taskIntent";
+import type {
+  RecommendationType,
+  RecommendationResponse,
+} from "@/types/redistributionRecommendation";
 
 const complexityColors = {
   high: "#ef4444",
   medium: "#eab308",
   low: "#22c55e",
 } as const;
+
+const suggestionLabels: Record<RecommendationType, string> = {
+  transfer: "Transfer",
+  share: "Share",
+  split: "Split",
+  reschedule: "Reschedule",
+};
+
+const suggestionStyles: Record<RecommendationType, string> = {
+  transfer:
+    "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  share:
+    "border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-400",
+  split:
+    "border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+  reschedule:
+    "border-yellow-500/40 bg-yellow-500/10 text-yellow-800 dark:text-yellow-400",
+};
 
 const workloadStyles: Record<MemberStatus, { bar: string; text: string }> = {
   overloaded: { bar: "bg-red-500", text: "text-red-500" },
@@ -108,6 +136,160 @@ function workloadPercent(points: number, expectedPoints: number) {
     return Math.min(Math.max((points / expectedPoints) * 100, 0), 100);
   }
   return points > 0 ? 100 : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation helpers
+// ---------------------------------------------------------------------------
+
+// "Do X. Because Y." -> headline "Do X." + reason "Because Y."
+function splitDetail(detail: string) {
+  const match = detail.match(/^(.*?[.!?])\s+(.*)$/s);
+  return match
+    ? { headline: match[1], reason: match[2] }
+    : { headline: detail, reason: null };
+}
+
+function parseDay(iso: string) {
+  return new Date(`${iso}T00:00:00`);
+}
+
+function formatDay(iso: string) {
+  return parseDay(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function isPastDay(iso: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return parseDay(iso) < today;
+}
+
+function formatGeneratedAt(iso: string) {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation Card
+// ---------------------------------------------------------------------------
+
+function RecommendationCard({ item }: { item: RecommendationResponse }) {
+  const navigate = useNavigate();
+  const { headline, reason } = splitDetail(item.detail);
+  const link = buildTaskLink(item);
+
+  const isReschedule = item.suggestion_type === "reschedule";
+  const overdue = !!item.current_deadline && isPastDay(item.current_deadline);
+  const showDeadlineMove =
+    isReschedule && !!item.current_deadline && !!item.suggested_deadline;
+  const suggestedAlreadyPast =
+    !!item.suggested_deadline && isPastDay(item.suggested_deadline);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border p-4">
+      {/* Rank + type + overdue flag + Go */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
+          #{item.rank}
+        </span>
+
+        <span
+          className={`rounded border px-2 py-0.5 text-xs font-medium ${suggestionStyles[item.suggestion_type]}`}
+        >
+          {suggestionLabels[item.suggestion_type]}
+        </span>
+
+        {overdue && (
+          <span className="rounded border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
+            Task overdue
+          </span>
+        )}
+
+        <span
+          className="ml-auto"
+          title={link ? undefined : "This task no longer exists"}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!link}
+            onClick={() => link && navigate(link)}
+          >
+            {goLabels[item.suggestion_type]}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </span>
+      </div>
+
+      {/* Action + reason */}
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-medium text-card-foreground">{headline}</p>
+        {reason && <p className="text-xs text-muted-foreground">{reason}</p>}
+
+        {item.to_member_name && (
+          <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            {item.from_member_name}
+            <ArrowRight className="h-3 w-3" />
+            {item.to_member_name}
+          </p>
+        )}
+      </div>
+
+      {/* Outcome rows */}
+      <div className="grid grid-cols-1 gap-2 rounded-md bg-muted/50 p-3 text-xs sm:grid-cols-2">
+        <div>
+          <p className="font-medium uppercase tracking-wide text-muted-foreground">
+            Workload after
+          </p>
+          <p className="mt-0.5 text-card-foreground">
+            {item.expected_workload_after}
+          </p>
+        </div>
+
+        <div>
+          <p className="font-medium uppercase tracking-wide text-muted-foreground">
+            Deadline impact
+          </p>
+
+          {showDeadlineMove ? (
+            <>
+              <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-card-foreground">
+                <span className={overdue ? "text-red-500 line-through" : ""}>
+                  {formatDay(item.current_deadline!)}
+                </span>
+                <ArrowRight className="h-3 w-3" />
+                <span className="font-semibold">
+                  {formatDay(item.suggested_deadline!)}
+                </span>
+                {item.extension_days != null && (
+                  <span className="text-muted-foreground">
+                    (+{item.extension_days}d)
+                  </span>
+                )}
+              </p>
+
+              {suggestedAlreadyPast && (
+                <p className="mt-1 text-amber-600 dark:text-amber-400">
+                  This date has already passed. Pick a later one.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="mt-0.5 text-card-foreground">
+              {item.deadline_impact}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -197,24 +379,38 @@ function WorkloadSkeleton() {
       {/* ── Redistribution Recommendations ───────────────────────── */}
       <Card className="rounded-xl border shadow-sm lg:col-span-2">
         <CardHeader>
-          <Skeleton className="h-5 w-64" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-5 w-64" />
+            <Skeleton className="h-3 w-48" />
+          </div>
         </CardHeader>
 
         <CardContent className="flex flex-col gap-3">
           {[1, 2, 3].map((item) => (
             <div
               key={item}
-              className="flex flex-col gap-2 rounded-lg border p-4"
+              className="flex flex-col gap-3 rounded-lg border p-4"
             >
               <div className="flex items-center gap-2">
                 <Skeleton className="h-5 w-7 rounded" />
                 <Skeleton className="h-5 w-24 rounded" />
               </div>
 
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-4/5" />
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+              </div>
 
-              <Skeleton className="h-3 w-40" />
+              <div className="grid grid-cols-1 gap-2 rounded-md p-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </div>
             </div>
           ))}
         </CardContent>
@@ -260,12 +456,22 @@ export default function Workload() {
     refetch: refetchRecommendations,
   } = useGetProjectRecommendations(projectId);
 
+  // Ignore anything cached from a different project, and keep rank order.
+  const projectRecommendations = recommendations
+    .filter((item) => item.project_id === projectId)
+    .sort((a, b) => a.rank - b.rank);
+
+  // ISO timestamps compare correctly as strings.
+  const lastGeneratedAt = projectRecommendations.reduce<string | null>(
+    (latest, item) =>
+      !latest || item.created_at > latest ? item.created_at : latest,
+    null,
+  );
+
   const snapshot = project?.snapshot;
 
   const recalculateWorkload = useRecalculateWorkloadBalance();
-  //add data: breakdown when adding back the workload breakdown
-  const { refetch: refetchBreakdown } =
-    useWorkloadBalanceBreakdown(projectId);
+  const { refetch: refetchBreakdown } = useWorkloadBalanceBreakdown(projectId);
 
   // Covers both the recalculation and the refetch that follows it.
   const [isSyncing, setIsSyncing] = useState(false);
@@ -296,6 +502,31 @@ export default function Workload() {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const generateRecommendations = useGenerateRecommendations();
+
+  const handleGenerate = () => {
+    if (!projectId) return;
+
+    generateRecommendations.mutate(projectId, {
+      onSuccess: (result) => {
+        if (result.length === 0) {
+          toast.info(
+            "No recommendations needed. Nobody is overloaded, or no option is viable.",
+          );
+        } else if (result.every((r) => r.suggestion_type === "reschedule")) {
+          toast.success(
+            `Generated ${result.length} suggestion(s), all deadline extensions. No members could take extra work.`,
+          );
+        } else {
+          toast.success(`Generated ${result.length} recommendation(s).`);
+        }
+      },
+      onError: () => {
+        toast.error("Couldn't generate recommendations. Please try again.");
+      },
+    });
   };
 
   const memberWorkload = members
@@ -487,9 +718,7 @@ export default function Workload() {
                     {value}
                   </h2>
 
-                  <p className="text-xs text-card-foreground">
-                    {description}
-                  </p>
+                  <p className="text-xs text-card-foreground">{description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -518,8 +747,7 @@ export default function Workload() {
                     member.expectedPoints,
                   );
 
-                  const style =
-                    workloadStyles[member.status as MemberStatus];
+                  const style = workloadStyles[member.status as MemberStatus];
 
                   return (
                     <div key={member.name} className="flex flex-col gap-1">
@@ -528,9 +756,7 @@ export default function Workload() {
                           {member.name}
                         </span>
 
-                        <span
-                          className={`text-xs font-semibold ${style.text}`}
-                        >
+                        <span className={`text-xs font-semibold ${style.text}`}>
                           {member.pts.toFixed(1)} pts /{" "}
                           {member.expectedPoints.toFixed(1)}
                         </span>
@@ -622,44 +848,53 @@ export default function Workload() {
           </Card>
 
           {/* ── Redistribution Recommendations ────────────────────── */}
-          {recommendations.length > 0 && (
-            <Card className="rounded-xl border shadow-sm lg:col-span-2">
-              <CardHeader>
+          <Card className="rounded-xl border shadow-sm lg:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
                 <CardTitle className="text-base font-semibold">
                   Redistribution Recommendations
                 </CardTitle>
-              </CardHeader>
 
-              <CardContent className="flex flex-col gap-3">
-                {recommendations.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-2 rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
-                        {item.rank}
-                      </span>
+                {lastGeneratedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    {projectRecommendations.length} suggestion
+                    {projectRecommendations.length === 1 ? "" : "s"} · Generated{" "}
+                    {formatGeneratedAt(lastGeneratedAt)}
+                  </p>
+                )}
+              </div>
 
-                      <span className="rounded border px-2 py-0.5 text-xs text-card-foreground">
-                        {item.suggestion_type}
-                      </span>
-                    </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={
+                  generateRecommendations.isPending || isRefreshing || !projectId
+                }
+                className="shrink-0"
+              >
+                <Sparkles
+                  className={`mr-2 h-4 w-4 ${
+                    generateRecommendations.isPending ? "animate-pulse" : ""
+                  }`}
+                />
+                {generateRecommendations.isPending ? "Generating..." : "Generate"}
+              </Button>
+            </CardHeader>
 
-                    <p className="text-sm text-card-foreground">
-                      {item.detail}
-                    </p>
-
-                    <p className="text-xs text-gray-400">
-                      {item.expected_workload_after}{" "}
-                      <ArrowRight className="inline h-3 w-3" />{" "}
-                      {item.deadline_impact}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+            <CardContent className="flex flex-col gap-3">
+              {projectRecommendations.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No recommendations yet. Click Generate to check for ways to
+                  rebalance the workload.
+                </p>
+              ) : (
+                projectRecommendations.map((item) => (
+                  <RecommendationCard key={item.id} item={item} />
+                ))
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </AppLayout>

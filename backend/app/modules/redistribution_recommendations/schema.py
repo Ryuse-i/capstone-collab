@@ -1,5 +1,6 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict
+from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 from .model import Type
 
@@ -12,6 +13,19 @@ class RedisRecomCreate(BaseModel):
     expected_workload_after: str
     deadline_impact: str
 
+    # References / type-specific data (all optional)
+    task_id: UUID | None = None
+    from_member_id: UUID | None = None
+    to_member_id: UUID | None = None
+    task_name: str | None = None
+    from_member_name: str | None = None
+    to_member_name: str | None = None
+    current_deadline: date | None = None
+    suggested_deadline: date | None = None
+    extension_days: int | None = None
+    points_moved: Decimal | None = None
+    recipient_points: int | None = None
+
 
 class RedisRecomUpdate(BaseModel):
     detail: str | None = None
@@ -21,8 +35,22 @@ class RedisRecomUpdate(BaseModel):
     expected_workload_after: str | None = None
     deadline_impact: str | None = None
 
+    task_id: UUID | None = None
+    from_member_id: UUID | None = None
+    to_member_id: UUID | None = None
+    task_name: str | None = None
+    from_member_name: str | None = None
+    to_member_name: str | None = None
+    current_deadline: date | None = None
+    suggested_deadline: date | None = None
+    extension_days: int | None = None
+    points_moved: Decimal | None = None
+    recipient_points: int | None = None
+
 
 class RedisRecomResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     detail: str
     project_id: UUID
@@ -30,8 +58,18 @@ class RedisRecomResponse(BaseModel):
     rank: int
     expected_workload_after: str
     deadline_impact: str
+
+    task_id: UUID | None = None
+    from_member_id: UUID | None = None
+    to_member_id: UUID | None = None
+    task_name: str | None = None
+    from_member_name: str | None = None
+    to_member_name: str | None = None
+    current_deadline: date | None = None
+    suggested_deadline: date | None = None
+    extension_days: int | None = None
+    points_moved: Decimal | None = None
+    recipient_points: int | None = None
+
     created_at: datetime
     updated_at: datetime
-
-    class ConfigDict:
-        from_attributes = True

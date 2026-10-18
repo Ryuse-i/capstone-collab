@@ -1,5 +1,9 @@
+from uuid import UUID
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_async_session
 from .schema import (
     RedisRecomCreate,
@@ -7,7 +11,6 @@ from .schema import (
     RedisRecomUpdate,
 )
 from .services import RecommendationService
-from typing import List
 
 recommendation_route = APIRouter()
 
@@ -17,6 +20,29 @@ async def get_all_recommendations(db: AsyncSession = Depends(get_async_session))
     return await RecommendationService.get_all_recommendations(db)
 
 
+# --- Engine endpoints (declared before the /{recommendation_id} routes) --- #
+@recommendation_route.post(
+    "/project/{project_id}/generate", response_model=List[RedisRecomResponse]
+)
+async def generate_recommendations(
+    project_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    """Recompute and save ranked options for the project's most overloaded member.
+    Replaces the project's previous recommendations. Empty list = nothing to recommend."""
+    return await RecommendationService.generate_and_save_recommendations(db, project_id)
+
+
+@recommendation_route.get(
+    "/project/{project_id}", response_model=List[RedisRecomResponse]
+)
+async def get_project_recommendations(
+    project_id: UUID, db: AsyncSession = Depends(get_async_session)
+):
+    """Saved recommendations for one project, best rank first."""
+    return await RecommendationService.get_project_recommendations(db, project_id)
+
+
+# --- CRUD by recommendation id --- #
 @recommendation_route.get("/{recommendation_id}", response_model=RedisRecomResponse)
 async def get_one_recommendation(
     recommendation_id: int, db: AsyncSession = Depends(get_async_session)
@@ -24,7 +50,7 @@ async def get_one_recommendation(
     db_item = await RecommendationService.get_one_recommendation(db, recommendation_id)
     if not db_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation not found"
         )
     return db_item
 
@@ -45,7 +71,7 @@ async def update_recommendation(
     db: AsyncSession = Depends(get_async_session),
 ):
     db_item = await RecommendationService.get_one_recommendation(db, recommendation_id)
-    if not db_item:  # ← add this guard
+    if not db_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation not found"
         )
@@ -64,7 +90,7 @@ async def delete_recommendation(
     db_item = await RecommendationService.get_one_recommendation(db, recommendation_id)
     if not db_item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation not found"
         )
     await RecommendationService.delete_recommendation(db, db_item)
     return None

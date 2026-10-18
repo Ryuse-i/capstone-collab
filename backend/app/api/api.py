@@ -94,3 +94,4 @@ api_router.include_router(resource_link_router, prefix="/resource_links", tags=[
 api_router.include_router(project_health_router, prefix="/project_health", tags=["project_health"])
 api_router.include_router(workload_balance_router, prefix="/workload_balance", tags=["workload_balance"])
 api_router.include_router(revision_note_router, prefix="/revision_note", tags=["revision_note"])
+api_router.include_router(recommendation_route, prefix="/redistribution_recommendation", tags=["redistribution_recommendation"])

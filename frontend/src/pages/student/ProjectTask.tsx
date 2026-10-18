@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import AppLayout from "@/layouts/Applayout";
 import {
   AlertTriangle,
@@ -18,15 +18,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useGetAllTaskAssignedMembers, useGetTasksForReviewer } from "@/hooks/useTask";
+import {
+  useGetAllTaskAssignedMembers,
+  useGetTasksForReviewer,
+} from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetCurrentProject, useGetOneProjectWithSpanshot } from "@/hooks/useProject";
+import {
+  useGetCurrentProject,
+  useGetOneProjectWithSpanshot,
+} from "@/hooks/useProject";
 import { TaskTable } from "@/components/user/TaskTable";
 import { TaskGanttView } from "@/components/user/TaskGantt";
 import { TaskBoard } from "@/components/user/TaskBoard";
 import { SubmissionsTable } from "@/components/user/SubmissionTable";
 import { AddTaskDialog } from "@/components/user/AddTaskDialog";
 import { Button } from "@/components/ui/button";
+import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
+import EditTaskDialog from "@/components/user/EditTaskDialog";
+import { parseTaskIntent, type TaskIntent } from "@/lib/taskIntent";
 
 // View modes exclude "submissions" now since it's a separate tab/button mode
 const viewTabs = [
@@ -173,8 +183,38 @@ export default function Task() {
     isError: isTasksError,
   } = tasksQuery;
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [deepLink, setDeepLink] = useState<{
+    taskId: string;
+    intent: TaskIntent;
+  } | null>(null);
+  const [deepLinkOpen, setDeepLinkOpen] = useState(false);
+  const deepLinkHandled = useRef(false);
+
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const parsed = parseTaskIntent(searchParams);
+    if (!parsed || !allProjectTasks) return; // wait for the task list
+
+    deepLinkHandled.current = true;
+
+    if (allProjectTasks.some((t) => String(t.id) === parsed.taskId)) {
+      setDeepLink(parsed);
+      setDeepLinkOpen(true);
+    } else {
+      toast.error("That task no longer exists.");
+    }
+
+    // Clean the URL so a refresh doesn't reopen the drawer.
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, allProjectTasks]);
+
+  const deepLinkTask = deepLink
+    ? (allProjectTasks ?? []).find((t) => String(t.id) === deepLink.taskId)
+    : undefined;
+
   // Fetch reviewer tasks for submissions view (depends on user ID)
-  
+
   const {
     data: reviewerTasks,
     isLoading: isReviewerTasksLoading,
@@ -317,7 +357,9 @@ export default function Task() {
                 }}
               >
                 <SelectTrigger className="w-40">
-                  <SelectValue placeholder={showSubmissions ? "View mode" : "Select view"} />
+                  <SelectValue
+                    placeholder={showSubmissions ? "View mode" : "Select view"}
+                  />
                 </SelectTrigger>
 
                 <SelectContent>
@@ -373,6 +415,16 @@ export default function Task() {
             />
           ) : (
             <TaskBoard tasks={allProjectTasks ?? []} projectId={projectId} />
+          )}
+
+          {deepLink && deepLinkTask && (
+            <EditTaskDialog
+              task={deepLinkTask}
+              projectId={projectId}
+              intent={deepLink.intent}
+              open={deepLinkOpen}
+              onOpenChange={setDeepLinkOpen}
+            />
           )}
         </div>
       )}

@@ -34,7 +34,7 @@ class ProjectMemberRepo(BaseRepo):
         query = select(ProjectMember).where(
             ProjectMember.user_id == user_id,
             ProjectMember.project_id == project_id,
-        )
+        ).options(selectinload(ProjectMember.user))
         result = await self.db.execute(query)
         return result.scalars().first()
 

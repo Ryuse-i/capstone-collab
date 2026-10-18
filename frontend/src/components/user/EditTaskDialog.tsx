@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRef, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon, Check, ChevronDown, Users, X } from "lucide-react";
+import {
+  CalendarIcon,
+  Check,
+  ChevronDown,
+  Users,
+  X,
+  Lightbulb,
+} from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import type { TaskIntent } from "@/lib/taskIntent";
 
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
 import {
@@ -199,6 +207,7 @@ function MemberAvatar({
 export interface EditTaskDialogProps {
   task: TaskResponseMembers;
   projectId: string;
+  intent?: TaskIntent | null;
   onUpdated?: () => void;
   onDeleted?: () => void;
   trigger?: ReactNode;
@@ -210,6 +219,7 @@ export interface EditTaskDialogProps {
 export default function EditTaskDialog({
   task,
   projectId,
+  intent,
   trigger,
   onUpdated,
   onDeleted,
@@ -252,6 +262,14 @@ export default function EditTaskDialog({
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
   const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
   const [reviewerOpen, setReviewerOpen] = useState(false);
+  type IntentBanner = { tone: "suggestion" | "stale"; text: string };
+  const [intentBanner, setIntentBanner] = useState<IntentBanner | null>(null);
+  const [highlight, setHighlight] = useState<"deadline" | "members" | null>(
+    null,
+  );
+  const intentAppliedRef = useRef(false);
+  const deadlineFieldRef = useRef<HTMLDivElement>(null);
+  const membersFieldRef = useRef<HTMLDivElement>(null);
 
   const updateTaskMutation = useUpdateTask();
   const createAssignedMemberMutation = useCreateAssignedMember();
@@ -395,6 +413,125 @@ export default function EditTaskDialog({
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      intentAppliedRef.current = false;
+      setIntentBanner(null);
+      setHighlight(null);
+      return;
+    }
+    if (!intent || intentAppliedRef.current) return;
+    if (assignedLoading || membersLoading) return;
+
+    intentAppliedRef.current = true;
+
+    const nameOf = (id: string | null) => {
+      const m = assignableMembers.find((x) => x.member_id === id);
+      return m ? `${m.first_name} ${m.last_name}`.trim() : "this member";
+    };
+    const savedIds = taskAssignmentRows.map((r) => String(r.member_id));
+    const stale = () =>
+      setIntentBanner({
+        tone: "stale",
+        text: "This suggestion no longer matches the task (assignees or deadline changed since it was generated). Nothing was pre-filled.",
+      });
+
+    let target: "deadline" | "members" | null = null;
+
+    switch (intent.kind) {
+      case "reschedule": {
+        const saved = task.deadline ? String(task.deadline).slice(0, 10) : null;
+        if (intent.currentDeadline && saved !== intent.currentDeadline) {
+          stale();
+          break;
+        }
+        target = "deadline";
+        if (!intent.suggestedDeadline) {
+          setIntentBanner({
+            tone: "suggestion",
+            text: "This task has no deadline. Set one.",
+          });
+          break;
+        }
+        const suggested = intent.suggestedDeadline;
+        setTaskForm((prev) => ({ ...prev, deadline: suggested }));
+        const date = new Date(`${suggested}T00:00:00`);
+        setIntentBanner({
+          tone: "suggestion",
+          text:
+            `Suggested: move the deadline to ${format(date, "PPP")}` +
+            (intent.extensionDays ? ` (+${intent.extensionDays} days).` : ".") +
+            (date < today
+              ? " That date has already passed, so pick a later one."
+              : "") +
+            " Review it, then press Save changes.",
+        });
+        break;
+      }
+      case "transfer": {
+        const { fromMemberId: from, toMemberId: to } = intent;
+        if (!from || !to || !savedIds.includes(from) || savedIds.includes(to)) {
+          stale();
+          break;
+        }
+        setSelectedMemberIds([...savedIds.filter((id) => id !== from), to]);
+        setIntentBanner({
+          tone: "suggestion",
+          text: `Suggested: transfer this task from ${nameOf(from)} to ${nameOf(to)}. The assignees are updated below. Review them, then press Save changes.`,
+        });
+        target = "members";
+        break;
+      }
+      case "share": {
+        const to = intent.toMemberId;
+        if (!to || savedIds.includes(to)) {
+          stale();
+          break;
+        }
+        setSelectedMemberIds([...savedIds, to]);
+        setIntentBanner({
+          tone: "suggestion",
+          text: `Suggested: add ${nameOf(to)} as an assignee so the work is shared. Review it, then press Save changes.`,
+        });
+        target = "members";
+        break;
+      }
+      case "split": {
+        setIntentBanner({
+          tone: "suggestion",
+          text: `Suggested: split this task. ${nameOf(intent.toMemberId)} would take ${intent.recipientPoints ?? "part"} of its points. Splitting isn't automated: create a second task for them covering that part, then reduce this one.`,
+        });
+        target = "members";
+        break;
+      }
+    }
+
+    setHighlight(target);
+    if (target) {
+      const ref = target === "deadline" ? deadlineFieldRef : membersFieldRef;
+      window.setTimeout(
+        () =>
+          ref.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        350,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    open,
+    intent,
+    assignedLoading,
+    membersLoading,
+    assignableMembers,
+    taskAssignmentRows,
+  ]);
+
+  const undoSuggestion = () => {
+    setTaskForm(formStateFromTask(task));
+    setSelectedMemberIds(null);
+    setHighlight(null);
+    setIntentBanner(null);
+  };
 
   const handleTaskDeleted = () => {
     // Close the drawer first so it isn't left open (or leaving a stuck
@@ -689,6 +826,28 @@ export default function EditTaskDialog({
         {/* min-h-0 + flex-1 lets this area scroll while the footer stays pinned */}
         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-6">
+            {intentBanner && (
+              <div
+                className={cn(
+                  "flex items-start gap-2 rounded-lg border p-3 text-sm",
+                  intentBanner.tone === "stale"
+                    ? "border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-400"
+                    : "border-primary/30 bg-primary/5 text-card-foreground",
+                )}
+              >
+                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
+                <p className="flex-1">{intentBanner.text}</p>
+                {intentBanner.tone === "suggestion" && (
+                  <button
+                    type="button"
+                    onClick={undoSuggestion}
+                    className="shrink-0 text-xs underline"
+                  >
+                    Undo
+                  </button>
+                )}
+              </div>
+            )}
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="edit-task-name">Name</Label>
@@ -1029,7 +1188,14 @@ export default function EditTaskDialog({
               </div>
 
               {/* Assigned Members */}
-              <div className="space-y-2">
+              <div
+                ref={membersFieldRef}
+                className={cn(
+                  "space-y-2",
+                  highlight === "members" &&
+                    "rounded-lg ring-2 ring-primary/40 ring-offset-4 ring-offset-background",
+                )}
+              >
                 <Label className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5" />
                   Assigned Members
@@ -1259,7 +1425,14 @@ export default function EditTaskDialog({
               </div>
 
               {/* Deadline */}
-              <div className="space-y-2">
+              <div
+                ref={deadlineFieldRef}
+                className={cn(
+                  "space-y-2",
+                  highlight === "deadline" &&
+                    "rounded-lg ring-2 ring-primary/40 ring-offset-4 ring-offset-background",
+                )}
+              >
                 <Label>Deadline (required)</Label>
 
                 <Popover>
