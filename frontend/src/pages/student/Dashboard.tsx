@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { Link } from "react-router-dom"; // change if you use a different router
-import { TriangleAlert} from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
 
 import AppLayout from "@/layouts/Applayout";
@@ -29,6 +29,7 @@ import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useProjectHealth } from "@/hooks/useProjectHealth"; // adjust path
 import type { MemberStatus } from "@/types/member_snapshot";
 import type { HealthStatus, ProjectHealth } from "@/types/projectHealth"; // adjust path
+import { InviteLinkPopover } from "@/components/user/InviteLinkPopover";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -223,16 +224,41 @@ function getAttentionItems(health: ProjectHealth): AttentionItem[] {
     message: string;
     href: string;
   }> = [
-    { key: "schedule", score: health.schedule_score, message: scheduleMessage, href: ROUTES.tasks },
-    { key: "workload", score: health.workload_balance_score, message: workloadMessage, href: ROUTES.members },
-    { key: "risk", score: health.risk_score, message: riskMessage, href: ROUTES.members },
-    { key: "activity", score: health.activity_score, message: activityMessage, href: ROUTES.tasks },
+    {
+      key: "schedule",
+      score: health.schedule_score,
+      message: scheduleMessage,
+      href: ROUTES.tasks,
+    },
+    {
+      key: "workload",
+      score: health.workload_balance_score,
+      message: workloadMessage,
+      href: ROUTES.members,
+    },
+    {
+      key: "risk",
+      score: health.risk_score,
+      message: riskMessage,
+      href: ROUTES.members,
+    },
+    {
+      key: "activity",
+      score: health.activity_score,
+      message: activityMessage,
+      href: ROUTES.tasks,
+    },
   ];
 
   const items: AttentionItem[] = [];
   for (const c of candidates) {
     if (c.score !== null && c.score < GOOD_MIN) {
-      items.push({ key: c.key, score: c.score, message: c.message, href: c.href });
+      items.push({
+        key: c.key,
+        score: c.score,
+        message: c.message,
+        href: c.href,
+      });
     }
   }
 
@@ -378,7 +404,10 @@ function AttentionSkeleton() {
       <Skeleton className="h-5 w-40" />
       <div className="space-y-1">
         {[1, 2].map((item) => (
-          <div key={item} className="flex items-center justify-between px-2 py-2">
+          <div
+            key={item}
+            className="flex items-center justify-between px-2 py-2"
+          >
             <div className="flex items-center gap-3">
               <Skeleton className="h-3 w-3 rounded-full" />
               <Skeleton className="h-4 w-56" />
@@ -581,7 +610,9 @@ function ScoreTile({
         {title}
       </p>
 
-      <p className={`text-2xl font-bold ${style ? style.text : "text-gray-400"}`}>
+      <p
+        className={`text-2xl font-bold ${style ? style.text : "text-gray-400"}`}
+      >
         {score === null ? "N/A" : Math.round(score)}
       </p>
 
@@ -622,10 +653,22 @@ function SubScoreTiles({ health }: { health: ProjectHealth }) {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
-      <ScoreTile title="Schedule" score={health.schedule_score} detail={scheduleDetail} />
-      <ScoreTile title="Workload balance" score={health.workload_balance_score} detail={workloadDetail} />
+      <ScoreTile
+        title="Schedule"
+        score={health.schedule_score}
+        detail={scheduleDetail}
+      />
+      <ScoreTile
+        title="Workload balance"
+        score={health.workload_balance_score}
+        detail={workloadDetail}
+      />
       <ScoreTile title="Risk" score={health.risk_score} detail={riskDetail} />
-      <ScoreTile title="Activity" score={health.activity_score} detail={activityDetail} />
+      <ScoreTile
+        title="Activity"
+        score={health.activity_score}
+        detail={activityDetail}
+      />
     </div>
   );
 }
@@ -682,7 +725,6 @@ function AttentionList({ health }: { health: ProjectHealth }) {
   );
 }
 
-
 // ---------------------------------------------------------------------------
 // Project progress card
 // ---------------------------------------------------------------------------
@@ -724,7 +766,6 @@ function ProgressCard({
   const completion = schedule.completion_pct;
   const spi = schedule.spi;
 
-
   return (
     <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
       {header}
@@ -749,7 +790,6 @@ function ProgressCard({
       </div>
 
       <div className="flex flex-col gap-1 pt-4">
-
         <p className="text-xs text-gray-500 dark:text-(--semi-foreground)">
           {spi === null
             ? "No points were due yet, so schedule performance can't be measured."
@@ -851,6 +891,10 @@ export default function Dashboard() {
     .sort((a, b) => b.pts - a.pts)
     .slice(0, 3);
 
+  // UI gate only; the backend still has to enforce it
+  const myRole = members.find((m) => m.user_id === user?.id)?.project_role;
+  const canInvite = myRole === "leader" || myRole === "admin";
+
   // Project task status distribution
   const taskStatusDistribution: TaskStatusDistribution = {
     not_started: 0,
@@ -861,16 +905,33 @@ export default function Dashboard() {
 
   projectTasks?.forEach((task) => {
     if (task.status === "not_started") taskStatusDistribution.not_started++;
-    else if (task.status === "in_progress") taskStatusDistribution.in_progress++;
+    else if (task.status === "in_progress")
+      taskStatusDistribution.in_progress++;
     else if (task.status === "submitted") taskStatusDistribution.submitted++;
     else if (task.status === "completed") taskStatusDistribution.completed++;
   });
 
   const taskChartData: Array<{ label: string; count: number; fill: string }> = [
-    { label: "Not Started", count: taskStatusDistribution.not_started, fill: STATUS_BAR_COLOR },
-    { label: "In Progress", count: taskStatusDistribution.in_progress, fill: STATUS_BAR_COLOR },
-    { label: "Submitted", count: taskStatusDistribution.submitted, fill: STATUS_BAR_COLOR },
-    { label: "Completed", count: taskStatusDistribution.completed, fill: STATUS_BAR_COLOR },
+    {
+      label: "Not Started",
+      count: taskStatusDistribution.not_started,
+      fill: STATUS_BAR_COLOR,
+    },
+    {
+      label: "In Progress",
+      count: taskStatusDistribution.in_progress,
+      fill: STATUS_BAR_COLOR,
+    },
+    {
+      label: "Submitted",
+      count: taskStatusDistribution.submitted,
+      fill: STATUS_BAR_COLOR,
+    },
+    {
+      label: "Completed",
+      count: taskStatusDistribution.completed,
+      fill: STATUS_BAR_COLOR,
+    },
   ];
 
   const taskChartConfig: ChartConfig = {
@@ -885,10 +946,14 @@ export default function Dashboard() {
         <GetStartedPage />
       ) : (
         <div>
-          <h1 className="my-2 text-2xl font-bold text-(--text-h) dark:text-card-foreground">
-            Overview of project health and team performance
-          </h1>
-
+          <div className="my-2 flex items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold text-(--text-h) dark:text-card-foreground">
+              Overview of project health and team performance
+            </h1>
+            {currentProject && canInvite && (
+              <InviteLinkPopover projectId={currentProject.id ?? ""} />
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* ── Project Health Banner ─────────────────────────────── */}
             {isHealthError || !health ? (
@@ -945,7 +1010,9 @@ export default function Dashboard() {
                           <span className="font-medium text-card-foreground">
                             {member.name}
                           </span>
-                          <span className={`text-xs font-semibold ${style.text}`}>
+                          <span
+                            className={`text-xs font-semibold ${style.text}`}
+                          >
                             {member.pts.toFixed(1)} pts ·{" "}
                             {member.capacityMultiplier.toFixed(1)}x
                           </span>
@@ -1006,7 +1073,12 @@ export default function Dashboard() {
                       tickMargin={10}
                       axisLine={false}
                     />
-                    <XAxis type="number" dataKey="count" allowDecimals={false} hide />
+                    <XAxis
+                      type="number"
+                      dataKey="count"
+                      allowDecimals={false}
+                      hide
+                    />
 
                     <ChartTooltip
                       cursor={false}

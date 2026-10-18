@@ -19,6 +19,7 @@ import Settings from "@/pages/shared/Settings";
 import Chat from "./pages/shared/Chat";
 import CapstoneRepository from "./pages/shared/CapstoneRepository";
 import CapstoneView from "./pages/shared/CapstoneView";
+import InvitePage from "./pages/InvitePage";
 
 export default function App() {
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/capstone-repository" element={<CapstoneRepository />} />
           <Route path="/capstone-view/:id" element={<CapstoneView />} />
+          <Route path="/invite/:token" element={<InvitePage/>} />
           <Route
             element={<RoleRoute role={[ROLES.INSTRUCTOR, ROLES.STUDENT]} />}
           >
