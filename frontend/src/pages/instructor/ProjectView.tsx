@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
@@ -9,6 +9,7 @@ import {
   Files,
   Target,
   Users,
+  PlusCircle,
 } from "lucide-react";
 
 import AppLayout from "@/layouts/Applayout";
@@ -24,11 +25,18 @@ import ProjectOverview, {
   healthStatusLabel,
 } from "@/components/user/ProjectOverview";
 import { useGetOneProjectWithSpanshot } from "@/hooks/useProject";
-import { useGetAllTaskAssignedMembers, useGetTasksForReviewer } from "@/hooks/useTask";
-import { useGetMembersWithUserInfo } from "@/hooks/useProjectMember";
+import {
+  useGetAllTaskAssignedMembers,
+  useGetTasksForReviewer,
+} from "@/hooks/useTask";
+import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
+import TeamMembersPanel, {
+  TeamMembersSkeleton,
+} from "@/components/user/TeamMembersPanel";
 import { useProjectHealth } from "@/hooks/useProjectHealth";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { rememberLastVisitedProjects } from "@/lib/lastVisitedProjects";
+import { AddTaskDialog } from "@/components/user/AddTaskDialog";
 
 type ProjectViewTab =
   | "overview"
@@ -69,7 +77,9 @@ const tabs: {
   },
 ];
 
-function formatNumber(value?: number, digits = 1) {
+const DAY_MS = 86_400_000;
+
+function formatNumber(value?: number | null, digits = 1) {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return "None";
   }
@@ -77,12 +87,66 @@ function formatNumber(value?: number, digits = 1) {
   return value.toFixed(digits);
 }
 
-function formatCount(value?: number) {
+function formatCount(value?: number | null) {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return "None";
   }
 
   return `${value}`;
+}
+
+/** Whole days from now until the given date (negative if already past). */
+function daysUntil(date: string) {
+  return Math.ceil((new Date(date).getTime() - Date.now()) / DAY_MS);
+}
+
+/**
+ * Turns the schedule performance index (earned / planned points) into plain
+ * words. Below 1 means behind plan. Thresholds are a starting point; align
+ * them with the cutoffs your health scoring uses.
+ */
+function scheduleLabel(spi?: number | null) {
+  if (spi == null) {
+    return { text: "Not enough data yet", className: "text-muted-foreground" };
+  }
+
+  if (spi >= 1.05) {
+    return { text: "Ahead of plan", className: "text-green-600" };
+  }
+
+  if (spi >= 0.95) {
+    return { text: "On schedule", className: "text-green-600" };
+  }
+
+  return {
+    text: `${Math.round((1 - spi) * 100)}% behind plan`,
+    className: "text-red-500",
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Small shared row used inside the Task progress / Timeline cards    */
+/* ------------------------------------------------------------------ */
+
+function StatRow({
+  label,
+  value,
+  valueClassName = "",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
+      <span>{label}</span>
+      <span
+        className={`font-semibold text-(--semi-foreground) ${valueClassName}`}
+      >
+        {value}
+      </span>
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -214,20 +278,14 @@ export default function ProjectView() {
     data: projectMembersData,
     isLoading: isMembersLoading,
     isError: isMembersError,
-  } = useGetMembersWithUserInfo(projectId);
+  } = useGetMembersWithUserSnapshot(projectId);
 
   const getMemberName = (role: string) => {
-    const member = projectMembersData?.find(
-      (projectMember) =>
-        projectMember.project_role === role && projectMember.users,
-    );
+    const member = projectMembersData?.find((m) => m.project_role === role);
+    if (!member?.user) return "None";
 
-    if (!member || !member.users) {
-      return "None";
-    }
-
-    const fullName = `${member.users.first_name ?? ""} ${
-      member.users.last_name ?? ""
+    const fullName = `${member.user.first_name ?? ""} ${
+      member.user.last_name ?? ""
     }`.trim();
 
     return fullName || "None";
@@ -256,6 +314,48 @@ export default function ProjectView() {
       instructorName: getMemberName("instructor"),
     };
   })();
+
+  // Task-level numbers for the Tasks tab. Schedule/points figures come from
+  // `health.schedule`; this only computes what the health response lacks.
+  // NOTE: must stay above the early returns below (hooks can't be conditional).
+  const taskStats = useMemo(() => {
+    const tasks = allProjectTasks ?? [];
+    const now = Date.now();
+
+    const countStatus = (status: string) =>
+      tasks.filter((t) => t.status === status).length;
+
+    // Next deadlines: still on the students' plate (not submitted/completed).
+    const upcoming = tasks
+      .filter(
+        (t) =>
+          t.deadline && t.status !== "completed" && t.status !== "submitted",
+      )
+      .filter((t) => new Date(t.deadline).getTime() >= now)
+      .sort((a, b) => +new Date(a.deadline) - +new Date(b.deadline))
+      .slice(0, 3);
+
+    // Completed tasks per week, oldest -> newest (last 4 weeks).
+    const weekly = [3, 2, 1, 0].map((weeksAgo) => {
+      const end = now - weeksAgo * 7 * DAY_MS;
+      const start = end - 7 * DAY_MS;
+
+      return tasks.filter((t) => {
+        if (!t.completed_at) return false;
+        const completedAt = new Date(t.completed_at).getTime();
+        return completedAt > start && completedAt <= end;
+      }).length;
+    });
+
+    return {
+      notStarted: countStatus("not_started"),
+      inProgress: countStatus("in_progress"),
+      submitted: countStatus("submitted"),
+      completed: countStatus("completed"),
+      upcoming,
+      weekly,
+    };
+  }, [allProjectTasks]);
 
   if (isLoading) {
     return <ProjectViewSkeleton />;
@@ -286,6 +386,24 @@ export default function ProjectView() {
       </AppLayout>
     );
   }
+
+  // `applicable` is false when the project has no live tasks; treat as N/A.
+  const schedule = health?.schedule.applicable ? health.schedule : null;
+  const scheduleStatus = scheduleLabel(schedule?.spi);
+
+  const progressRows: [string, number | null | undefined][] = [
+    ["Not started", taskStats.notStarted],
+    ["In progress", taskStats.inProgress],
+    ["Awaiting review", taskStats.submitted],
+    ["Completed", taskStats.completed],
+    ["Unassigned", health?.risk.unassigned_count],
+  ];
+
+  const timelineRows: [string, number | null | undefined][] = [
+    ["Overdue tasks", schedule?.overdue_tasks],
+    ["At-risk tasks", schedule?.at_risk_tasks],
+    ["Deadline extensions", schedule?.extension_count],
+  ];
 
   return (
     <AppLayout
@@ -375,55 +493,164 @@ export default function ProjectView() {
             {activeTab === "tasks" && (
               <div className="mt-6 space-y-6">
                 <div className="grid gap-4 lg:grid-cols-2">
+                  {/* Task progress */}
                   <Card className="border p-4">
                     <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                       <Target className="h-5 w-5 text-[#7A0C2E]" />
                       Task progress
                     </div>
 
-                    <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                        <span>Completed tasks</span>
-
-                        <span className="font-semibold text-(--semi-foreground)">
-                          {formatCount(snapshot?.completed_tasks)}
-                        </span>
+                    {isHealthError ? (
+                      <p className="mt-4 text-sm text-rose-600">
+                        Couldn't load progress data.
+                      </p>
+                    ) : isHealthLoading ? (
+                      <div className="mt-4 space-y-3">
+                        <Skeleton className="h-6 w-full" />
+                        <Skeleton className="h-9 w-full" />
+                        <Skeleton className="h-9 w-full" />
                       </div>
+                    ) : (
+                      <>
+                        {/* Points-weighted progress bar */}
+                        <div className="mt-4">
+                          <div className="mb-1 flex justify-between text-sm text-foreground">
+                            <span>
+                              {schedule
+                                ? `${formatNumber(
+                                    schedule.completed_points,
+                                    0,
+                                  )} of ${formatNumber(
+                                    schedule.total_points,
+                                    0,
+                                  )} points completed`
+                                : "Points completed"}
+                            </span>
 
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                        <span>Expected score</span>
+                            <span className="font-semibold">
+                              {schedule?.completion_pct != null
+                                ? `${Math.round(schedule.completion_pct)}%`
+                                : "N/A"}
+                            </span>
+                          </div>
 
-                        <span className="font-semibold text-(--semi-foreground)">
-                          {formatNumber(snapshot?.expected_score)}
-                        </span>
-                      </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--semi-card)">
+                            <div
+                              className="h-full rounded-full bg-[#7A0C2E]"
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  Math.max(0, schedule?.completion_pct ?? 0),
+                                )}%`,
+                              }}
+                            />
+                          </div>
 
-                      <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                        <span>Schedule variance</span>
+                          {schedule && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {formatNumber(schedule.remaining_points, 0)}{" "}
+                              points remaining
+                            </p>
+                          )}
+                        </div>
 
-                        <span className="font-semibold text-(--semi-foreground)">
-                          {formatNumber(snapshot?.schedule_variance)}
-                        </span>
-                      </div>
-                    </div>
+                        {/* Status breakdown */}
+                        <div className="mt-4 space-y-3 text-sm text-neutral-600">
+                          {progressRows.map(([label, value]) => (
+                            <StatRow
+                              key={label}
+                              label={label}
+                              value={formatCount(value)}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </Card>
 
+                  {/* Timeline insight */}
                   <Card className="border p-4">
                     <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                       <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
                       Timeline insight
                     </div>
 
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 dark:bg-(--semi-card)">
-                      <span>Expected score</span>
+                    {isHealthError ? (
+                      <p className="mt-4 text-sm text-rose-600">
+                        Couldn't load schedule data.
+                      </p>
+                    ) : isHealthLoading ? (
+                      <div className="mt-4 space-y-3">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-9 w-full" />
+                        <Skeleton className="h-9 w-full" />
+                      </div>
+                    ) : (
+                      <>
+                        <p
+                          className={`mt-4 text-sm font-semibold ${scheduleStatus.className}`}
+                        >
+                          {scheduleStatus.text}
+                        </p>
 
-                      <span className="font-semibold text-(--semi-foreground)">
-                        {formatNumber(snapshot?.expected_score)}
-                      </span>
-                    </div>
+                        <div className="mt-3 space-y-3 text-sm text-neutral-600">
+                          {timelineRows.map(([label, value]) => (
+                            <StatRow
+                              key={label}
+                              label={label}
+                              value={formatCount(value)}
+                              valueClassName={
+                                label === "Overdue tasks" && (value ?? 0) > 0
+                                  ? "text-red-500"
+                                  : ""
+                              }
+                            />
+                          ))}
+                        </div>
+
+                        {/* Next deadlines */}
+                        <p className="mt-4 text-xs font-medium text-muted-foreground">
+                          Next deadlines
+                        </p>
+                        <div className="mt-2 space-y-1 text-sm text-foreground">
+                          {isTasksLoading ? (
+                            <Skeleton className="h-5 w-full" />
+                          ) : taskStats.upcoming.length === 0 ? (
+                            <p className="text-muted-foreground">
+                              No upcoming deadlines.
+                            </p>
+                          ) : (
+                            taskStats.upcoming.map((task) => (
+                              <div
+                                key={task.id}
+                                className="flex justify-between gap-2"
+                              >
+                                <span className="truncate">{task.name}</span>
+                                <span className="shrink-0 text-muted-foreground">
+                                  {daysUntil(task.deadline) === 0
+                                    ? "today"
+                                    : `in ${daysUntil(task.deadline)}d`}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
                   </Card>
                 </div>
 
+                <div className="flex justify-end">
+                  <AddTaskDialog
+                    projectId={projectId}
+                    trigger={
+                      <Button size="sm" className="h-8">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        ADD TASK
+                      </Button>
+                    }
+                  />
+                </div>
                 <TaskTable
                   tasks={allProjectTasks ?? []}
                   projectId={projectId}
@@ -444,57 +671,22 @@ export default function ProjectView() {
 
             {/* Members */}
             {activeTab === "members" && (
-              <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <Card className="border p-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                    <Users className="h-5 w-5 text-[#3F3350]" />
-                    Assigned members
-                  </div>
-
-                  <div className="mt-4 space-y-3 text-sm text-neutral-600">
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                      <span>Project leader</span>
-
-                      <span className="font-semibold text-(--semi-foreground)">
-                        {leaderName}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                      <span>Instructor</span>
-
-                      <span className="font-semibold text-(--semi-foreground)">
-                        {instructorName}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2 text-foreground dark:bg-(--semi-card)">
-                      <span>Advisor</span>
-
-                      <span className="font-semibold text-(--semi-foreground)">
-                        {advisorName}
-                      </span>
-                    </div>
-                  </div>
-
-                  {isMembersError && (
-                    <p className="mt-3 text-xs text-rose-600">
-                      Couldn't load project members.
-                    </p>
-                  )}
-                </Card>
-
-                <Card className="border p-4">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Team status
-                  </h2>
-
-                  <p className="mt-4 text-sm text-(--semi-foreground)">
-                    Member details can be expanded here as the project grows.
-                    For now, the view highlights the assigned instructor,
-                    advisor, and project leader from the project's member list.
+              <div className="mt-6">
+                {isMembersLoading ? (
+                  <TeamMembersSkeleton />
+                ) : isMembersError ? (
+                  <p className="text-sm text-rose-600">
+                    Couldn't load project members.
                   </p>
-                </Card>
+                ) : (
+                  <TeamMembersPanel
+                    members={projectMembersData ?? []}
+                    tasks={allProjectTasks ?? []}
+                    isTasksLoading={isTasksLoading}
+                    isTasksError={isTasksError}
+                    currentUserId={userData?.id ?? ""}
+                  />
+                )}
               </div>
             )}
 
