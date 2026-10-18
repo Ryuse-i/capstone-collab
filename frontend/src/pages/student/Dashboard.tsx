@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { Link } from "react-router-dom"; // change if you use a different router
-import { TriangleAlert, TrendingUp } from "lucide-react";
+import { TriangleAlert} from "lucide-react";
 import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
 
 import AppLayout from "@/layouts/Applayout";
@@ -311,12 +311,14 @@ function HealthRing({
 }
 
 // ---------------------------------------------------------------------------
-// Skeletons
+// Skeletons (each mirrors the real section's layout and grid span)
 // ---------------------------------------------------------------------------
 
 function BannerSkeleton() {
   return (
-    <Card className="flex flex-row items-start justify-between rounded-lg border-4 p-4 lg:col-span-2">
+    <Card className="relative flex flex-row items-start justify-between rounded-lg border-4 border-gray-200 p-4 lg:col-span-2 dark:border-gray-700">
+      <Skeleton className="absolute right-4 top-4 h-6 w-16 rounded-full" />
+
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded-full" />
@@ -325,7 +327,32 @@ function BannerSkeleton() {
         <Skeleton className="h-4 w-full max-w-130" />
         <Skeleton className="h-4 w-64" />
       </div>
-      <Skeleton className="h-30 w-30 rounded-full" />
+
+      <div className="mt-8">
+        <Skeleton className="h-30 w-30 rounded-full" />
+      </div>
+    </Card>
+  );
+}
+
+function ProgressSkeleton() {
+  return (
+    <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
+      <div>
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="mt-2 h-4 w-48" />
+      </div>
+      <div>
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-10" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <Skeleton className="mt-2 h-2 w-full rounded-full" />
+      </div>
+      <div className="flex flex-col gap-2 pt-4">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-3 w-full max-w-64" />
+      </div>
     </Card>
   );
 }
@@ -334,7 +361,7 @@ function TilesSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
       {[1, 2, 3, 4].map((item) => (
-        <Card key={item} className="rounded-lg p-4 shadow-sm">
+        <Card key={item} className="gap-2 rounded-lg p-4 shadow-sm">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-8 w-16" />
           <Skeleton className="h-2 w-full rounded-full" />
@@ -345,25 +372,100 @@ function TilesSkeleton() {
   );
 }
 
-function ActivityRowsSkeleton() {
+function AttentionSkeleton() {
   return (
-    <div className="space-y-1">
-      {[1, 2, 3, 4, 5].map((item) => (
-        <div
-          key={item}
-          className="flex items-start justify-between border-b border-gray-100 px-2 py-2 pb-4 last:border-none"
-        >
-          <div className="flex items-start gap-4">
-            <Skeleton className="mt-2 h-3 w-3 shrink-0 rounded-full" />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-72 max-w-[50vw]" />
-              <Skeleton className="h-3 w-40" />
+    <Card className="gap-2 rounded-lg p-4 shadow-sm lg:col-span-3">
+      <Skeleton className="h-5 w-40" />
+      <div className="space-y-1">
+        {[1, 2].map((item) => (
+          <div key={item} className="flex items-center justify-between px-2 py-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-3 w-3 rounded-full" />
+              <Skeleton className="h-4 w-56" />
             </div>
+            <Skeleton className="h-4 w-4" />
           </div>
-          <Skeleton className="h-3 w-12 shrink-0" />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function WorkloadSkeleton() {
+  return (
+    <Card className="flex h-full flex-col rounded-lg p-4 shadow-sm">
+      <div>
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="mt-2 h-4 w-48" />
+      </div>
+      <div className="flex flex-1 flex-col gap-4 pt-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex flex-col gap-1">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-center">
+        <Skeleton className="h-8 w-20 rounded-md" />
+      </div>
+    </Card>
+  );
+}
+
+function TaskChartSkeleton() {
+  return (
+    <Card className="rounded-lg p-4 shadow-sm lg:col-span-2">
+      <div className="flex items-start justify-between px-6">
+        <div>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="mt-2 h-4 w-56" />
         </div>
-      ))}
-    </div>
+        <Skeleton className="h-7 w-32 rounded-full" />
+      </div>
+      <div className="h-65 min-h-50 space-y-6 px-6 pt-4">
+        {["w-36", "w-52", "w-40", "w-20"].map((w, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-4 w-20 shrink-0" />
+            <Skeleton className={`h-6 ${w} rounded-md`} />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function ActivitySkeleton() {
+  return (
+    <Card className="rounded-2xl border p-6 shadow-sm lg:col-span-3">
+      <div className="mb-1 flex items-center justify-between">
+        <div>
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="mt-2 h-4 w-56" />
+        </div>
+        <Skeleton className="h-7 w-28 rounded-full" />
+      </div>
+      <div className="space-y-1">
+        {[1, 2, 3, 4, 5].map((item) => (
+          <div
+            key={item}
+            className="flex items-start justify-between px-2 py-2 pb-4"
+          >
+            <div className="flex items-start gap-4">
+              <Skeleton className="mt-2 h-3 w-3 shrink-0 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-72 max-w-[50vw]" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            </div>
+            <Skeleton className="h-3 w-12 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -372,68 +474,15 @@ function DashboardSkeleton() {
     <div>
       <Skeleton className="my-2 h-8 w-80" />
 
+      {/* Same grid + same order as the loaded dashboard */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <BannerSkeleton />
-
-        <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
-          <div>
-            <Skeleton className="h-5 w-56" />
-            <Skeleton className="mt-2 h-4 w-40" />
-          </div>
-          <div className="mt-6">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-10" />
-              <Skeleton className="h-4 w-28" />
-            </div>
-            <Skeleton className="mt-2 h-2 w-full rounded-full" />
-          </div>
-          <div className="flex flex-col gap-2 pt-4">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        </Card>
-
+        <ProgressSkeleton />
         <TilesSkeleton />
-
-        <Card className="rounded-lg p-4 shadow-sm">
-          <Skeleton className="h-5 w-40" />
-          <div className="mt-4 space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-2 w-full rounded-full" />
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="rounded-lg p-4 shadow-sm lg:col-span-2">
-          <div className="p-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="mt-2 h-4 w-32" />
-          </div>
-          <div className="mt-4 space-y-4">
-            {["w-36", "w-52", "w-40", "w-20", "w-44", "w-48"].map(
-              (width, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <Skeleton className="h-4 w-16 shrink-0" />
-                  <Skeleton className={`h-5 ${width} rounded-md`} />
-                </div>
-              ),
-            )}
-          </div>
-        </Card>
-
-        <Card className="rounded-2xl border p-6 shadow-sm lg:col-span-3">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="mt-2 h-4 w-56" />
-            </div>
-            <Skeleton className="h-7 w-28 rounded-full" />
-          </div>
-          <ActivityRowsSkeleton />
-        </Card>
+        <AttentionSkeleton />
+        <WorkloadSkeleton />
+        <TaskChartSkeleton />
+        <ActivitySkeleton />
       </div>
     </div>
   );
@@ -636,39 +685,6 @@ function AttentionList({ health }: { health: ProjectHealth }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Recent activity pill (driven by activity metrics)
-// ---------------------------------------------------------------------------
-
-function ActivityPill({ health }: { health: ProjectHealth | undefined }) {
-  if (!health) return null;
-
-  const { stale_in_progress, recent_completions } = health.activity;
-
-  if (stale_in_progress > 0) {
-    return (
-      <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
-        <TriangleAlert className="h-4 w-4" />
-        {stale_in_progress} stalled
-      </div>
-    );
-  }
-
-  if (recent_completions > 0) {
-    return (
-      <div className="flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-600">
-        <TrendingUp className="h-4 w-4" />
-        {recent_completions} completed this week
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600">
-      No recent completions
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Project progress card
@@ -677,33 +693,24 @@ function ActivityPill({ health }: { health: ProjectHealth | undefined }) {
 function ProgressCard({
   projectName,
   health,
-  isHealthLoading,
 }: {
   projectName: string | undefined;
   health: ProjectHealth | undefined;
-  isHealthLoading: boolean;
 }) {
   const header = (
     <div>
-      <h2 className="font-semibold text-foreground dark:text-card-foreground">
-        {projectName}
-      </h2>
+      {projectName ? (
+        <h2 className="font-semibold text-foreground dark:text-card-foreground">
+          {projectName}
+        </h2>
+      ) : (
+        <Skeleton className="h-5 w-40" />
+      )}
       <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
         Overall completion tracking
       </p>
     </div>
   );
-
-  if (isHealthLoading) {
-    return (
-      <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
-        {header}
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-2 w-full rounded-full" />
-        <Skeleton className="h-4 w-64" />
-      </Card>
-    );
-  }
 
   if (!health) {
     return (
@@ -787,35 +794,34 @@ type TaskStatusDistribution = {
 
 const STATUS_BAR_COLOR = "var(--primary)";
 
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function Dashboard() {
-  const { data: user } = useCurrentUser();
+  const { data: user, isLoading: isUserLoading } = useCurrentUser();
 
+  // NOTE: disabled queries (empty id) report isLoading: false in React Query v5,
+  // so we use isPending for the queries that depend on another query's result.
   const {
     data: currentProject,
-    isLoading,
+    isPending: isProjectPending,
     isError,
     error,
   } = useGetCurrentProject(user?.id ?? "");
 
   const {
     data: projectTasks,
-    isLoading: isTasksLoading,
+    isPending: isTasksPending,
     error: tasksError,
   } = useGetAllProjectTask(currentProject?.id ?? "");
 
   const { data: memberActivities, isLoading: isActivitiesLoading } =
     useGetMemberActivities(currentProject?.id ?? "");
 
-  const { data: members = [], isLoading: isMembersLoading } =
+  const { data: members = [], isPending: isMembersPending } =
     useGetMembersWithUserSnapshot(currentProject?.id ?? "");
 
-  // Health loads on its own: NOT part of isDashboardLoading, so a slow or
-  // failing health call only affects the health sections.
   const {
     data: health,
     isLoading: isHealthLoading,
@@ -828,8 +834,19 @@ export default function Dashboard() {
 
   const hasProject = Boolean(currentProject);
 
+  // One gate for the whole page: the skeleton stays up until the user, project,
+  // and every section's data have resolved, so nothing pops in piecemeal.
+  // (Disabled queries report isLoading: false, so they can't hang this.
+  //  A failed health call resolves to isLoading: false and shows the
+  //  "Health unavailable" message instead of keeping the skeleton up.)
   const isDashboardLoading =
-    isLoading || isTasksLoading || isActivitiesLoading || isMembersLoading;
+    isUserLoading ||
+    (Boolean(user) && isProjectPending) ||
+    (hasProject &&
+      (isHealthLoading ||
+        isTasksPending ||
+        isMembersPending ||
+        isActivitiesLoading));
 
   // Top members by workload
   const topMembers = members
@@ -872,7 +889,6 @@ export default function Dashboard() {
     { label: "Completed", count: taskStatusDistribution.completed, fill: STATUS_BAR_COLOR },
   ];
 
-
   const taskChartConfig: ChartConfig = {
     count: { label: "Task Count", color: "var(--chart-1)" },
   };
@@ -891,9 +907,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* ── Project Health Banner ─────────────────────────────── */}
-            {isHealthLoading ? (
-              <BannerSkeleton />
-            ) : isHealthError || !health ? (
+            {isHealthError || !health ? (
               <HealthBannerMessage
                 title="Health unavailable"
                 description="We couldn't load the project health right now. The rest of the dashboard is unaffected."
@@ -904,21 +918,15 @@ export default function Dashboard() {
             )}
 
             {/* ── Project Progress ──────────────────────────────────── */}
-            <ProgressCard
-              projectName={currentProject?.name}
-              health={health}
-              isHealthLoading={isHealthLoading}
-            />
+            <ProgressCard projectName={currentProject?.name} health={health} />
 
             {/* ── Sub-score tiles + What needs attention ────────────── */}
-            {isHealthLoading ? (
-              <TilesSkeleton />
-            ) : health ? (
+            {health && (
               <>
                 <SubScoreTiles health={health} />
                 <AttentionList health={health} />
               </>
-            ) : null}
+            )}
 
             {/* ── Member Workload ───────────────────────────────────── */}
             <Card className="flex h-full flex-col rounded-lg p-4 shadow-sm">
@@ -1043,12 +1051,10 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                <ActivityPill health={health} />
+
               </div>
 
-              {isActivitiesLoading ? (
-                <ActivityRowsSkeleton />
-              ) : memberActivities === null || memberActivities === undefined ? (
+              {memberActivities === null || memberActivities === undefined ? (
                 <div className="py-4 text-center text-gray-500">No activities</div>
               ) : memberActivities.length === 0 ? (
                 <div className="py-4 text-center text-gray-500">

@@ -39,7 +39,7 @@ function ProjectCard({
     <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm dark:bg-background sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[#F3EFE6] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A0C2E]">
+          <span className="rounded-full bg-[#F3EFE6] dark:bg-transparent dark:ring-1 dark:ring-foreground/10 dark:backdrop-blur-sm dark:text-(--light-maroon)  px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A0C2E]">
             {role}
           </span>
         </div>
@@ -56,7 +56,7 @@ function ProjectCard({
       <div className="flex items-center gap-2">
         <button
           onClick={() => navigate(`/view-project/${projectRouteId}`)}
-          className="flex items-center gap-2 rounded-xl bg-[#7A0C2E] px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#630A25]"
+          className="flex items-center gap-2 rounded-xl bg-(--maroon) px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#630A25]"
         >
           <Eye size={16} />
           View
@@ -221,7 +221,7 @@ export default function ProjectsPage() {
           {/* Card header */}
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div className="flex items-center gap-2">
-              <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
+              <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C] dark:bg-transparent dark:ring-1 dark:ring-foreground/10 dark:backdrop-blur-sm">
                 <GraduationCap size={16} />
               </div>
 
@@ -230,7 +230,7 @@ export default function ProjectsPage() {
               </h2>
             </div>
 
-            <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600">
+            <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
               {filteredProjects.length}
             </span>
           </div>
