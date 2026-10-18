@@ -92,6 +92,7 @@ SQLAlchemy==2.0.49
 starlette==1.0.0
 storage3==2.32.0
 StrEnum==0.4.15
+sentence-transformers[onnx]
 supabase==2.32.0
 supabase-auth==2.32.0
 supabase-functions==2.32.0
