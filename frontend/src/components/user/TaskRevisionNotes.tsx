@@ -38,41 +38,63 @@ function NoteBody({ note }: { note: RevisionNoteResponse }) {
   );
 }
 
+interface TaskRevisionNotesProps {
+  taskId: string;
+  /** Heading for the latest note. The reviewer drawer passes "Previous revision". */
+  title?: string;
+}
+
 /**
- * Shows the rejection history for a task. Renders nothing when the task
- * has never been rejected. Open (unresolved) notes are highlighted; resolved
- * ones are tucked into a collapsible "Previous revisions" list.
+ * Shows the rejection history for a task. Renders nothing when the task has
+ * never been rejected. The most recent note is always shown in full; every
+ * older note is tucked into a collapsible "Previous revisions" list,
+ * whether or not it has been resolved.
  */
-export function TaskRevisionNotes({ taskId }: { taskId: string }) {
+export function TaskRevisionNotes({
+  taskId,
+  title = "Revision requested",
+}: TaskRevisionNotesProps) {
   const { data: notes = [] } = useGetRevisionNotes(taskId);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   if (notes.length === 0) return null;
 
-  const openNotes = notes.filter((n) => !n.resolved_at);
-  const resolvedNotes = notes.filter((n) => n.resolved_at);
+  // Newest first
+  const [latest, ...older] = [...notes].sort(
+    (a, b) => b.revision_number - a.revision_number,
+  );
+  const latestIsOpen = !latest.resolved_at;
 
   return (
     <div className="mt-4 space-y-3">
-      {openNotes.map((note) => (
-        <div
-          key={note.id}
-          className="rounded-lg border border-red-200 bg-red-50/50 p-4 dark:border-red-500/30 dark:bg-red-500/10"
-        >
-          <div className="mb-3 flex items-center justify-between gap-2">
+      <div
+        className={cn(
+          "rounded-lg border p-4",
+          latestIsOpen
+            ? "border-red-200 bg-red-50/50 dark:border-red-500/30 dark:bg-red-500/10"
+            : "border-border/60 bg-muted/10",
+        )}
+      >
+        <div className="mb-3 flex items-center justify-between gap-2">
+          {latestIsOpen ? (
             <p className="flex items-center gap-1.5 text-sm font-semibold text-red-700 dark:text-red-400">
               <TriangleAlert className="size-4" />
-              Revision requested
+              {title}
             </p>
-            <span className="text-xs text-muted-foreground">
-              Revision #{note.revision_number} · {formatWhen(note.rejected_at)}
-            </span>
-          </div>
-          <NoteBody note={note} />
+          ) : (
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-green-700 dark:text-green-400">
+              <CircleCheck className="size-4" />
+              {title} (resolved)
+            </p>
+          )}
+          <span className="text-xs text-muted-foreground">
+            Revision #{latest.revision_number} · {formatWhen(latest.rejected_at)}
+          </span>
         </div>
-      ))}
+        <NoteBody note={latest} />
+      </div>
 
-      {resolvedNotes.length > 0 && (
+      {older.length > 0 && (
         <div className="rounded-lg border border-border/60 bg-muted/10">
           <button
             type="button"
@@ -80,7 +102,7 @@ export function TaskRevisionNotes({ taskId }: { taskId: string }) {
             className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-foreground"
             aria-expanded={historyOpen}
           >
-            <span>Previous revisions ({resolvedNotes.length})</span>
+            <span>Previous revisions ({older.length})</span>
             <ChevronDown
               className={cn(
                 "size-4 text-muted-foreground transition-transform",
@@ -91,12 +113,16 @@ export function TaskRevisionNotes({ taskId }: { taskId: string }) {
 
           {historyOpen && (
             <div className="divide-y divide-border/60 border-t border-border/60">
-              {resolvedNotes.map((note) => (
+              {older.map((note) => (
                 <div key={note.id} className="p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <p className="flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400">
-                      <CircleCheck className="size-3.5" />
-                      Resolved
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      {note.resolved_at && (
+                        <>
+                          <CircleCheck className="size-3.5 text-green-600 dark:text-green-400" />
+                          Resolved
+                        </>
+                      )}
                     </p>
                     <span className="text-xs text-muted-foreground">
                       Revision #{note.revision_number} ·{" "}

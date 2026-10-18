@@ -3,7 +3,6 @@ import {
   CircleCheck,
   Clock,
   Gauge,
-  Tag,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -27,7 +26,6 @@ import type {
   TaskPriority,
   TaskResponseMembers,
 } from "@/types/task";
-import { formatDistanceToNow } from "date-fns";
 import { formatStatusLabel } from "@/components/user/TaskTable";
 import { TaskComments } from "./TaskComments";
 import { TaskAttachments } from "./TaskAttachments";
@@ -79,10 +77,6 @@ const complexityDotStyle: Record<TaskComplexity, string> = {
   medium: "bg-yellow-500",
   low: "bg-gray-400",
 };
-
-// Same chip style used for skills in AddTaskDialog.
-const skillChipClass =
-  "flex items-center gap-1 rounded-sm border border-[#7A0C2E]/20 bg-(--maroon) px-2 py-0.5 text-xs font-medium text-white";
 
 // Same chip style used for members/reviewer in AddTaskDialog and EditTaskDialog.
 const memberChipClass =
@@ -452,38 +446,19 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                 </span>
               </MetaRow>
 
-              {/* Primary Skill */}
-              {task?.primary_skill && (
-                <MetaRow
-                  icon={<Tag className="size-4" />}
-                  label="Primary Skill"
-                >
-                  <span className={skillChipClass}>{task.primary_skill}</span>
-                </MetaRow>
-              )}
-
-              {/* Secondary Skills */}
-              {task?.secondary_skills && task.secondary_skills.length > 0 && (
-                <MetaRow
-                  icon={<Tag className="size-4" />}
-                  label="Secondary Skills"
-                >
-                  {task.secondary_skills.map((skill) => (
-                    <span key={skill} className={skillChipClass}>
-                      {skill}
-                    </span>
-                  ))}
-                </MetaRow>
-              )}
-
               {/* Started/Elapsed Time */}
               {task?.started_at && (
                 <MetaRow icon={<Clock className="size-4" />} label="Started">
                   <span className="text-sm text-foreground">
-                    Started{" "}
-                    {formatDistanceToNow(new Date(task.started_at), {
-                      addSuffix: true,
-                    })}
+                  {task?.started_at
+                    ? new Date(task.started_at).toLocaleString(undefined, {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : "Not yet started"}
                   </span>
                 </MetaRow>
               )}

@@ -35,8 +35,8 @@ import type { HealthStatus, ProjectHealth } from "@/types/projectHealth"; // adj
 // ---------------------------------------------------------------------------
 
 const ROUTES = {
-  tasks: "/tasks",
-  members: "/members",
+  tasks: "/project-task",
+  members: "/team",
 };
 
 // Sub-score bands: 80+ healthy, 60-79 watch, below 60 at risk.
@@ -192,7 +192,7 @@ function getAttentionItems(health: ProjectHealth): AttentionItem[] {
     schedule.overdue_tasks > 0
       ? `${plural(schedule.overdue_tasks, "task", "tasks")} overdue`
       : schedule.spi !== null && schedule.spi < 1
-        ? `Behind schedule (SPI ${schedule.spi.toFixed(2)})`
+        ? `Behind schedule`
         : schedule.at_risk_tasks > 0
           ? `${plural(schedule.at_risk_tasks, "task", "tasks")} due within 7 days`
           : "Schedule is slipping";
@@ -458,7 +458,6 @@ function ActivitySkeleton() {
               <Skeleton className="mt-2 h-3 w-3 shrink-0 rounded-full" />
               <div className="space-y-2">
                 <Skeleton className="h-4 w-72 max-w-[50vw]" />
-                <Skeleton className="h-3 w-40" />
               </div>
             </div>
             <Skeleton className="h-3 w-12 shrink-0" />
@@ -606,9 +605,7 @@ function SubScoreTiles({ health }: { health: ProjectHealth }) {
   const { schedule, balance, risk, activity } = health;
 
   const scheduleDetail = schedule.applicable
-    ? `${toPct(schedule.overdue_rate)}% overdue · SPI ${
-        schedule.spi === null ? "N/A" : schedule.spi.toFixed(2)
-      }`
+    ? `${toPct(schedule.overdue_rate)}% overdue`
     : "No live tasks";
 
   const workloadDetail = balance.applicable
@@ -727,14 +724,6 @@ function ProgressCard({
   const completion = schedule.completion_pct;
   const spi = schedule.spi;
 
-  const spiColor =
-    spi === null
-      ? "text-gray-500"
-      : spi >= 1
-        ? "text-green-500"
-        : spi >= 0.8
-          ? "text-yellow-500"
-          : "text-red-500";
 
   return (
     <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
@@ -760,14 +749,6 @@ function ProgressCard({
       </div>
 
       <div className="flex flex-col gap-1 pt-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-card-foreground">
-            SPI:
-          </span>
-          <span className={`text-sm font-bold ${spiColor}`}>
-            {spi === null ? "N/A" : spi.toFixed(2)}
-          </span>
-        </div>
 
         <p className="text-xs text-gray-500 dark:text-(--semi-foreground)">
           {spi === null
@@ -816,8 +797,11 @@ export default function Dashboard() {
     error: tasksError,
   } = useGetAllProjectTask(currentProject?.id ?? "");
 
-  const { data: memberActivities, isLoading: isActivitiesLoading } =
-    useGetMemberActivities(currentProject?.id ?? "");
+  const {
+    data: memberActivities,
+    isLoading: isActivitiesLoading,
+    isError: isActivitiesError,
+  } = useGetMemberActivities(currentProject?.id ?? "");
 
   const { data: members = [], isPending: isMembersPending } =
     useGetMembersWithUserSnapshot(currentProject?.id ?? "");
@@ -1050,13 +1034,13 @@ export default function Dashboard() {
                     Latest team updates and progress
                   </p>
                 </div>
-
-
               </div>
 
-              {memberActivities === null || memberActivities === undefined ? (
-                <div className="py-4 text-center text-gray-500">No activities</div>
-              ) : memberActivities.length === 0 ? (
+              {isActivitiesError ? (
+                <div className="py-4 text-center text-gray-500">
+                  Couldn't load recent activity right now.
+                </div>
+              ) : !memberActivities || memberActivities.length === 0 ? (
                 <div className="py-4 text-center text-gray-500">
                   No recent activities to display
                 </div>
@@ -1065,28 +1049,28 @@ export default function Dashboard() {
                   {memberActivities.map((activity) => (
                     <div
                       key={activity.id}
-                      className="flex items-start justify-between rounded-lg border-b border-gray-100 px-2 py-2 pb-4 transition last:border-none hover:bg-gray-200 dark:hover:bg-[#303233]"
+                      className="flex items-start justify-between rounded-lg border-b border-gray-100 px-2 py-2 transition last:border-none hover:bg-gray-200 dark:hover:bg-[#303233]"
                     >
                       <div className="flex items-start gap-4">
                         <div
-                          className={`mt-2 h-3 w-3 rounded-full ${activity.color}`}
+                          className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${activity.color}`}
                         />
-                        <div>
-                          <p className="text-sm text-gray-700 dark:text-(--semi-foreground)">
-                            <span className="font-semibold text-foreground">
-                              {activity.user}
-                            </span>{" "}
-                            <span className={`${activity.text} font-semibold`}>
-                              {activity.action}
-                            </span>{" "}
-                            <span className="font-medium text-black dark:text-card-foreground">
-                              {activity.task}
-                            </span>
-                          </p>
-                          <p className="mt-1 text-xs text-gray-400">
-                            Team collaboration update
-                          </p>
-                        </div>
+                        <p className="text-sm text-gray-700 dark:text-(--semi-foreground)">
+                          <span className="font-semibold text-foreground">
+                            {activity.user}
+                          </span>{" "}
+                          <span className={`${activity.text} font-semibold`}>
+                            {activity.action}
+                          </span>
+                          {activity.task && (
+                            <>
+                              {" "}
+                              <span className="font-medium text-black dark:text-card-foreground">
+                                {activity.task}
+                              </span>
+                            </>
+                          )}
+                        </p>
                       </div>
 
                       <span className="whitespace-nowrap text-xs text-gray-400">

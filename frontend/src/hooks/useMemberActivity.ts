@@ -1,136 +1,108 @@
-import { useQuery} from "@tanstack/react-query";
-import { listMemberActivities } from "@/services/memberActivities";
-import type { MemberActivityResponse } from "@/services/memberActivities";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import apiClient from "@/services/apiClient";
+import type {
+  DashboardActivity,
+  MemberActivityFilters,
+  MemberActivityResponse,
+} from "@/types/memberActivities";
 
-// Helper function to extract user name from member_id
-// This would ideally be done by expanding the API to include user data
-// For now, we'll map the activity to the format needed for the dashboard
-function mapActivityToDashboardFormat(
-  activity: MemberActivityResponse,
-): {
-  id: number;
-  user: string;
-  action: string;
-  task: string;
-  time: string;
-  color: "bg-green-500" | "bg-yellow-500" | "bg-red-500";
-  text: "text-green-500" | "text-yellow-500" | "text-red-500";
-} {
-  // Extract action from detail (this is a simplified parsing)
-  // In a real implementation, the backend would provide structured data
-  const detail = activity.detail.toLowerCase();
+const url = "/member_activities"; // Adjust base path according to your FastAPI router prefix
 
-  let action = "updated";
-  let task = "Unknown task";
-
-  if (detail.includes("completed")) {
-    action = "completed";
-  } else if (detail.includes("submitted")) {
-    action = "submitted";
-  } else if (detail.includes("started") || detail.includes("begin")) {
-    action = "started";
-  } else if (detail.includes("updated") || detail.includes("modified")) {
-    action = "updated";
-  }
-
-  // Extract task name (simplified - in reality would come from relation)
-  // For now, we'll use a placeholder or extract from detail
-  if (detail.includes("task:")) {
-    const taskMatch = detail.match(/task:\s*([^,.]+)/i);
-    if (taskMatch && taskMatch[1]) {
-      task = taskMatch[1].trim();
+const api = {
+  listProjectActivities: async ({
+    projectId,
+    limit,
+    before,
+  }: MemberActivityFilters): Promise<MemberActivityResponse[]> => {
+    try {
+      const response = await apiClient.get<MemberActivityResponse[]>(
+        `${url}/projects/${projectId}`,
+        { params: { limit, before } } // undefined params are omitted by axios
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch member activities", error);
+      throw error;
     }
-  } else {
-    // Default task name based on action
-    task = `${action.charAt(0).toUpperCase() + action.slice(1)} task`;
-  }
-
-  // Determine color based on action
-  let color: "bg-green-500" | "bg-yellow-500" | "bg-red-500";
-  let text: "text-green-500" | "text-yellow-500" | "text-red-500";
-
-  switch (action) {
-    case "completed":
-      color = "bg-green-500";
-      text = "text-green-500";
-      break;
-    case "submitted":
-      color = "bg-yellow-500";
-      text = "text-yellow-500";
-      break;
-    case "started":
-      color = "bg-green-500";
-      text = "text-green-500";
-      break;
-    case "updated":
-      color = "bg-yellow-500";
-      text = "text-yellow-500";
-      break;
-    default:
-      color = "bg-red-500";
-      text = "text-red-500";
-  }
-
-  // Format time (simplified - would use date-fns or similar in reality)
-  const createdAt = new Date(activity.created_at);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - createdAt.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  let timeString: string;
-  if (diffTime < 60 * 1000) { // less than 1 minute
-    timeString = "just now";
-  } else if (diffTime < 3 * 60 * 1000) { // less than 3 minutes
-    timeString = "1m ago";
-  } else if (diffTime < 60 * 60 * 1000) { // less than 1 hour
-    const minutes = Math.ceil(diffTime / (60 * 1000));
-    timeString = `${minutes}m ago`;
-  } else if (diffTime < 24 * 60 * 60 * 1000) { // less than 1 day
-    const hours = Math.ceil(diffTime / (60 * 60 * 1000));
-    timeString = `${hours}h ago`;
-  } else if (diffDays === 1) {
-    timeString = "1d ago";
-  } else if (diffDays < 7) {
-    timeString = `${diffDays}d ago`;
-  } else {
-    timeString = createdAt.toLocaleDateString();
-  }
-
-  // For user name, we'll use a placeholder since we don't have user data in the activity response
-  // In a real implementation, we would fetch user data or expand the API
-  const user = `Member ${activity.member_id.slice(0, 8)}`;
-
-  return {
-    id: activity.id,
-    user,
-    action,
-    task,
-    time: timeString,
-    color,
-    text,
-  };
-}
+  },
+};
 
 export const memberActivityKeys = {
   all: ["memberActivities"] as const,
-  list: () => [...memberActivityKeys.all, "list"] as const,
-  listProject: (projectId: string) =>
-    [...memberActivityKeys.all, "list", "project", projectId] as const,
+  lists: () => [...memberActivityKeys.all, "list"] as const,
+  listProject: (projectId: string, limit?: number) =>
+    [...memberActivityKeys.lists(), "project", projectId, limit] as const,
 };
 
-export function useGetMemberActivities(projectId: string) {
+/* ---------- Mapping to the dashboard card format ---------- */
+
+type Tone = "green" | "yellow" | "red";
+
+const TYPE_META: Record<string, { action: string; tone: Tone }> = {
+  task_created:        { action: "created",            tone: "green" },
+  task_submitted:      { action: "submitted",          tone: "yellow" },
+  task_status_changed: { action: "updated",            tone: "yellow" },
+  comment_added:       { action: "commented on",       tone: "yellow" },
+  member_joined:       { action: "joined",             tone: "green" },
+  revision_requested:  { action: "requested revision", tone: "red" },
+  submission_accepted: { action: "accepted",           tone: "green" },
+};
+
+const COLORS = {
+  green:  { color: "bg-green-500",  text: "text-green-500" },
+  yellow: { color: "bg-yellow-500", text: "text-yellow-500" },
+  red:    { color: "bg-red-500",    text: "text-red-500" },
+} as const;
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function toDashboardActivity(a: MemberActivityResponse): DashboardActivity {
+  // Old rows have type = null, so fall back to a generic "updated"
+  const meta = TYPE_META[a.type ?? ""] ?? {
+    action: "updated",
+    tone: "yellow" as Tone,
+  };
+  return {
+    id: a.id,
+    user: a.actor_name ?? "A member",
+    action: meta.action,
+    task: a.task_name ?? "a task",
+    time: timeAgo(a.created_at),
+    ...COLORS[meta.tone],
+  };
+}
+
+/* ---------- Hooks ---------- */
+
+/**
+ * Latest activities for one project, mapped for the dashboard card.
+ * The API returns newest first, so no client-side sort is needed.
+ */
+export function useGetMemberActivities(projectId: string, limit = 10) {
   return useQuery({
-    queryKey: memberActivityKeys.listProject(projectId),
-    queryFn: () => listMemberActivities({ projectId, limit: 10 }), // Get latest 10 activities
+    queryKey: memberActivityKeys.listProject(projectId, limit),
+    queryFn: () => api.listProjectActivities({ projectId, limit }),
     enabled: !!projectId,
-    select: (activities) =>
-      activities
-        .map((activity) => mapActivityToDashboardFormat(activity))
-        // Sort by created_at descending (most recent first)
-        .sort(() => {
-          // Since we don't have direct access to created_at in the mapped format,
-          // we'll rely on the order from the API which should be sorted by created_at desc
-          return 0; // Maintain original order from API
-        }),
+    select: (activities) => activities.map(toDashboardActivity),
   });
+}
+
+/**
+ * Call the returned function in the onSuccess of any mutation that logs an
+ * activity (create task, update task status, add comment) so the card refreshes.
+ */
+export function useInvalidateMemberActivities() {
+  const queryClient = useQueryClient();
+  return () =>
+    queryClient.invalidateQueries({ queryKey: memberActivityKeys.all });
 }

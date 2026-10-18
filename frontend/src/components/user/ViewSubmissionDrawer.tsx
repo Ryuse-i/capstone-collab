@@ -15,12 +15,14 @@ import { formatStatusLabel } from "@/components/user/TaskTable";
 import { TaskAttachments } from "@/components/user/TaskAttachments";
 import { TaskLinks } from "@/components/user/TaskLinks";
 import { TaskComments } from "@/components/user/TaskComments";
+import { TaskRevisionNotes } from "@/components/user/TaskRevisionNotes";
 import { useUpdateTask } from "@/hooks/useTask";
 import { useRejectTask } from "@/hooks/useRevisionNotes";
 import type { TaskResponseMembers } from "@/types/task";
 
 const statusPill: Record<string, string> = {
-  completed: "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400",
+  completed:
+    "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400",
   submitted: "bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
 };
 
@@ -141,7 +143,7 @@ export function ViewSubmissionDrawer({
     );
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!task?.id) return;
 
     const trimmedProblem = problem.trim();
@@ -153,31 +155,34 @@ export function ViewSubmissionDrawer({
 
     const trimmedChanges = recommendedChanges.trim();
 
-    // The backend creates the revision note and moves the task back to
-    // in_progress, so no separate status update is needed here.
-    rejectTaskMutation.mutate(
-      {
+    try {
+      // 1. Create the revision note
+      await rejectTaskMutation.mutateAsync({
         task_id: task.id,
         payload: {
           problem: trimmedProblem,
           recommended_changes: trimmedChanges || null,
         },
-      },
-      {
-        onSuccess: () => {
-          toast.success("Submission sent back for revision.");
-          resetRevisionForm();
-          onOpenChange(false);
+      });
+
+      // 2. Explicitly revert the task to in_progress
+      await updateTaskMutation.mutateAsync({
+        id: task.id,
+        task: {
+          status: "in_progress",
         },
-        onError: (err) => {
-          toast.error(
-            err instanceof Error
-              ? err.message
-              : "Something went wrong while rejecting this submission.",
-          );
-        },
-      },
-    );
+      });
+
+      toast.success("Submission sent back for revision.");
+      resetRevisionForm();
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while rejecting this submission.",
+      );
+    }
   };
 
   return (
@@ -212,6 +217,9 @@ export function ViewSubmissionDrawer({
                 </p>
               </div>
             )}
+
+            {/* Previous revision notes: only shows if this task was sent back before */}
+            <TaskRevisionNotes taskId={task.id} title="Previous revision" />
 
             <div className="mt-4 divide-y divide-border/60">
               <Row icon={<CircleCheck className="size-4" />} label="Status">

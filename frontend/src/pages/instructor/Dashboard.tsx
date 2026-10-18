@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "@/layouts/Applayout";
 import {
   AlertTriangle,
@@ -10,10 +11,15 @@ import {
   Clock,
   FileText,
   Layers,
-  ListChecks,
+  MessageSquare,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Send,
   User,
+  UserPlus,
+  type LucideIcon,
 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,34 +30,22 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { useGetInstructorDashboard } from "@/hooks/useInstructorDashboard";
+import type {
+  DashboardDeadline,
+  DashboardHealth,
+  DashboardProject,
+  DashboardRole,
+  DashboardUrgency,
+} from "@/types/instructorDashboard";
 
 // ---------------------------------------------------------------------------
-// Stage model
+// Constants / helpers
 // ---------------------------------------------------------------------------
 
-type Role = "instructor" | "advisor";
-type HealthStatus = "healthy" | "at_risk" | "critical";
-
-type Stage = {
-  id: number;
-  label: string;
-  primaryRole: Role;
-};
-
-const STAGES: Stage[] = [
-  { id: 0, label: "Proposal", primaryRole: "instructor" },
-  { id: 1, label: "Development", primaryRole: "instructor" },
-  { id: 2, label: "Testing & revision", primaryRole: "advisor" },
-  { id: 3, label: "Defense prep", primaryRole: "advisor" },
-];
-
+// Backend levels (healthy / watch / at_risk) used directly; only labels and colors here.
 const HEALTH: Record<
-  HealthStatus,
+  DashboardHealth | "unknown",
   { label: string; rank: number; className: string }
 > = {
   healthy: {
@@ -59,262 +53,66 @@ const HEALTH: Record<
     rank: 0,
     className: "bg-emerald-100 text-emerald-700",
   },
-  at_risk: {
-    label: "At risk",
-    rank: 1,
-    className: "bg-amber-100 text-amber-700",
-  },
-  critical: {
-    label: "Critical",
-    rank: 2,
-    className: "bg-rose-100 text-rose-700",
+  watch: { label: "Watch", rank: 1, className: "bg-amber-100 text-amber-700" },
+  at_risk: { label: "At risk", rank: 2, className: "bg-rose-100 text-rose-700" },
+  unknown: {
+    label: "No health data",
+    rank: 0,
+    className: "bg-neutral-100 text-neutral-600",
   },
 };
-
-type MockProject = {
-  id: string;
-  name: string;
-  role: Role;
-  stageId: number;
-  health: HealthStatus;
-  progress: number;
-  pendingSubmissions: number;
-  lastActivity: string;
-  lastActivityTime: string;
-};
-
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_PROJECTS: MockProject[] = [
-  {
-    id: "p1",
-    name: "Adaptive Irrigation Scheduling for Smallholder Farms",
-    role: "instructor",
-    stageId: 0,
-    health: "at_risk",
-    progress: 22,
-    pendingSubmissions: 3,
-    lastActivity: "Submitted literature review draft",
-    lastActivityTime: "3h ago",
-  },
-  {
-    id: "p2",
-    name: "Campus Wayfinding App for Visually Impaired Students",
-    role: "instructor",
-    stageId: 1,
-    health: "critical",
-    progress: 38,
-    pendingSubmissions: 2,
-    lastActivity: "Missed sprint checkpoint",
-    lastActivityTime: "1d ago",
-  },
-  {
-    id: "p3",
-    name: "Low-Cost Water Quality Sensor Network",
-    role: "advisor",
-    stageId: 2,
-    health: "healthy",
-    progress: 64,
-    pendingSubmissions: 1,
-    lastActivity: "Uploaded revised methodology",
-    lastActivityTime: "5h ago",
-  },
-  {
-    id: "p4",
-    name: "Peer Tutoring Matchmaking Platform",
-    role: "advisor",
-    stageId: 3,
-    health: "healthy",
-    progress: 88,
-    pendingSubmissions: 0,
-    lastActivity: "Scheduled defense run-through",
-    lastActivityTime: "2d ago",
-  },
-  {
-    id: "p5",
-    name: "Household Waste Segregation Incentive System",
-    role: "instructor",
-    stageId: 2,
-    health: "at_risk",
-    progress: 55,
-    pendingSubmissions: 2,
-    lastActivity: "Requested extension on Chapter 3",
-    lastActivityTime: "6h ago",
-  },
-  {
-    id: "p6",
-    name: "Voice-Controlled Lab Equipment Interface",
-    role: "advisor",
-    stageId: 1,
-    health: "healthy",
-    progress: 41,
-    pendingSubmissions: 1,
-    lastActivity: "Completed wireframe review",
-    lastActivityTime: "1d ago",
-  },
-  {
-    id: "p7",
-    name: "Community Bulletin Board for Barangay Announcements",
-    role: "instructor",
-    stageId: 3,
-    health: "healthy",
-    progress: 91,
-    pendingSubmissions: 0,
-    lastActivity: "Final manuscript approved",
-    lastActivityTime: "3d ago",
-  },
-  {
-    id: "p8",
-    name: "Renewable Energy Micro-grid Monitoring Dashboard",
-    role: "instructor",
-    stageId: 0,
-    health: "critical",
-    progress: 15,
-    pendingSubmissions: 4,
-    lastActivity: "Team requested proposal deadline extension",
-    lastActivityTime: "12h ago",
-  },
-  {
-    id: "p9",
-    name: "AI-Assisted Crop Disease Detection for Rice Farmers",
-    role: "advisor",
-    stageId: 3,
-    health: "at_risk",
-    progress: 82,
-    pendingSubmissions: 1,
-    lastActivity: "Draft manuscript flagged for revision",
-    lastActivityTime: "9h ago",
-  },
-];
-
-type MockDeadline = {
-  id: string;
-  projectId: string;
-  projectName: string;
-  role: Role;
-  title: string;
-  studentName: string;
-  note: string;
-  daysFromNow: number;
-};
-
-const MOCK_DEADLINES: MockDeadline[] = [
-  {
-    id: "d1",
-    projectId: "p2",
-    projectName: "Campus Wayfinding App for Visually Impaired Students",
-    role: "instructor",
-    title: "Sprint 2 checkpoint report due",
-    studentName: "Carlo Diaz",
-    note: "No submission yet — sprint checkpoints are graded and count toward the Development milestone.",
-    daysFromNow: -1,
-  },
-  {
-    id: "d2",
-    projectId: "p1",
-    projectName: "Adaptive Irrigation Scheduling for Smallholder Farms",
-    role: "instructor",
-    title: "Chapter 1-2 defense",
-    studentName: "Miguel Santos, Ana Reyes",
-    note: "Panel room and reviewers already confirmed; only your sign-off is pending.",
-    daysFromNow: 0,
-  },
-  {
-    id: "d3",
-    projectId: "p5",
-    projectName: "Household Waste Segregation Incentive System",
-    role: "instructor",
-    title: "Chapter 3 revision due",
-    studentName: "Trisha Uy",
-    note: "Second resubmission after requested changes to the methodology section.",
-    daysFromNow: 2,
-  },
-  {
-    id: "d4",
-    projectId: "p3",
-    projectName: "Low-Cost Water Quality Sensor Network",
-    role: "advisor",
-    title: "Methodology panel review",
-    studentName: "Bea Lim",
-    note: "Advisor sign-off needed before the panel packet goes out this week.",
-    daysFromNow: 4,
-  },
-  {
-    id: "d5",
-    projectId: "p6",
-    projectName: "Voice-Controlled Lab Equipment Interface",
-    role: "advisor",
-    title: "Prototype demo checkpoint",
-    studentName: "Nico Aquino",
-    note: "Live demo of the voice command pipeline; hardware has already been tested.",
-    daysFromNow: 6,
-  },
-  {
-    id: "d6",
-    projectId: "p4",
-    projectName: "Peer Tutoring Matchmaking Platform",
-    role: "advisor",
-    title: "Final defense",
-    studentName: "Full team",
-    note: "Manuscript approved — this is the last checkpoint before graduation clearance.",
-    daysFromNow: 9,
-  },
-  {
-    id: "d7",
-    projectId: "p1",
-    projectName: "Adaptive Irrigation Scheduling for Smallholder Farms",
-    role: "instructor",
-    title: "Related literature matrix due",
-    studentName: "Ana Reyes",
-    note: "First submission for this deliverable, tied to the Proposal milestone.",
-    daysFromNow: 12,
-  },
-];
-
-type Urgency = "overdue" | "today" | "soon" | "later";
-
-function urgencyOf(daysFromNow: number): Urgency {
-  if (daysFromNow < 0) return "overdue";
-  if (daysFromNow === 0) return "today";
-  if (daysFromNow <= 3) return "soon";
-  return "later";
-}
 
 const URGENCY_STYLES: Record<
-  Urgency,
+  DashboardUrgency,
   { dateClass: string; label: (d: number) => string }
 > = {
   overdue: {
     dateClass: "bg-rose-100 text-rose-700",
     label: (d) => `${Math.abs(d)}d overdue`,
   },
-  today: {
-    dateClass: "bg-rose-100 text-rose-700",
-    label: () => "Due today",
-  },
-  soon: {
-    dateClass: "bg-amber-100 text-amber-700",
-    label: (d) => `In ${d}d`,
-  },
+  today: { dateClass: "bg-rose-100 text-rose-700", label: () => "Due today" },
+  soon: { dateClass: "bg-amber-100 text-amber-700", label: (d) => `In ${d}d` },
   later: {
     dateClass: "bg-neutral-100 text-neutral-600",
     label: (d) => `In ${d}d`,
   },
 };
 
-function formatDeadlineDate(daysFromNow: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() + daysFromNow);
-  return date.toLocaleDateString(undefined, {
+// Icon per activity type. Old rows have type = null and fall back to FileText.
+const ACTIVITY_ICONS: Record<string, LucideIcon> = {
+  task_created: Plus,
+  task_submitted: Send,
+  task_status_changed: RefreshCw,
+  comment_added: MessageSquare,
+  member_joined: UserPlus,
+  revision_requested: RotateCcw,
+  submission_accepted: CheckCircle2,
+};
+
+// "YYYY-MM-DD" -> "Oct 19", read as a calendar date (no timezone shift).
+function formatDeadlineDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
 }
 
-function stageOf(stageId: number): Stage {
-  return STAGES.find((s) => s.id === stageId) ?? STAGES[0];
+function formatTimeAgo(iso: string): string {
+  const seconds = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(iso).getTime()) / 1000),
+  );
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function healthOf(p: DashboardProject) {
+  return HEALTH[p.health ?? "unknown"];
 }
 
 const ATTENTION_VISIBLE_LIMIT = 4;
@@ -327,13 +125,11 @@ const DEADLINE_VISIBLE_LIMIT = 3;
 function InstructorDashboardSkeleton() {
   return (
     <div className="min-h-screen w-full py-0 font-sans antialiased">
-      {/* Page heading */}
       <div className="mb-5">
         <Skeleton className="h-8 w-52" />
         <Skeleton className="mt-3 h-4 w-96 max-w-full" />
       </div>
 
-      {/* Summary strip */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[1, 2, 3, 4].map((item) => (
           <Card key={item} className="border p-4 shadow-sm">
@@ -341,27 +137,21 @@ function InstructorDashboardSkeleton() {
               <Skeleton className="h-7 w-7 rounded-full" />
               <Skeleton className="h-4 w-28" />
             </div>
-
             <Skeleton className="mt-3 h-8 w-12" />
-
             <Skeleton className="mt-2 h-4 w-32" />
           </Card>
         ))}
       </div>
 
-      {/* Needs attention + deadlines */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-stretch">
-        {/* Needs attention */}
         <Card className="flex h-full flex-col border shadow-sm">
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-8 rounded-full" />
               <Skeleton className="h-5 w-40" />
             </div>
-
             <Skeleton className="h-4 w-40" />
           </div>
-
           <div className="flex-1 divide-y">
             {[1, 2, 3, 4].map((item) => (
               <div
@@ -372,13 +162,10 @@ function InstructorDashboardSkeleton() {
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-6 w-20 rounded-full" />
                     <Skeleton className="h-6 w-20 rounded-full" />
-                    <Skeleton className="h-4 w-24" />
                   </div>
-
                   <Skeleton className="mt-2 h-5 w-3/4" />
                   <Skeleton className="mt-2 h-4 w-56" />
                 </div>
-
                 <div className="flex items-center gap-2 sm:shrink-0">
                   <Skeleton className="h-6 w-20 rounded-full" />
                   <Skeleton className="h-9 w-20 rounded-md" />
@@ -386,108 +173,46 @@ function InstructorDashboardSkeleton() {
               </div>
             ))}
           </div>
-
-          <div className="border-t px-5 py-3">
-            <Skeleton className="mx-auto h-8 w-32" />
-          </div>
         </Card>
 
-        {/* Upcoming deadlines */}
         <Card className="flex h-full flex-col border shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-8 rounded-full" />
               <Skeleton className="h-5 w-44" />
             </div>
-
             <div className="flex gap-1.5">
               <Skeleton className="h-7 w-12 rounded-full" />
               <Skeleton className="h-7 w-24 rounded-full" />
               <Skeleton className="h-7 w-24 rounded-full" />
             </div>
           </div>
-
           <div className="flex-1 px-5 py-4">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
-
-                  {item < 3 && (
-                    <Skeleton className="mt-1 w-px flex-1 rounded-none" />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1 pb-6">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                    <Skeleton className="h-5 w-16 rounded-full" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-
+              <div key={item} className="flex gap-4 pb-6">
+                <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-6 w-32 rounded-full" />
                   <Skeleton className="mt-2 h-5 w-3/4" />
                   <Skeleton className="mt-2 h-4 w-2/3" />
-                  <Skeleton className="mt-2 h-4 w-32" />
                   <Skeleton className="mt-2 h-4 w-full" />
-                  <Skeleton className="mt-1 h-4 w-4/5" />
                 </div>
-
-                <Skeleton className="hidden h-9 w-28 shrink-0 sm:block" />
               </div>
             ))}
-          </div>
-
-          <div className="border-t px-5 py-3">
-            <Skeleton className="mx-auto h-8 w-32" />
           </div>
         </Card>
       </div>
 
-      {/* Stage distribution + activity */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        {/* Stage distribution */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-5 w-5 rounded-full" />
-            <Skeleton className="h-5 w-40" />
-          </div>
-
-          <div className="mt-4 h-65 w-full">
-            <div className="flex h-full items-end justify-around gap-6 px-6 pb-6">
-              {[1, 2, 3, 4].map((item, index) => (
-                <div
-                  key={item}
-                  className="flex h-full flex-1 items-end justify-center"
-                >
-                  <Skeleton
-                    className={`w-10 rounded-t-md ${
-                      index === 0
-                        ? "h-[35%]"
-                        : index === 1
-                          ? "h-[70%]"
-                          : index === 2
-                            ? "h-[50%]"
-                            : "h-[85%]"
-                    }`}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Recent activity */}
+      <div className="mt-6">
         <Card className="border p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <Skeleton className="h-5 w-5 rounded-full" />
             <Skeleton className="h-5 w-36" />
           </div>
-
           <div className="mt-4 space-y-4">
-            {[1, 2, 3, 4, 5, 6].map((item) => (
+            {[1, 2, 3].map((item) => (
               <div key={item} className="flex items-start gap-3">
                 <Skeleton className="mt-1 h-8 w-8 shrink-0 rounded-full" />
-
                 <div className="min-w-0 flex-1">
                   <Skeleton className="h-4 w-4/5" />
                   <Skeleton className="mt-2 h-3 w-2/5" />
@@ -505,9 +230,8 @@ function InstructorDashboardSkeleton() {
 // Presentational components
 // ---------------------------------------------------------------------------
 
-function HealthBadge({ health }: { health: HealthStatus }) {
-  const info = HEALTH[health] ?? HEALTH.healthy;
-
+function HealthBadge({ project }: { project: DashboardProject }) {
+  const info = healthOf(project);
   return (
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${info.className}`}
@@ -517,7 +241,7 @@ function HealthBadge({ health }: { health: HealthStatus }) {
   );
 }
 
-function RoleBadge({ role }: { role: Role }) {
+function RoleBadge({ role }: { role: DashboardRole }) {
   return (
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] ${
@@ -550,79 +274,64 @@ function StatCard({
         <span className={`rounded-full p-1.5 ${accent}`}>{icon}</span>
         {label}
       </div>
-
       <p className="mt-3 text-2xl font-bold tabular-nums text-foreground">
         {value}
       </p>
-
       <p className="mt-1 text-sm text-neutral-500">{caption}</p>
     </Card>
   );
 }
 
-function AttentionDetailRow({
-  project,
-}: {
-  project: MockProject & { stage: Stage; isPrimary: boolean };
-}) {
+function ProgressLine({ project }: { project: DashboardProject }) {
+  return (
+    <p className="mt-0.5 text-sm text-neutral-500">
+      {project.progress}% complete
+    </p>
+  );
+}
+
+function PendingBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
+      {count} awaiting feedback
+    </span>
+  );
+}
+
+function AttentionDetailRow({ project }: { project: DashboardProject }) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <RoleBadge role={project.role} />
-        <HealthBadge health={project.health} />
-        <span className="text-xs font-medium text-neutral-400">
-          {project.stage.label}
-        </span>
+        <HealthBadge project={project} />
       </div>
 
       <h3 className="mt-2 text-base font-semibold text-foreground">
         {project.name}
       </h3>
 
-      <p className="mt-1 text-sm text-neutral-500">
-        {project.lastActivity} · {project.lastActivityTime}
-      </p>
-
       <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-neutral-600">
         <span>{project.progress}% complete</span>
-
-        {project.pendingSubmissions > 0 && (
-          <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
-            {project.pendingSubmissions} pending
-          </span>
-        )}
+        <PendingBadge count={project.pending_submissions} />
       </div>
     </div>
   );
 }
 
-function DeadlineDetailRow({
-  deadline,
-  stageLabel,
-}: {
-  deadline: MockDeadline;
-  stageLabel?: string;
-}) {
-  const urgency = urgencyOf(deadline.daysFromNow);
-  const style = URGENCY_STYLES[urgency];
+function DeadlineDetailRow({ deadline }: { deadline: DashboardDeadline }) {
+  const style = URGENCY_STYLES[deadline.urgency];
 
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <RoleBadge role={deadline.role} />
-
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-semibold ${style.dateClass}`}
         >
-          {style.label(deadline.daysFromNow)} ·{" "}
-          {formatDeadlineDate(deadline.daysFromNow)}
+          {style.label(deadline.days_from_now)} ·{" "}
+          {formatDeadlineDate(deadline.deadline)}
         </span>
-
-        {stageLabel && (
-          <span className="text-xs font-medium text-neutral-400">
-            {stageLabel}
-          </span>
-        )}
       </div>
 
       <h3 className="mt-2 text-base font-semibold text-foreground">
@@ -630,17 +339,21 @@ function DeadlineDetailRow({
       </h3>
 
       <p className="mt-1 text-sm font-medium text-neutral-600">
-        {deadline.projectName}
+        {deadline.project_name}
       </p>
 
       <div className="mt-2 flex items-center gap-1.5 text-sm text-neutral-500">
         <User size={13} />
-        {deadline.studentName}
+        {deadline.student_names.length > 0
+          ? deadline.student_names.join(", ")
+          : "Unassigned"}
       </div>
 
-      <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
-        {deadline.note}
-      </p>
+      {deadline.note && (
+        <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-neutral-500">
+          {deadline.note}
+        </p>
+      )}
     </div>
   );
 }
@@ -650,96 +363,71 @@ function DeadlineDetailRow({
 // ---------------------------------------------------------------------------
 
 export default function InstructorDashboard() {
-  const [filter, setFilter] = useState<Role | "all">("all");
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState<DashboardRole | "all">("all");
   const [attentionDialogOpen, setAttentionDialogOpen] = useState(false);
   const [deadlineDialogOpen, setDeadlineDialogOpen] = useState(false);
 
-  /*
-   * Replace this with the actual instructor/advisor project query later.
-   *
-   * Example:
-   *
-   * const {
-   *   data: projects,
-   *   isLoading,
-   *   isError,
-   * } = useGetInstructorProjects();
-   *
-   * For now, the mock data is synchronous, so loading is false.
-   */
-  const isLoading = false;
+  const { data, isLoading, isError, refetch } = useGetInstructorDashboard();
 
-  const projects = useMemo(
+  const projects = useMemo(() => data?.projects ?? [], [data]);
+  const deadlines = useMemo(() => data?.deadlines ?? [], [data]);
+  const activity = useMemo(
     () =>
-      MOCK_PROJECTS.map((p) => ({
-        ...p,
-        stage: stageOf(p.stageId),
-        isPrimary: stageOf(p.stageId).primaryRole === p.role,
-      })),
-    [],
+      [...(data?.recent_activity ?? [])].sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      ),
+    [data],
   );
 
-  const filteredDeadlines = MOCK_DEADLINES.filter(
-    (d) => filter === "all" || d.role === filter,
-  ).sort((a, b) => a.daysFromNow - b.daysFromNow);
-
-  const visibleDeadlines = filteredDeadlines.slice(
-    0,
-    DEADLINE_VISIBLE_LIMIT,
+  const filteredDeadlines = useMemo(
+    () =>
+      deadlines
+        .filter((d) => filter === "all" || d.role === filter)
+        .sort((a, b) => a.days_from_now - b.days_from_now),
+    [deadlines, filter],
   );
+  const visibleDeadlines = filteredDeadlines.slice(0, DEADLINE_VISIBLE_LIMIT);
+  const hasMoreDeadlines = filteredDeadlines.length > DEADLINE_VISIBLE_LIMIT;
 
-  const hasMoreDeadlines =
-    filteredDeadlines.length > DEADLINE_VISIBLE_LIMIT;
-
-  const needsAttentionAll = [...projects]
-    .filter((p) => p.isPrimary)
-    .sort((a, b) => {
-      const healthDiff =
-        (HEALTH[b.health]?.rank ?? 0) - (HEALTH[a.health]?.rank ?? 0);
-
-      if (healthDiff !== 0) return healthDiff;
-
-      return b.pendingSubmissions - a.pendingSubmissions;
-    });
-
-  const needsAttention = needsAttentionAll.slice(
-    0,
-    ATTENTION_VISIBLE_LIMIT,
+  // All of the user's projects: worst health first, then most awaiting feedback.
+  const needsAttentionAll = useMemo(
+    () =>
+      [...projects].sort((a, b) => {
+        const healthDiff = healthOf(b).rank - healthOf(a).rank;
+        if (healthDiff !== 0) return healthDiff;
+        return b.pending_submissions - a.pending_submissions;
+      }),
+    [projects],
   );
+  const needsAttention = needsAttentionAll.slice(0, ATTENTION_VISIBLE_LIMIT);
+  const hasMoreAttention = needsAttentionAll.length > ATTENTION_VISIBLE_LIMIT;
 
-  const hasMoreAttention =
-    needsAttentionAll.length > ATTENTION_VISIBLE_LIMIT;
+  const stats = data?.stats;
 
-  const stats = {
-    total: projects.length,
-    atRisk: projects.filter((p) => p.health !== "healthy").length,
-    pendingReviews: projects.reduce(
-      (sum, p) => sum + p.pendingSubmissions,
-      0,
-    ),
-    yourTurn: projects.filter((p) => p.isPrimary).length,
-  };
-
-  const stageChartData = STAGES.map((s) => ({
-    stage: s.label,
-    count: projects.filter((p) => p.stageId === s.id).length,
-  }));
-
-  const activityFeed = [...projects].sort((a, b) =>
-    a.lastActivityTime.localeCompare(b.lastActivityTime),
-  );
+  const openProject = (id: string) => navigate(`/view-project/${id}`);
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
       {isLoading ? (
         <InstructorDashboardSkeleton />
+      ) : isError || !data ? (
+        <div className="flex min-h-80 flex-col items-center justify-center gap-4">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <p className="text-foreground dark:text-muted-foreground">
+            Failed to load your dashboard. Please try again.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </div>
       ) : (
         <div className="min-h-screen w-full py-0 font-sans antialiased">
           <div className="mb-5">
             <h1 className="my-2 text-2xl font-bold text-foreground">
               Your projects
             </h1>
-
             <p className="mt-2 text-sm text-neutral-500 dark:text-semiforeground">
               A portfolio view across everything you're instructing or advising.
             </p>
@@ -750,32 +438,29 @@ export default function InstructorDashboard() {
             <StatCard
               icon={<Layers size={16} className="text-[#7A0C2E]" />}
               label="Active projects"
-              value={stats.total}
+              value={stats?.total_projects ?? 0}
               caption="Across both roles"
               accent="bg-[#F3EFE6]"
             />
-
             <StatCard
               icon={<AlertTriangle size={16} className="text-rose-600" />}
-              label="At risk or critical"
-              value={stats.atRisk}
+              label="Watch or at risk"
+              value={stats?.at_risk_projects ?? 0}
               caption="Need a closer look"
               accent="bg-rose-50"
             />
-
             <StatCard
               icon={<ClipboardCheck size={16} className="text-[#C9A84C]" />}
               label="Pending submissions"
-              value={stats.pendingReviews}
-              caption="Waiting on your review"
+              value={stats?.pending_submissions ?? 0}
+              caption="Awaiting your feedback"
               accent="bg-[#FBF3E7]"
             />
-
             <StatCard
               icon={<Clock size={16} className="text-[#3F3350]" />}
-              label="Currently your turn"
-              value={stats.yourTurn}
-              caption="Primary reviewer by stage"
+              label="Overdue deadlines"
+              value={stats?.overdue_deadlines ?? 0}
+              caption="Open tasks past due"
               accent="bg-[#EFEAF6]"
             />
           </div>
@@ -788,12 +473,10 @@ export default function InstructorDashboard() {
                   <div className="rounded-full bg-rose-50 p-2 text-rose-600">
                     <AlertTriangle size={16} />
                   </div>
-
                   <h2 className="text-lg font-semibold text-foreground">
                     Needs your attention
                   </h2>
                 </div>
-
                 <span className="text-sm text-neutral-500 dark:text-semiforeground">
                   Sorted by health, then pending items
                 </span>
@@ -802,37 +485,29 @@ export default function InstructorDashboard() {
               <div className="flex-1 divide-y">
                 {needsAttention.map((p) => (
                   <div
-                    key={p.id}
+                    key={`${p.role}-${p.id}`}
                     className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <RoleBadge role={p.role} />
-                        <HealthBadge health={p.health} />
-
-                        <span className="text-xs font-medium text-neutral-400">
-                          {p.stage.label}
-                        </span>
+                        <HealthBadge project={p} />
                       </div>
-
                       <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
                         {p.name}
                       </h3>
-
-                      <p className="mt-0.5 text-sm text-neutral-500">
-                        {p.lastActivity} · {p.lastActivityTime}
-                      </p>
+                      <ProgressLine project={p} />
                     </div>
 
                     <div className="flex items-center gap-2 sm:shrink-0">
-                      {p.pendingSubmissions > 0 && (
-                        <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
-                          {p.pendingSubmissions} pending
-                        </span>
-                      )}
-
-                      <Button size="sm" variant="outline" className="gap-1.5">
-                        Review
+                      <PendingBadge count={p.pending_submissions} />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => openProject(p.id)}
+                      >
+                        Open
                         <ChevronRight size={14} />
                       </Button>
                     </div>
@@ -841,7 +516,7 @@ export default function InstructorDashboard() {
 
                 {needsAttention.length === 0 && (
                   <div className="px-5 py-8 text-center text-sm text-neutral-500">
-                    Nothing needs your attention right now.
+                    You're not assigned to any project yet.
                   </div>
                 )}
               </div>
@@ -868,7 +543,6 @@ export default function InstructorDashboard() {
                   <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
                     <CalendarClock size={16} />
                   </div>
-
                   <h2 className="text-lg font-semibold text-foreground">
                     Upcoming deadlines
                   </h2>
@@ -899,12 +573,7 @@ export default function InstructorDashboard() {
 
               <div className="flex-1 px-5 py-4">
                 {visibleDeadlines.map((d, i) => {
-                  const urgency = urgencyOf(d.daysFromNow);
-                  const style = URGENCY_STYLES[urgency];
-
-                  const stageLabel = projects.find(
-                    (p) => p.id === d.projectId,
-                  )?.stage.label;
+                  const style = URGENCY_STYLES[d.urgency];
 
                   return (
                     <div key={d.id} className="flex gap-4">
@@ -912,9 +581,8 @@ export default function InstructorDashboard() {
                         <div
                           className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl text-xs font-semibold tabular-nums ${style.dateClass}`}
                         >
-                          {formatDeadlineDate(d.daysFromNow)}
+                          {formatDeadlineDate(d.deadline)}
                         </div>
-
                         {i < visibleDeadlines.length - 1 && (
                           <div className="w-px flex-1 bg-neutral-200" />
                         )}
@@ -924,18 +592,11 @@ export default function InstructorDashboard() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <RoleBadge role={d.role} />
-
                             <span
                               className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.dateClass}`}
                             >
-                              {style.label(d.daysFromNow)}
+                              {style.label(d.days_from_now)}
                             </span>
-
-                            {stageLabel && (
-                              <span className="text-xs text-neutral-400">
-                                {stageLabel}
-                              </span>
-                            )}
                           </div>
 
                           <h3 className="mt-1.5 text-base font-semibold leading-snug text-foreground">
@@ -943,23 +604,28 @@ export default function InstructorDashboard() {
                           </h3>
 
                           <p className="mt-0.5 text-sm font-medium text-neutral-600">
-                            {d.projectName}
+                            {d.project_name}
                           </p>
 
                           <div className="mt-2 flex items-center gap-1.5 text-sm text-neutral-500">
                             <User size={13} />
-                            {d.studentName}
+                            {d.student_names.length > 0
+                              ? d.student_names.join(", ")
+                              : "Unassigned"}
                           </div>
 
-                          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-500">
-                            {d.note}
-                          </p>
+                          {d.note && (
+                            <p className="mt-1.5 line-clamp-2 max-w-2xl text-sm leading-relaxed text-neutral-500">
+                              {d.note}
+                            </p>
+                          )}
                         </div>
 
                         <Button
                           size="sm"
                           variant="outline"
                           className="shrink-0 gap-1.5"
+                          onClick={() => openProject(d.project_id)}
                         >
                           View project
                           <ChevronRight size={14} />
@@ -992,130 +658,73 @@ export default function InstructorDashboard() {
             </Card>
           </div>
 
-          {/* Stage distribution + activity feed */}
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <Card className="p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <ListChecks size={18} className="text-[#7A0C2E]" />
-                Projects by stage
-              </div>
-
-              <ChartContainer
-                config={{
-                  count: {
-                    label: "Projects",
-                    color: "#7A0C2E",
-                  },
-                }}
-                className="mt-4 h-65 w-full"
-              >
-                <BarChart
-                  data={stageChartData}
-                  layout="vertical"
-                  margin={{ left: 0 }}
-                >
-                  <CartesianGrid
-                    horizontal={false}
-                    strokeDasharray="3 3"
-                  />
-
-                  <XAxis
-                    type="number"
-                    hide
-                    allowDecimals={false}
-                  />
-
-                  <YAxis
-                    dataKey="stage"
-                    type="category"
-                    tickLine={false}
-                    axisLine={false}
-                    width={130}
-                    tick={{ fontSize: 13 }}
-                    tickFormatter={(v) => v}
-                  />
-
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
-                  />
-
-                  <Bar
-                    dataKey="count"
-                    fill="#7A0C2E"
-                    radius={5}
-                    barSize={28}
-                  />
-                </BarChart>
-              </ChartContainer>
-            </Card>
-
+          {/* Recent activity (full width) */}
+          <div className="mt-6">
             <Card className="border p-5 shadow-sm">
               <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                 <Activity size={18} className="text-[#C9A84C]" />
                 Recent activity
               </div>
 
-              <div className="mt-4 space-y-4">
-                {activityFeed.map((p) => (
-                  <div key={p.id} className="flex items-start gap-3">
-                    <div className="mt-1 rounded-full bg-neutral-100 p-2 text-neutral-500">
-                      {p.pendingSubmissions > 0 ? (
-                        <FileText size={14} />
-                      ) : (
-                        <CheckCircle2 size={14} />
-                      )}
-                    </div>
+              {activity.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-neutral-200 p-6 text-center text-sm text-neutral-500">
+                  No recent activity in your projects yet.
+                </div>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {activity.map((a) => {
+                    const Icon = (a.type && ACTIVITY_ICONS[a.type]) || FileText;
 
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {p.name}
-                      </p>
-
-                      <p className="mt-0.5 text-xs text-neutral-500">
-                        {p.lastActivity} · {p.lastActivityTime}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    return (
+                      <div key={a.id} className="flex items-start gap-3">
+                        <div className="mt-1 rounded-full bg-neutral-100 p-2 text-neutral-500">
+                          <Icon size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm text-foreground">
+                            <span className="font-semibold">
+                              {a.actor_name ?? "A member"}
+                            </span>{" "}
+                            {a.message}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-neutral-500">
+                            {a.project_name} · {formatTimeAgo(a.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </Card>
           </div>
         </div>
       )}
 
       {/* Attention dialog */}
-      <Dialog
-        open={attentionDialogOpen}
-        onOpenChange={setAttentionDialogOpen}
-      >
+      <Dialog open={attentionDialogOpen} onOpenChange={setAttentionDialogOpen}>
         <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl custom-scrollbar">
           <DialogHeader>
             <DialogTitle>Needs your attention</DialogTitle>
-
             <DialogDescription>
-              All {needsAttentionAll.length} projects where you're the primary
-              reviewer this stage, sorted by health then pending items.
+              All {needsAttentionAll.length} of your projects, sorted by health
+              then pending items.
             </DialogDescription>
           </DialogHeader>
 
           <div className="mt-2 space-y-3">
             {needsAttentionAll.map((p) => (
-              <AttentionDetailRow key={p.id} project={p} />
+              <AttentionDetailRow key={`${p.role}-${p.id}`} project={p} />
             ))}
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Deadline dialog */}
-      <Dialog
-        open={deadlineDialogOpen}
-        onOpenChange={setDeadlineDialogOpen}
-      >
+      <Dialog open={deadlineDialogOpen} onOpenChange={setDeadlineDialogOpen}>
         <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl custom-scrollbar">
           <DialogHeader>
             <DialogTitle>Upcoming deadlines</DialogTitle>
-
             <DialogDescription>
               All {filteredDeadlines.length} deadlines
               {filter !== "all" ? ` as ${filter}` : ""}, soonest first.
@@ -1124,13 +733,7 @@ export default function InstructorDashboard() {
 
           <div className="mt-2 space-y-3">
             {filteredDeadlines.map((d) => (
-              <DeadlineDetailRow
-                key={d.id}
-                deadline={d}
-                stageLabel={
-                  projects.find((p) => p.id === d.projectId)?.stage.label
-                }
-              />
+              <DeadlineDetailRow key={d.id} deadline={d} />
             ))}
           </div>
         </DialogContent>
