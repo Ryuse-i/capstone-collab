@@ -723,6 +723,8 @@
   bottom: 0 !important;
 }
 
+  
+
 /* ─── Page switch fade-in (upwards) ─────────────────────── */
 
 @keyframes page-slide-in {
@@ -800,3 +802,4 @@
     animation: none;
   }
 }
+

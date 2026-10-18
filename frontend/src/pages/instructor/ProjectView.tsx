@@ -15,11 +15,20 @@ import {
 } from "lucide-react";
 
 import AppLayout from "@/layouts/Applayout";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -155,9 +164,9 @@ function AssigneeList({ members }: { members: UserBase[] }) {
         <Avatar
           key={member.id}
           title={getUserName(member)}
-          className="size-8 border-2 border-background"
+          className="size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800"
         >
-          <AvatarFallback className="rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground">
+          <AvatarFallback className="rounded-full bg-primary dark:bg-gray-800 text-10 font-bold uppercase text-primary-foreground dark:text-foreground">
             {getInitials(member)}
           </AvatarFallback>
         </Avatar>
@@ -213,10 +222,7 @@ function ProjectViewSkeleton() {
             {/* Tabs */}
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: 5 }).map((_, index) => (
-                <Skeleton
-                  key={index}
-                  className="h-9 w-24 rounded-md"
-                />
+                <Skeleton key={index} className="h-9 w-24 rounded-md" />
               ))}
             </div>
 
@@ -225,10 +231,7 @@ function ProjectViewSkeleton() {
               {/* Overview cards */}
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="rounded-2xl border bg-card p-4"
-                  >
+                  <div key={index} className="rounded-2xl border bg-card p-4">
                     <Skeleton className="h-5 w-28" />
                     <Skeleton className="mt-4 h-8 w-24" />
                     <Skeleton className="mt-2 h-4 w-32" />
@@ -268,14 +271,11 @@ export default function ProjectView() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [activeTab, setActiveTab] =
-    useState<ProjectViewTab>("overview");
+  const [activeTab, setActiveTab] = useState<ProjectViewTab>("overview");
 
-  const [submissionStatusFilter, setSubmissionStatusFilter] =
-    useState("all");
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState("all");
 
-  const [submissionMemberFilter, setSubmissionMemberFilter] =
-    useState("all");
+  const [submissionMemberFilter, setSubmissionMemberFilter] = useState("all");
 
   const projectId = id ?? "";
 
@@ -377,8 +377,7 @@ export default function ProjectView() {
   ];
 
   const submittedTasks = (allProjectTasks ?? []).filter(
-    (task) =>
-      task.status === "submitted" || task.status === "completed",
+    (task) => task.status === "submitted" || task.status === "completed",
   );
 
   const submissionMemberOptions = Array.from(
@@ -399,9 +398,7 @@ export default function ProjectView() {
 
     if (
       submissionMemberFilter !== "all" &&
-      !getAssignees(task).some(
-        (member) => member.id === submissionMemberFilter,
-      )
+      !getAssignees(task).some((member) => member.id === submissionMemberFilter)
     ) {
       return false;
     }
@@ -415,9 +412,7 @@ export default function ProjectView() {
 
   if (isError || !project) {
     return (
-      <AppLayout
-        breadcrumbs={[{ label: "Projects", href: "/project-list" }]}
-      >
+      <AppLayout breadcrumbs={[{ label: "Projects", href: "/project-list" }]}>
         <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
             <button
@@ -495,9 +490,7 @@ export default function ProjectView() {
               {tabs.map((tab) => (
                 <Button
                   key={tab.id}
-                  variant={
-                    activeTab === tab.id ? "default" : "outline"
-                  }
+                  variant={activeTab === tab.id ? "default" : "outline"}
                   size="sm"
                   className="flex items-center gap-2"
                   onClick={() => setActiveTab(tab.id)}
@@ -552,10 +545,7 @@ export default function ProjectView() {
                         <span>Workload points</span>
 
                         <span className="font-semibold text-(--semi-foreground)">
-                          {formatNumber(
-                            snapshot?.total_workload_points,
-                            0,
-                          )}
+                          {formatNumber(snapshot?.total_workload_points, 0)}
                         </span>
                       </div>
 
@@ -683,17 +673,11 @@ export default function ProjectView() {
                       align="start"
                       className="w-40"
                     >
-                      <SelectItem value="all">
-                        All Status
-                      </SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
 
-                      <SelectItem value="submitted">
-                        Submitted
-                      </SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
 
-                      <SelectItem value="completed">
-                        Completed
-                      </SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -710,9 +694,7 @@ export default function ProjectView() {
                       align="start"
                       className="w-40"
                     >
-                      <SelectItem value="all">
-                        All Members
-                      </SelectItem>
+                      <SelectItem value="all">All Members</SelectItem>
 
                       {submissionMemberOptions.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
@@ -940,7 +922,6 @@ export default function ProjectView() {
           </div>
         </Card>
       </div>
-
     </AppLayout>
   );
 }
@@ -965,9 +946,7 @@ function formatDate(value?: string) {
 
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
 }
 
 function getLinkLabel(link: string) {

@@ -28,7 +28,7 @@ export default function ProjectSettings() {
           value={projectDescription}
           onChange={(e) => setProjectDescription(e.target.value)}
           rows={4}
-          className="min-h-24 rounded-md border border-input bg-input/50 px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="min-h-24 rounded-md border border-input bg-transparent dark:bg-input/50 px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           placeholder="Describe your project"
         />
       </div>

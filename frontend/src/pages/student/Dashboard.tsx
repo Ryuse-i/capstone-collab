@@ -786,7 +786,7 @@ type TaskStatusDistribution = {
 };
 
 const STATUS_BAR_COLOR = "var(--primary)";
-const DEADLINE_BAR_COLOR = "var(--chart-2)";
+
 
 // ---------------------------------------------------------------------------
 // Component
@@ -872,13 +872,6 @@ export default function Dashboard() {
     { label: "Completed", count: taskStatusDistribution.completed, fill: STATUS_BAR_COLOR },
   ];
 
-  if (health) {
-    taskChartData.push(
-      { label: "Open", count: health.schedule.open_tasks, fill: DEADLINE_BAR_COLOR },
-      { label: "Overdue", count: health.schedule.overdue_tasks, fill: DEADLINE_BAR_COLOR },
-      { label: "Due ≤7d", count: health.schedule.at_risk_tasks, fill: DEADLINE_BAR_COLOR },
-    );
-  }
 
   const taskChartConfig: ChartConfig = {
     count: { label: "Task Count", color: "var(--chart-1)" },
