@@ -36,3 +36,26 @@ export function useUpdateMemberCapacity() {
       queryClient.invalidateQueries({ queryKey: memberKeys.snapshots() }),
   });
 }
+
+//contribution points update
+
+type AddContributionPoints = {
+  memberId: string;
+  points: number; // negative to take points back
+};
+
+export function useAddContributionPoints() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, points }: AddContributionPoints) => {
+      const response = await apiClient.post<MemberSnapshotResponse>(
+        `/member_snapshots/${memberId}/contribution`,
+        { points },
+      );
+      return response.data;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: memberKeys.snapshots() }),
+  });
+}

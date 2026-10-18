@@ -20,6 +20,7 @@ import { useUpdateTask } from "@/hooks/useTask";
 import { useRejectTask } from "@/hooks/useRevisionNotes";
 import type { TaskResponseMembers } from "@/types/task";
 
+
 const statusPill: Record<string, string> = {
   completed:
     "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400",
@@ -116,31 +117,27 @@ export function ViewSubmissionDrawer({
     return () => window.clearTimeout(timer);
   }, [revisionOpen]);
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!task?.id) return;
 
-    updateTaskMutation.mutate(
-      {
+    try {
+      await updateTaskMutation.mutateAsync({
         id: task.id,
         task: {
           status: "completed",
           completed_at: new Date().toISOString(),
         },
-      },
-      {
-        onSuccess: () => {
-          toast.success("Submission approved.");
-          onOpenChange(false);
-        },
-        onError: (err) => {
-          toast.error(
-            err instanceof Error
-              ? err.message
-              : "Something went wrong while approving this submission.",
-          );
-        },
-      },
-    );
+      });
+
+      toast.success("Submission approved.");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while approving this submission.",
+      );
+    }
   };
 
   const handleReject = async () => {

@@ -5,6 +5,7 @@ from .model import MemberSnapshot
 from .repo import MemberSnapshotRepo
 from .schema import MemberSnapshotUpsert, MemberSnapshotResponse
 
+COMPLEXITY_POINTS: dict[str, int] = {"low": 1, "medium": 2, "high": 3}
 
 class MemberSnapshotService:
     @staticmethod
@@ -56,3 +57,36 @@ class MemberSnapshotService:
             db, member.project_id, 
         )
         return await MemberSnapshotRepo(db).get_latest_member_snapshot(member_id)
+    
+    @staticmethod
+    def complexity_to_points(complexity) -> int:
+        """
+        Convert a task complexity (enum member or string) to contribution points.
+        Low=1, Medium=2, High=3. Unknown or missing complexity gives 0.
+        """
+        key = str(getattr(complexity, "value", complexity) or "").strip().lower()
+        return COMPLEXITY_POINTS.get(key, 0)
+
+    @staticmethod
+    async def add_contribution_points(
+        db: AsyncSession, member_id: UUID, points: int
+    ) -> MemberSnapshot | None:
+        """
+        Add `points` to a member's contribution total (pass a negative value to
+        take points back, e.g. when a submission is rejected after completion).
+
+        The running total is read from the member's latest snapshot, adjusted,
+        clamped at 0, and written to today's snapshot.
+        """
+        if points == 0:
+            return await MemberSnapshotRepo(db).get_latest_member_snapshot(member_id)
+
+        repo = MemberSnapshotRepo(db)
+        latest = await repo.get_latest_member_snapshot(member_id)
+        current = latest.contribution_points if latest else 0
+        new_total = max(current + points, 0)
+
+        return await repo.upsert_today_member_snapshot(
+            member_id, MemberSnapshotUpsert(contribution_points=new_total)
+        )
+

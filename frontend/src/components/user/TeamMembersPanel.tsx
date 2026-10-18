@@ -65,11 +65,11 @@ function statusOf(member: ProjectMemberUserSnapshot): MemberStatus {
 }
 
 // ---------------------------------------------------------------------------
-// Contribution (real data)
+// Contribution
 //
-// Contribution points = sum of complexity points (Low=1, Medium=2, High=3) of the
-// tasks a member has COMPLETED, scaled by effort_share when a task is shared.
-// Display only: no urgency scaling, no timeliness penalty.
+// Read from the latest member snapshot (contribution_points). The points are
+// added when a submission is approved: the task's complexity points
+// (Low=1, Medium=2, High=3) go to every assigned member.
 // ---------------------------------------------------------------------------
 
 type Contributor = {
@@ -77,87 +77,18 @@ type Contributor = {
   name: string;
   initials: string;
   points: number;
-  tasksDone: number;
 };
-
-// ⚠️ ADJUST THESE TO MATCH YOUR TASK TYPE. This is the only place that knows the shape.
-type AssigneeLike = {
-  project_member_id?: string;
-  user_id?: string;
-  effort_share?: number | string | null;
-};
-
-type TaskWithAssignees = {
-  status: string;
-  complexity?: unknown;
-  assigned_members?: AssigneeLike[];
-};
-
-const COMPLEXITY_POINTS: Record<string, number> = {
-  low: 1,
-  medium: 2,
-  high: 3,
-};
-
-function complexityPoints(complexity: unknown): number {
-  return (
-    COMPLEXITY_POINTS[
-      String(complexity ?? "")
-        .trim()
-        .toLowerCase()
-    ] ?? 0
-  );
-}
-
-function shareOf(value: AssigneeLike["effort_share"]): number {
-  if (value === null || value === undefined) return 1;
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.min(Math.max(n, 0), 1) : 1;
-}
-
-function getTaskCredits(task: TaskWithAssignees) {
-  if (task.status !== "completed") return [];
-  const base = complexityPoints(task.complexity);
-  if (base === 0) return [];
-
-  return (task.assigned_members ?? []).flatMap((a) => {
-    const memberId = a.project_member_id ?? a.user_id;
-    return memberId
-      ? [{ memberId, points: base * shareOf(a.effort_share) }]
-      : [];
-  });
-}
 
 function buildContributors(
   members: ProjectMemberUserSnapshot[],
-  tasks: TaskWithAssignees[],
 ): Contributor[] {
-  const totals = new Map<string, { points: number; tasksDone: number }>();
-
-  for (const task of tasks) {
-    for (const { memberId, points } of getTaskCredits(task)) {
-      const prev = totals.get(memberId) ?? { points: 0, tasksDone: 0 };
-      totals.set(memberId, {
-        points: prev.points + points,
-        tasksDone: prev.tasksDone + 1,
-      });
-    }
-  }
-
   return members
-    .map((m) => {
-      const byMember = totals.get(m.id);
-      const byUser = totals.get(m.user.id);
-      return {
-        id: m.id,
-        name: `${m.user.first_name.trim()} ${m.user.last_name.trim()}`,
-        initials: getInitials(m.user.first_name, m.user.last_name),
-        points:
-          Math.round(((byMember?.points ?? 0) + (byUser?.points ?? 0)) * 100) /
-          100,
-        tasksDone: (byMember?.tasksDone ?? 0) + (byUser?.tasksDone ?? 0),
-      };
-    })
+    .map((m) => ({
+      id: m.id,
+      name: `${m.user.first_name.trim()} ${m.user.last_name.trim()}`,
+      initials: getInitials(m.user.first_name, m.user.last_name),
+      points: m.snapshots[0]?.contribution_points ?? 0,
+    }))
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
 }
 
@@ -165,17 +96,7 @@ function buildContributors(
 // Pieces
 // ---------------------------------------------------------------------------
 
-function ContributionList({
-  contributors,
-  isLoading,
-  isError,
-}: {
-  contributors: Contributor[];
-  isLoading: boolean;
-  isError: boolean;
-}) {
-  if (isLoading) return <ContributionListSkeleton />;
-
+function ContributionList({ contributors }: { contributors: Contributor[] }) {
   return (
     <Card className="rounded-xl border shadow-sm xl:sticky xl:top-4">
       <CardContent className="flex flex-col gap-4 p-5">
@@ -191,9 +112,7 @@ function ContributionList({
           </span>
         </div>
 
-        {isError ? (
-          <p className="text-sm text-gray-400">Failed to load contributions.</p>
-        ) : contributors.length === 0 ? (
+        {contributors.length === 0 ? (
           <p className="text-sm text-gray-400">No members yet.</p>
         ) : (
           <div className="flex h-106 flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
@@ -212,15 +131,9 @@ function ContributionList({
                   </span>
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-semibold text-card-foreground">
-                    {person.name}
-                  </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {person.tasksDone} task{person.tasksDone === 1 ? "" : "s"}{" "}
-                    completed
-                  </span>
-                </div>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-card-foreground">
+                  {person.name}
+                </span>
 
                 <span className="text-lg font-bold text-gray-800 dark:text-card-foreground">
                   {person.points}
@@ -598,18 +511,11 @@ export function TeamMembersSkeleton() {
 type TeamMembersPanelProps = {
   /** Result of useGetMembersWithUserSnapshot(projectId). */
   members: ProjectMemberUserSnapshot[];
-  /** Result of useGetAllTaskAssignedMembers(projectId). */
-  tasks?: readonly unknown[];
-  isTasksLoading?: boolean;
-  isTasksError?: boolean;
-  currentUserId: string
+  currentUserId: string;
 };
 
 export default function TeamMembersPanel({
   members,
-  tasks = [],
-  isTasksLoading = false,
-  isTasksError = false,
   currentUserId,
 }: TeamMembersPanelProps) {
   const advisorMembers = members.filter((m) => m.project_role === "advisor");
@@ -627,10 +533,7 @@ export default function TeamMembersPanel({
   const countBy = (status: MemberStatus) =>
     regularMembers.filter((m) => statusOf(m) === status).length;
 
-  const contributors = buildContributors(
-    regularMembers,
-    tasks as TaskWithAssignees[],
-  );
+  const contributors = buildContributors(regularMembers);
 
   return (
     <div className="flex flex-col gap-6">
@@ -700,11 +603,7 @@ export default function TeamMembersPanel({
         </section>
 
         <aside>
-          <ContributionList
-            contributors={contributors}
-            isLoading={isTasksLoading}
-            isError={isTasksError}
-          />
+          <ContributionList contributors={contributors} />
         </aside>
       </div>
     </div>

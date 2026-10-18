@@ -58,7 +58,7 @@ class MemberSnapshot(Base):
     workload_status: Mapped[MemberStatus] = mapped_column(
         SAENUM(MemberStatus, name="member_status"), default=MemberStatus.NORMAL
     )
-
+    contribution_points: Mapped[int] = mapped_column(Integer, default=0)
     snapshot_date: Mapped[date] = mapped_column(Date, default=date.today)
 
     __table_args__ = (

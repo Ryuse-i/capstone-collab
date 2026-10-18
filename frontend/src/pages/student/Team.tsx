@@ -4,7 +4,6 @@ import { AlertTriangle } from "lucide-react";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import TeamMembersPanel, {
   TeamMembersSkeleton,
 } from "@/components/user/TeamMembersPanel";
@@ -36,13 +35,6 @@ export default function Team() {
     isError: isMembersError,
   } = useGetMembersWithUserSnapshot(project?.id ?? "");
 
-  // Kept out of the page-level loading/error state so a failure here only
-  // affects the Contribution card.
-  const {
-    data: allProjectTasks = [],
-    isLoading: isTasksLoading,
-    isError: isTasksError,
-  } = useGetAllTaskAssignedMembers(project?.id ?? "");
 
   const isLoading = isProjectLoading || isMembersLoading;
   const isError = isProjectError || isMembersError;
@@ -72,9 +64,6 @@ export default function Team() {
 
           <TeamMembersPanel
             members={members}
-            tasks={allProjectTasks}
-            isTasksLoading={isTasksLoading}
-            isTasksError={isTasksError}
             currentUserId={user?.id ?? ""}
           />
         </div>

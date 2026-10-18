@@ -12,6 +12,8 @@ from app.modules.project_members.model import Skills
 from app.modules.ai.service import score_task_complexity
 from app.modules.project_snapshots.services import ProjectSnapshotService
 from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
+from .enums import Status
+from app.modules.assigned_members.repo import AssignedMemberRepo
 from uuid import UUID
 
 _VERDICT_TO_COMPLEXITY: dict[int, Complexity] = {
@@ -48,10 +50,43 @@ class TaskService:
 
         return created_task
 
+
     @staticmethod
-    async def update_task(db: AsyncSession, db_item: TaskUpdate, task: TaskUpdate):
+    async def update_task(db: AsyncSession, db_item: Task, task: TaskUpdate):
+        # Lazy import, same pattern you use elsewhere to avoid circular imports
+        from app.modules.member_snapshots.services import MemberSnapshotService
+
         repo = TaskRepo(db)
-        return await repo.update(db_item, task)
+
+        # Capture BEFORE the update, since repo.update likely mutates db_item in place
+        old_status = db_item.status
+        new_status = getattr(task, "status", None)
+
+        updated_task = await repo.update(db_item, task)
+
+        just_completed = (
+            new_status == Status.COMPLETED and old_status != Status.COMPLETED
+        )
+        just_uncompleted = (
+            old_status == Status.COMPLETED
+            and new_status is not None
+            and new_status != Status.COMPLETED
+        )
+
+        if just_completed or just_uncompleted:
+            points = MemberSnapshotService.complexity_to_points(updated_task.complexity)
+            if points:
+                delta = points if just_completed else -points
+                # Query directly instead of touching task.assigned_members,
+                # which would lazy-load and fail on an async session
+                assignments = await AssignedMemberRepo(db).get_task_members(updated_task.id)
+                for assignment in assignments:
+                    if assignment.member_id:
+                        await MemberSnapshotService.add_contribution_points(
+                            db, assignment.member_id, delta
+                        )
+
+        return updated_task
 
     @staticmethod
     async def delete_task(db: AsyncSession, db_item: Task):

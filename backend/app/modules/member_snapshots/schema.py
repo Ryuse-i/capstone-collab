@@ -13,6 +13,7 @@ class MemberSnapshotUpsert(BaseModel):
     capacity_multiplier: Decimal | None = Field(default=None, gt=0, le=2.0)
     silence_warning: bool | None = None
     consecutive_fallback_count: int | None = None
+    contribution_points: int | None = None 
 
 
 class MemberSnapshotResponse(BaseModel):
@@ -25,4 +26,8 @@ class MemberSnapshotResponse(BaseModel):
     capacity_multiplier: Decimal
     silence_warning: bool
     consecutive_fallback_count: int
+    contribution_points: int
     snapshot_date: date
+
+class ContributionAdd(BaseModel):
+    points: int = Field(..., description="Points to add; negative to take back")

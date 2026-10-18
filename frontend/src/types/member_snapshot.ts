@@ -6,6 +6,7 @@ export interface MemberSnapshotBase {
   silence_warning: boolean;
   consecutive_fallback_count: number;
   workload_status: MemberStatus;
+  contribution_points: number
 }
 
 export interface MemberSnapshotResponse extends MemberSnapshotBase {

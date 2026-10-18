@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
-from .schema import MemberSnapshotResponse, MemberSnapshotUpsert
+from .schema import MemberSnapshotResponse, MemberSnapshotUpsert, ContributionAdd
 from .services import MemberSnapshotService
 from typing import List
 from uuid import UUID
@@ -30,6 +30,26 @@ async def get_one_member_snapshot(
             status_code=status.HTTP_404_NOT_FOUND, detail="Assigned member not found"
         )
     return db_item
+
+@member_snapshot_route.post(
+    "/{member_id}/contribution", response_model=MemberSnapshotResponse
+)
+async def add_contribution_points(
+    member_id: UUID,
+    body: ContributionAdd,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """Add (or subtract) contribution points on a member's snapshot."""
+    snapshot = await MemberSnapshotService.add_contribution_points(
+        db, member_id, body.points
+    )
+    if not snapshot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Member snapshot not found"
+        )
+    await db.commit()
+    await db.refresh(snapshot)
+    return snapshot
 
 
 @member_snapshot_route.get("/{member_id}/latest")
