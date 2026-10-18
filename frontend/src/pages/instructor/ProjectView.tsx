@@ -208,7 +208,7 @@ export default function ProjectView() {
     data: reviewerTasks,
     isLoading: isReviewerTasksLoading,
     isError: isReviewerTasksError,
-  } = useGetTasksForReviewer(userData?.id ?? "");
+  } = useGetTasksForReviewer(userData?.id ?? "", projectId ?? "");
 
   const {
     data: projectMembersData,

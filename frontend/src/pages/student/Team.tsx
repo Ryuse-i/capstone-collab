@@ -1,7 +1,6 @@
 import AppLayout from "@/layouts/Applayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Mail,
   AlertTriangle,
@@ -14,6 +13,7 @@ import {
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetAllTaskAssignedMembers } from "@/hooks/useTask";
 import MemberDetailDrawer from "@/components/user/MemberDetailDrawer";
 import type {
   ProjectMemberUserSnapshot,
@@ -70,109 +70,105 @@ function statusOf(member: ProjectMemberUserSnapshot): MemberStatus {
 }
 
 // ---------------------------------------------------------------------------
-// Contribution list (mock data)
+// Contribution (real data)
+//
+// Contribution points = sum of complexity points (Low=1, Medium=2, High=3) of the
+// tasks a member has COMPLETED, scaled by effort_share when a task is shared.
+// Display only: no urgency scaling, no timeliness penalty.
 // ---------------------------------------------------------------------------
 
 type Contributor = {
   id: string;
   name: string;
-  avatar?: string;
+  initials: string;
   points: number;
+  tasksDone: number;
 };
 
-const mockContributors: Contributor[] = [
-  {
-    id: "1",
-    name: "Julie",
-    avatar: "https://i.pravatar.cc/100?img=47",
-    points: 556,
-  },
-  {
-    id: "2",
-    name: "Gloria",
-    avatar: "https://i.pravatar.cc/100?img=12",
-    points: 196,
-  },
-  {
-    id: "3",
-    name: "Gladys",
-    avatar: "https://i.pravatar.cc/100?img=33",
-    points: 536,
-  },
-  {
-    id: "4",
-    name: "Jane",
-    avatar: "https://i.pravatar.cc/100?img=5",
-    points: 877,
-  },
-  {
-    id: "5",
-    name: "Mark",
-    avatar: "https://i.pravatar.cc/100?img=15",
-    points: 742,
-  },
-  {
-    id: "6",
-    name: "Angela",
-    avatar: "https://i.pravatar.cc/100?img=44",
-    points: 418,
-  },
-  {
-    id: "7",
-    name: "Carlos",
-    avatar: "https://i.pravatar.cc/100?img=52",
-    points: 305,
-  },
-  {
-    id: "8",
-    name: "Yuki",
-    avatar: "https://i.pravatar.cc/100?img=25",
-    points: 689,
-  },
-  {
-    id: "9",
-    name: "Liam",
-    avatar: "https://i.pravatar.cc/100?img=68",
-    points: 123,
-  },
-  {
-    id: "10",
-    name: "Sofia",
-    avatar: "https://i.pravatar.cc/100?img=9",
-    points: 954,
-  },
-  {
-    id: "11",
-    name: "Daniel",
-    avatar: "https://i.pravatar.cc/100?img=60",
-    points: 267,
-  },
-  {
-    id: "12",
-    name: "Mei",
-    avatar: "https://i.pravatar.cc/100?img=32",
-    points: 811,
-  },
-  {
-    id: "13",
-    name: "Noah",
-    avatar: "https://i.pravatar.cc/100?img=14",
-    points: 372,
-  },
-  {
-    id: "14",
-    name: "Isabel",
-    avatar: "https://i.pravatar.cc/100?img=41",
-    points: 498,
-  },
-];
+// ⚠️ ADJUST THESE TO MATCH YOUR TASK TYPE. This is the only place that knows the shape.
+type AssigneeLike = {
+  project_member_id?: string; // id of the project member (ProjectMemberUserSnapshot.id)
+  user_id?: string; // fallback if the assignment references the user instead
+  effort_share?: number | string | null; // Share mechanic; null/undefined = whole task
+};
+
+type TaskWithAssignees = {
+  status: string;
+  complexity?: unknown; // "low" | "medium" | "high"
+  assigned_members?: AssigneeLike[];
+};
+
+const COMPLEXITY_POINTS: Record<string, number> = { low: 1, medium: 2, high: 3 };
+
+/** Complexity enum/string -> points. Unknown -> 0. */
+function complexityPoints(complexity: unknown): number {
+  return COMPLEXITY_POINTS[String(complexity ?? "").trim().toLowerCase()] ?? 0;
+}
+
+/** effort_share clamped to 0..1; missing or invalid means the whole task. */
+function shareOf(value: AssigneeLike["effort_share"]): number {
+  if (value === null || value === undefined) return 1;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(Math.max(n, 0), 1) : 1;
+}
+
+/** Credits one completed task gives to each assignee. Non-completed tasks give nothing. */
+function getTaskCredits(task: TaskWithAssignees) {
+  if (task.status !== "completed") return [];
+  const base = complexityPoints(task.complexity);
+  if (base === 0) return [];
+
+  return (task.assigned_members ?? []).flatMap((a) => {
+    const memberId = a.project_member_id ?? a.user_id;
+    return memberId ? [{ memberId, points: base * shareOf(a.effort_share) }] : [];
+  });
+}
+
+/** One row per regular member (advisors/instructors already filtered out), highest first. */
+function buildContributors(
+  members: ProjectMemberUserSnapshot[],
+  tasks: TaskWithAssignees[],
+): Contributor[] {
+  const totals = new Map<string, { points: number; tasksDone: number }>();
+
+  for (const task of tasks) {
+    for (const { memberId, points } of getTaskCredits(task)) {
+      const prev = totals.get(memberId) ?? { points: 0, tasksDone: 0 };
+      totals.set(memberId, {
+        points: prev.points + points,
+        tasksDone: prev.tasksDone + 1,
+      });
+    }
+  }
+
+  return members
+    .map((m) => {
+      // Assignments may reference the project member id or the user id; check both.
+      const byMember = totals.get(m.id);
+      const byUser = totals.get(m.user.id);
+      return {
+        id: m.id,
+        name: `${m.user.first_name.trim()} ${m.user.last_name.trim()}`,
+        initials: getInitials(m.user.first_name, m.user.last_name),
+        points:
+          Math.round(((byMember?.points ?? 0) + (byUser?.points ?? 0)) * 100) /
+          100,
+        tasksDone: (byMember?.tasksDone ?? 0) + (byUser?.tasksDone ?? 0),
+      };
+    })
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+}
 
 function ContributionList({
-  contributors = mockContributors,
+  contributors,
+  isLoading,
+  isError,
 }: {
-  contributors?: Contributor[];
+  contributors: Contributor[];
+  isLoading: boolean;
+  isError: boolean;
 }) {
-  const sorted = [...contributors].sort((a, b) => b.points - a.points);
+  if (isLoading) return <ContributionListSkeleton />;
 
   return (
     <Card className="rounded-xl border shadow-sm xl:sticky xl:top-4">
@@ -190,37 +186,45 @@ function ContributionList({
           </span>
         </div>
 
-        {/* Scrollable list: 6 rows visible (6 × 64px + 5 × 8px gaps) */}
-        <div className="flex h-[424px] flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
-          {sorted.map((person, index) => (
-            <div
-              key={person.id}
-              className="flex h-16 shrink-0 items-center gap-3 rounded-lg border border-muted/40 bg-muted/5 px-3 dark:border-muted/40 dark:bg-muted/20"
-            >
-              <span className="w-4 text-center text-xs font-semibold text-gray-400 dark:text-gray-500">
-                {index + 1}
-              </span>
-
-              <Avatar size="lg" className="size-10 shrink-0">
-                <AvatarImage src={person.avatar} alt={person.name} />
-                <AvatarFallback>
-                  {person.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-smw font-semibold text-card-foreground">
-                  {person.name}
+        {isError ? (
+          <p className="text-sm text-gray-400">Failed to load contributions.</p>
+        ) : contributors.length === 0 ? (
+          <p className="text-sm text-gray-400">No members yet.</p>
+        ) : (
+          /* Scrollable list: 6 rows visible (6 × 64px + 5 × 8px gaps) */
+          <div className="flex h-[424px] flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
+            {contributors.map((person, index) => (
+              <div
+                key={person.id}
+                className="flex h-16 shrink-0 items-center gap-3 rounded-lg border border-muted/40 bg-muted/5 px-3 dark:border-muted/40 dark:bg-muted/20"
+              >
+                <span className="w-4 text-center text-xs font-semibold text-gray-400 dark:text-gray-500">
+                  {index + 1}
                 </span>
-      
-              </div>
 
-              <span className="text-lg font-bold text-gray-800 dark:text-card-foreground">
-                {person.points}
-              </span>
-            </div>
-          ))}
-        </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800">
+                  <span className="text-xs font-bold text-primary-foreground dark:text-foreground">
+                    {person.initials}
+                  </span>
+                </div>
+
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-semibold text-card-foreground">
+                    {person.name}
+                  </span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {person.tasksDone} task{person.tasksDone === 1 ? "" : "s"}{" "}
+                    completed
+                  </span>
+                </div>
+
+                <span className="text-lg font-bold text-gray-800 dark:text-card-foreground">
+                  {person.points}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -619,6 +623,14 @@ export default function Team() {
     isError: isMembersError,
   } = useGetMembersWithUserSnapshot(project?.id ?? "");
 
+  // Same hook the Project Task page uses. Kept out of the page-level loading/error
+  // state so a failure here only affects the Contribution card.
+  const {
+    data: allProjectTasks = [],
+    isLoading: isTasksLoading,
+    isError: isTasksError,
+  } = useGetAllTaskAssignedMembers(project?.id ?? "");
+
   const isLoading = isProjectLoading || isMembersLoading;
   const isError = isProjectError || isMembersError;
 
@@ -637,6 +649,11 @@ export default function Team() {
 
   const countBy = (status: MemberStatus) =>
     regularMembers.filter((member) => statusOf(member) === status).length;
+
+  const contributors = buildContributors(
+    regularMembers,
+    allProjectTasks as unknown as TaskWithAssignees[],
+  );
 
   return (
     <AppLayout breadcrumbs={[{ label: "Team Members", href: "/Team" }]}>
@@ -735,7 +752,11 @@ export default function Team() {
             </section>
 
             <aside>
-              <ContributionList />
+              <ContributionList
+                contributors={contributors}
+                isLoading={isTasksLoading}
+                isError={isTasksError}
+              />
             </aside>
           </div>
         </div>

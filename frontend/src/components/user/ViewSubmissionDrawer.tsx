@@ -228,10 +228,6 @@ export function ViewSubmissionDrawer({
                 {task.deadline ? formatDateTime(task.deadline) : "No deadline"}
               </Row>
 
-              <Row icon={<Clock className="size-4" />} label="Completed At">
-                {formatDateTime(task.completed_at)}
-              </Row>
-
               <Row icon={<Clock className="size-4" />} label="Submitted By">
                 {task.assigned_members?.length ? (
                   task.assigned_members.map((m) => {
