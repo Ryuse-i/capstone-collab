@@ -1,8 +1,11 @@
 import { useId } from "react";
+import { Link } from "react-router-dom"; // change if you use a different router
+import { TriangleAlert, TrendingUp } from "lucide-react";
+import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
+
 import AppLayout from "@/layouts/Applayout";
 import GetStartedPage from "@/components/user/GetStartedPage";
-import { TriangleAlert, TrendingUp } from "lucide-react";
-import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -22,18 +25,26 @@ import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetAllProjectTask } from "@/hooks/useTask";
 import { useGetMemberActivities } from "@/hooks/useMemberActivity";
-import { Link } from "react-router-dom"; // change if you use a different router
-import { Button } from "@/components/ui/button";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
+import { useProjectHealth } from "@/hooks/useProjectHealth"; // adjust path
 import type { MemberStatus } from "@/types/member_snapshot";
+import type { HealthStatus, ProjectHealth } from "@/types/projectHealth"; // adjust path
 
-// Task status distribution for the bar chart replacement
-type TaskStatusDistribution = {
-  not_started: number;
-  in_progress: number;
-  submitted: number;
-  completed: number;
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+const ROUTES = {
+  tasks: "/tasks",
+  members: "/members",
 };
+
+// Sub-score bands: 80+ healthy, 60-79 watch, below 60 at risk.
+const GOOD_MIN = 80;
+const WARNING_MIN = 60;
+
+// Project roles that supervise the project but don't carry workload.
+const NON_MEMBER_ROLES = ["instructor", "advisor"];
 
 // ---------------------------------------------------------------------------
 // Health level helpers
@@ -41,25 +52,28 @@ type TaskStatusDistribution = {
 
 type HealthLevel = "good" | "warning" | "bad";
 
-// Adjust these lists to match the exact status strings your backend returns.
-const statusLevels: Record<HealthLevel, string[]> = {
-  good: ["healthy", "good", "on_track", "on track"],
-  warning: ["warning", "at_risk", "at risk", "caution", "moderate"],
-  bad: ["critical", "bad", "unhealthy", "danger", "off_track", "off track"],
+const statusToLevel: Record<HealthStatus, HealthLevel> = {
+  healthy: "good",
+  watch: "warning",
+  at_risk: "bad",
 };
 
-function getHealthLevel(status: string, score: number): HealthLevel {
-  const normalized = String(status ?? "")
-    .trim()
-    .toLowerCase();
+const statusLabel: Record<HealthStatus, string> = {
+  healthy: "Healthy",
+  watch: "Watch",
+  at_risk: "At Risk",
+};
 
-  if (statusLevels.good.includes(normalized)) return "good";
-  if (statusLevels.warning.includes(normalized)) return "warning";
-  if (statusLevels.bad.includes(normalized)) return "bad";
+const statusRank: Record<HealthStatus, number> = {
+  healthy: 0,
+  watch: 1,
+  at_risk: 2,
+};
 
-  // Fallback for unknown statuses: use the health score
-  if (score >= 70) return "good";
-  if (score >= 40) return "warning";
+function scoreToLevel(score: number | null): HealthLevel | null {
+  if (score === null) return null;
+  if (score >= GOOD_MIN) return "good";
+  if (score >= WARNING_MIN) return "warning";
   return "bad";
 }
 
@@ -71,6 +85,9 @@ const healthStyles: Record<
     title: string;
     badge: string;
     heading: string;
+    message: string;
+    bar: string;
+    text: string;
   }
 > = {
   good: {
@@ -79,20 +96,30 @@ const healthStyles: Record<
     title: "text-green-700 dark:text-green-500",
     badge: "border-green-600 text-green-600",
     heading: "Project Health On Track",
+    message: "Project is on track. Keep up the great work!",
+    bar: "bg-green-500",
+    text: "text-green-600",
   },
   warning: {
     border: "border-yellow-500 dark:border-yellow-500",
     icon: "text-yellow-500",
     title: "text-yellow-700 dark:text-yellow-500",
     badge: "border-yellow-600 text-yellow-600",
-    heading: "Project Health Warning",
+    heading: "Project Health: Watch",
+    message:
+      "Some health indicators need a closer look. See what needs attention below.",
+    bar: "bg-yellow-400",
+    text: "text-yellow-600",
   },
   bad: {
     border: "border-red-500 dark:border-red-500",
     icon: "text-red-500",
     title: "text-red-700 dark:text-red-500",
     badge: "border-red-600 text-red-600",
-    heading: "Project Health Alert",
+    heading: "Project Health: At Risk",
+    message: "The project is at risk. See what needs attention below.",
+    bar: "bg-red-500",
+    text: "text-red-600",
   },
 };
 
@@ -102,8 +129,115 @@ const workloadStyles: Record<MemberStatus, { bar: string; text: string }> = {
   normal: { bar: "bg-green-500", text: "text-green-600" },
 };
 
-// Project roles that supervise the project but don't carry workload.
-const NON_MEMBER_ROLES = ["instructor", "advisor"];
+// ---------------------------------------------------------------------------
+// Formatting helpers
+// ---------------------------------------------------------------------------
+
+const toPct = (ratio: number) => Math.round(ratio * 100);
+
+const plural = (n: number, one: string, many: string) =>
+  `${n} ${n === 1 ? one : many}`;
+
+const formatPoints = (n: number) =>
+  Number.isInteger(n) ? String(n) : n.toFixed(1);
+
+/** Explains why the status is worse than the score alone would give. */
+function getOverrideExplanation(health: ProjectHealth): string | null {
+  if (statusRank[health.status] <= statusRank[health.base_status]) return null;
+
+  const reasons: string[] = [];
+
+  if (health.overrides_applied.includes("overdue_rate")) {
+    reasons.push(
+      `${toPct(health.schedule.overdue_rate)}% of open tasks are overdue`,
+    );
+  }
+  if (health.overrides_applied.includes("chronic_escalation")) {
+    reasons.push(
+      `${plural(
+        health.risk.chronic_count,
+        "member is",
+        "members are",
+      )} chronically overloaded`,
+    );
+  }
+
+  const scoreText =
+    health.score === null
+      ? ""
+      : ` (score alone: ${Math.round(health.score)}, ${statusLabel[health.base_status]})`;
+
+  if (reasons.length === 0) {
+    return `${statusLabel[health.status]} due to an override rule${scoreText}`;
+  }
+
+  return `${statusLabel[health.status]} because ${reasons.join(" and ")}${scoreText}`;
+}
+
+// ---------------------------------------------------------------------------
+// "What needs attention" items
+// ---------------------------------------------------------------------------
+
+type AttentionItem = {
+  key: string;
+  score: number;
+  message: string;
+  href: string;
+};
+
+function getAttentionItems(health: ProjectHealth): AttentionItem[] {
+  const { schedule, balance, risk, activity } = health;
+
+  const scheduleMessage =
+    schedule.overdue_tasks > 0
+      ? `${plural(schedule.overdue_tasks, "task", "tasks")} overdue`
+      : schedule.spi !== null && schedule.spi < 1
+        ? `Behind schedule (SPI ${schedule.spi.toFixed(2)})`
+        : schedule.at_risk_tasks > 0
+          ? `${plural(schedule.at_risk_tasks, "task", "tasks")} due within 7 days`
+          : "Schedule is slipping";
+
+  const workloadMessage =
+    balance.overloaded_count > 0
+      ? `${plural(balance.overloaded_count, "member", "members")} overloaded`
+      : "Work is unevenly spread across the team";
+
+  const riskMessage =
+    risk.chronic_count > 0
+      ? `${plural(risk.chronic_count, "member", "members")} chronically overloaded`
+      : risk.unassigned_count > 0
+        ? `${plural(risk.unassigned_count, "task", "tasks")} unassigned`
+        : risk.spof_count > 0
+          ? `${plural(risk.spof_count, "task", "tasks")} depend on a single member`
+          : "Delivery risk is elevated";
+
+  const activityMessage = `${plural(
+    activity.stale_in_progress,
+    "task",
+    "tasks",
+  )} stalled in progress`;
+
+  const candidates: Array<{
+    key: string;
+    score: number | null;
+    message: string;
+    href: string;
+  }> = [
+    { key: "schedule", score: health.schedule_score, message: scheduleMessage, href: ROUTES.tasks },
+    { key: "workload", score: health.workload_balance_score, message: workloadMessage, href: ROUTES.members },
+    { key: "risk", score: health.risk_score, message: riskMessage, href: ROUTES.members },
+    { key: "activity", score: health.activity_score, message: activityMessage, href: ROUTES.tasks },
+  ];
+
+  const items: AttentionItem[] = [];
+  for (const c of candidates) {
+    if (c.score !== null && c.score < GOOD_MIN) {
+      items.push({ key: c.key, score: c.score, message: c.message, href: c.href });
+    }
+  }
+
+  return items.sort((a, b) => a.score - b.score).slice(0, 2);
+}
 
 // ---------------------------------------------------------------------------
 // Health Ring (circular progress, maroon)
@@ -113,15 +247,15 @@ function HealthRing({
   value,
   size = 120,
   stroke = 10,
-  label = "Project health",
+  label = "Health score",
 }: {
-  value: number;
+  value: number | null;
   size?: number;
   stroke?: number;
   label?: string;
 }) {
   const gradientId = useId();
-  const clamped = Math.min(Math.max(value, 0), 100);
+  const clamped = Math.min(Math.max(value ?? 0, 0), 100);
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clamped / 100) * circumference;
@@ -139,7 +273,6 @@ function HealthRing({
           </linearGradient>
         </defs>
 
-        {/* Track */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -149,27 +282,28 @@ function HealthRing({
           className="stroke-gray-200 dark:stroke-white/10"
         />
 
-        {/* Progress */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          stroke={`url(#${gradientId})`}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-700 ease-out"
-        />
+        {value !== null && (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            stroke={`url(#${gradientId})`}
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            className="transition-[stroke-dashoffset] duration-700 ease-out"
+          />
+        )}
       </svg>
 
       <div className="absolute flex flex-col items-center">
         <span className="text-2xl font-bold text-foreground">
-          {clamped.toFixed(0)}%
+          {value === null ? "N/A" : Math.round(clamped)}
         </span>
         <span className="text-xs text-gray-500 dark:text-(--semi-foreground)">
-          {label}
+          {value === null ? label : `/ 100`}
         </span>
       </div>
     </div>
@@ -177,74 +311,107 @@ function HealthRing({
 }
 
 // ---------------------------------------------------------------------------
-// Dashboard Skeleton
+// Skeletons
 // ---------------------------------------------------------------------------
+
+function BannerSkeleton() {
+  return (
+    <Card className="flex flex-row items-start justify-between rounded-lg border-4 p-4 lg:col-span-2">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded-full" />
+          <Skeleton className="h-5 w-48" />
+        </div>
+        <Skeleton className="h-4 w-full max-w-130" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      <Skeleton className="h-30 w-30 rounded-full" />
+    </Card>
+  );
+}
+
+function TilesSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((item) => (
+        <Card key={item} className="rounded-lg p-4 shadow-sm">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-16" />
+          <Skeleton className="h-2 w-full rounded-full" />
+          <Skeleton className="h-3 w-40" />
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function ActivityRowsSkeleton() {
+  return (
+    <div className="space-y-1">
+      {[1, 2, 3, 4, 5].map((item) => (
+        <div
+          key={item}
+          className="flex items-start justify-between border-b border-gray-100 px-2 py-2 pb-4 last:border-none"
+        >
+          <div className="flex items-start gap-4">
+            <Skeleton className="mt-2 h-3 w-3 shrink-0 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-72 max-w-[50vw]" />
+              <Skeleton className="h-3 w-40" />
+            </div>
+          </div>
+          <Skeleton className="h-3 w-12 shrink-0" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function DashboardSkeleton() {
   return (
     <div>
-      {/* Mirrors dashboard heading */}
       <Skeleton className="my-2 h-8 w-80" />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* ── Project Health Banner ─────────────────────────────── */}
-        <Card className="flex items-start justify-between rounded-lg border-4 p-4 lg:col-span-2">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5 rounded-full" />
-              <Skeleton className="h-5 w-48" />
-            </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <BannerSkeleton />
 
-            <Skeleton className="h-4 w-full max-w-130" />
-
-            <Skeleton className="h-4 w-64" />
-
-            <div className="flex gap-2">
-              <Skeleton className="h-6 w-20 rounded-full" />
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-2">
-            <Skeleton className="h-30 w-30 rounded-full" />
-          </div>
-        </Card>
-
-        {/* ── Project Progress ──────────────────────────────────── */}
         <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
           <div>
             <Skeleton className="h-5 w-56" />
             <Skeleton className="mt-2 h-4 w-40" />
           </div>
-
           <div className="mt-6">
             <div className="flex items-center justify-between">
               <Skeleton className="h-4 w-10" />
               <Skeleton className="h-4 w-28" />
             </div>
-
             <Skeleton className="mt-2 h-2 w-full rounded-full" />
           </div>
-
           <div className="flex flex-col gap-2 pt-4">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-10" />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-4 w-14" />
-            </div>
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-64" />
           </div>
         </Card>
 
-        {/* ── Bar Chart ──────────────────────────────────────────── */}
+        <TilesSkeleton />
+
         <Card className="rounded-lg p-4 shadow-sm">
+          <Skeleton className="h-5 w-40" />
+          <div className="mt-4 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-2 w-full rounded-full" />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="rounded-lg p-4 shadow-sm lg:col-span-2">
           <div className="p-2">
             <Skeleton className="h-6 w-48" />
             <Skeleton className="mt-2 h-4 w-32" />
           </div>
-
           <div className="mt-4 space-y-4">
             {["w-36", "w-52", "w-40", "w-20", "w-44", "w-48"].map(
               (width, index) => (
@@ -257,41 +424,369 @@ function DashboardSkeleton() {
           </div>
         </Card>
 
-        {/* ── Recent Activity ───────────────────────────────────── */}
-        <Card className="rounded-2xl border p-6 shadow-sm lg:col-span-2">
+        <Card className="rounded-2xl border p-6 shadow-sm lg:col-span-3">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <Skeleton className="h-6 w-40" />
               <Skeleton className="mt-2 h-4 w-56" />
             </div>
-
             <Skeleton className="h-7 w-28 rounded-full" />
           </div>
-
-          <div className="space-y-1">
-            {[1, 2, 3, 4, 5].map((item) => (
-              <div
-                key={item}
-                className="flex items-start justify-between border-b border-gray-100 px-2 py-2 pb-4 last:border-none"
-              >
-                <div className="flex items-start gap-4">
-                  <Skeleton className="mt-2 h-3 w-3 shrink-0 rounded-full" />
-
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-72 max-w-[50vw]" />
-                    <Skeleton className="h-3 w-40" />
-                  </div>
-                </div>
-
-                <Skeleton className="h-3 w-12 shrink-0" />
-              </div>
-            ))}
-          </div>
+          <ActivityRowsSkeleton />
         </Card>
       </div>
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Health banner (ring layout, health-model data)
+// ---------------------------------------------------------------------------
+
+function HealthBanner({ health }: { health: ProjectHealth }) {
+  const level = statusToLevel[health.status];
+  const style = healthStyles[level];
+  const needsAttention = level !== "good";
+  const overrideText = getOverrideExplanation(health);
+
+  return (
+    <Card
+      className={`relative flex flex-row items-start justify-between rounded-lg border-4 p-4 lg:col-span-2 ${style.border}`}
+    >
+      <span
+        className={`absolute right-4 top-4 rounded-full border px-3 py-1 text-xs ${style.badge}`}
+      >
+        {statusLabel[health.status]}
+      </span>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          {needsAttention && (
+            <TriangleAlert className={`h-5 w-5 ${style.icon}`} />
+          )}
+          <h2 className={`font-semibold ${style.title}`}>{style.heading}</h2>
+        </div>
+
+        <p className="text-sm text-gray-500 dark:text-card-foreground">
+          {overrideText ?? style.message}
+        </p>
+      </div>
+
+      <div className="mt-8">
+        <HealthRing value={health.score} />
+      </div>
+    </Card>
+  );
+}
+
+function HealthBannerMessage({
+  title,
+  description,
+  onRetry,
+}: {
+  title: string;
+  description: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <Card className="flex flex-row items-center justify-between rounded-lg border-4 border-gray-300 p-4 lg:col-span-2 dark:border-gray-600">
+      <div className="flex flex-col gap-1">
+        <h2 className="font-semibold text-foreground">{title}</h2>
+        <p className="text-sm text-gray-500 dark:text-card-foreground">
+          {description}
+        </p>
+      </div>
+
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded-md border px-3 py-1 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-[#303233]"
+        >
+          Retry
+        </button>
+      )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-score tiles
+// ---------------------------------------------------------------------------
+
+function ScoreTile({
+  title,
+  score,
+  detail,
+}: {
+  title: string;
+  score: number | null;
+  detail: string;
+}) {
+  const level = scoreToLevel(score);
+  const style = level ? healthStyles[level] : null;
+  const width = score === null ? 0 : Math.max(0, Math.min(100, score));
+
+  return (
+    <Card className="gap-2 rounded-lg p-4 shadow-sm">
+      <p className="text-sm font-medium text-gray-500 dark:text-(--semi-foreground)">
+        {title}
+      </p>
+
+      <p className={`text-2xl font-bold ${style ? style.text : "text-gray-400"}`}>
+        {score === null ? "N/A" : Math.round(score)}
+      </p>
+
+      <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+        <div
+          className={`h-2 rounded-full transition-all duration-500 ${
+            style ? style.bar : "bg-gray-300"
+          }`}
+          style={{ width: `${width}%` }}
+        />
+      </div>
+
+      <p className="text-xs text-gray-500 dark:text-(--semi-foreground)">
+        {detail}
+      </p>
+    </Card>
+  );
+}
+
+function SubScoreTiles({ health }: { health: ProjectHealth }) {
+  const { schedule, balance, risk, activity } = health;
+
+  const scheduleDetail = schedule.applicable
+    ? `${toPct(schedule.overdue_rate)}% overdue · SPI ${
+        schedule.spi === null ? "N/A" : schedule.spi.toFixed(2)
+      }`
+    : "No live tasks";
+
+  const workloadDetail = balance.applicable
+    ? `${balance.overloaded_count} overloaded · max load ${toPct(
+        balance.max_load_ratio,
+      )}%`
+    : "No open workload";
+
+  const riskDetail = `${risk.chronic_count} chronic · ${risk.unassigned_count} unassigned`;
+
+  const activityDetail = activity.applicable
+    ? `${activity.stale_in_progress} stalled`
+    : "Nothing in progress";
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
+      <ScoreTile title="Schedule" score={health.schedule_score} detail={scheduleDetail} />
+      <ScoreTile title="Workload balance" score={health.workload_balance_score} detail={workloadDetail} />
+      <ScoreTile title="Risk" score={health.risk_score} detail={riskDetail} />
+      <ScoreTile title="Activity" score={health.activity_score} detail={activityDetail} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// What needs attention
+// ---------------------------------------------------------------------------
+
+function AttentionList({ health }: { health: ProjectHealth }) {
+  const items = getAttentionItems(health);
+  const hasAnyScore = [
+    health.schedule_score,
+    health.workload_balance_score,
+    health.risk_score,
+    health.activity_score,
+  ].some((s) => s !== null);
+
+  return (
+    <Card className="gap-2 rounded-lg p-4 shadow-sm lg:col-span-3">
+      <h2 className="font-semibold text-foreground">What needs attention</h2>
+
+      {items.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
+          {hasAnyScore
+            ? "Nothing needs attention right now."
+            : "Not enough data yet to highlight anything."}
+        </p>
+      ) : (
+        <ul className="space-y-1">
+          {items.map((item) => {
+            const level = scoreToLevel(item.score) ?? "bad";
+            const style = healthStyles[level];
+
+            return (
+              <li key={item.key}>
+                <Link
+                  to={item.href}
+                  className="flex items-center justify-between rounded-lg px-2 py-2 text-sm transition hover:bg-gray-200 dark:hover:bg-[#303233]"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className={`h-3 w-3 rounded-full ${style.bar}`} />
+                    <span className="text-gray-700 dark:text-card-foreground">
+                      {item.message}
+                    </span>
+                  </span>
+                  <span className="text-gray-400">→</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recent activity pill (driven by activity metrics)
+// ---------------------------------------------------------------------------
+
+function ActivityPill({ health }: { health: ProjectHealth | undefined }) {
+  if (!health) return null;
+
+  const { stale_in_progress, recent_completions } = health.activity;
+
+  if (stale_in_progress > 0) {
+    return (
+      <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+        <TriangleAlert className="h-4 w-4" />
+        {stale_in_progress} stalled
+      </div>
+    );
+  }
+
+  if (recent_completions > 0) {
+    return (
+      <div className="flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-600">
+        <TrendingUp className="h-4 w-4" />
+        {recent_completions} completed this week
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600">
+      No recent completions
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Project progress card
+// ---------------------------------------------------------------------------
+
+function ProgressCard({
+  projectName,
+  health,
+  isHealthLoading,
+}: {
+  projectName: string | undefined;
+  health: ProjectHealth | undefined;
+  isHealthLoading: boolean;
+}) {
+  const header = (
+    <div>
+      <h2 className="font-semibold text-foreground dark:text-card-foreground">
+        {projectName}
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
+        Overall completion tracking
+      </p>
+    </div>
+  );
+
+  if (isHealthLoading) {
+    return (
+      <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
+        {header}
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-2 w-full rounded-full" />
+        <Skeleton className="h-4 w-64" />
+      </Card>
+    );
+  }
+
+  if (!health) {
+    return (
+      <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
+        {header}
+        <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
+          Progress unavailable
+        </p>
+      </Card>
+    );
+  }
+
+  const { schedule } = health;
+  const completion = schedule.completion_pct;
+  const spi = schedule.spi;
+
+  const spiColor =
+    spi === null
+      ? "text-gray-500"
+      : spi >= 1
+        ? "text-green-500"
+        : spi >= 0.8
+          ? "text-yellow-500"
+          : "text-red-500";
+
+  return (
+    <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
+      {header}
+
+      <div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium text-gray-700 dark:text-card-foreground">
+            {completion === null ? "N/A" : `${Math.round(completion)}%`}
+          </span>
+          <span className="text-gray-500 dark:text-card-foreground">
+            {formatPoints(schedule.completed_points)} pts /{" "}
+            {formatPoints(schedule.total_points)} pts total
+          </span>
+        </div>
+
+        <div className="h-2 w-full rounded-full bg-gray-200">
+          <div
+            className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
+            style={{ width: `${Math.max(0, Math.min(100, completion ?? 0))}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1 pt-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500 dark:text-card-foreground">
+            SPI:
+          </span>
+          <span className={`text-sm font-bold ${spiColor}`}>
+            {spi === null ? "N/A" : spi.toFixed(2)}
+          </span>
+        </div>
+
+        <p className="text-xs text-gray-500 dark:text-(--semi-foreground)">
+          {spi === null
+            ? "No points were due yet, so schedule performance can't be measured."
+            : `Earned ${formatPoints(schedule.earned_points)} of ${formatPoints(
+                schedule.planned_points,
+              )} points that were due.`}
+        </p>
+      </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chart data
+// ---------------------------------------------------------------------------
+
+type TaskStatusDistribution = {
+  not_started: number;
+  in_progress: number;
+  submitted: number;
+  completed: number;
+};
+
+const STATUS_BAR_COLOR = "var(--primary)";
+const DEADLINE_BAR_COLOR = "var(--chart-2)";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -308,7 +803,7 @@ export default function Dashboard() {
   } = useGetCurrentProject(user?.id ?? "");
 
   const {
-    data: userTasks,
+    data: projectTasks,
     isLoading: isTasksLoading,
     error: tasksError,
   } = useGetAllProjectTask(currentProject?.id ?? "");
@@ -316,39 +811,27 @@ export default function Dashboard() {
   const { data: memberActivities, isLoading: isActivitiesLoading } =
     useGetMemberActivities(currentProject?.id ?? "");
 
-  if (isError) {
-    console.error("Dashboard project error", error);
-  }
-
-  if (tasksError) {
-    console.error("Dashboard tasks error", tasksError);
-  }
-
   const { data: members = [], isLoading: isMembersLoading } =
     useGetMembersWithUserSnapshot(currentProject?.id ?? "");
 
+  // Health loads on its own: NOT part of isDashboardLoading, so a slow or
+  // failing health call only affects the health sections.
+  const {
+    data: health,
+    isLoading: isHealthLoading,
+    isError: isHealthError,
+    refetch: refetchHealth,
+  } = useProjectHealth(currentProject?.id);
+
+  if (isError) console.error("Dashboard project error", error);
+  if (tasksError) console.error("Dashboard tasks error", tasksError);
+
   const hasProject = Boolean(currentProject);
 
-  // Keep the skeleton visible while project data is loading.
-  // If a project exists, also wait for its snapshot before rendering
-  // the dashboard analytics.
-  const dataLoaded = !!currentProject && !!currentProject.snapshot;
-
   const isDashboardLoading =
-    isLoading ||
-    (!!currentProject && !currentProject.snapshot) ||
-    isTasksLoading ||
-    isActivitiesLoading ||
-    isMembersLoading;
+    isLoading || isTasksLoading || isActivitiesLoading || isMembersLoading;
 
-  const healthScore = currentProject?.snapshot?.health_score ?? 0;
-  const healthStatus = currentProject?.snapshot?.health_status ?? "healthy";
-  const scheduleVariance = currentProject?.snapshot?.schedule_variance ?? 0;
-  const progressPercentage = currentProject?.snapshot?.progress_percentage ?? 0;
-  const completedTasks = currentProject?.snapshot?.completed_tasks ?? 0;
-  const totalWorkload = currentProject?.snapshot?.total_workload_points ?? 0;
-  const expectedPercentage = currentProject?.snapshot?.expected_percentage ?? 0;
-
+  // Top members by workload
   const topMembers = members
     .filter(
       (member) =>
@@ -367,12 +850,7 @@ export default function Dashboard() {
     .sort((a, b) => b.pts - a.pts)
     .slice(0, 3);
 
-  // Banner color/level: good = green, warning = yellow, bad = red
-  const healthLevel = getHealthLevel(healthStatus, Number(healthScore));
-  const healthStyle = healthStyles[healthLevel];
-  const healthNeedsAttention = healthLevel !== "good";
-
-  // Calculate task status distribution for the bar chart replacement
+  // Project task status distribution
   const taskStatusDistribution: TaskStatusDistribution = {
     not_started: 0,
     in_progress: 0,
@@ -380,25 +858,27 @@ export default function Dashboard() {
     completed: 0,
   };
 
-  userTasks?.forEach((task) => {
-    if (task.status === "not_started") {
-      taskStatusDistribution.not_started++;
-    } else if (task.status === "in_progress") {
-      taskStatusDistribution.in_progress++;
-    } else if (task.status === "submitted") {
-      taskStatusDistribution.submitted++;
-    } else if (task.status === "completed") {
-      taskStatusDistribution.completed++;
-    }
+  projectTasks?.forEach((task) => {
+    if (task.status === "not_started") taskStatusDistribution.not_started++;
+    else if (task.status === "in_progress") taskStatusDistribution.in_progress++;
+    else if (task.status === "submitted") taskStatusDistribution.submitted++;
+    else if (task.status === "completed") taskStatusDistribution.completed++;
   });
 
-  // Prepare data for the task status bar chart
-  const taskChartData = [
-    { status: "Not Started", count: taskStatusDistribution.not_started },
-    { status: "In Progress", count: taskStatusDistribution.in_progress },
-    { status: "Submitted", count: taskStatusDistribution.submitted },
-    { status: "Completed", count: taskStatusDistribution.completed },
+  const taskChartData: Array<{ label: string; count: number; fill: string }> = [
+    { label: "Not Started", count: taskStatusDistribution.not_started, fill: STATUS_BAR_COLOR },
+    { label: "In Progress", count: taskStatusDistribution.in_progress, fill: STATUS_BAR_COLOR },
+    { label: "Submitted", count: taskStatusDistribution.submitted, fill: STATUS_BAR_COLOR },
+    { label: "Completed", count: taskStatusDistribution.completed, fill: STATUS_BAR_COLOR },
   ];
+
+  if (health) {
+    taskChartData.push(
+      { label: "Open", count: health.schedule.open_tasks, fill: DEADLINE_BAR_COLOR },
+      { label: "Overdue", count: health.schedule.overdue_tasks, fill: DEADLINE_BAR_COLOR },
+      { label: "Due ≤7d", count: health.schedule.at_risk_tasks, fill: DEADLINE_BAR_COLOR },
+    );
+  }
 
   const taskChartConfig: ChartConfig = {
     count: { label: "Task Count", color: "var(--chart-1)" },
@@ -407,16 +887,10 @@ export default function Dashboard() {
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
       {isDashboardLoading ? (
-        // Loading state
         <DashboardSkeleton />
       ) : !hasProject ? (
-        // No project yet → show onboarding
         <GetStartedPage />
-      ) : !dataLoaded ? (
-        // Project exists but snapshot is still unavailable
-        <DashboardSkeleton />
       ) : (
-        // Active project → show analytics
         <div>
           <h1 className="my-2 text-2xl font-bold text-(--text-h) dark:text-card-foreground">
             Overview of project health and team performance
@@ -424,104 +898,34 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* ── Project Health Banner ─────────────────────────────── */}
-            <Card
-              className={`relative flex items-start justify-between rounded-lg border-4 p-4 lg:col-span-2 ${healthStyle.border}`}
-            >
-              {/* Status badge pinned to the top right corner */}
-              <span
-                className={`absolute right-4 top-4 rounded-full border px-3 py-1 text-xs capitalize ${healthStyle.badge}`}
-              >
-                {healthStatus}
-              </span>
-
-              {/* Left: heading + description */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  {healthNeedsAttention && (
-                    <TriangleAlert className={`h-5 w-5 ${healthStyle.icon}`} />
-                  )}
-                  <h2 className={`font-semibold ${healthStyle.title}`}>
-                    {healthStyle.heading}
-                  </h2>
-                </div>
-
-                <p className="text-sm text-gray-500 dark:text-card-foreground">
-                  {scheduleVariance < 0 && healthNeedsAttention
-                    ? "The project is behind schedule and its overall health needs attention."
-                    : scheduleVariance < 0
-                      ? "The project is behind schedule. Review task progress and deadlines."
-                      : healthNeedsAttention
-                        ? "The project's overall health needs attention. Review workload and task progress."
-                        : "Project is on track. Keep up the great work!"}
-                </p>
-              </div>
-
-              {/* Right: health score ring, pushed below the badge */}
-              <div className="mt-8">
-                <HealthRing value={Number(healthScore)} />
-              </div>
-            </Card>
+            {isHealthLoading ? (
+              <BannerSkeleton />
+            ) : isHealthError || !health ? (
+              <HealthBannerMessage
+                title="Health unavailable"
+                description="We couldn't load the project health right now. The rest of the dashboard is unaffected."
+                onRetry={() => void refetchHealth()}
+              />
+            ) : (
+              <HealthBanner health={health} />
+            )}
 
             {/* ── Project Progress ──────────────────────────────────── */}
-            <Card className="flex h-full flex-col justify-evenly rounded-lg p-4 shadow-sm">
-              <div>
-                <h2 className="font-semibold text-foreground dark:text-card-foreground">
-                  {currentProject?.name}
-                </h2>
+            <ProgressCard
+              projectName={currentProject?.name}
+              health={health}
+              isHealthLoading={isHealthLoading}
+            />
 
-                <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
-                  Overall completion tracking
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700 dark:text-card-foreground">
-                    {progressPercentage}%
-                  </span>
-
-                  <span className="text-gray-500 dark:text-card-foreground">
-                    {Number(completedTasks).toFixed(0)} pts / {totalWorkload}{" "}
-                    total
-                  </span>
-                </div>
-
-                <div className="h-2 w-full rounded-full bg-gray-200">
-                  <div
-                    className="h-2 rounded-full bg-yellow-400 transition-all duration-500"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1 pt-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 dark:text-card-foreground">
-                    EXPECTED SCORE:
-                  </span>
-
-                  <span className="text-sm font-bold text-green-500">
-                    {expectedPercentage ?? 0}%
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 dark:text-card-foreground">
-                    SCHEDULE VARIANCE:
-                  </span>
-
-                  <span
-                    className={`text-sm font-bold ${
-                      Number(scheduleVariance) >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {Number(scheduleVariance).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </Card>
+            {/* ── Sub-score tiles + What needs attention ────────────── */}
+            {isHealthLoading ? (
+              <TilesSkeleton />
+            ) : health ? (
+              <>
+                <SubScoreTiles health={health} />
+                <AttentionList health={health} />
+              </>
+            ) : null}
 
             {/* ── Member Workload ───────────────────────────────────── */}
             <Card className="flex h-full flex-col rounded-lg p-4 shadow-sm">
@@ -556,9 +960,7 @@ export default function Dashboard() {
                           <span className="font-medium text-card-foreground">
                             {member.name}
                           </span>
-                          <span
-                            className={`text-xs font-semibold ${style.text}`}
-                          >
+                          <span className={`text-xs font-semibold ${style.text}`}>
                             {member.pts.toFixed(1)} pts ·{" "}
                             {member.capacityMultiplier.toFixed(1)}x
                           </span>
@@ -575,6 +977,7 @@ export default function Dashboard() {
                   })
                 )}
               </div>
+
               <div className="bottom-0 flex justify-center">
                 <Button asChild variant="outline" size="sm">
                   <Link to="/workload">See all</Link>
@@ -589,12 +992,13 @@ export default function Dashboard() {
                   <CardTitle>Task Status Distribution</CardTitle>
                   <CardDescription>
                     Current project task breakdown
+                    {health ? ", plus deadline counts" : ""}
                   </CardDescription>
                 </div>
-                <div className="item-center ">
+                <div className="item-center">
                   Total tasks:{" "}
                   <span className="rounded-full bg-(--maroon) px-3 py-1 text-sm font-medium text-white">
-                    {userTasks?.length ?? 0}
+                    {projectTasks?.length ?? 0}
                   </span>
                 </div>
               </CardHeader>
@@ -602,7 +1006,7 @@ export default function Dashboard() {
               <CardContent>
                 <ChartContainer
                   config={taskChartConfig}
-                  className="min-h-[200px] w-full h-[200px]"
+                  className="h-65 min-h-50 w-full"
                 >
                   <BarChart
                     accessibilityLayer
@@ -611,24 +1015,24 @@ export default function Dashboard() {
                     margin={{ left: 30 }}
                   >
                     <YAxis
-                      dataKey="status"
+                      dataKey="label"
                       type="category"
                       tickLine={false}
                       tickMargin={10}
                       axisLine={false}
                     />
-                    <XAxis type="number" allowDecimals={false} hide />
+                    <XAxis type="number" dataKey="count" allowDecimals={false} hide />
 
                     <ChartTooltip
                       cursor={false}
                       content={<ChartTooltipContent hideLabel />}
                     />
 
-                    <Bar
-                      dataKey="count"
-                      fill="var(--primary)"
-                      radius={[5, 5, 0, 0]}
-                    />
+                    <Bar dataKey="count" radius={5}>
+                      {taskChartData.map((entry) => (
+                        <Cell key={entry.label} fill={entry.fill} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ChartContainer>
               </CardContent>
@@ -641,45 +1045,20 @@ export default function Dashboard() {
                   <h2 className="text-xl font-semibold text-foreground">
                     Recent Activity
                   </h2>
-
                   <p className="text-sm text-gray-500 dark:text-(--semi-foreground)">
                     Latest team updates and progress
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-600">
-                  <TrendingUp className="h-4 w-4" />
-                  Active Team
-                </div>
+                <ActivityPill health={health} />
               </div>
 
               {isActivitiesLoading ? (
-                <div className="space-y-1">
-                  {[1, 2, 3, 4, 5].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-start justify-between border-b border-gray-100 px-2 py-2 pb-4 last:border-none"
-                    >
-                      <div className="flex items-start gap-4">
-                        <Skeleton className="mt-2 h-3 w-3 shrink-0 rounded-full" />
-
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-72 max-w-[50vw]" />
-                          <Skeleton className="h-3 w-40" />
-                        </div>
-                      </div>
-
-                      <Skeleton className="h-3 w-12 shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              ) : memberActivities === null ||
-                memberActivities === undefined ? (
-                <div className="text-center py-4 text-gray-500">
-                  No activities
-                </div>
+                <ActivityRowsSkeleton />
+              ) : memberActivities === null || memberActivities === undefined ? (
+                <div className="py-4 text-center text-gray-500">No activities</div>
               ) : memberActivities.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
+                <div className="py-4 text-center text-gray-500">
                   No recent activities to display
                 </div>
               ) : (
@@ -693,7 +1072,6 @@ export default function Dashboard() {
                         <div
                           className={`mt-2 h-3 w-3 rounded-full ${activity.color}`}
                         />
-
                         <div>
                           <p className="text-sm text-gray-700 dark:text-(--semi-foreground)">
                             <span className="font-semibold text-foreground">
@@ -706,7 +1084,6 @@ export default function Dashboard() {
                               {activity.task}
                             </span>
                           </p>
-
                           <p className="mt-1 text-xs text-gray-400">
                             Team collaboration update
                           </p>
