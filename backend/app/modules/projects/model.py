@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.modules.tasks.model import Task
     from app.modules.project_members.model import ProjectMember
     from app.modules.invitations.model import ProjectInvitation
+    from app.modules.invite_links.model import ProjectInviteLink
 
 
 class Project(Base):
@@ -69,6 +70,13 @@ class Project(Base):
 
     invitations: Mapped[list["ProjectInvitation"]] = relationship(
         "ProjectInvitation",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    invite_links: Mapped[list["ProjectInviteLink"]] = relationship(
+        "ProjectInviteLink",
         back_populates="project",
         cascade="all, delete-orphan",
         passive_deletes=True,

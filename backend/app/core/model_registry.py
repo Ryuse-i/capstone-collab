@@ -28,7 +28,8 @@ modules = [
     "app.modules.task_links.model",
     "app.modules.ai.retrieval",
     "app.modules.resource_links.model",
-    "app.modules.revision_notes.model"
+    "app.modules.revision_notes.model",
+    "app.modules.invite_links.model",
 ]
 
 
