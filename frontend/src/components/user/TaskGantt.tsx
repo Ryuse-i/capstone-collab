@@ -524,7 +524,7 @@ const GANTT_CSS_VARS: CSSProperties = {
 };
 
 // -------------------------------------------------------------------------
-// Dark mode override for the "Today" label
+// Injected CSS overrides (scrollbar hiding + "Today" label styling)
 // -------------------------------------------------------------------------
 //
 // EDIT HERE to change how the "Today" label looks in dark mode.
@@ -533,6 +533,18 @@ const GANTT_CSS_VARS: CSSProperties = {
 // -------------------------------------------------------------------------
 
 const GANTT_DARK_OVERRIDES = `
+  /* Hide scrollbars inside the Gantt (content is still scrollable) */
+  .task-gantt,
+  .task-gantt * {
+    -ms-overflow-style: none;   /* old Edge/IE */
+    scrollbar-width: none;      /* Firefox + modern Chromium */
+  }
+
+  .task-gantt::-webkit-scrollbar,
+  .task-gantt *::-webkit-scrollbar {
+    display: none;              /* Safari + older Chrome */
+  }
+
   .task-gantt .rmg-timeline-unit-current {
     background-color: #e5e7eb !important;
   }
@@ -793,7 +805,7 @@ export function TaskGanttView({
         ) : (
           <GanttChart
             tasks={groups}
-            showProgress
+            showProgress={false}
             editMode={false}
             showCurrentDateMarker
             todayLabel="Today"

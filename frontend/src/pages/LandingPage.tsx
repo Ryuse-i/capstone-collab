@@ -2,8 +2,10 @@ import { useEffect, useState, type ReactNode } from "react";
 // 1. Import Link from react-router-dom
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import workloadBalanceImage from "@/assets/landing page/workload balance.jpg";
+import workloadBalanceImage from "@/assets/landing page/workload balance.png";
+import contributionMetricsImage from "@/assets/landing page/contribution metrics.jpg";
 import dashboardImage from "@/assets/landing page/Dashboard.png";
+import taskApprovalImage from "@/assets/landing page/task approval.jpg";
 import psuLogo from "@/assets/psu-logo.jpg";
 import {
   CheckCircle2,
@@ -46,8 +48,16 @@ const FEATURES: Feature[] = [
   },
   {
     icon: <CheckCircle2 />,
+    title: "Contribution Metrics",
+    desc: "Track individual contributions with detailed metrics and visualizations.",
+    image: contributionMetricsImage,
+  },
+
+  {
+    icon: <CheckCircle2 />,
     title: "Task Approval Workflow",
     desc: "Structured review pipeline with AI-assisted evaluation and inline comments.",
+    image: taskApprovalImage,
   },
 ];
 
@@ -213,7 +223,7 @@ function FeatureSection() {
                       <img
                         src={feature.image}
                         alt={feature.title}
-                        className="absolute left-6 top-6 h-[125%] w-[125%] max-w-none rounded-tl-2xl object-cover object-top-left shadow-2xl ring-1 ring-black/5 sm:left-10 sm:top-10"
+                        className="absolute left-6 top-6 h-[90%] w-[90%] max-w-none rounded-tl-2xl object-cover object-top-left shadow-2xl ring-1 ring-black/5 sm:left-10 sm:top-10"
                       />
                     ) : (
                       <div className="absolute inset-5 flex flex-col items-center justify-center gap-5 rounded-2xl bg-white text-center shadow-sm dark:bg-slate-800">

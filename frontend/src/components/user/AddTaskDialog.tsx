@@ -175,6 +175,72 @@ const SKILL_OPTIONS: { value: Skill; label: string }[] = [
   { value: "Resource Management", label: "Resource Management" },
 ];
 
+/**
+ * Pulls the most useful message out of an error. Prefers the server's reason
+ * (Axios-style `response.data`) over the generic "Request failed with status
+ * code 400" message.
+ */
+function getErrorMessage(err: unknown, fallback: string): string {
+  const e = err as {
+    response?: {
+      data?: { message?: string | string[]; error?: string; detail?: string };
+    };
+    message?: string;
+  };
+
+  const data = e?.response?.data;
+  const fromServer = Array.isArray(data?.message)
+    ? data.message.join(", ")
+    : (data?.message ?? data?.error ?? data?.detail);
+
+  return fromServer || e?.message || fallback;
+}
+
+/** The reason of the first rejected result, or "unknown error". */
+function firstFailureReason(results: PromiseSettledResult<unknown>[]): string {
+  const rejected = results.find(
+    (r): r is PromiseRejectedResult => r.status === "rejected",
+  );
+
+  return rejected
+    ? getErrorMessage(rejected.reason, "unknown error")
+    : "unknown error";
+}
+
+// Declared outside AddTaskDialog so React doesn't remount it on every render.
+function MemberAvatar({
+  member,
+  className,
+  textClassName,
+}: {
+  member: AssignableMember;
+  className?: string;
+  textClassName?: string;
+}) {
+  const name = `${member.first_name} ${member.last_name}`.trim();
+  const initials =
+    `${member.first_name?.[0] ?? ""}${member.last_name?.[0] ?? ""}` || "?";
+
+  return (
+    <Avatar
+      title={name}
+      className={cn(
+        "size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800",
+        className,
+      )}
+    >
+      <AvatarFallback
+        className={cn(
+          "rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground dark:bg-gray-800 dark:text-foreground",
+          textClassName,
+        )}
+      >
+        {initials}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
 export interface AddTaskDialogProps {
   projectId?: string;
   onCreated?: () => void;
@@ -194,7 +260,7 @@ export function AddTaskDialog({
   const [supertaskForm, setSupertaskForm] =
     useState<SupertaskFormState>(initialSupertaskForm);
 
-  const [error, setError] = useState<string | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   const [primarySkillOpen, setPrimarySkillOpen] = useState(false);
   const [secondarySkillOpen, setSecondarySkillOpen] = useState(false);
@@ -218,6 +284,9 @@ export function AddTaskDialog({
   // The key of the most recent analysis request. Used to skip duplicate
   // requests and to ignore results that arrive after the inputs changed.
   const requestedKeyRef = useRef<string | null>(null);
+
+  // The reason the most recent analysis failed, so submit can show it.
+  const analysisErrorRef = useRef<string | null>(null);
 
   const createTaskMutation = useCreateTask();
   const createSupertaskMutation = useCreateSupertask();
@@ -318,12 +387,7 @@ export function AddTaskDialog({
       description,
       primary_skill: taskForm.primary_skill as Skill,
     };
-  }, [
-    taskType,
-    taskForm.name,
-    taskForm.description,
-    taskForm.primary_skill,
-  ]);
+  }, [taskType, taskForm.name, taskForm.description, taskForm.primary_skill]);
 
   const currentKey = useMemo(
     () => (analysisInput ? JSON.stringify(analysisInput) : null),
@@ -345,6 +409,8 @@ export function AddTaskDialog({
       setFailedKey(null);
 
       try {
+        analysisErrorRef.current = null;
+
         const result = await analyzeAsync(payload);
 
         // The inputs changed while we were waiting; drop this result.
@@ -355,6 +421,11 @@ export function AddTaskDialog({
         return result;
       } catch (err) {
         console.error("Failed to analyze task", err);
+
+        analysisErrorRef.current = getErrorMessage(
+          err,
+          "Couldn't analyze the task complexity.",
+        );
 
         if (requestedKeyRef.current === key) {
           setFailedKey(key);
@@ -384,7 +455,6 @@ export function AddTaskDialog({
     setTaskForm(initialTaskForm);
     setSupertaskForm(initialSupertaskForm);
     setTaskType("task");
-    setError(null);
 
     setPrimarySkillOpen(false);
     setAssignedMembersOpen(false);
@@ -401,6 +471,7 @@ export function AddTaskDialog({
     setFailedKey(null);
     setRationaleOpen(false);
     requestedKeyRef.current = null;
+    analysisErrorRef.current = null;
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -432,40 +503,6 @@ export function AddTaskDialog({
 
     setPrimarySkillOpen(false);
   };
-
-
-function MemberAvatar({
-  member,
-  className,
-  textClassName,
-}: {
-  member: AssignableMember;
-  className?: string;
-  textClassName?: string;
-}) {
-  const name = `${member.first_name} ${member.last_name}`.trim();
-  const initials =
-    `${member.first_name?.[0] ?? ""}${member.last_name?.[0] ?? ""}` || "?";
-
-  return (
-    <Avatar
-      title={name}
-      className={cn(
-        "size-8 border-2 border-gray-300 bg-primary dark:border-gray-600 dark:bg-gray-800",
-        className,
-      )}
-    >
-      <AvatarFallback
-        className={cn(
-          "rounded-full bg-primary text-10 font-bold uppercase text-primary-foreground dark:bg-gray-800 dark:text-foreground",
-          textClassName,
-        )}
-      >
-        {initials}
-      </AvatarFallback>
-    </Avatar>
-  );
-} 
 
   const toggleSecondarySkill = (skill: Skill) => {
     setTaskForm((prev) => {
@@ -534,66 +571,70 @@ function MemberAvatar({
   };
 
   const handleSubmit = async () => {
-    setError(null);
-
     if (!projectId?.trim()) {
-      setError("Project ID is required to create this item.");
+      toast.error("Project ID is required to create this item.");
       return;
     }
 
     if (taskType === "task") {
       if (!taskForm.name.trim()) {
-        setError("Task name is required.");
+        toast.error("Task name is required.");
         return;
       }
 
       if (!taskForm.description.trim()) {
-        setError("Description is required.");
+        toast.error("Description is required.");
         return;
       }
 
       if (!taskForm.deadline) {
-        setError("Deadline is required.");
+        toast.error("Deadline is required.");
         return;
       }
 
       if (!taskForm.primary_skill) {
-        setError("Primary skill is required.");
+        toast.error("Primary skill is required.");
         return;
       }
 
       if (taskForm.secondary_skills.length === 0) {
-        setError("At least one secondary skill is required.");
+        toast.error("At least one secondary skill is required.");
         return;
       }
 
       if (!user?.id) {
-        setError("Could not determine the current user. Please sign in again.");
+        toast.error(
+          "Could not determine the current user. Please sign in again.",
+        );
         return;
       }
     }
 
     if (taskType === "supertask") {
       if (!supertaskForm.name.trim()) {
-        setError("Supertask name is required.");
+        toast.error("Supertask name is required.");
         return;
       }
 
       if (!supertaskForm.description.trim()) {
-        setError("Supertask description is required.");
+        toast.error("Supertask description is required.");
         return;
       }
 
       if (!user?.id) {
-        setError("Could not determine the current user. Please sign in again.");
+        toast.error(
+          "Could not determine the current user. Please sign in again.",
+        );
         return;
       }
     }
 
+    setIsFinalizing(true);
+
     try {
       if (taskType === "task") {
         if (!analysisInput || !currentKey) {
-          setError(
+          toast.error(
             "Name, description and primary skill are required to rate the task.",
           );
           return;
@@ -607,8 +648,9 @@ function MemberAvatar({
             : await runAnalysis(analysisInput, currentKey);
 
         if (!analysisResult) {
-          setError(
-            "Couldn't analyze the task complexity. Please try again.",
+          toast.error(
+            analysisErrorRef.current ??
+              "Couldn't analyze the task complexity. Please try again.",
           );
           return;
         }
@@ -631,118 +673,106 @@ function MemberAvatar({
         };
 
         const createdTask = await createTaskMutation.mutateAsync(payload);
-
-        // Show the success toast as soon as the task exists, so it still
-        // appears even if a later step (attachments, members, reviewer) fails.
-        toast.success("Task created successfully.");
+        const createdTaskId = String(createdTask.id);
 
         queryClient.invalidateQueries({
           queryKey: taskKeys.listProject(projectId),
         });
 
-        if (pendingFiles.length > 0) {
-          const results = await Promise.allSettled(
-            pendingFiles.map((file) =>
-              uploadAttachmentMutation.mutateAsync({
-                task_id: String(createdTask.id),
-                file,
-              }),
+        // Run every follow-up hook first. Each one reports its own failure
+        // instead of throwing, so one failure never blocks the others.
+        const countFailed = (results: PromiseSettledResult<unknown>[]) =>
+          results.filter((r) => r.status === "rejected").length;
+
+        const [attachmentResults, linkResults, memberResults, reviewerResults] =
+          await Promise.all([
+            Promise.allSettled(
+              pendingFiles.map((file) =>
+                uploadAttachmentMutation.mutateAsync({
+                  task_id: createdTaskId,
+                  file,
+                }),
+              ),
             ),
-          );
-
-          const failed = results.filter(
-            (result) => result.status === "rejected",
-          ).length;
-
-          if (failed > 0) {
-            toast.error(
-              `Task was created, but ${failed} of ${pendingFiles.length} attachment(s) failed to upload. You can add them by editing the task.`,
-            );
-          }
-        }
-
-        // Links are only created once the task exists (same as attachments).
-        if (pendingLinks.length > 0) {
-          const results = await Promise.allSettled(
-            pendingLinks.map((link) =>
-              createTaskLinkMutation.mutateAsync({
-                task_id: String(createdTask.id),
-                link: { url: link.url, title: link.title },
-              }),
+            Promise.allSettled(
+              pendingLinks.map((link) =>
+                createTaskLinkMutation.mutateAsync({
+                  task_id: createdTaskId,
+                  link: { url: link.url, title: link.title },
+                }),
+              ),
             ),
-          );
-
-          const failed = results.filter(
-            (result) => result.status === "rejected",
-          ).length;
-
-          if (failed > 0) {
-            toast.error(
-              `Task was created, but ${failed} of ${pendingLinks.length} link(s) failed to save. You can add them by editing the task.`,
-            );
-          }
-        }
-
-        if (taskForm.assigned_members.length > 0) {
-          try {
-            await Promise.all(
+            Promise.allSettled(
               taskForm.assigned_members.map((member) =>
                 createAssignedMemberMutation.mutateAsync({
-                  projectId: projectId,
+                  projectId,
                   member: {
                     member_id: member.member_id,
                     task_id: createdTask.id,
                   },
                 }),
               ),
-            );
+            ),
+            selectedReviewerId
+              ? Promise.allSettled([
+                  createAssignedReviewerMutation.mutateAsync({
+                    member_id: selectedReviewerId,
+                    task_id: createdTaskId,
+                  }),
+                ])
+              : Promise.resolve([] as PromiseSettledResult<unknown>[]),
+          ]);
 
-            queryClient.invalidateQueries({
-              queryKey: assignedMemberKeys.task_list(createdTask.id),
-            });
+        const failedAttachments = countFailed(attachmentResults);
+        const failedLinks = countFailed(linkResults);
+        const failedMembers = countFailed(memberResults);
+        const failedReviewer = countFailed(reviewerResults);
 
-            queryClient.invalidateQueries({
-              queryKey: projectKeys.detailSnapshot(projectId),
-            });
-          } catch (assignErr) {
-            console.error("Failed to assign one or more members", assignErr);
-
-            toast.error(
-              "Task was created, but assigning some members failed. You can add them from the task detail page.",
-            );
-
-            onCreated?.();
-            handleOpenChange(false);
-            return;
-          }
+        if (taskForm.assigned_members.length > 0) {
+          queryClient.invalidateQueries({
+            queryKey: assignedMemberKeys.task_list(createdTask.id),
+          });
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.detailSnapshot(projectId),
+          });
         }
 
-        if (selectedReviewerId) {
-          try {
-            await createAssignedReviewerMutation.mutateAsync({
-              member_id: selectedReviewerId,
-              task_id: String(createdTask.id),
-            });
-          } catch (reviewerErr) {
-            console.error("Failed to assign reviewer", reviewerErr);
+        // Only now decide which toast to show.
+        const problems: string[] = [];
 
-            toast.error(
-              "Task was created, but assigning the reviewer failed. You can add them from the task detail page.",
-            );
+        if (failedAttachments > 0)
+          problems.push(
+            `${failedAttachments} of ${pendingFiles.length} attachment(s) failed to upload (${firstFailureReason(attachmentResults)})`,
+          );
+        if (failedLinks > 0)
+          problems.push(
+            `${failedLinks} of ${pendingLinks.length} link(s) failed to save (${firstFailureReason(linkResults)})`,
+          );
+        if (failedMembers > 0)
+          problems.push(
+            `${failedMembers} of ${taskForm.assigned_members.length} member assignment(s) failed (${firstFailureReason(memberResults)})`,
+          );
+        if (failedReviewer > 0)
+          problems.push(
+            `the reviewer assignment failed (${firstFailureReason(reviewerResults)})`,
+          );
 
-            onCreated?.();
-            handleOpenChange(false);
-            return;
-          }
+        if (problems.length === 0) {
+          toast.success("Task created successfully.");
+        } else {
+          console.error("Task follow-up steps failed", problems);
+          toast.error(
+            `Task was created, but ${problems.join("; ")}. You can fix these from the task detail page.`,
+          );
         }
       } else {
-        const payload = {
+        const supertaskPayload = {
           project_id: projectId.trim(),
           name: supertaskForm.name.trim(),
           description: supertaskForm.description.trim(),
         };
 
-        await createSupertaskMutation.mutateAsync(payload);
+        await createSupertaskMutation.mutateAsync(supertaskPayload);
 
         queryClient.invalidateQueries({
           queryKey: supertaskKeys.listProject(projectId),
@@ -754,15 +784,18 @@ function MemberAvatar({
       onCreated?.();
       handleOpenChange(false);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong while creating this item.",
+      console.error("Failed to create item", err);
+
+      toast.error(
+        getErrorMessage(err, "Something went wrong while creating this item."),
       );
+    } finally {
+      setIsFinalizing(false);
     }
   };
 
   const isSubmitting =
+    isFinalizing ||
     createTaskMutation.isPending ||
     createSupertaskMutation.isPending ||
     createAssignedMemberMutation.isPending ||
@@ -1062,8 +1095,6 @@ function MemberAvatar({
                       </div>
                     </PopoverContent>
                   </Popover>
-
-                 
                 </div>
 
                 <div className="space-y-2">
@@ -1223,7 +1254,7 @@ function MemberAvatar({
                               className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                             >
                               <div className="flex items-center gap-2">
-                                <MemberAvatar member={member}/>
+                                <MemberAvatar member={member} />
 
                                 <span>
                                   {member.first_name} {member.last_name}
@@ -1247,7 +1278,11 @@ function MemberAvatar({
                           key={member.member_id}
                           className="flex items-center gap-1.5 rounded-full border border-(--maroon)/20 bg-[#FBF3E7] dark:bg-[#FBF3E7]/20 py-0.5 pl-0.5 pr-2 text-xs text-[#231A2E] dark:text-[#FBF3E7]"
                         >
-                          <MemberAvatar member={member} className="size-6" textClassName="text-[9px]"/>
+                          <MemberAvatar
+                            member={member}
+                            className="size-6"
+                            textClassName="text-[9px]"
+                          />
                           {member.first_name} {member.last_name}
                           <button
                             type="button"
@@ -1328,7 +1363,7 @@ function MemberAvatar({
                               className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
                             >
                               <div className="flex items-center gap-2">
-                                <MemberAvatar member={member}/>
+                                <MemberAvatar member={member} />
 
                                 <span>
                                   {member.first_name} {member.last_name}
@@ -1348,7 +1383,11 @@ function MemberAvatar({
                   {selectedReviewer && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       <span className="flex items-center gap-1.5 rounded-full border border-(--maroon)/20 bg-[#FBF3E7] dark:bg-[#FBF3E7]/20 py-0.5 pl-0.5 pr-2 text-xs text-[#231A2E] dark:text-[#FBF3E7]">
-                        <MemberAvatar member={selectedReviewer} className="size-6" textClassName="text-[9px]"/>
+                        <MemberAvatar
+                          member={selectedReviewer}
+                          className="size-6"
+                          textClassName="text-[9px]"
+                        />
                         {selectedReviewer.first_name}{" "}
                         {selectedReviewer.last_name}
                         <button
@@ -1417,15 +1456,11 @@ function MemberAvatar({
                   <div className="flex h-9 items-center gap-2 rounded-md border bg-muted/30 px-3 text-sm">
                     {analysisIsCurrent && analysis ? (
                       <>
-                        <ComplexityBadge
-                          complexity={analysis.complexity}
-                        />
+                        <ComplexityBadge complexity={analysis.complexity} />
 
                         <button
                           type="button"
-                          onClick={() =>
-                            setRationaleOpen(true)
-                          }
+                          onClick={() => setRationaleOpen(true)}
                           className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-[#7A0C2E]/10 hover:text-[#7A0C2E]"
                           aria-label="Why was this complexity chosen?"
                           title="Why this complexity?"
@@ -1435,14 +1470,11 @@ function MemberAvatar({
                       </>
                     ) : !analysisInput ? (
                       <span className="text-muted-foreground">
-                        Fill in name, description and primary
-                        skill
+                        Fill in name, description and primary skill
                       </span>
                     ) : analysisFailed ? (
                       <>
-                        <span className="text-rose-600">
-                          Couldn't analyze.
-                        </span>
+                        <span className="text-rose-600">Couldn't analyze.</span>
 
                         <button
                           type="button"
@@ -1461,8 +1493,7 @@ function MemberAvatar({
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    Rated automatically by AI. Click the info
-                    icon to see why.
+                    Rated automatically by AI. Click the info icon to see why.
                   </p>
                 </div>
 
@@ -1483,12 +1514,6 @@ function MemberAvatar({
                 </div>
               </div>
             ) : null}
-
-            {error && (
-              <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {error}
-              </p>
-            )}
           </div>
         </div>
 
