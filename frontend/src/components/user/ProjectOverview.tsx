@@ -109,9 +109,6 @@ const plural = (n: number, one: string, many: string) =>
 const formatPoints = (n: number) =>
   Number.isInteger(n) ? String(n) : n.toFixed(1);
 
-const capitalize = (value: string) =>
-  value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
-
 function workloadPercent(points: number, expectedPoints: number) {
   if (expectedPoints > 0) {
     return Math.min(Math.max((points / expectedPoints) * 100, 0), 100);
@@ -278,9 +275,6 @@ type ProjectOverviewProps = {
   isHealthLoading: boolean;
   isHealthError: boolean;
 
-  /** Workload balance values from the project snapshot (same source as the Workload page). */
-  workloadBalance?: number | null;
-  imbalanceSeverity?: string | null;
   totalWorkloadPoints?: number | null;
 
   tasks: TaskResponseMembers[];
@@ -296,8 +290,6 @@ export default function ProjectOverview({
   health,
   isHealthLoading,
   isHealthError,
-  workloadBalance,
-  imbalanceSeverity,
   totalWorkloadPoints,
   tasks,
   isTasksLoading,
@@ -318,7 +310,14 @@ export default function ProjectOverview({
   const level = health ? statusToLevel[health.status] : null;
   const healthStyle = level ? levelStyles[level] : null;
 
-  const hasBalance = typeof workloadBalance === "number" && !Number.isNaN(workloadBalance);
+  // Workload balance card: same health-model source and bands as the Dashboard tile.
+  const balanceScore = health?.workload_balance_score ?? null;
+  const balanceLevel = scoreToLevel(balanceScore);
+  const balanceCaption = !health
+    ? "Couldn't load workload data"
+    : health.balance.applicable
+      ? `${health.balance.overloaded_count} overloaded · max load ${toPct(health.balance.max_load_ratio)}%`
+      : "No open workload";
 
   /* ---- Member workload (read-only) ---- */
   const memberWorkload = members
@@ -391,12 +390,17 @@ export default function ProjectOverview({
           />
         )}
 
-        <StatCard
-          label="Workload balance"
-          value={hasBalance ? `${Number(workloadBalance).toFixed(0)}%` : "None"}
-          caption={imbalanceSeverity ? `${capitalize(imbalanceSeverity)} imbalance` : "No severity data"}
-          icon={<BarChart3 className="h-4 w-4 text-[#7A0C2E]" />}
-        />
+        {isHealthLoading ? (
+          <StatCardSkeleton />
+        ) : (
+          <StatCard
+            label="Workload balance"
+            value={balanceScore === null ? "None" : `${Math.round(balanceScore)} / 100`}
+            caption={balanceCaption}
+            icon={<BarChart3 className="h-4 w-4 text-[#7A0C2E]" />}
+            valueClassName={balanceLevel ? levelStyles[balanceLevel].text : "text-foreground"}
+          />
+        )}
       </div>
 
       {/* ── Health summary banner ───────────────────────────────── */}

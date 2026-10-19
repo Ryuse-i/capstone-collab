@@ -938,6 +938,8 @@ export default function Dashboard() {
     count: { label: "Task Count", color: "var(--chart-1)" },
   };
 
+  const hasActivities = (memberActivities?.length ?? 0) > 0;
+
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
       {isDashboardLoading ? (
@@ -1096,6 +1098,7 @@ export default function Dashboard() {
             </Card>
 
             {/* ── Recent Activity ───────────────────────────────────── */}
+            {(hasActivities || isActivitiesError) && (
             <Card className="rounded-2xl border p-6 shadow-sm lg:col-span-3">
               <div className="mb-1 flex items-center justify-between">
                 <div>
@@ -1153,6 +1156,7 @@ export default function Dashboard() {
                 </div>
               )}
             </Card>
+            )}
           </div>
         </div>
       )}

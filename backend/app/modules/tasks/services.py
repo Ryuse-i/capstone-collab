@@ -12,6 +12,8 @@ from app.modules.project_members.model import Skills
 from app.modules.ai.service import score_task_complexity
 from app.modules.project_snapshots.services import ProjectSnapshotService
 from app.modules.project_snapshots.schema import ProjectSnapshotUpsert
+from app.modules.member_activities.model import ActivityType
+from app.modules.member_activities.services import MemberActivityService
 from .enums import Status
 from app.modules.assigned_members.repo import AssignedMemberRepo
 from uuid import UUID
@@ -40,19 +42,42 @@ class TaskService:
         return await repo.get_all()
 
     @staticmethod
-    async def create_task(db: AsyncSession, task: TaskCreate):
+    async def create_task(
+        db: AsyncSession, task: TaskCreate, user_id: UUID | None = None
+    ):
         repo = TaskRepo(db)
 
         # Create the task first
         created_task = await repo.create(task)
+
+        # Capture now: later commits can expire the instance, and attribute
+        # access on an expired instance fails on an async session
+        project_id = created_task.project_id
+        task_id = created_task.id
+        task_name = created_task.name
+
         # Sync the unassigned tasks count for the project
-        await ProjectSnapshotService.sync_unassigned_tasks(db, created_task.project_id)
+        await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
+
+        if user_id:
+            await MemberActivityService.log(
+                db,
+                project_id=project_id,
+                user_id=user_id,
+                type=ActivityType.TASK_CREATED,
+                message=f'Created task "{task_name}"',
+                task_id=task_id,
+            )
 
         return created_task
 
-
     @staticmethod
-    async def update_task(db: AsyncSession, db_item: Task, task: TaskUpdate):
+    async def update_task(
+        db: AsyncSession,
+        db_item: Task,
+        task: TaskUpdate,
+        user_id: UUID | None = None,
+    ):
         # Lazy import, same pattern you use elsewhere to avoid circular imports
         from app.modules.member_snapshots.services import MemberSnapshotService
 
@@ -64,6 +89,12 @@ class TaskService:
 
         updated_task = await repo.update(db_item, task)
 
+        # Capture now: later commits can expire the instance
+        project_id = updated_task.project_id
+        task_id = updated_task.id
+        task_name = updated_task.name
+        complexity = updated_task.complexity
+
         just_completed = (
             new_status == Status.COMPLETED and old_status != Status.COMPLETED
         )
@@ -74,17 +105,36 @@ class TaskService:
         )
 
         if just_completed or just_uncompleted:
-            points = MemberSnapshotService.complexity_to_points(updated_task.complexity)
+            points = MemberSnapshotService.complexity_to_points(complexity)
             if points:
                 delta = points if just_completed else -points
                 # Query directly instead of touching task.assigned_members,
                 # which would lazy-load and fail on an async session
-                assignments = await AssignedMemberRepo(db).get_task_members(updated_task.id)
+                assignments = await AssignedMemberRepo(db).get_task_members(task_id)
                 for assignment in assignments:
                     if assignment.member_id:
                         await MemberSnapshotService.add_contribution_points(
                             db, assignment.member_id, delta
                         )
+
+        # Log status transitions only (not every field edit)
+        if user_id and new_status is not None and new_status != old_status:
+            if just_completed:
+                message = f'Completed task "{task_name}"'
+            elif just_uncompleted:
+                message = f'Reopened task "{task_name}"'
+            else:
+                status_label = getattr(new_status, "value", new_status)
+                message = f'Moved task "{task_name}" to {status_label}'
+
+            await MemberActivityService.log(
+                db,
+                project_id=project_id,
+                user_id=user_id,
+                type=ActivityType.TASK_STATUS_CHANGED,
+                message=message,
+                task_id=task_id,
+            )
 
         return updated_task
 
@@ -98,7 +148,7 @@ class TaskService:
             await TaskAttachmentService.delete(db, att.id)
         result = await repo.delete(db_item)
         await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
-        project_workload = await ProjectSnapshotService.calculate_project_workload(db, db_item.project_id)
+        await ProjectSnapshotService.calculate_project_workload(db, project_id)
         return result
 
     @staticmethod

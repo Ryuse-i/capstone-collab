@@ -503,8 +503,6 @@ export default function ProjectView() {
                 health={health}
                 isHealthLoading={false}
                 isHealthError={isHealthError}
-                workloadBalance={snapshot?.workload_balance}
-                imbalanceSeverity={snapshot?.imbalance_severity}
                 totalWorkloadPoints={snapshot?.total_workload_points}
                 tasks={allProjectTasks ?? []}
                 isTasksLoading={false}

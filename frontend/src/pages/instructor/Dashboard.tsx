@@ -390,6 +390,7 @@ export default function InstructorDashboard() {
   );
   const visibleDeadlines = filteredDeadlines.slice(0, DEADLINE_VISIBLE_LIMIT);
   const hasMoreDeadlines = filteredDeadlines.length > DEADLINE_VISIBLE_LIMIT;
+  const hasActivity = activity.length > 0;
 
   // All of the user's projects: worst health first, then most awaiting feedback.
   const needsAttentionAll = useMemo(
@@ -659,6 +660,7 @@ export default function InstructorDashboard() {
           </div>
 
           {/* Recent activity (full width) */}
+          {hasActivity && (
           <div className="mt-6">
             <Card className="border p-5 shadow-sm">
               <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -698,6 +700,7 @@ export default function InstructorDashboard() {
               )}
             </Card>
           </div>
+          )}
         </div>
       )}
 
