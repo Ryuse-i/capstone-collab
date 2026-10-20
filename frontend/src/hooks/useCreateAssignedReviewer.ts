@@ -103,6 +103,7 @@ export function useGetOneAssignedReviewer(id: string) {
   return useQuery({
     queryKey: assignedReviewerKeys.detail(id),
     queryFn: () => api.getOneAssignedReviewer(id),
+    enabled: !!id
   });
 }
 
@@ -117,6 +118,7 @@ export function useGetTaskReviewers(taskId: string) {
   return useQuery({
     queryKey: assignedReviewerKeys.taskList(taskId),
     queryFn: () => api.getTaskReviewers(taskId),
+    enabled: !!taskId
   });
 }
 
@@ -124,6 +126,7 @@ export function useGetMemberReviewers(memberId: string) {
   return useQuery({
     queryKey: assignedReviewerKeys.memberList(memberId),
     queryFn: () => api.getMemberReviewers(memberId),
+    enabled: !!memberId
   });
 }
 

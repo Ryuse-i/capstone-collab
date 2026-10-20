@@ -14,6 +14,8 @@ from .schema import (
 from app.modules.redistribution_recommendations.redistribution_logic import generate_redistribution_options
 from app.modules.project_members.services import ProjectMemberService
 from app.modules.tasks.services import TaskService
+from app.modules.ai.service import determine_task_category
+from app.modules.project_members.model import Skills
 
 
 # Engine option type -> database enum
@@ -115,13 +117,22 @@ def _build_refs(opt: Dict[str, Any], task, donor, recipient) -> Dict[str, Any]:
 
     split = None
     if opt["type"] == "Split":
+        def _with_category(part: dict) -> dict:
+            try:
+                category = determine_task_category(Skills(part["primary_skill"])).value
+            except ValueError:
+                category = getattr(getattr(task, "category", None), "value", None)
+            return {**part, "category": category}
+
+        supertask_id = getattr(task, "supertask_id", None)
         split = {
             "task_name": getattr(task, "name", None),
-            "donor_part": d["donor_part"],
-            "recipient_part": d["recipient_part"],
+            "priority": getattr(getattr(task, "priority", None), "value", None),
+            "supertask_id": str(supertask_id) if supertask_id else None,
+            "donor_part": _with_category(d["donor_part"]),
+            "recipient_part": _with_category(d["recipient_part"]),
             "split_rationale": d["split_rationale"],
-        }
-
+        } 
 
 
     return {

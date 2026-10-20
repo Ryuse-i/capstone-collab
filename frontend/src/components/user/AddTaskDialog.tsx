@@ -876,7 +876,7 @@ export function AddTaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-name">Name</Label>
+              <Label htmlFor="item-name">Name <span className="text-red-500 flex">*</span></Label>
 
               <Input
                 id="item-name"
@@ -895,7 +895,7 @@ export function AddTaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-description">Description (required)</Label>
+              <Label htmlFor="item-description">Description <span className="text-red-500 flex">*</span></Label>
 
               <Textarea
                 id="item-description"
@@ -1036,7 +1036,7 @@ export function AddTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Primary Skill</Label>
+                  <Label>Primary Skill <span className="text-red-500 flex">*</span></Label>
 
                   <Popover
                     open={primarySkillOpen}
@@ -1098,7 +1098,7 @@ export function AddTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Secondary Skills</Label>
+                  <Label>Secondary Skills <span className="text-red-500 flex">*</span></Label>
 
                   <Popover
                     open={secondarySkillOpen}
@@ -1187,7 +1187,7 @@ export function AddTaskDialog({
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5" />
-                    Assigned Members
+                    Assigned Members <span className="text-red-500 flex">*</span>
                   </Label>
 
                   <Popover
@@ -1305,7 +1305,7 @@ export function AddTaskDialog({
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5" />
-                    Assigned Reviewer
+                    Assigned Reviewer <span className="text-red-500 flex">*</span>
                   </Label>
 
                   <Popover open={reviewerOpen} onOpenChange={setReviewerOpen}>
@@ -1409,7 +1409,7 @@ export function AddTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Deadline (required)</Label>
+                  <Label>Deadline <span className="text-red-500 flex">*</span></Label>
 
                   <Popover>
                     <PopoverTrigger asChild>

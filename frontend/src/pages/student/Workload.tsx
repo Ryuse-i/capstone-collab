@@ -39,6 +39,7 @@ import type {
   RecommendationType,
   RecommendationResponse,
 } from "@/types/redistributionRecommendation";
+import { SplitTaskDialog } from "@/components/user/SplitTaskDialog";
 
 const complexityColors = {
   high: "#ef4444",
@@ -180,10 +181,12 @@ function formatGeneratedAt(iso: string) {
 // Recommendation Card
 // ---------------------------------------------------------------------------
 
-function RecommendationCard({ item }: { item: RecommendationResponse }) {
+function RecommendationCard({ item, onApplied }: { item: RecommendationResponse; onApplied: () => void }) {
   const navigate = useNavigate();
   const { headline, reason } = splitDetail(item.detail);
   const link = buildTaskLink(item);
+  const [splitOpen, setSplitOpen] = useState(false);
+  const isSplit = item.suggestion_type === "split";
 
   const isReschedule = item.suggestion_type === "reschedule";
   const overdue = !!item.current_deadline && isPastDay(item.current_deadline);
@@ -219,10 +222,12 @@ function RecommendationCard({ item }: { item: RecommendationResponse }) {
           <Button
             variant="outline"
             size="sm"
-            disabled={!link}
-            onClick={() => link && navigate(link)}
+            disabled={!isSplit && !link}
+            onClick={() =>
+              isSplit ? setSplitOpen(true) : link && navigate(link)
+            }
           >
-            {goLabels[item.suggestion_type]}
+            {isSplit ? "View split" : goLabels[item.suggestion_type]}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </span>
@@ -288,6 +293,15 @@ function RecommendationCard({ item }: { item: RecommendationResponse }) {
           )}
         </div>
       </div>
+      {isSplit && (
+        <SplitTaskDialog
+          open={splitOpen}
+          onOpenChange={setSplitOpen}
+          item={item}
+          projectId={item.project_id}
+          onApplied={onApplied}
+        />
+      )}
     </div>
   );
 }
@@ -529,6 +543,11 @@ export default function Workload() {
     });
   };
 
+  const handleApplied = async () => {
+    await handleRefresh();
+    handleGenerate();
+  };
+
   const memberWorkload = members
     .filter(
       (member) =>
@@ -563,9 +582,7 @@ export default function Workload() {
   );
 
   const totalComplexityTasks =
-    complexityCounts.high +
-    complexityCounts.medium +
-    complexityCounts.low;
+    complexityCounts.high + complexityCounts.medium + complexityCounts.low;
 
   const complexityData = (["high", "medium", "low"] as const).map(
     (complexity) => ({
@@ -643,9 +660,7 @@ export default function Workload() {
               className="shrink-0"
             >
               <RefreshCw
-                className={`mr-2 h-4 w-4 ${
-                  isRefreshing ? "animate-spin" : ""
-                }`}
+                className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
               />
               {isRefreshing ? "Recalculating..." : "Recalculate"}
             </Button>
@@ -697,11 +712,7 @@ export default function Workload() {
                 `${Number(snapshot?.avg_workload ?? 0).toFixed(1)} PTS`,
                 "CURRENT AVERAGE",
               ],
-              [
-                "OVERLOADED",
-                overloadedCount.toString(),
-                "MEMBERS OVER LIMIT",
-              ],
+              ["OVERLOADED", overloadedCount.toString(), "MEMBERS OVER LIMIT"],
               [
                 "UNDERUTILIZED",
                 underutilizedCount.toString(),
@@ -801,10 +812,7 @@ export default function Workload() {
                   </Pie>
 
                   <Tooltip
-                    formatter={(value) => [
-                      `${Number(value).toFixed(0)}%`,
-                      "",
-                    ]}
+                    formatter={(value) => [`${Number(value).toFixed(0)}%`]}
                   />
 
                   <Legend
@@ -869,7 +877,9 @@ export default function Workload() {
                 size="sm"
                 onClick={handleGenerate}
                 disabled={
-                  generateRecommendations.isPending || isRefreshing || !projectId
+                  generateRecommendations.isPending ||
+                  isRefreshing ||
+                  !projectId
                 }
                 className="shrink-0"
               >
@@ -878,7 +888,9 @@ export default function Workload() {
                     generateRecommendations.isPending ? "animate-pulse" : ""
                   }`}
                 />
-                {generateRecommendations.isPending ? "Generating..." : "Generate"}
+                {generateRecommendations.isPending
+                  ? "Generating..."
+                  : "Generate"}
               </Button>
             </CardHeader>
 
@@ -890,7 +902,7 @@ export default function Workload() {
                 </p>
               ) : (
                 projectRecommendations.map((item) => (
-                  <RecommendationCard key={item.id} item={item} />
+                  <RecommendationCard key={item.id} item={item} onApplied={handleApplied}/>
                 ))
               )}
             </CardContent>

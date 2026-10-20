@@ -89,6 +89,7 @@ export function useGetAllProjectSupertasks(project_id: string) {
   return useQuery({
     queryKey: supertaskKeys.listProject(project_id),
     queryFn: () => api.getAllProjectSupertasks(project_id),
+    enabled: !!project_id
   });
 }
 

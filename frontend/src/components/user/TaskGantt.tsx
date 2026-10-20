@@ -26,6 +26,11 @@ const NOT_STARTED_COLOR = {
   textColor: "#334155",
 };
 
+const IN_PROGRESS_COLOR = {
+  backgroundColor: "#3b82f6",
+  textColor: "#ffffff",
+};
+
 const SUBMITTED_COLOR = {
   backgroundColor: "#eab308",
   textColor: "#ffffff",
@@ -36,13 +41,29 @@ const COMPLETED_COLOR = {
   textColor: "#ffffff",
 };
 
-const IN_PROGRESS_HUE = 217;
-
 // Minimum number of rows (real + invisible filler). 0 means the chart is
 // exactly as tall as its tasks, plus one invisible anchor row that keeps
 // the timeline stretched across the horizon.
 const MIN_GANTT_ROWS = 0;
 const HORIZON_MONTHS = 3;
+
+// -------------------------------------------------------------------------
+// Row (lane) packing
+// -------------------------------------------------------------------------
+//
+// Tasks reuse the first row where they don't collide with an earlier task,
+// like a typical Gantt. These two knobs keep rows from looking crammed:
+//
+// - MIN_OCCUPIED_DAYS: a task is treated as at least this wide when
+//   deciding if a row is free, so short tasks still have room for their
+//   name and avatars.
+// - MIN_GAP_DAYS: empty days required between two tasks sharing a row.
+//
+// Raise them for airier rows, lower them (or set the gap to 0) for denser.
+// -------------------------------------------------------------------------
+
+const MIN_OCCUPIED_DAYS = 4;
+const MIN_GAP_DAYS = 2;
 
 // Dummy raw object for placeholder tasks
 const dummyRaw: TaskResponseMembers = {
@@ -68,32 +89,8 @@ const dummyRaw: TaskResponseMembers = {
   updated_at: "",
 };
 
-function solidColorForProgress(hue: number, progress: number) {
-  const clamped = Math.min(100, Math.max(0, progress));
-
-  const saturation = 55 + (clamped / 100) * 25;
-  const lightness = 70 - (clamped / 100) * 28;
-
-  return {
-    backgroundColor: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-    textColor: lightness > 60 ? "#1f2937" : "#ffffff",
-  };
-}
-
-function pastelColorForProgress(hue: number, progress: number) {
-  const clamped = Math.min(100, Math.max(0, progress));
-
-  const saturation = 30 + (clamped / 100) * 15;
-  const lightness = 80 + (clamped / 100) * 10;
-
-  return {
-    backgroundColor: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-    textColor: lightness > 60 ? "#1f2937" : "#ffffff",
-  };
-}
-
 // -------------------------------------------------------------------------
-// Date + progress resolution per status
+// Date resolution per status
 // -------------------------------------------------------------------------
 
 function normalizeStatus(raw: unknown): TaskStatus {
@@ -146,7 +143,6 @@ function safeDate(value: string | null | undefined, fallback: Date): Date {
 interface Resolved {
   startDate: Date;
   endDate: Date;
-  percent: number;
 }
 
 function clampRange(startDate: Date, endDate: Date): [Date, Date] {
@@ -169,11 +165,7 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
       const [startDate, endDate] = clampRange(start, end);
 
-      return {
-        startDate,
-        endDate,
-        percent: 0,
-      };
+      return { startDate, endDate };
     }
 
     case "in_progress": {
@@ -183,21 +175,7 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
       const [startDate, endDate] = clampRange(start, end);
 
-      const total = endDate.getTime() - startDate.getTime();
-
-      const startOfToday = new Date(now);
-      startOfToday.setHours(0, 0, 0, 0);
-
-      const elapsed = Math.max(0, startOfToday.getTime() - startDate.getTime());
-
-      const percent =
-        total > 0 ? Math.min(99, Math.max(1, (elapsed / total) * 100)) : 1;
-
-      return {
-        startDate,
-        endDate,
-        percent,
-      };
+      return { startDate, endDate };
     }
 
     case "submitted": {
@@ -209,11 +187,7 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
       const [startDate, endDate] = clampRange(start, end);
 
-      return {
-        startDate,
-        endDate,
-        percent: 90,
-      };
+      return { startDate, endDate };
     }
 
     case "completed": {
@@ -225,11 +199,7 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
       const [startDate, endDate] = clampRange(start, end);
 
-      return {
-        startDate,
-        endDate,
-        percent: 100,
-      };
+      return { startDate, endDate };
     }
 
     default: {
@@ -239,11 +209,7 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 
       const [startDate, endDate] = clampRange(start, end);
 
-      return {
-        startDate,
-        endDate,
-        percent: 0,
-      };
+      return { startDate, endDate };
     }
   }
 }
@@ -252,16 +218,53 @@ function resolveTask(task: TaskResponseMembers): Resolved {
 // Task colors
 // -------------------------------------------------------------------------
 
-function resolveColor(status: TaskStatus, percent: number) {
+// -------------------------------------------------------------------------
+// Deadline warning
+// -------------------------------------------------------------------------
+
+const OVERDUE_COLOR = "#dc2626";
+
+// Statuses that are never flagged as overdue. Add "submitted" here if a
+// task waiting for review shouldn't be flagged after its deadline.
+const OVERDUE_EXEMPT_STATUSES: TaskStatus[] = ["completed"];
+
+/**
+ * A task is overdue when it has a deadline that has passed and it isn't
+ * in an exempt status. Date-only deadlines (e.g. "2026-10-20") count as
+ * overdue only after the end of that day in the user's local time.
+ */
+function isTaskOverdue(task: TaskResponseMembers): boolean {
+  if (!task.deadline) return false;
+
+  const status = normalizeStatus(task.status);
+  if (OVERDUE_EXEMPT_STATUSES.includes(status)) return false;
+
+  let deadline: Date;
+
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(task.deadline);
+
+  if (dateOnly) {
+    const [, y, m, d] = dateOnly;
+    deadline = new Date(Number(y), Number(m) - 1, Number(d), 23, 59, 59, 999);
+  } else {
+    deadline = new Date(task.deadline);
+  }
+
+  if (Number.isNaN(deadline.getTime())) return false;
+
+  return Date.now() > deadline.getTime();
+}
+
+function resolveColor(status: TaskStatus) {
   switch (status) {
+    case "in_progress":
+      return IN_PROGRESS_COLOR;
+
     case "submitted":
       return SUBMITTED_COLOR;
 
     case "completed":
       return COMPLETED_COLOR;
-
-    case "in_progress":
-      return solidColorForProgress(IN_PROGRESS_HUE, percent);
 
     case "not_started":
     default:
@@ -605,7 +608,7 @@ export function TaskGanttView({
   };
 
   // -----------------------------------------------------------------------
-  // Build one flat task group
+  // Build rows: tasks reuse a row when they don't overlap in time
   // -----------------------------------------------------------------------
 
   const realGroups = useMemo<TaskGroup[]>(() => {
@@ -613,32 +616,56 @@ export function TaskGanttView({
       return [];
     }
 
-    return tasks
+    const ganttTasks: GanttCustomTask[] = tasks
       .map((task) => {
         const status: TaskStatus = normalizeStatus(task.status);
 
-        const { startDate, endDate, percent } = resolveTask(task);
-
-        const ganttTask: GanttCustomTask = {
-          id: task.id,
-          name: task.name,
-          startDate,
-          endDate,
-          percent,
-          status,
-          raw: task,
-        };
+        const { startDate, endDate } = resolveTask(task);
 
         return {
           id: task.id,
           name: task.name,
-          tasks: [ganttTask],
-        };
+          startDate,
+          endDate,
+          status,
+          raw: task,
+        } as GanttCustomTask;
       })
       .sort(
         (a, b) =>
-          a.tasks[0].startDate.getTime() - b.tasks[0].startDate.getTime(),
+          a.startDate.getTime() - b.startDate.getTime() ||
+          a.endDate.getTime() - b.endDate.getTime(),
       );
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    // Each lane remembers when it becomes free again (including the
+    // minimum width and gap padding).
+    const lanes: { freeFrom: number; tasks: GanttCustomTask[] }[] = [];
+
+    for (const t of ganttTasks) {
+      const start = t.startDate.getTime();
+
+      const occupiedEnd =
+        Math.max(t.endDate.getTime(), start + MIN_OCCUPIED_DAYS * DAY_MS) +
+        MIN_GAP_DAYS * DAY_MS;
+
+      // First lane that is already free by the time this task starts
+      const lane = lanes.find((l) => l.freeFrom <= start);
+
+      if (lane) {
+        lane.tasks.push(t);
+        lane.freeFrom = occupiedEnd;
+      } else {
+        lanes.push({ freeFrom: occupiedEnd, tasks: [t] });
+      }
+    }
+
+    return lanes.map((lane, i) => ({
+      id: `lane-${i}`,
+      name: `Row ${i + 1}`,
+      tasks: lane.tasks,
+    }));
   }, [tasks]);
 
   // -----------------------------------------------------------------------
@@ -668,7 +695,6 @@ export function TaskGanttView({
             name: "",
             startDate: startOfToday,
             endDate: isAnchor ? horizonEnd : startOfToday,
-            percent: 0,
             status: "not_started",
             raw: dummyRaw,
           } as GanttCustomTask,
@@ -689,8 +715,10 @@ export function TaskGanttView({
       return;
     }
 
-    const starts = groups.map((g) => g.tasks[0].startDate.getTime());
-    const ends = groups.map((g) => g.tasks[0].endDate.getTime());
+    const allTasks = groups.flatMap((g) => g.tasks);
+
+    const starts = allTasks.map((t) => t.startDate.getTime());
+    const ends = allTasks.map((t) => t.endDate.getTime());
 
     rangeRef.current = {
       start: new Date(Math.min(...starts)),
@@ -828,7 +856,7 @@ export function TaskGanttView({
                 };
               }
 
-              return resolveColor(t.status, t.percent ?? 0);
+              return resolveColor(t.status);
             }}
             // -------------------------------------------------------------
             // Custom task renderer
@@ -836,9 +864,12 @@ export function TaskGanttView({
             renderTask={({ task, isHovered }) => {
               const t = task as GanttCustomTask;
 
-              const color = resolveColor(t.status, t.percent ?? 0);
+              const color = resolveColor(t.status);
+
+              const overdue = t.name !== "" && isTaskOverdue(t.raw);
 
               const taskStyle: CSSProperties = {
+                boxSizing: "border-box",
                 width: "100%",
                 height: "var(--rmg-task-height, 85px)",
                 display: "flex",
@@ -872,34 +903,16 @@ export function TaskGanttView({
               }
 
               // -----------------------------------------------------------
-              // In progress
-              // -----------------------------------------------------------
-              else if (t.status === "in_progress") {
-                const passed = solidColorForProgress(
-                  IN_PROGRESS_HUE,
-                  t.percent ?? 0,
-                );
-
-                const upcoming = pastelColorForProgress(IN_PROGRESS_HUE, 0);
-
-                taskStyle.background = `linear-gradient(
-                    to right,
-                    ${passed.backgroundColor} 0%,
-                    ${passed.backgroundColor} ${t.percent ?? 0}%,
-                    ${upcoming.backgroundColor} ${t.percent ?? 0}%,
-                    ${upcoming.backgroundColor} 100%
-                  )`;
-
-                taskStyle.color = passed.textColor;
-              }
-
-              // -----------------------------------------------------------
-              // Other statuses
+              // Real tasks: flat color per status
               // -----------------------------------------------------------
               else {
                 taskStyle.backgroundColor = color.backgroundColor;
 
                 taskStyle.color = color.textColor;
+
+                if (overdue) {
+                  taskStyle.border = `2px solid ${OVERDUE_COLOR}`;
+                }
               }
 
               const members = t.raw.assigned_members ?? [];
@@ -908,22 +921,50 @@ export function TaskGanttView({
                 <div style={taskStyle}>
                   <span
                     style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
                       overflow: "hidden",
-                      textOverflow: "ellipsis",
                       minWidth: 0,
                     }}
                   >
-                    {t.name}
+                    {overdue && (
+                      <span
+                        title="Past deadline"
+                        aria-label="Past deadline"
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "9999px",
+                          backgroundColor: "#ffffff",
+                          color: OVERDUE_COLOR,
+                          fontSize: 14,
+                          fontWeight: 800,
+                          lineHeight: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        !
+                      </span>
+                    )}
+
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        minWidth: 0,
+                      }}
+                    >
+                      {t.name}
+                    </span>
                   </span>
 
                   <AvatarStack
                     members={members}
-                    ringColor={
-                      t.status === "in_progress"
-                        ? solidColorForProgress(IN_PROGRESS_HUE, t.percent ?? 0)
-                            .backgroundColor
-                        : color.backgroundColor
-                    }
+                    ringColor={color.backgroundColor}
                   />
                 </div>
               );

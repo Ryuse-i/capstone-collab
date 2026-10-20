@@ -1,8 +1,27 @@
 // src/services/api.ts
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+import API_BASE_URL from "./config";
+import {
+  getStoredToken,
+  getStoredRefreshToken,
+  storeToken,
+  storeRefreshToken,
+  clearToken,
+  clearRefreshToken,
+  refreshAccessTokenOnce,
+  forceLogout,
+} from "./auth";
 
 export default API_BASE_URL;
+
+// Re-export so existing `import { ... } from "./api"` statements keep working
+export {
+  getStoredToken,
+  getStoredRefreshToken,
+  storeToken,
+  storeRefreshToken,
+  clearToken,
+  clearRefreshToken,
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,141 +109,49 @@ function parseApiError(error: ApiError): string {
   return "An unexpected error occurred.";
 }
 
-// ─── Token storage ────────────────────────────────────────────────────────────
+// ─── Core fetch with refresh logic ───────────────────────────────────────────
 
-export function getStoredToken(): string | null {
-  return localStorage.getItem("access_token");
+async function throwApiError(response: Response): Promise<never> {
+  let error: ApiError = { detail: "An unexpected error occurred." };
+  try {
+    error = await response.json();
+  } catch {
+    /* non-JSON body */
+  }
+  throw new Error(parseApiError(error));
 }
 
-export function storeToken(token: string): void {
-  localStorage.setItem("access_token", token);
-}
+/**
+ * Fetch JSON. On a 401, refresh the access token once (shared with every other
+ * caller via refreshAccessTokenOnce) and retry the request. Only a failed
+ * refresh logs the user out.
+ *
+ * Pass retryOn401 = false for endpoints where a 401 is a normal answer
+ * (e.g. login with bad credentials).
+ */
+export async function fetchWithRefresh<T>(
+  url: string,
+  init: RequestInit = {},
+  retryOn401 = true,
+): Promise<T> {
+  let response = await fetch(url, init);
 
-export function clearToken(): void {
-  localStorage.removeItem("access_token");
-}
-
-export function getStoredRefreshToken(): string | null {
-  return localStorage.getItem("refresh_token");
-}
-
-export function storeRefreshToken(token: string): void {
-  localStorage.setItem("refresh_token", token);
-}
-
-export function clearRefreshToken(): void {
-  localStorage.removeItem("refresh_token");
-}
-
-// ─── Refresh token handling ────────────────────────────────────────────────────
-
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-
-function subscribeTokenRefresh(cb: (token: string) => void) {
-  refreshSubscribers.push(cb);
-}
-
-function onRefreshed(token: string) {
-  refreshSubscribers.map(cb => cb(token));
-  refreshSubscribers = [];
-}
-
-async function refreshAccessToken(): Promise<string | null> {
-  if (isRefreshing) {
-    return new Promise(resolve => {
-      subscribeTokenRefresh(token => {
-        resolve(token);
-      });
+  if (response.status === 401 && retryOn401) {
+    const newAccessToken = await refreshAccessTokenOnce();
+    if (!newAccessToken) {
+      forceLogout();
+      throw new Error("Session expired. Please log in again.");
+    }
+    response = await fetch(url, {
+      ...init,
+      headers: {
+        ...init.headers,
+        Authorization: `Bearer ${newAccessToken}`,
+      },
     });
   }
 
-  isRefreshing = true;
-  return new Promise(async (resolve) => {
-    const refreshToken = getStoredRefreshToken();
-    if (!refreshToken) {
-      isRefreshing = false;
-      resolve(null);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Refresh failed: ${response.status}`);
-      }
-
-      const data: RefreshTokenResponse = await response.json();
-      const { access_token, refresh_token } = data;
-
-      storeToken(access_token);
-      storeRefreshToken(refresh_token);
-      isRefreshing = false;
-      onRefreshed(access_token);
-      resolve(access_token);
-    } catch (err) {
-      console.error("Refresh token error:", err);
-      clearToken();
-      clearRefreshToken();
-      isRefreshing = false;
-      resolve(null);
-    }
-  });
-}
-
-// ─── Core fetch with refresh logic ───────────────────────────────────────────
-
-export async function fetchWithRefresh<T>(
-  url: string,
-  init: RequestInit = {}
-): Promise<T> {
-  let response = await fetch(url, init);
-  if (response.status === 401) {
-    const newAccessToken = await refreshAccessToken();
-    if (newAccessToken) {
-      // Retry with new token
-      const newInit = {
-        ...init,
-        headers: {
-          ...init.headers,
-          Authorization: `Bearer ${newAccessToken}`,
-        },
-      };
-      response = await fetch(url, newInit);
-      if (!response.ok) {
-        let error: ApiError = { detail: "An unexpected error occurred." };
-        try {
-          error = await response.json();
-        } catch {
-          /* non-JSON body */
-        }
-        throw new Error(parseApiError(error));
-      }
-      return response.json() as Promise<T>;
-    } else {
-      // Refresh failed or no refresh token
-      clearToken();
-      clearRefreshToken();
-      window.dispatchEvent(new Event("auth:expired"));
-      throw new Error("Session expired. Please log in again.");
-    }
-  }
-
-  if (!response.ok) {
-    let error: ApiError = { detail: "An unexpected error occurred." };
-    try {
-      error = await response.json();
-    } catch {
-      /* non-JSON body */
-    }
-    throw new Error(parseApiError(error));
-  }
-
+  if (!response.ok) await throwApiError(response);
   return response.json() as Promise<T>;
 }
 
@@ -255,7 +182,8 @@ export async function loginUser(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
-    }
+    },
+    false, // a 401 here means bad credentials, not an expired session
   );
   storeToken(response.access_token);
   storeRefreshToken(response.refresh_token);
@@ -264,17 +192,22 @@ export async function loginUser(
 
 /**
  * POST /auth/jwt/logout
+ * Tokens are always cleared, even if the request fails.
  */
 export async function logoutUser(): Promise<void> {
-  await fetchWithRefresh<void>(
-    `${API_BASE_URL}/auth/jwt/logout`,
-    {
-      method: "POST",
-      headers: authHeaders(),
-    }
-  );
-  clearToken();
-  clearRefreshToken();
+  try {
+    await fetchWithRefresh<void>(
+      `${API_BASE_URL}/auth/jwt/logout`,
+      {
+        method: "POST",
+        headers: authHeaders(),
+      },
+      false,
+    );
+  } finally {
+    clearToken();
+    clearRefreshToken();
+  }
 }
 
 /**
@@ -291,7 +224,8 @@ export async function registerUser(
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(credentials),
-    }
+    },
+    false,
   );
 }
 
@@ -299,33 +233,24 @@ export async function registerUser(
 
 /** GET /users/me */
 export async function getCurrentUser(): Promise<UserRead> {
-  return await fetchWithRefresh<UserRead>(
-    `${API_BASE_URL}/users/me`,
-    {
-      headers: authHeaders(),
-    }
-  );
+  return await fetchWithRefresh<UserRead>(`${API_BASE_URL}/users/me`, {
+    headers: authHeaders(),
+  });
 }
 
 /** GET /users/me/profile (your custom route) */
 export async function getMyProfile(): Promise<UserRead> {
-  return await fetchWithRefresh<UserRead>(
-    `${API_BASE_URL}/users/me/profile`,
-    {
-      headers: authHeaders(),
-    }
-  );
+  return await fetchWithRefresh<UserRead>(`${API_BASE_URL}/users/me/profile`, {
+    headers: authHeaders(),
+  });
 }
 
 export async function getUserByEmail(email: string): Promise<UserRead | null> {
   try {
     // The endpoint returns the UserRead object directly (not wrapped)
-    return await fetchWithRefresh<UserRead>(
-      `${API_BASE_URL}/user/${email}`,
-      {
-        headers: authHeaders(),
-      }
-    );
+    return await fetchWithRefresh<UserRead>(`${API_BASE_URL}/user/${email}`, {
+      headers: authHeaders(),
+    });
   } catch (error) {
     if (error instanceof Error && error.message.includes("404")) {
       return null;
@@ -341,7 +266,7 @@ export async function getUserByEmailAndRole(
   try {
     // Build URL with query parameters
     const url = `${API_BASE_URL}/users/search_users?email=${encodeURIComponent(
-      email
+      email,
     )}&role=${encodeURIComponent(role)}`;
     // The endpoint returns the UserRead[] array directly (not wrapped)
     return await fetchWithRefresh<UserRead[]>(url, {
@@ -362,12 +287,9 @@ export async function getUserByEmailAndRole(
 export async function updateCurrentUser(
   payload: UpdateUserPayload,
 ): Promise<UserRead> {
-  return await fetchWithRefresh<UserRead>(
-    `${API_BASE_URL}/users/me`,
-    {
-      method: "PATCH",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify(payload),
-    }
-  );
+  return await fetchWithRefresh<UserRead>(`${API_BASE_URL}/users/me`, {
+    method: "PATCH",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
 }

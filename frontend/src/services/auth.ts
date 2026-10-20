@@ -1,5 +1,5 @@
 // src/services/auth.ts
-import API_BASE_URL from "./api";
+import API_BASE_URL from "./config";
 
 /**
  * Token storage functions
@@ -40,41 +40,53 @@ let refreshPromise: Promise<string | null> | null = null;
  */
 export function refreshAccessTokenOnce(): Promise<string | null> {
   if (!refreshPromise) {
-    refreshPromise = refreshAccessToken().finally(() => {
-      refreshPromise = null;
-    });
+    refreshPromise = navigator.locks
+      .request("auth-refresh", async () => {
+        const before = getStoredRefreshToken();
+        const token = await refreshAccessToken();
+        // Another tab may have refreshed while we waited for the lock
+        return token ?? (before !== getStoredRefreshToken() ? getStoredToken() : null);
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
   return refreshPromise;
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getStoredRefreshToken();
-  if (!refreshToken) {
-    return null;
-  }
+  const usedRefreshToken = getStoredRefreshToken();
+  if (!usedRefreshToken) return null;
 
   try {
-    // Use plain fetch to avoid interceptors that might cause recursion
     const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      body: JSON.stringify({ refresh_token: usedRefreshToken }),
     });
 
     if (!response.ok) {
-      throw new Error(`Refresh failed: ${response.status}`);
+      // Another call/tab may have already rotated the token
+      const current = getStoredRefreshToken();
+      if (current && current !== usedRefreshToken) {
+        return getStoredToken();
+      }
+      // Only a real auth rejection means the session is dead
+      if (response.status === 401 || response.status === 400) {
+        clearToken();
+        clearRefreshToken();
+      }
+      return null;
     }
 
-    const data: { access_token: string; refresh_token: string } = await response.json();
-    const { access_token, refresh_token } = data;
-
+    const { access_token, refresh_token }: { access_token: string; refresh_token: string } =
+      await response.json();
     storeToken(access_token);
     storeRefreshToken(refresh_token);
     return access_token;
   } catch (err) {
+    // Network error: don't wipe tokens or log the user out
     console.error("Refresh token error:", err);
-    clearToken();
-    clearRefreshToken();
     return null;
   }
 }

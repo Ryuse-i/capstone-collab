@@ -10,6 +10,7 @@ class SplitPart(BaseModel):
     complexity_points: int
     primary_skill: str
     secondary_skills: list[str] = []
+    category: str | None = None
 
 
 class SplitDetails(BaseModel):
@@ -17,6 +18,8 @@ class SplitDetails(BaseModel):
     donor_part: SplitPart
     recipient_part: SplitPart
     split_rationale: str
+    priority: str | None = None
+    supertask_id: str | None = None
 
 class RedisRecomCreate(BaseModel):
     detail: str

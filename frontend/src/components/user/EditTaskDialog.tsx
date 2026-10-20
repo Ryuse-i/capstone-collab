@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  AlertCircle,
   CalendarIcon,
   Check,
   ChevronDown,
@@ -8,7 +9,7 @@ import {
   X,
   Lightbulb,
 } from "lucide-react";
-import { format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { toast } from "sonner";
 import type { TaskIntent } from "@/lib/taskIntent";
 
@@ -168,6 +169,15 @@ function formStateFromTask(task: TaskResponseMembers): TaskFormState {
 }
 
 /**
+ * Parses a "yyyy-MM-dd" (or ISO) deadline as a LOCAL date. A bare
+ * `new Date("2026-10-15")` is parsed as UTC and can land on the previous
+ * day in timezones behind UTC, which causes off-by-one display/overdue bugs.
+ */
+function parseLocalDate(value: string): Date {
+  return new Date(`${value.slice(0, 10)}T00:00:00`);
+}
+
+/**
  * Declared at module level (not inside the component) so it isn't
  * recreated on every render.
  */
@@ -281,6 +291,14 @@ export default function EditTaskDialog({
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // Overdue indicator for the deadline field. Compared by calendar day, so a
+  // task due today is NOT overdue; it becomes overdue tomorrow.
+  const isTaskDone = false; // TODO: replace with your real check, e.g. task.status === "completed"
+  const overdueDays = taskForm.deadline
+    ? differenceInCalendarDays(today, parseLocalDate(taskForm.deadline))
+    : 0;
+  const isOverdue = !isTaskDone && overdueDays > 0;
 
   const { data: allAssignedMembers, isLoading: assignedLoading } =
     useGetAllAssignedMembers();
@@ -1433,7 +1451,24 @@ export default function EditTaskDialog({
                     "rounded-lg ring-2 ring-primary/40 ring-offset-4 ring-offset-background",
                 )}
               >
-                <Label>Deadline (required)</Label>
+                <Label
+                  className={cn(
+                    "flex items-center gap-1.5",
+                    isOverdue && "text-red-600 dark:text-red-400",
+                  )}
+                >
+                  Deadline 
+                  {isOverdue && (
+                    <span
+                      role="img"
+                      aria-label="Overdue"
+                      title="Overdue"
+                      className="inline-flex"
+                    >
+                      <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  )}
+                </Label>
 
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1442,12 +1477,14 @@ export default function EditTaskDialog({
                       className={cn(
                         "w-full justify-start text-left font-normal",
                         !taskForm.deadline && "text-muted-foreground",
+                        isOverdue &&
+                          "border-red-500 text-red-700 hover:text-red-700 focus-visible:ring-red-500/30 dark:border-red-500/70 dark:text-red-400 dark:hover:text-red-400",
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
 
                       {taskForm.deadline
-                        ? format(new Date(taskForm.deadline), "PPP")
+                        ? format(parseLocalDate(taskForm.deadline), "PPP")
                         : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
@@ -1457,7 +1494,7 @@ export default function EditTaskDialog({
                       mode="single"
                       selected={
                         taskForm.deadline
-                          ? new Date(taskForm.deadline)
+                          ? parseLocalDate(taskForm.deadline)
                           : undefined
                       }
                       onSelect={(date) => {
@@ -1470,6 +1507,16 @@ export default function EditTaskDialog({
                     />
                   </PopoverContent>
                 </Popover>
+
+                {isOverdue && (
+                  <p
+                    className="text-xs font-medium text-red-600 dark:text-red-400"
+                    role="status"
+                  >
+                    Overdue by {overdueDays} day{overdueDays > 1 ? "s" : ""}.
+                    Set a new deadline to reschedule.
+                  </p>
+                )}
               </div>
             </div>
 

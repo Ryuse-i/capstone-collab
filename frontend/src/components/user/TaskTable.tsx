@@ -71,6 +71,44 @@ const complexityStyle: Record<TaskComplexity, string> = {
   low: "bg-gray-100 text-gray-500 dark:bg-gray-500/20 dark:text-gray-400",
 };
 
+const priorityRank: Record<TaskPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+function isOverdue(task: TaskResponseMembers): boolean {
+  const status = task.status ?? "not_started";
+  return (
+    !!task.deadline &&
+    status !== "completed" &&
+    new Date(task.deadline) < new Date()
+  );
+}
+
+// 0 = overdue (top), 1 = normal, 2 = completed (bottom)
+function getGroup(task: TaskResponseMembers): number {
+  if (isOverdue(task)) return 0;
+  if ((task.status ?? "not_started") === "completed") return 2;
+  return 1;
+}
+
+function compareTasks(a: TaskResponseMembers, b: TaskResponseMembers): number {
+  // 1. Group: overdue -> normal -> completed
+  const groupDiff = getGroup(a) - getGroup(b);
+  if (groupDiff !== 0) return groupDiff;
+
+  // 2. Priority: high -> medium -> low
+  const priorityDiff = priorityRank[a.priority] - priorityRank[b.priority];
+  if (priorityDiff !== 0) return priorityDiff;
+
+  // 3. Tie-breaker: earliest deadline first, no deadline last
+  const aTime = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+  const bTime = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+  if (aTime === bTime) return 0;
+  return aTime - bTime;
+}
+
 const statusOptions = [
   {
     label: "Completed",
@@ -399,6 +437,8 @@ export function TaskTable({
     return true;
   });
 
+  const sortedTasks = [...filteredTasks].sort(compareTasks);
+
   return (
     <div className="mt-6 space-y-3">
       {/* Toolbar */}
@@ -482,7 +522,7 @@ export function TaskTable({
                       Failed to load tasks.
                     </TableCell>
                   </TableRow>
-                ) : filteredTasks.length === 0 ? (
+                ) : sortedTasks.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={7}
@@ -492,7 +532,7 @@ export function TaskTable({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTasks.map((task) => {
+                  sortedTasks.map((task) => {
                     const status = task.status ?? "not_started";
                     return (
                       <TableRow key={task.id}>

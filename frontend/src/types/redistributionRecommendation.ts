@@ -31,6 +31,25 @@ export type UpdateRecommendation = Partial<RecommendationBase>;
 
 export interface RecommendationResponse extends RecommendationBase {
   id: number; // integer primary key (not a UUID)
+  split?: SplitDetails | null;
   created_at: string;
   updated_at: string;
 }
+
+export type SplitPart = {
+  title: string;
+  description: string;
+  complexity_points: number;
+  primary_skill: string;
+  secondary_skills: string[];
+  category?: string | null
+};
+
+export type SplitDetails = {
+  task_name?: string;
+  donor_part: SplitPart;
+  recipient_part: SplitPart;
+  split_rationale: string;
+  priority?: string | null 
+  supertask_id?: string | null 
+};

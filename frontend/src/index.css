@@ -1,5 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
-@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"); @import "tailwindcss";
 @import "tailwindcss/preflight" layer(base);
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -569,6 +568,8 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
 
     @media (max-width: 1024px) {
       font-size: 16px;
@@ -688,27 +689,6 @@
   scrollbar-color: var(--muted-foreground) transparent; /* Firefox */
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 1px;
-  height: 8px;
-  background-color: transparent; /* the track background you actually want */
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background-color: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: var(--sidebar);
-  border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: padding-box; /* keeps the thumb from touching the transparent track edges */
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: var(--foreground);
-}
-
 /* ─── Components ────────────────────────────────────────── */
 
 @layer components {
@@ -802,4 +782,3 @@
     animation: none;
   }
 }
-
