@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,9 +10,45 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useCreateMeeting } from "@/hooks/useMeeting";
+import { cn } from "@/lib/utils";
 import type { MeetingProvider } from "@/types/meeting";
 
+const PROVIDER_OPTIONS: { value: MeetingProvider; label: string }[] = [
+  { value: "google_meet", label: "Google Meet" },
+  { value: "zoom", label: "Zoom" },
+];
+
+const PROVIDER_COPY: Record<
+  MeetingProvider,
+  {
+    name: string;
+    placeholder: string;
+    hint: string;
+    invalid: string;
+    saveError: string;
+  }
+> = {
+  google_meet: {
+    name: "Google Meet",
+    placeholder: "https://meet.google.com/abc-defg-hij",
+    hint: "Use an HTTPS link from meet.google.com.",
+    invalid: "Enter a valid HTTPS link from meet.google.com.",
+    saveError: "Unable to save the Google Meet link. Please try again.",
+  },
+  zoom: {
+    name: "Zoom",
+    placeholder: "https://zoom.us/j/1234567890",
+    hint: "Use an HTTPS link from zoom.us.",
+    invalid: "Enter a valid HTTPS link from zoom.us.",
+    saveError: "Unable to save the Zoom link. Please try again.",
+  },
+};
 
 function defaultStartTime() {
   const start = new Date(Date.now() + 60 * 60 * 1000);
@@ -29,6 +66,22 @@ function isGoogleMeetUrl(value: string) {
   }
 }
 
+function isZoomUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "zoom.us" || url.hostname.endsWith(".zoom.us"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isValidJoinUrl(provider: MeetingProvider, value: string) {
+  return provider === "google_meet" ? isGoogleMeetUrl(value) : isZoomUrl(value);
+}
+
 export function MeetingDialog({
   open,
   onOpenChange,
@@ -43,18 +96,21 @@ export function MeetingDialog({
   const createMeeting = useCreateMeeting();
   const [selectedProvider, setSelectedProvider] =
     useState<MeetingProvider>(provider);
+  const [providerOpen, setProviderOpen] = useState(false);
   const [topic, setTopic] = useState("Weekly Capstone Meeting");
   const [joinUrl, setJoinUrl] = useState("");
   const [startTime] = useState(defaultStartTime);
   const [duration] = useState("60");
   const [validationError, setValidationError] = useState("");
 
+  const copy = PROVIDER_COPY[selectedProvider];
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setValidationError("");
 
-    if (selectedProvider === "google_meet" && !isGoogleMeetUrl(joinUrl)) {
-      setValidationError("Enter a valid HTTPS link from meet.google.com.");
+    if (!isValidJoinUrl(selectedProvider, joinUrl.trim())) {
+      setValidationError(copy.invalid);
       return;
     }
 
@@ -71,9 +127,7 @@ export function MeetingDialog({
         topic: topic.trim(),
         start_time: parsedStart.toISOString(),
         duration_minutes: Number(duration),
-        ...(selectedProvider === "google_meet"
-          ? { join_url: joinUrl.trim() }
-          : {}),
+        join_url: joinUrl.trim(),
       },
       {
         onSuccess: () => {
@@ -81,11 +135,7 @@ export function MeetingDialog({
           onOpenChange(false);
         },
         onError: () => {
-          toast.error(
-            selectedProvider === "zoom"
-              ? "Unable to create the Zoom meeting. Please try again."
-              : "Unable to save the Google Meet link. Please try again.",
-          );
+          toast.error(copy.saveError);
         },
       },
     );
@@ -98,26 +148,71 @@ export function MeetingDialog({
           <DialogHeader>
             <DialogTitle>Create Meeting</DialogTitle>
             <DialogDescription>
-              {selectedProvider === "google_meet"
-                ? "Create a Google Meet first, then paste its meeting link here."
-                : "Create a scheduled Zoom meeting for this project."}
+              Create a {copy.name} meeting first, then paste its meeting link
+              here.
             </DialogDescription>
           </DialogHeader>
 
-          <label className="grid gap-2 text-sm font-medium">
-            Provider
-            <select
-              value={selectedProvider}
-              onChange={(event) => {
-                setSelectedProvider(event.target.value as MeetingProvider);
-                setValidationError("");
-              }}
-              className="h-9 rounded-md border bg-background px-3 font-normal outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="google_meet">Google Meet</option>
-              <option value="zoom">Zoom</option>
-            </select>
-          </label>
+          {/* Provider */}
+          <div className="grid gap-2">
+            <span className="text-sm font-medium">Provider</span>
+
+            <Popover open={providerOpen} onOpenChange={setProviderOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={providerOpen}
+                  className="w-full justify-between text-left font-normal"
+                >
+                  <span
+                    className={cn(!selectedProvider && "text-muted-foreground")}
+                  >
+                    {PROVIDER_OPTIONS.find(
+                      (option) => option.value === selectedProvider,
+                    )?.label ?? "Select provider"}
+                  </span>
+
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <div
+                  className="max-h-64 overflow-y-auto overscroll-contain custom-scrollbar p-1"
+                  onWheel={(e) => e.stopPropagation()}
+                >
+                  {PROVIDER_OPTIONS.map((option) => {
+                    const selected = selectedProvider === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          if (option.value !== selectedProvider) {
+                            // A link for one provider isn't valid for the other
+                            setJoinUrl("");
+                          }
+                          setSelectedProvider(option.value);
+                          setValidationError("");
+                          setProviderOpen(false);
+                        }}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                      >
+                        <span>{option.label}</span>
+
+                        {selected && (
+                          <Check className="h-4 w-4 text-popover-foreground" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
 
           <label className="grid gap-2 text-sm font-medium">
             Topic
@@ -130,24 +225,21 @@ export function MeetingDialog({
             />
           </label>
 
-          {selectedProvider === "google_meet" && (
-            <label className="grid gap-2 text-sm font-medium">
-              Google Meet URL
-              <input
-                value={joinUrl}
-                onChange={(event) => setJoinUrl(event.target.value)}
-                placeholder="https://meet.google.com/abc-defg-hij"
-                required
-                type="url"
-                className="h-9 rounded-md border bg-background px-3 font-normal outline-none focus:ring-2 focus:ring-ring"
-              />
-              <span className="text-xs font-normal text-muted-foreground">
-                Use an HTTPS link from meet.google.com.
-              </span>
-            </label>
-          )}
+          <label className="grid gap-2 text-sm font-medium">
+            {copy.name} URL
+            <input
+              value={joinUrl}
+              onChange={(event) => setJoinUrl(event.target.value)}
+              placeholder={copy.placeholder}
+              required
+              type="url"
+              className="h-9 rounded-md border bg-background px-3 font-normal outline-none focus:ring-2 focus:ring-ring"
+            />
+            <span className="text-xs font-normal text-muted-foreground">
+              {copy.hint}
+            </span>
+          </label>
 
-          
           {validationError && (
             <p className="text-sm text-destructive">{validationError}</p>
           )}

@@ -51,14 +51,26 @@ const HEALTH: Record<
   healthy: {
     label: "On track",
     rank: 0,
-    className: "bg-emerald-100 text-emerald-700",
+    className:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-1 dark:ring-inset dark:ring-emerald-800/70",
   },
-  watch: { label: "Watch", rank: 1, className: "bg-amber-100 text-amber-700" },
-  at_risk: { label: "At risk", rank: 2, className: "bg-rose-100 text-rose-700" },
+  watch: {
+    label: "Watch",
+    rank: 1,
+    className:
+      "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-1 dark:ring-inset dark:ring-amber-800/70",
+  },
+  at_risk: {
+    label: "At risk",
+    rank: 2,
+    className:
+      "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 dark:ring-1 dark:ring-inset dark:ring-rose-800/70",
+  },
   unknown: {
     label: "No health data",
     rank: 0,
-    className: "bg-neutral-100 text-neutral-600",
+    className:
+      "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:ring-1 dark:ring-inset dark:ring-neutral-700",
   },
 };
 
@@ -67,13 +79,23 @@ const URGENCY_STYLES: Record<
   { dateClass: string; label: (d: number) => string }
 > = {
   overdue: {
-    dateClass: "bg-rose-100 text-rose-700",
+    dateClass:
+      "bg-rose-100 text-rose-700 dark:bg-transparent dark:text-rose-300 dark:ring-1 dark:ring-inset dark:ring-rose-800/70",
     label: (d) => `${Math.abs(d)}d overdue`,
   },
-  today: { dateClass: "bg-rose-100 text-rose-700", label: () => "Due today" },
-  soon: { dateClass: "bg-amber-100 text-amber-700", label: (d) => `In ${d}d` },
+  today: {
+    dateClass:
+      "bg-rose-100 text-rose-700 dark:bg-transparent dark:text-rose-300 dark:ring-1 dark:ring-inset dark:ring-rose-800/70",
+    label: () => "Due today",
+  },
+  soon: {
+    dateClass:
+      "bg-amber-100 text-amber-700 dark:bg-transparent dark:text-amber-300 dark:ring-1 dark:ring-inset dark:ring-amber-800/70",
+    label: (d) => `In ${d}d`,
+  },
   later: {
-    dateClass: "bg-neutral-100 text-neutral-600",
+    dateClass:
+      "bg-neutral-100 text-neutral-600 dark:bg-transparent dark:text-neutral-300 dark:ring-1 dark:ring-inset dark:ring-neutral-700",
     label: (d) => `In ${d}d`,
   },
 };
@@ -246,7 +268,7 @@ function RoleBadge({ role }: { role: DashboardRole }) {
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] ${
         role === "instructor"
-          ? "bg-[#F3EFE6] text-[#7A0C2E]"
+          ? "bg-[#F3EFE6] text-[#7A0C2E] dark:bg-[#7A0C2E] dark:text-[#F3EFE6]"
           : "bg-[#EFEAF6] text-[#3F3350]"
       }`}
     >
@@ -437,32 +459,42 @@ export default function InstructorDashboard() {
           {/* Summary strip */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard
-              icon={<Layers size={16} className="text-[#7A0C2E]" />}
+              icon={
+                <Layers
+                  size={16}
+                  className="text-[#7A0C2E] dark:text-[#ac1343]"
+                />
+              }
               label="Active projects"
               value={stats?.total_projects ?? 0}
               caption="Across both roles"
-              accent="bg-[#F3EFE6]"
+              accent="bg-[#F3EFE6] dark:bg-muted/50 dark:border dark:border-[#ac1343]"
             />
             <StatCard
               icon={<AlertTriangle size={16} className="text-rose-600" />}
               label="Watch or at risk"
               value={stats?.at_risk_projects ?? 0}
               caption="Need a closer look"
-              accent="bg-rose-50"
+              accent="bg-rose-50 dark:bg-muted/50 dark:border dark:border-rose-600"
             />
             <StatCard
               icon={<ClipboardCheck size={16} className="text-[#C9A84C]" />}
               label="Pending submissions"
               value={stats?.pending_submissions ?? 0}
               caption="Awaiting your feedback"
-              accent="bg-[#FBF3E7]"
+              accent="bg-[#FBF3E7] dark:bg-muted/50 dark:border dark:border-[#C9A84C]"
             />
             <StatCard
-              icon={<Clock size={16} className="text-[#3F3350]" />}
+              icon={
+                <Clock
+                  size={16}
+                  className="text-[#3F3350] dark:text-[#514167] "
+                />
+              }
               label="Overdue deadlines"
               value={stats?.overdue_deadlines ?? 0}
               caption="Open tasks past due"
-              accent="bg-[#EFEAF6]"
+              accent="bg-[#EFEAF6] dark:bg-muted/50 dark:border dark:border-[#514167]"
             />
           </div>
 
@@ -471,7 +503,7 @@ export default function InstructorDashboard() {
             <Card className="flex h-full flex-col border shadow-sm">
               <div className="flex items-center justify-between border-b border-neutral px-5 py-4">
                 <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-rose-50 p-2 text-rose-600">
+                  <div className="rounded-full bg-rose-50 p-2 text-rose-600 dark:bg-muted/50 dark:border dark:border-rose-600 mb-3">
                     <AlertTriangle size={16} />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground">
@@ -541,7 +573,7 @@ export default function InstructorDashboard() {
             <Card className="flex h-full flex-col border shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
                 <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C]">
+                  <div className="rounded-full bg-[#FBF3E7] p-2 text-[#C9A84C] dark:bg-muted/50 dark:border dark:border-[#C9A84C] mb-3">
                     <CalendarClock size={16} />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground">
@@ -563,7 +595,7 @@ export default function InstructorDashboard() {
                       className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                         filter === tab.id
                           ? "bg-[#7A0C2E] text-white"
-                          : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                          : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-muted/50 dark:text-neutral-300 dark:hover:bg-muted/70"
                       }`}
                     >
                       {tab.label}
@@ -585,7 +617,7 @@ export default function InstructorDashboard() {
                           {formatDeadlineDate(d.deadline)}
                         </div>
                         {i < visibleDeadlines.length - 1 && (
-                          <div className="w-px flex-1 bg-neutral-200" />
+                          <div className="w-px flex-1 bg-neutral-200 dark:bg-muted/70" />
                         )}
                       </div>
 
@@ -661,45 +693,46 @@ export default function InstructorDashboard() {
 
           {/* Recent activity (full width) */}
           {hasActivity && (
-          <div className="mt-6">
-            <Card className="border p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Activity size={18} className="text-[#C9A84C]" />
-                Recent activity
-              </div>
-
-              {activity.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-neutral-200 p-6 text-center text-sm text-neutral-500">
-                  No recent activity in your projects yet.
+            <div className="mt-6">
+              <Card className="border p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Activity size={18} className="text-[#C9A84C]" />
+                  Recent activity
                 </div>
-              ) : (
-                <div className="mt-4 space-y-4">
-                  {activity.map((a) => {
-                    const Icon = (a.type && ACTIVITY_ICONS[a.type]) || FileText;
 
-                    return (
-                      <div key={a.id} className="flex items-start gap-3">
-                        <div className="mt-1 rounded-full bg-neutral-100 p-2 text-neutral-500">
-                          <Icon size={14} />
+                {activity.length === 0 ? (
+                  <div className="mt-4 rounded-2xl border border-dashed border-neutral-200 p-6 text-center text-sm text-neutral-500">
+                    No recent activity in your projects yet.
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    {activity.map((a) => {
+                      const Icon =
+                        (a.type && ACTIVITY_ICONS[a.type]) || FileText;
+
+                      return (
+                        <div key={a.id} className="flex items-start gap-3">
+                          <div className="mt-1 rounded-full bg-neutral-100 p-2 text-neutral-500">
+                            <Icon size={14} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm text-foreground">
+                              <span className="font-semibold">
+                                {a.actor_name ?? "A member"}
+                              </span>{" "}
+                              {a.message}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-neutral-500">
+                              {a.project_name} · {formatTimeAgo(a.timestamp)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm text-foreground">
-                            <span className="font-semibold">
-                              {a.actor_name ?? "A member"}
-                            </span>{" "}
-                            {a.message}
-                          </p>
-                          <p className="mt-0.5 truncate text-xs text-neutral-500">
-                            {a.project_name} · {formatTimeAgo(a.timestamp)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
-          </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
           )}
         </div>
       )}
@@ -725,8 +758,8 @@ export default function InstructorDashboard() {
 
       {/* Deadline dialog */}
       <Dialog open={deadlineDialogOpen} onOpenChange={setDeadlineDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl custom-scrollbar">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[80vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+          <DialogHeader className="shrink-0 border-b bg-background px-6 py-4">
             <DialogTitle>Upcoming deadlines</DialogTitle>
             <DialogDescription>
               All {filteredDeadlines.length} deadlines
@@ -734,7 +767,7 @@ export default function InstructorDashboard() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-2 space-y-3">
+          <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto px-6 py-4">
             {filteredDeadlines.map((d) => (
               <DeadlineDetailRow key={d.id} deadline={d} />
             ))}

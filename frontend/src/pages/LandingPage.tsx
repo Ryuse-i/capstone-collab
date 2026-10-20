@@ -3,9 +3,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import workloadBalanceImage from "@/assets/landing page/workload balance.png";
-import contributionMetricsImage from "@/assets/landing page/contribution metrics.jpg";
+import contributionMetricsImage from "@/assets/landing page/contribution metrics.png";
 import dashboardImage from "@/assets/landing page/Dashboard.png";
-import taskApprovalImage from "@/assets/landing page/task approval.jpg";
+import taskApprovalWorkflowImage from "@/assets/landing page/task approval.jpg";
+import taskRedistributionImage from "@/assets/landing page/task redistribution.png";
 import psuLogo from "@/assets/psu-logo.jpg";
 import {
   CheckCircle2,
@@ -45,6 +46,7 @@ const FEATURES: Feature[] = [
     icon: <RefreshCw />,
     title: "Smart Task Redistribution",
     desc: "System suggests actionable fixes transfer, split, or convert tasks with impact previews.",
+    image: taskRedistributionImage,
   },
   {
     icon: <CheckCircle2 />,
@@ -57,7 +59,7 @@ const FEATURES: Feature[] = [
     icon: <CheckCircle2 />,
     title: "Task Approval Workflow",
     desc: "Structured review pipeline with AI-assisted evaluation and inline comments.",
-    image: taskApprovalImage,
+    image: taskApprovalWorkflowImage,
   },
 ];
 
@@ -204,7 +206,7 @@ function FeatureSection() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="animate-on-scroll order-1">
             {/* No padding here so the image can bleed off the edges */}
-            <div className="relative aspect-4/3 overflow-hidden rounded-3xl bg-amber-100 dark:bg-amber-950/40">
+            <div className="relative aspect-4/3 overflow-hidden rounded-3xl bg-amber-100 dark:bg-[#08233B]">
               {FEATURES.map((feature, index) => {
                 const isActive = activeIndex === index;
 
