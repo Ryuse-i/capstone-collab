@@ -4,6 +4,19 @@ from decimal import Decimal
 from uuid import UUID
 from .model import Type
 
+class SplitPart(BaseModel):
+    title: str
+    description: str
+    complexity_points: int
+    primary_skill: str
+    secondary_skills: list[str] = []
+
+
+class SplitDetails(BaseModel):
+    task_name: str | None = None
+    donor_part: SplitPart
+    recipient_part: SplitPart
+    split_rationale: str
 
 class RedisRecomCreate(BaseModel):
     detail: str
@@ -12,7 +25,7 @@ class RedisRecomCreate(BaseModel):
     rank: int
     expected_workload_after: str
     deadline_impact: str
-
+    split: SplitDetails | None = None
     # References / type-specific data (all optional)
     task_id: UUID | None = None
     from_member_id: UUID | None = None
@@ -34,7 +47,7 @@ class RedisRecomUpdate(BaseModel):
     rank: int | None = None
     expected_workload_after: str | None = None
     deadline_impact: str | None = None
-
+    split: SplitDetails | None = None
     task_id: UUID | None = None
     from_member_id: UUID | None = None
     to_member_id: UUID | None = None
@@ -58,7 +71,7 @@ class RedisRecomResponse(BaseModel):
     rank: int
     expected_workload_after: str
     deadline_impact: str
-
+    split: SplitDetails | None = None
     task_id: UUID | None = None
     from_member_id: UUID | None = None
     to_member_id: UUID | None = None

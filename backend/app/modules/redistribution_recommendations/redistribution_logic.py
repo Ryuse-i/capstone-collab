@@ -9,6 +9,8 @@ from datetime import date, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID
 from decimal import Decimal
+from sqlalchemy import select
+from app.modules.assigned_members.model import AssignedMember
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,10 +29,13 @@ from app.modules.project_members.services import ProjectMemberService
 from app.modules.assigned_members.services import AssignedMemberService
 from app.modules.member_snapshots.model import MemberSnapshot
 from app.modules.tasks.services import TaskService
+from app.modules.ai.service import suggest_task_split
 
 logger = logging.getLogger(__name__)
 
 HALF = Decimal("0.5")
+ALLOW_SPLIT_IN_PROGRESS = False  # set True to also split tasks already started
+MIN_DESCRIPTION_CHARS = 40       # too little text = nothing to ground a split on
 
 
 # --------------------------------------------------------------------------- #
@@ -61,26 +66,18 @@ async def _get_task_assignee_ids(db: AsyncSession, task_id: UUID, fallback_membe
     """
     Member ids currently assigned to a task. The task's points are split equally
     between them (effort_share = 1 / number of assignees), same as the workload calculation.
-
-    >>> WIRE THIS UP: point it at the same query the workload calculation uses to count
-    >>> a task's assignees. It tries a few likely AssignedMemberService method names; if
-    >>> none exist it logs a warning and assumes the donor is the only assignee.
     """
-    for method_name in ("get_members_by_task", "get_by_task", "get_assigned_members_by_task"):
-        method = getattr(AssignedMemberService, method_name, None)
-        if method is None:
-            continue
-        rows = await method(db, task_id)
-        ids = [getattr(r, "member_id", None) for r in rows]
-        ids = [i for i in ids if i is not None]
-        if ids:
-            return ids
-        break
+    result = await db.execute(
+        select(AssignedMember.member_id).where(AssignedMember.task_id == task_id)
+    )
+    ids = [i for i in result.scalars().all() if i is not None]
+    if ids:
+        return list(dict.fromkeys(ids))  # de-duplicate, keep order
     logger.warning(
-        "Could not load assignees for task %s; assuming a single assignee (full share).", task_id
+        "Task %s has no assigned members in the DB; assuming the donor %s is the only assignee.",
+        task_id, fallback_member_id,
     )
     return [fallback_member_id]
-
 
 def _task_effective(task: Task, today: date, effort_share: Optional[Decimal] = None) -> Decimal:
     """
@@ -130,24 +127,19 @@ def _member_display_name(member) -> str:
 # --------------------------------------------------------------------------- #
 # Eligibility
 # --------------------------------------------------------------------------- #
-def _is_eligible_for_task(member: ProjectMember, task: Task) -> bool:
-    """
-    Check if a member is eligible for a task based on:
-    1. Possessing the task's primary skill (required).
-    2. Possessing at least 75% of the task's secondary skills (rounded up).
-    """
+
+def _is_eligible_for_skills(member: ProjectMember, primary, secondaries) -> bool:
     member_skill_set = set(member.skills) if member.skills else set()
-    if task.primary_skill not in member_skill_set:
+    member_skill_values = {str(getattr(s, "value", s)) for s in member_skill_set}
+    if str(getattr(primary, "value", primary)) not in member_skill_values:
         return False
-
-    # If there are no secondary skills, the condition is vacuously true
-    if not task.secondary_skills:
+    if not secondaries:
         return True
+    matched = sum(1 for s in secondaries if str(getattr(s, "value", s)) in member_skill_values)
+    return matched >= math.ceil(len(secondaries) * 0.75)
 
-    matched_secondaries = sum(1 for skill in task.secondary_skills if skill in member_skill_set)
-    required_secondaries = math.ceil(len(task.secondary_skills) * 0.75)
-
-    return matched_secondaries >= required_secondaries
+def _is_eligible_for_task(member: ProjectMember, task: Task) -> bool:
+    return _is_eligible_for_skills(member, task.primary_skill, task.secondary_skills)
 
 
 async def _get_project_base_days_per_point(db: AsyncSession, project_id: UUID) -> int:
@@ -325,6 +317,23 @@ async def generate_redistribution_options(
 
         scored_for_this_task = 0
 
+        split_plan = None
+        description = (task.description or "").strip()
+        can_try_split = (
+            task_complexity_points >= 2
+            and len(description) >= MIN_DESCRIPTION_CHARS
+            and (task.status == TaskStatus.NOT_STARTED or ALLOW_SPLIT_IN_PROGRESS)
+        )
+        if can_try_split:
+            split_plan = await suggest_task_split(
+                task.name,
+                description,
+                task_complexity_points,
+                str(getattr(task.primary_skill, "value", task.primary_skill)),
+                [str(getattr(s, "value", s)) for s in (task.secondary_skills or [])],
+                str(getattr(task.category, "value", task.category or "")),
+            )
+
         # For each eligible recipient, generate Move, Share, and Split options
         for recipient in eligible_recipients:
             recipient_data = next(
@@ -403,31 +412,27 @@ async def generate_redistribution_options(
                     }
                 })
 
-            # ========== Split Option ==========
-            # Only if the task has at least 2 complexity points
-            if task_complexity_points >= 2:
-                p1 = task_complexity_points // 2
-                p2 = task_complexity_points - p1
-
+            # ========== Split Option (AI-suggested) ==========
+            if split_plan is not None:
                 best = None
-                # The recipient takes either the smaller or the larger half; the donor keeps the other.
-                for recipient_points in (p1, p2):
-                    moved_eff = per_point * recipient_points
-                    donor_after = overloaded_member_total_effective - moved_eff
+                for part in split_plan.parts:
+                    # Recipient must be able to do the part they would take
+                    if not _is_eligible_for_skills(recipient, part.primary_skill, part.secondary_skills):
+                        continue
+                    moved_eff = per_point * part.complexity_points
                     recipient_after = recipient_total_effective + moved_eff
                     impact = wm.impact_score(
                         overloaded_member_total_effective, overloaded_member_expected_load,
                         moved_eff, recipient_after, recipient_expected_load,
                     )
                     if best is None or impact > best["impact"]:
-                        best = {
-                            "impact": impact, "recipient_points": recipient_points,
-                            "moved_eff": moved_eff, "donor_after": donor_after,
-                            "recipient_after": recipient_after,
-                        }
+                        best = {"impact": impact, "part": part,
+                                "moved_eff": moved_eff, "recipient_after": recipient_after}
 
-                if best["impact"] >= 0:
+                if best is not None and best["impact"] >= 0:
                     scored_for_this_task += 1
+                    recipient_part = best["part"]
+                    donor_part = next(p for p in split_plan.parts if p is not recipient_part)
                     options.append({
                         "type": "Split",
                         "task_id": task.id,
@@ -437,11 +442,14 @@ async def generate_redistribution_options(
                         "recipient_member_id": recipient.id,
                         "impact": best["impact"],
                         "details": {
-                            "donor_keeps_points": task_complexity_points - best["recipient_points"],
-                            "recipient_gets_points": best["recipient_points"],
+                            "donor_keeps_points": donor_part.complexity_points,
+                            "recipient_gets_points": recipient_part.complexity_points,
+                            "donor_part": donor_part.model_dump(),
+                            "recipient_part": recipient_part.model_dump(),
+                            "split_rationale": split_plan.rationale,
                             "points_moved": best["moved_eff"],
                             "overloaded_before": overloaded_member_total_effective,
-                            "overloaded_after": best["donor_after"],
+                            "overloaded_after": overloaded_member_total_effective - best["moved_eff"],
                             "recipient_before": recipient_total_effective,
                             "recipient_after": best["recipient_after"],
                             "recipient_expected_load": recipient_expected_load,

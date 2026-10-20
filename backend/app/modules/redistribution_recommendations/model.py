@@ -15,6 +15,7 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import date, datetime, timezone
 import enum
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class Type(str, enum.Enum):
@@ -73,7 +74,7 @@ class RedistributionRecommendation(Base):
     points_moved: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     # split only: complexity points the recipient takes.
     recipient_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
-
+    split: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

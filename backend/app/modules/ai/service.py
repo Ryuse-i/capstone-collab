@@ -4,7 +4,7 @@ import logging
 
 from app.modules.ai.client import call_ai
 from pydantic import ValidationError
-from .schema import TaskComplexityResult, TaskAnalysis
+from .schema import TaskComplexityResult, TaskAnalysis, TaskSplitResult
 from app.modules.tasks.model import Category, Complexity
 from app.modules.project_members.model import Skills
 
@@ -278,3 +278,75 @@ async def analyze_task(
         complexity_points=ai_result.verdict,
         rationale=ai_result.rationale,
     )
+
+
+#split task
+TASK_SPLIT_SYSTEM_PROMPT = """You help split one IT capstone/thesis project task between two team members.
+
+Decide whether the task can be split into EXACTLY TWO parts that are
+genuinely close to the task's actual content.
+
+Only set "splittable": true when ALL of these hold:
+- Both parts are concrete pieces that are explicitly named or clearly implied
+  by the task name/description (not generic "first half / second half").
+- Each part is a meaningful deliverable that one person can finish on their own.
+- The parts have a clear boundary and need little back-and-forth to combine.
+- Splitting would not hurt consistency (e.g. one argument, one design, one voice).
+- complexity_points of the two parts add up to exactly the given total.
+- Each part's primary_skill (and secondary_skills) come ONLY from the allowed skills list.
+
+If any condition fails, return splittable=false with parts=[].
+Set "confidence" to High only when you are sure the split is natural and well-grounded
+in the description; otherwise Moderate or Low.
+
+Return ONLY this JSON object, no markdown or preamble:
+{
+  "task": "<task name>",
+  "splittable": true|false,
+  "confidence": "Low|Moderate|High",
+  "parts": [
+    {"title": "...", "description": "...", "complexity_points": 1,
+     "primary_skill": "<allowed skill>", "secondary_skills": ["<allowed skill>"]}
+  ],
+  "rationale": "<1-2 sentences: why this split is natural, or why not>"
+}"""
+
+
+async def suggest_task_split(
+    task_name: str,
+    task_description: str,
+    total_points: int,
+    primary_skill: str,
+    secondary_skills: list[str],
+    category: str = ""
+) -> TaskSplitResult | None:
+    """Returns a validated, high-confidence 2-part split, or None."""
+    allowed = sorted({str(s.value) for s in Skills})
+    user_prompt = (
+        f"Task: {task_name}\n"
+        f"Description: {task_description or '(none provided)'}\n"
+        f"Category: {category or 'unknown'}\n"
+        f"Total complexity points: {total_points}\n"
+        f"Task primary skill: {primary_skill}\n"
+        f"Task secondary skills: {', '.join(secondary_skills) or 'none'}\n"
+        f"Allowed skills: {', '.join(allowed)}"
+    )
+    try:
+        raw = await call_ai(
+            prompt=user_prompt,
+            system=TASK_SPLIT_SYSTEM_PROMPT,
+            max_tokens=1024,
+            reasoning_effort="minimal",
+        )
+        result = TaskSplitResult.model_validate(_parse_json_response(raw))
+    except (ValueError, ValidationError) as e:
+        logger.warning("Split suggestion failed for %r: %s", task_name, e)
+        return None
+
+    if not result.splittable or result.confidence != "High" or len(result.parts) != 2:
+        return None
+    if sum(p.complexity_points for p in result.parts) != total_points:
+        return None
+    if any(str(p.primary_skill) not in allowed for p in result.parts):
+        return None
+    return result

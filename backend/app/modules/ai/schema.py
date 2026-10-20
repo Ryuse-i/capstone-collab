@@ -1,6 +1,5 @@
 from typing import Literal
-
-from pydantic import BaseModel, computed_field, field_validator
+from pydantic import BaseModel, computed_field, field_validator, Field
 from app.modules.tasks.model import Category, Complexity
 from app.modules.project_members.model import Skills
 
@@ -69,4 +68,20 @@ class TaskAnalysis(BaseModel):
     category: Category
     complexity: Complexity
     complexity_points: int
+    rationale: str
+
+
+#split task
+class SplitPart(BaseModel):
+    title: str
+    description: str
+    complexity_points: int = Field(ge=1)
+    primary_skill: str
+    secondary_skills: list[str] = []
+
+class TaskSplitResult(BaseModel):
+    task: str
+    splittable: bool
+    confidence: Literal["Low", "Moderate", "High"]
+    parts: list[SplitPart] = []
     rationale: str

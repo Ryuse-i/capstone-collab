@@ -88,8 +88,9 @@ def _build_text(opt: Dict[str, Any], task, donor, recipient) -> Tuple[str, str, 
         )
     else:  # Split
         detail = (
-            f"Split '{task_name}': {recipient_name} takes {d['recipient_gets_points']} of its points, "
-            f"{donor_name} keeps {d['donor_keeps_points']}."
+            f"Split '{task_name}': {recipient_name} takes '{d['recipient_part']['title']}' "
+            f"({d['recipient_gets_points']} pt), {donor_name} keeps "
+            f"'{d['donor_part']['title']}' ({d['donor_keeps_points']} pt)."
         )
 
     expected = (
@@ -112,6 +113,17 @@ def _build_refs(opt: Dict[str, Any], task, donor, recipient) -> Dict[str, Any]:
     # Move / Split report "points_moved"; Share reports "points_shared" (donor's relief).
     points = d.get("points_moved", d.get("points_shared"))
 
+    split = None
+    if opt["type"] == "Split":
+        split = {
+            "task_name": getattr(task, "name", None),
+            "donor_part": d["donor_part"],
+            "recipient_part": d["recipient_part"],
+            "split_rationale": d["split_rationale"],
+        }
+
+
+
     return {
         "task_id": opt["task_id"],
         "task_name": getattr(task, "name", None),
@@ -127,6 +139,7 @@ def _build_refs(opt: Dict[str, Any], task, donor, recipient) -> Dict[str, Any]:
         "extension_days": d.get("extension_days"),
         "points_moved": Decimal(str(points)) if points is not None else None,
         "recipient_points": d.get("recipient_gets_points"),
+        "split": split
     }
 
 
