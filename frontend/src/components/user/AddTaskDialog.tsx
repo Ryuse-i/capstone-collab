@@ -88,6 +88,10 @@ import {
   AvatarFallback,
   // AvatarImage, // uncomment if your users have a profile image URL
 } from "@/components/ui/avatar";
+import {
+  isMemberEligible,
+  requiredSecondaryCount,
+} from "@/lib/memberEligibility";
 
 // NOTE: adjust this import path to wherever you place the rationale dialog.
 import {
@@ -102,6 +106,7 @@ type AssignableMember = {
   id: string;
   first_name: string;
   last_name: string;
+  skills: Skill[];
 };
 
 type TaskFormState = {
@@ -331,8 +336,35 @@ export function AddTaskDialog({
         id: projectMember.user_id,
         first_name: projectMember.users.first_name,
         last_name: projectMember.users.last_name,
+        skills: projectMember.skills ?? [],
       }));
   }, [projectMembersData]);
+
+  const eligibleMembers = useMemo(
+    () =>
+      assignableMembers.filter((m) =>
+        isMemberEligible(
+          m.skills,
+          taskForm.primary_skill,
+          taskForm.secondary_skills,
+        ),
+      ),
+    [assignableMembers, taskForm.primary_skill, taskForm.secondary_skills],
+  );
+
+  // If the skills change, drop selected members who no longer qualify.
+  useEffect(() => {
+    const ids = new Set(eligibleMembers.map((m) => m.member_id));
+    setTaskForm((prev) => {
+      const kept = prev.assigned_members.filter((m) => ids.has(m.member_id));
+      return kept.length === prev.assigned_members.length
+        ? prev
+        : { ...prev, assigned_members: kept };
+    });
+  }, [eligibleMembers]);
+
+  const skillsChosen =
+    !!taskForm.primary_skill && taskForm.secondary_skills.length > 0;
 
   const eligibleReviewers: AssignableMember[] = useMemo(() => {
     return (projectMembersData ?? [])
@@ -348,6 +380,7 @@ export function AddTaskDialog({
         id: projectMember.user_id,
         first_name: projectMember.users.first_name,
         last_name: projectMember.users.last_name,
+        skills: projectMember.skills ?? [],
       }));
   }, [projectMembersData]);
 
@@ -876,7 +909,9 @@ export function AddTaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-name">Name <span className="text-red-500 flex">*</span></Label>
+              <Label htmlFor="item-name">
+                Name <span className="text-red-500 flex">*</span>
+              </Label>
 
               <Input
                 id="item-name"
@@ -895,7 +930,9 @@ export function AddTaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-description">Description <span className="text-red-500 flex">*</span></Label>
+              <Label htmlFor="item-description">
+                Description <span className="text-red-500 flex">*</span>
+              </Label>
 
               <Textarea
                 id="item-description"
@@ -1036,7 +1073,9 @@ export function AddTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Primary Skill <span className="text-red-500 flex">*</span></Label>
+                  <Label>
+                    Primary Skill <span className="text-red-500 flex">*</span>
+                  </Label>
 
                   <Popover
                     open={primarySkillOpen}
@@ -1098,7 +1137,10 @@ export function AddTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Secondary Skills <span className="text-red-500 flex">*</span></Label>
+                  <Label>
+                    Secondary Skills{" "}
+                    <span className="text-red-500 flex">*</span>
+                  </Label>
 
                   <Popover
                     open={secondarySkillOpen}
@@ -1187,7 +1229,8 @@ export function AddTaskDialog({
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5" />
-                    Assigned Members <span className="text-red-500 flex">*</span>
+                    Assigned Members{" "}
+                    <span className="text-red-500 flex">*</span>
                   </Label>
 
                   <Popover
@@ -1199,7 +1242,7 @@ export function AddTaskDialog({
                         variant="outline"
                         role="combobox"
                         aria-expanded={assignedMembersOpen}
-                        disabled={!projectId || membersLoading}
+                        disabled={!projectId || membersLoading || !skillsChosen}
                         className="w-full justify-between text-left font-normal"
                       >
                         <span
@@ -1210,13 +1253,15 @@ export function AddTaskDialog({
                         >
                           {membersLoading
                             ? "Loading members..."
-                            : taskForm.assigned_members.length === 0
-                              ? "Select members"
-                              : `${taskForm.assigned_members.length} member${
-                                  taskForm.assigned_members.length > 1
-                                    ? "s"
-                                    : ""
-                                } selected`}
+                            : !skillsChosen
+                              ? "Select primary and secondary skills first"
+                              : taskForm.assigned_members.length === 0
+                                ? "Select members"
+                                : `${taskForm.assigned_members.length} member${
+                                    taskForm.assigned_members.length > 1
+                                      ? "s"
+                                      : ""
+                                  } selected`}
                         </span>
                       </Button>
                     </PopoverTrigger>
@@ -1234,13 +1279,19 @@ export function AddTaskDialog({
 
                         {!membersError &&
                           !membersLoading &&
-                          assignableMembers.length === 0 && (
+                          skillsChosen &&
+                          eligibleMembers.length === 0 && (
                             <p className="px-2 py-2 text-sm text-neutral-500">
-                              No members with the "member" role on this project.
+                              No members have the primary skill and at least{" "}
+                              {requiredSecondaryCount(
+                                taskForm.secondary_skills.length,
+                              )}{" "}
+                              of {taskForm.secondary_skills.length} secondary
+                              skill(s).
                             </p>
                           )}
 
-                        {assignableMembers.map((member) => {
+                        {eligibleMembers.map((member) => {
                           const selected = taskForm.assigned_members.some(
                             (assigned) =>
                               assigned.member_id === member.member_id,
@@ -1298,14 +1349,16 @@ export function AddTaskDialog({
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    Select the members who will be assigned to this task.
+                    Only members with the primary skill and at least 70% of the
+                    secondary skills are shown.
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5" />
-                    Assigned Reviewer <span className="text-red-500 flex">*</span>
+                    Assigned Reviewer{" "}
+                    <span className="text-red-500 flex">*</span>
                   </Label>
 
                   <Popover open={reviewerOpen} onOpenChange={setReviewerOpen}>
@@ -1409,7 +1462,9 @@ export function AddTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Deadline <span className="text-red-500 flex">*</span></Label>
+                  <Label>
+                    Deadline <span className="text-red-500 flex">*</span>
+                  </Label>
 
                   <Popover>
                     <PopoverTrigger asChild>

@@ -15,6 +15,10 @@ import type { TaskIntent } from "@/lib/taskIntent";
 
 import { useUpdateTask, taskKeys } from "@/hooks/useTask";
 import {
+  isMemberEligible,
+  requiredSecondaryCount,
+} from "@/lib/memberEligibility";
+import {
   useGetAllProjectSupertasks,
   supertaskKeys,
 } from "@/hooks/useSupertask";
@@ -42,7 +46,6 @@ import DeleteTaskDialog from "@/components/user/DeleteTaskDialog";
 import { TaskAttachments } from "./TaskAttachments";
 import { TaskLinks } from "./TaskLinks";
 import { TaskRevisionNotes } from "./TaskRevisionNotes";
-
 import {
   Drawer,
   DrawerClose,
@@ -83,6 +86,7 @@ type AssignableMember = {
   id: string;
   first_name: string;
   last_name: string;
+  skills: Skill[];
 };
 
 type TaskFormState = {
@@ -347,6 +351,7 @@ export default function EditTaskDialog({
         id: projectMember.user_id,
         first_name: projectMember.users.first_name,
         last_name: projectMember.users.last_name,
+        skills: projectMember.skills ?? [],
       }));
   }, [projectMembersData]);
 
@@ -365,6 +370,7 @@ export default function EditTaskDialog({
         id: projectMember.user_id,
         first_name: projectMember.users.first_name,
         last_name: projectMember.users.last_name,
+        skills: projectMember.skills ?? [],
       }));
   }, [projectMembersData]);
 
@@ -403,8 +409,39 @@ export default function EditTaskDialog({
       id: member.user_id,
       first_name: member.users.first_name,
       last_name: member.users.last_name,
+      skills: member.skills ?? [],
     };
   }, [projectMembersData, effectiveReviewerId]);
+
+  const skillsChosen =
+    !!taskForm.primary_skill && taskForm.secondary_skills.length > 0;
+
+  // Eligible members, plus anyone already selected so they can still be removed.
+  const listedMembers = useMemo(
+    () =>
+      assignableMembers.filter(
+        (m) =>
+          currentSelectedIds.includes(m.member_id) ||
+          isMemberEligible(
+            m.skills,
+            taskForm.primary_skill,
+            taskForm.secondary_skills,
+          ),
+      ),
+    [
+      assignableMembers,
+      currentSelectedIds,
+      taskForm.primary_skill,
+      taskForm.secondary_skills,
+    ],
+  );
+
+  const isEligible = (m: AssignableMember) =>
+    isMemberEligible(
+      m.skills,
+      taskForm.primary_skill,
+      taskForm.secondary_skills,
+    );
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -652,6 +689,16 @@ export default function EditTaskDialog({
 
     if (currentSelectedIds.length === 0) {
       setError("At least one assigned member is required.");
+      return;
+    }
+
+    const ineligible = assignableMembers.filter(
+      (m) => currentSelectedIds.includes(m.member_id) && !isEligible(m),
+    );
+    if (ineligible.length > 0) {
+      setError(
+        `${ineligible.map((m) => `${m.first_name} ${m.last_name}`).join(", ")} no longer meet the skill requirements. Remove them or adjust the skills.`,
+      );
       return;
     }
 
@@ -1261,13 +1308,19 @@ export default function EditTaskDialog({
 
                       {!membersError &&
                         !membersLoading &&
-                        assignableMembers.length === 0 && (
+                        skillsChosen &&
+                        listedMembers.length === 0 && (
                           <p className="px-2 py-2 text-sm text-neutral-500">
-                            No members with the "member" role on this project.
+                            No members have the primary skill and at least{" "}
+                            {requiredSecondaryCount(
+                              taskForm.secondary_skills.length,
+                            )}{" "}
+                            of {taskForm.secondary_skills.length} secondary
+                            skill(s).
                           </p>
                         )}
 
-                      {assignableMembers.map((member) => {
+                      {listedMembers.map((member) => {
                         const selected = currentSelectedIds.includes(
                           member.member_id,
                         );
@@ -1285,6 +1338,11 @@ export default function EditTaskDialog({
                               <span>
                                 {member.first_name} {member.last_name}
                               </span>
+                              {!isEligible(member) && (
+                                <span className="text-xs text-amber-600">
+                                  Doesn't meet skills
+                                </span>
+                              )}
                             </div>
 
                             {selected && (
@@ -1457,7 +1515,7 @@ export default function EditTaskDialog({
                     isOverdue && "text-red-600 dark:text-red-400",
                   )}
                 >
-                  Deadline 
+                  Deadline
                   {isOverdue && (
                     <span
                       role="img"
