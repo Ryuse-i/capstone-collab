@@ -347,7 +347,7 @@ function EditForm({
                         setCategory(name);
                         setCategoryOpen(false);
                       }}
-                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
                     >
                       <span className="flex items-center gap-2">
                         <CategoryIcon className="size-4 text-muted-foreground" />
