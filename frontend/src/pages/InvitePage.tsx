@@ -47,7 +47,7 @@ export default function InvitePage() {
             ? "You're already a member of this project"
             : "You've joined the project",
         );
-        navigate(`/projects/${result.project_id}`); // adjust to your route
+        navigate("/dashboard"); // adjust to your route
       },
       onError: (error) => {
         const status = statusOf(error);
