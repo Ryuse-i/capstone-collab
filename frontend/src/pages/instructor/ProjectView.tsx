@@ -435,10 +435,10 @@ export default function ProjectView() {
           Back to projects
         </button>
 
-        <Card className="overflow-hidden border bg-background shadow-sm">
+        <Card className="overflow-hidden border bg-background dark:bg-muted/20 shadow-sm">
           {/* Project Header */}
           <div
-            className={`m-2 rounded-lg border-4 p-6 ${
+            className={`m-2 rounded-lg border-4 p-6 bg-card ${
               health ? headerBorderClasses[health.status] : "border-neutral-200"
             }`}
           >

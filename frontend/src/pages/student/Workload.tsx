@@ -196,7 +196,7 @@ function RecommendationCard({ item }: { item: RecommendationResponse }) {
     <div className="flex flex-col gap-3 rounded-lg border p-4">
       {/* Rank + type + overdue flag + Go */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
+        <span className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground dark:text-muted-foreground">
           #{item.rank}
         </span>
 
@@ -884,7 +884,7 @@ export default function Workload() {
 
             <CardContent className="flex flex-col gap-3">
               {projectRecommendations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground">
                   No recommendations yet. Click Generate to check for ways to
                   rebalance the workload.
                 </p>
