@@ -30,3 +30,9 @@ class ResourceResponse(BaseModel):
     uses: int
     created_at: datetime
     updated_at: datetime
+
+class ResourceUpdate(BaseModel):
+    title: str | None = None
+    category: ResourceCategory | None = None
+    description: str | None = None
+    pinned: bool | None = None

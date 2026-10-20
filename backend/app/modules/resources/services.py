@@ -12,7 +12,7 @@ from app.modules.project_members.model import ProjectMember, ProjectRole
 from app.modules.projects.model import Project
 from app.modules.resources.model import Resource
 from app.modules.resources.repo import ResourceRepo
-from app.modules.resources.schema import ResourceCategory, ResourceResponse
+from app.modules.resources.schema import ResourceCategory, ResourceResponse, ResourceUpdate
 from app.modules.users.model import User, UserRole
 
 
@@ -151,6 +151,60 @@ class ResourceService:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Resource has no accessible content (no links or file)",
         )
+
+    @staticmethod
+    async def update(
+        db: AsyncSession,
+        resource_id: UUID,
+        user: User,
+        *,
+        title: str | None = None,
+        category: ResourceCategory | None = None,
+        description: str | None = None,
+        pinned: bool | None = None,
+    ) -> ResourceResponse:
+        resource = await ResourceRepo(db).get_by_id_with_relations(resource_id)
+        if resource is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+        project = await ResourceService._get_accessible_project(db, resource.project_id, user)
+
+        is_project_manager = user.role == UserRole.ADMIN or user.id in {
+            project.created_by, project.instructor, project.advisor,
+        }
+        if resource.created_by != user.id and not is_project_manager:
+            member = await db.scalar(
+                select(ProjectMember)
+                .where(ProjectMember.project_id == project.id, ProjectMember.user_id == user.id)
+                .limit(1)
+            )
+            is_project_manager = member is not None and member.project_role in {
+                ProjectRole.LEADER, ProjectRole.INSTRUCTOR, ProjectRole.ADVISOR,
+            }
+        if resource.created_by != user.id and not is_project_manager:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the resource owner or project managers can edit it",
+            )
+
+        if title is not None:
+            title = title.strip()
+            if not title:
+                raise HTTPException(status_code=422, detail="Title cannot be empty")
+            resource.title = title
+        if description is not None:
+            description = description.strip()
+            if not description:
+                raise HTTPException(status_code=422, detail="Description cannot be empty")
+            resource.description = description
+        if category is not None:
+            resource.category = category
+        if pinned is not None:
+            resource.pinned = pinned
+
+        await db.flush()
+        await db.refresh(resource)
+        resource = await ResourceRepo(db).get_by_id_with_relations(resource.id)
+        return ResourceService._response(resource)
 
     @staticmethod
     async def delete(db: AsyncSession, resource_id: UUID, user: User) -> None:

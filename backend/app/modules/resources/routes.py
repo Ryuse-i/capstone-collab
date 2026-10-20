@@ -9,6 +9,11 @@ from app.modules.resources.schema import ResourceCategory, ResourceResponse
 from app.modules.resources.services import ResourceService
 from app.modules.users.model import User
 from app.modules.users.services import current_active_user
+from app.modules.resources.schema import (
+    ResourceCategory,
+    ResourceResponse,
+    ResourceUpdate,
+)
 
 class ResourceUrlResponse(BaseModel):
     url: str
@@ -25,30 +30,25 @@ async def list_project_resources(
     return await ResourceService.list_for_project(db, project_id, current_user)
 
 
-@resources_router.post(
-    "/projects/{project_id}",
-    response_model=ResourceResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_project_resource(
-    project_id: UUID,
-    title: str = Form(...),
-    category: ResourceCategory = Form(...),
-    description: str = Form(...),
-    attachment: UploadFile | None = File(default=None),
+@resources_router.patch("/{resource_id}", response_model=ResourceResponse)
+async def update_resource(
+    resource_id: UUID,
+    title: str | None = Form(default=None),
+    category: ResourceCategory | None = Form(default=None),
+    description: str | None = Form(default=None),
+    pinned: bool | None = Form(default=None),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    return await ResourceService.create(
+    return await ResourceService.update(
         db,
-        project_id=project_id,
-        user=current_user,
+        resource_id,
+        current_user,
         title=title,
         category=category,
         description=description,
-        attachment=attachment,
+        pinned=pinned,
     )
-
 
 @resources_router.post("/{resource_id}/open", )
 async def open_resource(
@@ -60,6 +60,19 @@ async def open_resource(
         url=await ResourceService.open_resource(db, resource_id, current_user)
     )
 
+@resources_router.patch("/{resource_id}", response_model=ResourceResponse)
+async def update_resource(
+    resource_id: UUID,
+    payload: ResourceUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    return await ResourceService.update(
+        db,
+        resource_id,
+        current_user,
+        **payload.model_dump(exclude_unset=True),
+    )
 
 @resources_router.delete("/{resource_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_resource(

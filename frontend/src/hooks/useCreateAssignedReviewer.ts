@@ -58,7 +58,7 @@ const api = {
 
   create: async (assignedReviewer: AssignedReviewerCreate): Promise<AssignedReviewerResponse> => {
     try {
-      const response = await apiClient.post(url, assignedReviewer);
+      const response = await apiClient.post(`${url}/`, assignedReviewer);
       return response.data;
     } catch (error) {
       console.error("Failed to create assigned reviewer", error);

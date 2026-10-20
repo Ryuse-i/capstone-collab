@@ -68,7 +68,7 @@ export const api = {
 
   getOnePaper: async (paper_id: number): Promise<PaperResponse> => {
     try {
-      const response = await apiClient.get<PaperResponse>(`${url}${paper_id}/`);
+      const response = await apiClient.get<PaperResponse>(`${url}${paper_id}`);
       return response.data;
     } catch (error) {
       console.error("Failed to get paper", error);

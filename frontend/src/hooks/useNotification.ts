@@ -69,7 +69,7 @@ const api = {
   ): Promise<NotificationResponse[]> => {
     try {
       const response = await apiClient.get(
-        `${url}/${userId}`,
+        `${url}/${userId}/`,
       );
 
       return response.data ?? [];

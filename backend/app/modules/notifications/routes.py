@@ -16,7 +16,7 @@ notification_router = APIRouter()
 
 
 @notification_router.get(
-    "/{user_id}",
+    "/{user_id}/",
     response_model=List[NotificationResponse],
     status_code=status.HTTP_200_OK,
 )
