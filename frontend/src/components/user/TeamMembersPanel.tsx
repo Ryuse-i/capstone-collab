@@ -20,7 +20,7 @@ import type { MemberStatus } from "@/types/member_snapshot";
 // Styles
 // ---------------------------------------------------------------------------
 
-type WorkloadStyle = { label: string; badge: string; bar: string };
+type WorkloadStyle = { label: string; badge: string; bar: string; text: string };
 
 const roleStyles: Record<ProjectRole, string> = {
   admin: "border-purple-400 text-purple-600 bg-purple-50 dark:bg-purple-950/20",
@@ -38,17 +38,20 @@ export const workloadStyles: Record<MemberStatus, WorkloadStyle> = {
     label: "Overloaded",
     badge: "border-red-400 text-red-500 bg-red-50 dark:bg-red-950/20",
     bar: "bg-red-500",
+    text: "text-red-500",
   },
   underutilized: {
     label: "Underutilized",
     badge:
       "border-yellow-400 text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20",
     bar: "bg-yellow-400",
+    text: "text-yellow-600",
   },
   normal: {
     label: "Normal",
     badge: "border-green-400 text-green-600 bg-green-50 dark:bg-green-950/20",
     bar: "bg-green-500",
+    text: "text-green-600",
   },
 };
 
@@ -56,8 +59,14 @@ function getInitials(first: string, last: string) {
   return `${first?.trim()?.[0] ?? ""}${last?.trim()?.[0] ?? ""}`.toUpperCase();
 }
 
-function capacityPercent(multiplier: number) {
-  return Math.min(Math.max(multiplier * 100, 0), 200) / 2;
+// Progress bar fill: current points / expected points, capped at 100%.
+// If expected points is 0 (or missing), show full when there is any workload,
+// otherwise empty. Same rule as the Member Workload card on the Workload page.
+function workloadPercent(points: number, expectedPoints: number) {
+  if (expectedPoints > 0) {
+    return Math.min(Math.max((points / expectedPoints) * 100, 0), 100);
+  }
+  return points > 0 ? 100 : 0;
 }
 
 function statusOf(member: ProjectMemberUserSnapshot): MemberStatus {
@@ -259,6 +268,12 @@ function MemberCard({
       ? parseFloat(snapshot.capacity_multiplier)
       : undefined;
 
+  const expectedPoints =
+    snapshot !== undefined ? Number(snapshot.expected_points) : undefined;
+
+  const workloadPct =
+    points !== undefined ? workloadPercent(points, expectedPoints ?? 0) : 0;
+
   const workload = workloadStyles[snapshot?.workload_status ?? "normal"];
   const initials = getInitials(user.first_name, user.last_name);
 
@@ -347,21 +362,20 @@ function MemberCard({
         </div>
 
         <div className="flex flex-col gap-1">
-          <div className="flex justify-between text-xs text-gray-500 dark:text-card-foreground">
-            <span>Capacity multiplier</span>
-            <span>
-              {capacity !== undefined ? `${capacity.toFixed(2)}x` : "No data"}
+          <div className="flex justify-between text-sm">
+            <span className="font-medium text-card-foreground">Workload</span>
+
+            <span className={`text-xs font-semibold ${workload.text}`}>
+              {points !== undefined && expectedPoints !== undefined
+                ? `${points.toFixed(1)} pts / ${expectedPoints.toFixed(1)}`
+                : "No data"}
             </span>
           </div>
 
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-400">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-400">
             <div
               className={`h-full rounded-full ${workload.bar}`}
-              style={{
-                width: `${
-                  capacity !== undefined ? capacityPercent(capacity) : 0
-                }%`,
-              }}
+              style={{ width: `${workloadPct}%` }}
             />
           </div>
         </div>

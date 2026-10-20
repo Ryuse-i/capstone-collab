@@ -1,10 +1,12 @@
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetProjectMemberByUserId } from "@/hooks/useProjectMember";
 import { ROLES } from "@/constants/roles";
 import type { UserRole } from "@/services/api";
 
 import StudentDashboard from "@/pages/student/Dashboard";
+import MemberDashboard from "@/pages/student/MemberDashboard";
 import InstructorDashboard from "@/pages/instructor/Dashboard";
 import AdminDashboard from "@/pages/admin/Overview";
 
@@ -26,8 +28,21 @@ export default function RoleBasedDashboard() {
       return <AdminDashboard />;
     case ROLES.INSTRUCTOR as UserRole:
       return <InstructorDashboard />;
-    case ROLES.STUDENT as UserRole:
+    case ROLES.STUDENT as UserRole: {
+      // A student who is a project leader sees the project-health dashboard;
+      // a normal project member sees the personal member dashboard.
+      return <StudentRoleRouter userId={user.id} />;
+    }
     default:
       return <StudentDashboard />;
   }
+}
+
+function StudentRoleRouter({ userId }: { userId: string }) {
+  // Hook errors (e.g. no membership found) mean the user is not a leader,
+  // so fall back to the normal member dashboard.
+  const { data: membership, isError } = useGetProjectMemberByUserId(userId);
+  const isLeader = !isError && membership?.project_role === "leader";
+
+  return isLeader ? <StudentDashboard /> : <MemberDashboard />;
 }
