@@ -134,7 +134,7 @@ export const api = {
 
   deletePaper: async (id: number): Promise<void> => {
     try {
-      await apiClient.delete(`${url}${id}/`);
+      await apiClient.delete(`${url}${id}`);
     } catch (error) {
       console.error("Failed to delete paper", error);
       throw error;
