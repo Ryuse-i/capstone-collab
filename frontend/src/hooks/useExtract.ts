@@ -49,7 +49,7 @@ const api = {
         payload.authors.forEach((author) => formData.append("authors", author));
       }
 
-      const response = await apiClient.post<PaperResponse>(url, formData, {
+      const response = await apiClient.post<PaperResponse>(`${url}/`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
