@@ -13,6 +13,9 @@ compute_project_workload(), and persist the result. Nothing else.
 Eligibility: ONLY tasks that are NOT_STARTED or IN_PROGRESS count toward workload
 (and therefore toward the workload balance score). Completed, submitted, cancelled,
 archived, unknown and parent tasks are ignored.
+
+Baseline: the project baseline is the AVERAGE (arithmetic mean) of every member's
+total effective points.
 """
 from __future__ import annotations
 
@@ -83,10 +86,11 @@ class WorkloadConfig:
     # 0 = strict spec behaviour (anything above expected_load is overloaded).
     # 0.10 = must exceed expected_load by more than 10% to be flagged.
     overload_tolerance: Decimal = D0
-    # Floor for expected_load. 0 = off. With the median at 0, anyone holding work is
-    # OVERLOADED (spec edge case). Raise it (e.g. 2) to stop one lone task flagging.
+    # Floor for expected_load. 0 = off. With the average at 0 (nobody holds any eligible
+    # work) expected_load is 0 and anyone given work is OVERLOADED. Raise it (e.g. 2) to
+    # stop one lone task flagging.
     min_expected_load: Decimal = D0
-    # False = spec (median of raw effective points). True = median of points / capacity.
+    # False = spec (average of raw effective points). True = average of points / capacity.
     normalize_by_capacity: bool = False
 
     # ---- Workload balance (project-level rollup) ------------------------- #
@@ -299,9 +303,10 @@ def member_totals(tasks: Sequence[TaskInput], today: date) -> tuple[Decimal, Dec
 # Member / project level
 # --------------------------------------------------------------------------- #
 def compute_baseline(values: Sequence[Decimal]) -> Decimal:
+    """Baseline = arithmetic mean (average) of the members' total effective points."""
     if not values:
         return D0
-    return q2(Decimal(median(values)))
+    return q2(sum(values, D0) / Decimal(len(values)))
 
 
 def compute_expected_load(baseline: Decimal, capacity_multiplier, cfg: WorkloadConfig) -> Decimal:
@@ -312,7 +317,7 @@ def compute_expected_load(baseline: Decimal, capacity_multiplier, cfg: WorkloadC
 def classify(total_effective_points: Decimal, expected_load: Decimal, cfg: WorkloadConfig) -> Flag:
     """The ONE definition of overloaded / underutilized. Everything else must call this."""
     if expected_load <= 0:
-        # Median is 0: anyone holding work is above the bar, nobody holding none is not.
+        # Average is 0: anyone holding work is above the bar, nobody holding none is not.
         return Flag.OVERLOADED if total_effective_points > 0 else Flag.NORMAL
     if total_effective_points > expected_load * (D1 + cfg.overload_tolerance):
         return Flag.OVERLOADED
@@ -329,7 +334,7 @@ def compute_load_ratio(total_effective_points: Decimal, expected_load: Decimal) 
     expected_load already includes capacity_multiplier, so a 1.5x hero dev is not
     penalised for carrying more.
 
-    expected_load <= 0 (median is 0 and no floor configured) would divide by zero:
+    expected_load <= 0 (average is 0 and no floor configured) would divide by zero:
       * holding work -> MAX_OVERAGE_RATIO (consistent with extension_days)
       * holding none -> 1.0 (nothing expected, nothing held, so exactly on threshold)
     """
@@ -358,8 +363,9 @@ def compute_workload_balance(
     Only eligible tasks (NOT_STARTED / IN_PROGRESS) feed these numbers: member points
     come from counted_points(), which ignores completed, submitted and all other states.
 
-    Spread uses MAD (median absolute deviation) to match the median baseline: one hero
-    outlier distorts a standard deviation but barely moves the MAD.
+    Spread uses MAD (median absolute deviation) of the load ratios. The project baseline
+    is now an average, but MAD is kept here because it stays robust to one hero outlier,
+    whereas a standard deviation would be pulled hard by it.
 
     silence_warning members:
       * INCLUDED in ratios, median, MAD, max ratio, and total_members (their data is real)
@@ -445,8 +451,9 @@ def compute_project_workload(
 ) -> ProjectWorkload:
     """
     Spec 2.7 steps 3-5 in one pass. Every member is judged against the SAME fresh
-    baseline. Non-counted members (advisor/instructor) get a NORMAL row so their
-    snapshots are rewritten (no stale OVERLOADED), but never feed the median or total.
+    baseline (the average of all members' effective points). Non-counted members
+    (advisor/instructor) get a NORMAL row so their snapshots are rewritten (no stale
+    OVERLOADED), but never feed the baseline or total.
 
     Member totals are expected to come from member_totals(), so they only include
     eligible (NOT_STARTED / IN_PROGRESS) tasks.
@@ -458,7 +465,7 @@ def compute_project_workload(
 
     # get all effective points for each member
     basis = [m.total_effective_points for m in members]
-    # get the baseline median for all points
+    # get the baseline average for all points
     baseline = compute_baseline(basis)
 
     results: list[MemberResult] = []
