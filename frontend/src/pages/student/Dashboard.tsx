@@ -187,7 +187,7 @@ type AttentionItem = {
 };
 
 function getAttentionItems(health: ProjectHealth): AttentionItem[] {
-  const { schedule, balance, risk, activity } = health;
+  const { schedule, balance, activity } = health;
 
   const scheduleMessage =
     schedule.overdue_tasks > 0
@@ -203,14 +203,6 @@ function getAttentionItems(health: ProjectHealth): AttentionItem[] {
       ? `${plural(balance.overloaded_count, "member", "members")} overloaded`
       : "Work is unevenly spread across the team";
 
-  const riskMessage =
-    risk.chronic_count > 0
-      ? `${plural(risk.chronic_count, "member", "members")} chronically overloaded`
-      : risk.unassigned_count > 0
-        ? `${plural(risk.unassigned_count, "task", "tasks")} unassigned`
-        : risk.spof_count > 0
-          ? `${plural(risk.spof_count, "task", "tasks")} depend on a single member`
-          : "Delivery risk is elevated";
 
   const activityMessage = `${plural(
     activity.stale_in_progress,
@@ -234,12 +226,6 @@ function getAttentionItems(health: ProjectHealth): AttentionItem[] {
       key: "workload",
       score: health.workload_balance_score,
       message: workloadMessage,
-      href: ROUTES.members,
-    },
-    {
-      key: "risk",
-      score: health.risk_score,
-      message: riskMessage,
       href: ROUTES.members,
     },
     {

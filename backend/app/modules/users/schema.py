@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi_users import schemas
-from pydantic import ConfigDict, EmailStr
+from pydantic import ConfigDict, EmailStr, BaseModel, Field
 
 from .model import UserRole
 
@@ -38,3 +38,7 @@ class UserUpdate(schemas.BaseUserUpdate):
     is_verified: Literal[False] | None = None
     must_change_password: bool | None = None
     model_config = ConfigDict(extra="forbid")
+
+class ProfileUpdate(BaseModel):
+    first_name: str = Field(min_length=1, max_length=150)
+    last_name: str = Field(min_length=1, max_length=150)

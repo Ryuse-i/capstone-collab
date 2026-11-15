@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from fastapi import Query
 from typing import List
 from .auth import get_user_db, UserDB
-from .schema import UserResponse 
+from .schema import UserResponse, ProfileUpdate
 
 
 
@@ -32,6 +32,28 @@ class RefreshTokenRequest(BaseModel):
 router = APIRouter()
 
 
+@router.patch("/users/me/profile", response_model=UserResponse, tags=["users"])
+async def update_my_profile(
+    payload: ProfileUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    """Let the signed-in user edit their own name only."""
+    user = await db.get(User, current_user.id)
+    user.first_name = payload.first_name.strip()
+    user.last_name = payload.last_name.strip()
+ 
+    await ActivityLogService.record(
+        db,
+        event_type="profile_updated",
+        actor_id=user.id,
+        target_type="user",
+        target_id=user.id,
+        details={"target_label": f"{user.first_name} {user.last_name}"},
+    )
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 @router.get(
     "/users/search_users",
