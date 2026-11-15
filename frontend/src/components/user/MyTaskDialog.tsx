@@ -171,14 +171,10 @@ function MetaRow({
 export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
   const updateTaskMutation = useUpdateTask();
   const [submissionOpen, setSubmissionOpen] = useState(false);
-  const [submissionNotes, setSubmissionNotes] = useState("");
-  const [submissionLink, setSubmissionLink] = useState("");
   const submissionFormRef = useRef<HTMLDivElement>(null);
 
   const resetSubmissionForm = () => {
     setSubmissionOpen(false);
-    setSubmissionNotes("");
-    setSubmissionLink("");
   };
 
   // Reset the submission form whenever the selected task changes (or the
@@ -478,36 +474,6 @@ export function MyTaskDialog({ open, onOpenChange, task }: MyTaskDialogProps) {
                   <p className="text-sm text-muted-foreground">
                     Add any notes or links for your submission:
                   </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1">
-                      Notes
-                    </label>
-                    <textarea
-                      value={submissionNotes}
-                      onChange={(e) => setSubmissionNotes(e.target.value)}
-                      placeholder="Add notes about your submission..."
-                      className="w-full px-3 py-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
-                      rows={3}
-                      disabled={updateTaskMutation.isPending}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1">
-                      Link (optional)
-                    </label>
-                    <input
-                      type="url"
-                      value={submissionLink}
-                      onChange={(e) => setSubmissionLink(e.target.value)}
-                      placeholder="https://example.com/your-work"
-                      className="w-full px-3 py-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
-                      disabled={updateTaskMutation.isPending}
-                    />
-                  </div>
                 </div>
               </div>
             )}
