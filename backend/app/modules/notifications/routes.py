@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,15 +14,15 @@ notification_router = APIRouter()
 
 
 @notification_router.get(
-    "/{user_id}/",
-    response_model=List[NotificationResponse],
+    "/",
+    response_model=list[NotificationResponse],
     status_code=status.HTTP_200_OK,
 )
 async def get_my_notifications(
-    user_id: UUID,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
 ):
-    return await NotificationService.get_all_notifications(db, user_id)
+    return await NotificationService.get_all_notifications(db, current_user.id)
 
 
 @notification_router.patch(
@@ -37,6 +35,42 @@ async def mark_as_read(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    db_item = await NotificationService.get_one_notification(db, id)
+    db_item = await NotificationService.get_user_notification(
+        db, id, current_user.id
+    )
     notification = UpdateNotification(is_read=True)
     return await NotificationService.update_notification(db, db_item, notification)
+
+
+@notification_router.patch(
+    "/mark_as_unread/{id}",
+    response_model=NotificationResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def mark_as_unread(
+    id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    db_item = await NotificationService.get_user_notification(
+        db, id, current_user.id
+    )
+    return await NotificationService.update_notification(
+        db, db_item, UpdateNotification(is_read=False)
+    )
+
+
+@notification_router.delete(
+    "/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def clear_read_notification(
+    id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
+    db_item = await NotificationService.get_user_notification(
+        db, id, current_user.id
+    )
+    await NotificationService.delete_read_notification(db, db_item)
+    return None

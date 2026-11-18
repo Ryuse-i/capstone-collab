@@ -101,7 +101,7 @@ async def batch_create_members(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(current_active_user),
 ):
-    return AssignedMemberService.batch_create_members(db, members)
+    return await AssignedMemberService.batch_create_members(db, members)
 
 
 @assigned_member_router.get("/task/{task_id}", response_model=list[UserResponse])

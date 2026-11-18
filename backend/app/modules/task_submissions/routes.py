@@ -5,6 +5,8 @@ from app.modules.task_submissions.schema import TaskSubmissionCreate, TaskSubmis
 from app.modules.task_submissions.services import TaskSubmissionService
 from uuid import UUID
 from typing import List
+from app.modules.users.services import current_active_user
+from app.modules.users.model import User
 
 # Standardizing on task_submission_router
 task_submission_router = APIRouter()
@@ -29,9 +31,18 @@ async def get_one_task_submission(task_submission_id: UUID, db: AsyncSession = D
 
 
 @task_submission_router.post("/", response_model=TaskSubmissionResponse, status_code=status.HTTP_201_CREATED)
-async def create_task_submission(task_submission: TaskSubmissionCreate, db: AsyncSession = Depends(get_async_session)):
+async def create_task_submission(
+    task_submission: TaskSubmissionCreate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(current_active_user),
+):
     """Create a new task submission. Returns 201 Created on success."""
-    return await TaskSubmissionService.create_task_submission(db, task_submission)
+    return await TaskSubmissionService.create_task_submission(
+        db,
+        task_submission,
+        current_user.id,
+        f"{current_user.first_name} {current_user.last_name}",
+    )
 
 
 @task_submission_router.patch("/{task_submission_id}", response_model=TaskSubmissionResponse)

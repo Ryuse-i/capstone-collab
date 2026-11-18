@@ -58,7 +58,9 @@ async def create_task(
     current_user: User = Depends(current_active_user),
 ):
     """Create a new task. Returns 201 Created on success."""
-    created = await TaskService.create_task(db, task)
+    created = await TaskService.create_task(
+        db, task, user_id=current_user.id
+    )
     await ActivityLogService.record(
         db,
         event_type="task_created",
@@ -84,7 +86,9 @@ async def update_task(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
     previous_status = db_item.status
-    updated = await TaskService.update_task(db, db_item, task)
+    updated = await TaskService.update_task(
+        db, db_item, task, user_id=current_user.id
+    )
     event_type = "task_updated"
     if previous_status != updated.status and updated.status == Status.SUBMITTED:
         event_type = "task_submitted"

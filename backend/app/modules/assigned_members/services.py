@@ -5,9 +5,28 @@ from .schema import AssignedMemberCreate, AssignedMemberResponse, AssignedMember
 from uuid import UUID
 from typing import Sequence
 from app.modules.project_snapshots.services import ProjectSnapshotService
+from app.modules.project_members.model import ProjectMember
+from app.modules.notifications.services import NotificationService
+from app.modules.tasks.model import Task
 
 
 class AssignedMemberService:
+    @staticmethod
+    async def _notify_assignee(
+        db: AsyncSession, task: Task, member_id: UUID | None
+    ) -> None:
+        if member_id is None:
+            return
+        project_member = await db.get(ProjectMember, member_id)
+        if project_member is not None and project_member.user_id is not None:
+            await NotificationService.notify_task_assignees(
+                db,
+                {project_member.user_id},
+                actor_id=None,
+                title=f"Task assigned: {task.name}",
+                body=f'You have been assigned to "{task.name}".',
+            )
+
     @staticmethod
     async def get_one_assigned_member(db: AsyncSession, assigned_member_id):
         repo = AssignedMemberRepo(db)
@@ -32,6 +51,7 @@ class AssignedMemberService:
         # Fetch the task to get project_id
         task = await task_repo.get_by_id(member.task_id)
         project_id = task.project_id
+        await AssignedMemberService._notify_assignee(db, task, member.member_id)
         await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)
         #calculate project workload
         project_workload = await ProjectSnapshotService.calculate_project_workload(db, project_id)
@@ -108,6 +128,9 @@ class AssignedMemberService:
             #get the project id from the task
             task = await task_repo.get_by_id(member.task_id)
             project_id = task.project_id
+            await AssignedMemberService._notify_assignee(
+                db, task, member.member_id
+            )
 
         #check the unassinged tasks
         await ProjectSnapshotService.sync_unassigned_tasks(db, project_id)

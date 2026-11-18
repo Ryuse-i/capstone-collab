@@ -3,7 +3,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import axios from "axios";
 import apiClient from "@/services/apiClient";
 
 import type {
@@ -65,26 +64,12 @@ const api = {
      Get notifications for a specific user
   ------------------------------------------------------- */
   getUserNotifications: async (
-    userId: string,
   ): Promise<NotificationResponse[]> => {
     try {
-      const response = await apiClient.get(
-        `${url}/${userId}/`,
-      );
+      const response = await apiClient.get(`${url}/`);
 
       return response.data ?? [];
     } catch (error) {
-      /*
-       * A user with no notifications may return 404
-       * depending on your backend implementation.
-       */
-      if (
-        axios.isAxiosError(error) &&
-        error.response?.status === 404
-      ) {
-        return [];
-      }
-
       console.error(
         "Failed to fetch user notifications:",
         error,
@@ -146,13 +131,9 @@ const api = {
   ------------------------------------------------------- */
   deleteNotification: async (
     id: string,
-  ): Promise<string> => {
+  ): Promise<void> => {
     try {
-      const response = await apiClient.delete(
-        `${url}/${id}`,
-      );
-
-      return response.data;
+      await apiClient.delete(`${url}/${id}`);
     } catch (error) {
       console.error(
         "Failed to delete notification:",
@@ -181,6 +162,21 @@ const api = {
         error,
       );
 
+      throw error;
+    }
+  },
+
+  markAsUnread: async (
+    id: string,
+  ): Promise<NotificationResponse> => {
+    try {
+      const response = await apiClient.patch(
+        `${url}/mark_as_unread/${id}`,
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Failed to mark notification as unread:", error);
       throw error;
     }
   },
@@ -265,7 +261,7 @@ export function useGetUserNotifications(
       notificationKeys.userList(userId),
 
     queryFn: () =>
-      api.getUserNotifications(userId),
+      api.getUserNotifications(),
 
     enabled: Boolean(userId),
 
@@ -452,7 +448,6 @@ export function useMarkAsRead(
             if (!currentNotifications) {
               return currentNotifications;
             }
-
             return currentNotifications.map(
               (notification) =>
                 notification.id ===
@@ -485,6 +480,42 @@ export function useMarkAsRead(
       queryClient.invalidateQueries({
         queryKey:
           notificationKeys.lists(),
+      });
+    },
+  });
+}
+
+/* =========================================================
+   MARK AS UNREAD
+========================================================= */
+
+export function useMarkAsUnread(userId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) =>
+      api.markAsUnread(notificationId),
+    onSuccess: (updatedNotification, notificationId) => {
+      queryClient.setQueryData(
+        notificationKeys.detail(notificationId),
+        updatedNotification,
+      );
+      if (userId) {
+        queryClient.setQueryData<NotificationResponse[]>(
+          notificationKeys.userList(userId),
+          (currentNotifications) =>
+            currentNotifications?.map((notification) =>
+              notification.id === notificationId
+                ? { ...notification, ...updatedNotification }
+                : notification,
+            ),
+        );
+        queryClient.invalidateQueries({
+          queryKey: notificationKeys.userList(userId),
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: notificationKeys.lists(),
       });
     },
   });

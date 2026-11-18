@@ -25,8 +25,10 @@ import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useAuth";
 
 import {
+  useDeleteNotification,
   useGetUserNotifications,
   useMarkAsRead,
+  useMarkAsUnread,
 } from "@/hooks/useNotification";
 
 import type { NotificationResponse } from "@/types/notification";
@@ -54,7 +56,9 @@ export default function NotificationCenter() {
     isError: notificationError,
   } = useGetUserNotifications(user?.id ?? "");
 
-  const { mutate: markAsRead } = useMarkAsRead();
+  const { mutate: markAsRead } = useMarkAsRead(user?.id);
+  const { mutate: markAsUnread } = useMarkAsUnread(user?.id);
+  const { mutate: clearNotification } = useDeleteNotification();
 
   // Controls the notification popover
   const [popoverOpen, setPopoverOpen] = React.useState(false);
@@ -63,11 +67,6 @@ export default function NotificationCenter() {
   // dialog always reflects the latest data from the query)
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
 
-  // Stores notifications cleared from the current UI session
-  const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(
-    () => new Set(),
-  );
-
   // Real notifications from the backend
   const notifications: NotificationResponse[] = data ?? [];
 
@@ -75,9 +74,7 @@ export default function NotificationCenter() {
   const selectedNotification =
     notifications.find((n) => n.id === selectedId) ?? null;
 
-  const visibleNotifications = notifications.filter(
-    (item) => !dismissedIds.has(item.id),
-  );
+  const visibleNotifications = notifications;
 
   const hasUnread = visibleNotifications.some((item) => !item.is_read);
 
@@ -146,20 +143,6 @@ export default function NotificationCenter() {
       cardType === "needs_info" &&
       notification.type !== "project_invitation"
     );
-  }
-
-  /*
-   * ============================
-   * CLEAR NOTIFICATION
-   * ============================
-   */
-
-  function dismissNotification(id: string) {
-    setDismissedIds((current) => {
-      const next = new Set(current);
-      next.add(id);
-      return next;
-    });
   }
 
   /*
@@ -358,10 +341,18 @@ export default function NotificationCenter() {
                           label: "View details",
                           onClick: () => handleNotificationClick(item),
                         },
-                        {
-                          label: "Clear",
-                          onClick: () => dismissNotification(item.id),
-                        },
+                        ...(item.is_read
+                          ? [
+                              {
+                                label: "Mark unread",
+                                onClick: () => markAsUnread(item.id),
+                              },
+                              {
+                                label: "Clear",
+                                onClick: () => clearNotification(item.id),
+                              },
+                            ]
+                          : []),
                       ]}
                     />
                   );
@@ -416,4 +407,4 @@ export default function NotificationCenter() {
       </Dialog>
     </>
   );
-}``
+}

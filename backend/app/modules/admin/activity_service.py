@@ -5,6 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.admin.activity_model import ActivityLog
+from app.modules.notifications.services import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,19 @@ class ActivityLogService:
                     )
                 )
                 await db.flush()
+                event_label = event_type.replace("_", " ").capitalize()
+                target_label = (details or {}).get("target_label")
+                body = (
+                    f"{event_label}: {target_label}"
+                    if target_label
+                    else event_label
+                )
+                await NotificationService.notify_admins(
+                    db,
+                    actor_id=actor_id,
+                    title="User activity",
+                    body=body,
+                )
         except SQLAlchemyError:
             logger.warning(
                 "Unable to record activity event %s for %s %s",

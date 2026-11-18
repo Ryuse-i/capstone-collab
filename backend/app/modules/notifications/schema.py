@@ -8,8 +8,8 @@ class CreateNotification(BaseModel):
     user_id: UUID
     title: str
     body: str
-    type: NotificationType
-    invitation_id: UUID
+    type: NotificationType = NotificationType.GENERAL
+    invitation_id: UUID | None = None
 
 
 class UpdateNotification(BaseModel):
@@ -28,6 +28,6 @@ class NotificationResponse(BaseModel):
     title: str
     body: str
     type: NotificationType
-    invitation_id: UUID
+    invitation_id: UUID | None
     is_read: bool
     created_at: datetime

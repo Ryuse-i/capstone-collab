@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .model import ActivityType
 from .repo import MemberActivityRepo
 from .schema import RecentActivityItem, MemberActivityResponse
+from app.modules.notifications.services import NotificationService
+from app.modules.project_members.model import ProjectRole
 
 
 class MemberActivityService:
@@ -20,16 +22,25 @@ class MemberActivityService:
         message: str,
         task_id: UUID | None = None,
         commit: bool = True,
-    ) -> None:
+    ) -> bool:
         """Append an activity row for the user's membership in the project.
         Skips silently if the user isn't a member (e.g. an admin)."""
         repo = MemberActivityRepo(db)
         member_id = await repo.get_member_id(user_id, project_id)
         if member_id is None:
-            return
+            return False
         await repo.add(member_id, message, type.value, task_id)
+        await NotificationService.notify_project_roles(
+            db,
+            project_id,
+            {ProjectRole.LEADER, ProjectRole.INSTRUCTOR},
+            actor_id=user_id,
+            title="Project member activity",
+            body=message,
+        )
         if commit:
             await db.commit()
+        return True
 
     @staticmethod
     async def is_project_member(
