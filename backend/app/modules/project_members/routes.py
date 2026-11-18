@@ -57,16 +57,13 @@ async def get_member_by_user_and_project(
 
 @project_member_router.get(
     "/by-user/{user_id}",
-    response_model=ProjectMemberResponse,
+    response_model=Optional[ProjectMemberResponse],
     status_code=HTTP_200_OK,
 )
 async def get_project_member_by_user_id(
     user_id: UUID, db: AsyncSession = Depends(get_async_session)
 ):
-    member = await ProjectMemberService.get_project_member_user_id(db, user_id)
-    if not member:
-        raise HTTPException(status_code=404, detail="Project member not found")
-    return member
+    return await ProjectMemberService.get_project_member_user_id(db, user_id)
 
 @project_member_router.get(
     "/with-user-snapshot/{project_id}",

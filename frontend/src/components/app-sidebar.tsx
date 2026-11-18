@@ -74,12 +74,14 @@ const projectTaskNavItem = {
   title: "Project Task",
   url: "/project-task",
   icon: <FileText />,
+  tourTarget: "nav.project-task",
 };
 
 const myTaskNavItem = {
   title: "My Task",
   url: "/mytask",
   icon: <ClipboardCheck />,
+  tourTarget: "nav.my-tasks",
 };
 
 const workloadNavItem = {
@@ -92,6 +94,7 @@ const teamNavItem = {
   title: "Team",
   url: "/team",
   icon: <Users />,
+  tourTarget: "nav.team",
 };
 
 const chatNavItem = {
@@ -122,6 +125,7 @@ const studentLeaderNavMain = [
 const studentMemberNavMain = [
   ...commonNavMain,
   myTaskNavItem,
+  teamNavItem,
   chatNavItem,
   resourcesNavItem,
   capstoneSearchNavItem,
@@ -312,6 +316,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   const sidebarUser = {
+    id: user?.id,
+    role: user?.role,
     name:
       [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
       user?.email ||

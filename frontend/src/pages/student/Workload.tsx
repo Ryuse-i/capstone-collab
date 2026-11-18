@@ -669,6 +669,7 @@ export default function Workload() {
           {/* ── Workload Health Banner ─────────────────────────────── */}
           <Card
             className={`flex items-start justify-between rounded-lg border-4 bg-card p-4 lg:col-span-2 ${bannerTone.border}`}
+            data-tour="workload.summary"
           >
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
@@ -856,7 +857,10 @@ export default function Workload() {
           </Card>
 
           {/* ── Redistribution Recommendations ────────────────────── */}
-          <Card className="rounded-xl border shadow-sm lg:col-span-2">
+          <Card
+            className="rounded-xl border shadow-sm lg:col-span-2"
+            data-tour="workload.recommendations"
+          >
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div className="flex flex-col gap-1">
                 <CardTitle className="text-base font-semibold">

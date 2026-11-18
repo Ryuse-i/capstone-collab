@@ -31,6 +31,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useGetInstructorDashboard } from "@/hooks/useInstructorDashboard";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useAutoStartOnboardingTour } from "@/hooks/useAutoStartOnboardingTour";
+import { ROLES } from "@/constants/roles";
 import type {
   DashboardDeadline,
   DashboardHealth,
@@ -391,6 +394,7 @@ export default function InstructorDashboard() {
   const [deadlineDialogOpen, setDeadlineDialogOpen] = useState(false);
 
   const { data, isLoading, isError, refetch } = useGetInstructorDashboard();
+  const { data: user } = useCurrentUser();
 
   const projects = useMemo(() => data?.projects ?? [], [data]);
   const deadlines = useMemo(() => data?.deadlines ?? [], [data]);
@@ -429,6 +433,12 @@ export default function InstructorDashboard() {
 
   const stats = data?.stats;
 
+  useAutoStartOnboardingTour(
+    user?.id,
+    "instructor",
+    user?.role?.toLowerCase() === ROLES.INSTRUCTOR && !isLoading && !isError,
+  );
+
   const openProject = (id: string) => navigate(`/view-project/${id}`);
 
   return (
@@ -457,7 +467,10 @@ export default function InstructorDashboard() {
           </div>
 
           {/* Summary strip */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div
+            className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+            data-tour="instructor.dashboard-summary"
+          >
             <StatCard
               icon={
                 <Layers

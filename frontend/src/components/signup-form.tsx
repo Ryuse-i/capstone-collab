@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import { markNewUserForOnboarding } from "@/lib/onboarding";
+import { ROLES } from "@/constants/roles";
 
 /** Maps FastAPI Users error codes to readable messages. */
 function getRegisterErrorMessage(error: unknown): string {
@@ -65,7 +67,10 @@ export function SignupForm({
         last_name: lastName,
       },
       {
-        onSuccess: () => {
+        onSuccess: (newUser) => {
+          if (newUser.id && newUser.role?.toLowerCase() !== ROLES.ADMIN) {
+            markNewUserForOnboarding(newUser.id);
+          }
           navigate("/dashboard");
         },
         onError: (error) => {

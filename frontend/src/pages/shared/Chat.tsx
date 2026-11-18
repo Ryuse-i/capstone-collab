@@ -340,7 +340,10 @@ export default function Chat() {
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b px-4 pb-2">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="truncate text-lg font-medium">
+              <div
+                className="truncate text-lg font-medium"
+                data-tour={projectId ? "chat.project-context" : undefined}
+              >
                 {(isInstructor
                   ? selectedProject?.name
                   : currentProject?.name) || "Project chat"}
@@ -512,6 +515,8 @@ export default function Chat() {
           {/* Input */}
           <div className="flex shrink-0 items-center gap-3 p-2">
             <textarea
+              data-tour="chat.composer"
+              aria-label="Write a project message"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               rows={1}

@@ -56,9 +56,10 @@ async function copyText(text: string): Promise<boolean> {
 
 interface Props {
   projectId: string;
+  triggerTourTarget?: string;
 }
 
-export function InviteLinkPopover({ projectId }: Props) {
+export function InviteLinkPopover({ projectId, triggerTourTarget }: Props) {
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<InviteRole>("member");
   const [link, setLink] = useState<string | null>(null);
@@ -121,7 +122,12 @@ export function InviteLinkPopover({ projectId }: Props) {
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Invite link">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Invite link"
+          data-tour={triggerTourTarget}
+        >
           <Paperclip className="size-4" />
         </Button>
       </PopoverTrigger>

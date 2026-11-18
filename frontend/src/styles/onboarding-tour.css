@@ -1,0 +1,94 @@
+.driver-popover.psu-onboarding-popover {
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 18px 55px rgb(0 0 0 / 22%);
+  font-family: inherit;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.psu-onboarding-popover .driver-popover-title {
+  padding-right: 1.5rem;
+  color: var(--popover-foreground);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.psu-onboarding-popover .driver-popover-description {
+  margin-top: 0.45rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.psu-onboarding-popover .driver-popover-progress-text {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.psu-onboarding-popover .driver-popover-footer {
+  margin-top: 1rem;
+}
+
+.psu-onboarding-popover .driver-popover-footer-btn {
+  min-height: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  padding: 0.4rem 0.8rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.psu-onboarding-popover .driver-popover-prev-btn {
+  background: transparent;
+  color: var(--popover-foreground);
+}
+
+.psu-onboarding-popover .driver-popover-next-btn {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  text-shadow: none;
+}
+
+.psu-onboarding-popover .driver-popover-close-btn {
+  top: 0.65rem;
+  right: 0.65rem;
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 1.25rem;
+}
+
+.psu-onboarding-popover button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .driver-popover.psu-onboarding-popover {
+    width: calc(100vw - 1.5rem);
+    padding: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-popover.psu-onboarding-popover,
+  .psu-onboarding-popover .driver-popover-footer-btn {
+    transition: none;
+  }
+}

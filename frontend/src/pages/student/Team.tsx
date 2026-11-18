@@ -51,7 +51,7 @@ export default function Team() {
       ) : isLoading ? (
         <TeamSkeleton />
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6" data-tour="team.roster">
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-bold text-foreground">
               Manage members and monitor activities

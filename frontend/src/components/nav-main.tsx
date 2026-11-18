@@ -39,6 +39,7 @@ export function NavMain({
     // returns (the last path remembered for this section) instead of
     // always going to `url`. Return null/undefined to fall back to `url`.
     getLastVisited?: () => string | null | undefined;
+    tourTarget?: string;
     items?: {
       title: string;
       url: string;
@@ -148,7 +149,7 @@ export function NavMain({
                   // itself stays transparent and sits above the pill.
                   className="relative z-10 data-[active=true]:bg-transparent"
                 >
-                  <Link to={linkTarget}>
+                  <Link to={linkTarget} data-tour={item.tourTarget}>
                     {item.icon}
                     <span>{item.title}</span>
                   </Link>

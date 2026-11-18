@@ -217,7 +217,10 @@ export default function ProjectsPage() {
       ) : isError ? (
         <ProjectsError />
       ) : (
-        <Card className="border shadow-sm dark:bg-background">
+        <Card
+          className="border shadow-sm dark:bg-background"
+          data-tour="instructor.projects"
+        >
           {/* Card header */}
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div className="flex items-center gap-2">

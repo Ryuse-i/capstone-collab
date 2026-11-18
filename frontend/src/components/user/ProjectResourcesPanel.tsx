@@ -263,6 +263,11 @@ export default function ProjectResourcesPanel({
             <TabsList
               className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0"
               indicatorClassName="rounded-full bg-(--maroon) dark:bg-(--maroon) shadow-sm"
+              data-tour={
+                !loading && !projectError && !resourcesQuery.isError
+                  ? "resources.overview"
+                  : undefined
+              }
             >
               {filters.map((filter) => (
                 <TabsTrigger

@@ -20,6 +20,7 @@ import Chat from "./pages/shared/Chat";
 import CapstoneRepository from "./pages/shared/CapstoneRepository";
 import CapstoneView from "./pages/shared/CapstoneView";
 import InvitePage from "./pages/InvitePage";
+import { OnboardingTourProvider } from "@/components/onboarding/OnboardingTourProvider";
 
 export default function App() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function App() {
   }, [navigate, queryClient]);
 
   return (
-    <>
+    <OnboardingTourProvider>
       <Routes>
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<LoginPage />} />
@@ -65,6 +66,6 @@ export default function App() {
 
       {/* Single app-wide toaster: covers login/signup and the dashboard */}
       <Toaster position="top-right" />
-    </>
+    </OnboardingTourProvider>
   );
 }

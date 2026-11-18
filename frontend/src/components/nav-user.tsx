@@ -13,8 +13,14 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
+import { ChevronsUpDownIcon, LogOutIcon, Sparkles } from "lucide-react";
 import { useLogout } from "@/hooks/useAuth";
+import { useGetProjectMemberByUserId } from "@/hooks/useProjectMember";
+import { useOnboardingTour } from "@/hooks/useOnboardingTour";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { ROLES } from "@/constants/roles";
+import type { OnboardingTourId } from "@/lib/onboarding";
 
 function getInitials(name: string, email?: string) {
   const trimmedName = name?.trim();
@@ -39,6 +45,8 @@ export function NavUser({
   user,
 }: {
   user: {
+    id?: string;
+    role?: string;
     name: string;
     email: string;
     avatar: string;
@@ -46,7 +54,42 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const { mutate: logout, isPending } = useLogout();
+  const role = user.role?.toLowerCase();
+  const isStudent = role === ROLES.STUDENT;
+  const isInstructor = role === ROLES.INSTRUCTOR;
+  const membershipQuery = useGetProjectMemberByUserId(
+    isStudent ? (user.id ?? "") : "",
+  );
+  const { requestTour } = useOnboardingTour();
+  const location = useLocation();
+  const navigate = useNavigate();
   const initials = getInitials(user.name, user.email);
+
+  async function replayOnboardingGuide() {
+    if (!user.id) return;
+
+    let tourId: OnboardingTourId;
+    if (isInstructor) {
+      tourId = "instructor";
+    } else {
+      const result = await membershipQuery.refetch();
+      if (result.isError) {
+        toast.error("Couldn't load your project role. Please try again.");
+        return;
+      }
+      const membership = result.data;
+      tourId = !membership
+        ? "student-no-project"
+        : membership.project_role === "leader"
+          ? "student-leader"
+          : "student-member";
+    }
+
+    requestTour(user.id, tourId);
+    if (location.pathname !== "/dashboard") {
+      navigate("/dashboard");
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -91,6 +134,18 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {(isStudent || isInstructor) && (
+              <>
+                <DropdownMenuItem
+                  onSelect={() => void replayOnboardingGuide()}
+                  className="cursor-pointer"
+                >
+                  <Sparkles />
+                  Replay onboarding guide
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem
               onClick={() => logout()}
               className="cursor-pointer"

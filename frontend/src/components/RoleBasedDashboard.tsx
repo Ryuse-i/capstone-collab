@@ -4,6 +4,7 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetProjectMemberByUserId } from "@/hooks/useProjectMember";
 import { ROLES } from "@/constants/roles";
 import type { UserRole } from "@/services/api";
+import { Button } from "@/components/ui/button";
 
 import StudentDashboard from "@/pages/student/Dashboard";
 import MemberDashboard from "@/pages/student/MemberDashboard";
@@ -39,10 +40,39 @@ export default function RoleBasedDashboard() {
 }
 
 function StudentRoleRouter({ userId }: { userId: string }) {
-  // Hook errors (e.g. no membership found) mean the user is not a leader,
-  // so fall back to the normal member dashboard.
-  const { data: membership, isError } = useGetProjectMemberByUserId(userId);
-  const isLeader = !isError && membership?.project_role === "leader";
+  const {
+    data: membership,
+    isPending,
+    isFetching,
+    isError,
+    refetch,
+  } = useGetProjectMemberByUserId(userId);
 
-  return isLeader ? <StudentDashboard /> : <MemberDashboard />;
+  if (isPending || isFetching) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div
+        className="flex h-screen flex-col items-center justify-center gap-3 p-6 text-center"
+        role="alert"
+      >
+        <p className="text-foreground">
+          We couldn't load your project membership.
+        </p>
+        <Button onClick={() => void refetch()}>Try again</Button>
+      </div>
+    );
+  }
+
+  if (!membership || membership.project_role === "leader") {
+    return <StudentDashboard />;
+  }
+
+  return <MemberDashboard />;
 }

@@ -23,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { useGetCurrentProject } from "@/hooks/useProject";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useAutoStartOnboardingTour } from "@/hooks/useAutoStartOnboardingTour";
+import { ROLES } from "@/constants/roles";
 import { useGetAllProjectTask } from "@/hooks/useTask";
 import { useGetMemberActivities } from "@/hooks/useMemberActivity";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
@@ -515,6 +517,7 @@ function HealthBanner({ health }: { health: ProjectHealth }) {
   return (
     <Card
       className={`relative flex flex-row items-start justify-between rounded-lg border-4 p-4 lg:col-span-2 ${style.border}`}
+      data-tour="leader.project-health"
     >
       <span
         className={`absolute right-4 top-4 rounded-full border px-3 py-1 text-xs ${style.badge}`}
@@ -552,7 +555,10 @@ function HealthBannerMessage({
   onRetry?: () => void;
 }) {
   return (
-    <Card className="flex flex-row items-center justify-between rounded-lg border-4 border-gray-300 p-4 lg:col-span-2 dark:border-gray-600">
+    <Card
+      className="flex flex-row items-center justify-between rounded-lg border-4 border-gray-300 p-4 lg:col-span-2 dark:border-gray-600"
+      data-tour="leader.project-health"
+    >
       <div className="flex flex-col gap-1">
         <h2 className="font-semibold text-foreground">{title}</h2>
         <p className="text-sm text-gray-500 dark:text-card-foreground">
@@ -815,6 +821,7 @@ export default function Dashboard() {
     isPending: isProjectPending,
     isError,
     error,
+    refetch: refetchProject,
   } = useGetCurrentProject(user?.id ?? "");
 
   const {
@@ -857,6 +864,14 @@ export default function Dashboard() {
         isTasksPending ||
         isMembersPending ||
         isActivitiesLoading));
+
+  useAutoStartOnboardingTour(
+    user?.id,
+    currentProject ? "student-leader" : "student-no-project",
+    user?.role?.toLowerCase() === ROLES.STUDENT &&
+      !isDashboardLoading &&
+      !isError,
+  );
 
   // Top members by workload
   const topMembers = members
@@ -930,6 +945,16 @@ export default function Dashboard() {
     <AppLayout breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }]}>
       {isDashboardLoading ? (
         <DashboardSkeleton />
+      ) : isError ? (
+        <div
+          className="flex min-h-64 flex-col items-center justify-center gap-3 text-center"
+          role="alert"
+        >
+          <p className="text-foreground">
+            We couldn't load your project dashboard.
+          </p>
+          <Button onClick={() => void refetchProject()}>Try again</Button>
+        </div>
       ) : !hasProject ? (
         <GetStartedPage />
       ) : (
@@ -939,7 +964,10 @@ export default function Dashboard() {
               Overview of project health and team performance
             </h1>
             {currentProject && canInvite && (
-              <InviteLinkPopover projectId={currentProject.id ?? ""} />
+              <InviteLinkPopover
+                projectId={currentProject.id ?? ""}
+                triggerTourTarget="leader.invite-link"
+              />
             )}
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

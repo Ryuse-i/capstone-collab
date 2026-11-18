@@ -21,6 +21,8 @@ import {
 } from "@/hooks/useTask";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useGetCurrentProject } from "@/hooks/useProject";
+import { useAutoStartOnboardingTour } from "@/hooks/useAutoStartOnboardingTour";
+import { ROLES } from "@/constants/roles";
 import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { cn } from "@/lib/utils";
 
@@ -486,6 +488,14 @@ export default function MemberDashboard() {
   const isLoading =
     userLoading || isProjectPending || isMembersPending || isTasksLoading;
 
+  useAutoStartOnboardingTour(
+    user?.id,
+    "student-member",
+    user?.role?.toLowerCase() === ROLES.STUDENT &&
+      !isLoading &&
+      Boolean(currentProject),
+  );
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -597,7 +607,10 @@ export default function MemberDashboard() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div
+          className="grid grid-cols-1 gap-4 lg:grid-cols-3"
+          data-tour="member.dashboard-summary"
+        >
           {/* ── Personal Overview Stats ──────────────────────────────── */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
             <StatCard

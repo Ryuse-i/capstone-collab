@@ -345,7 +345,10 @@ export default function Task() {
             )}
 
           {/* View switcher and actions bar */}
-          <div className="mt-6 flex items-center justify-between gap-4">
+          <div
+            className="mt-6 flex items-center justify-between gap-4"
+            data-tour="project-task.views"
+          >
             <div className="flex items-center gap-2">
               <Select
                 value={showSubmissions ? undefined : viewMode}
@@ -394,28 +397,30 @@ export default function Task() {
           </div>
 
           {/* Table / Timeline / Board / Submissions */}
-          {showSubmissions ? (
-            <SubmissionsTable
-              tasks={reviewerTasks ?? []}
-              isLoading={isReviewerTasksLoading}
-              isError={isReviewerTasksError}
-            />
-          ) : viewMode === "table" ? (
-            <TaskTable
-              tasks={allProjectTasks ?? []}
-              projectId={projectId}
-              isLoading={isTasksLoading}
-              isError={isTasksError}
-            />
-          ) : viewMode === "timeline" ? (
-            <TaskGanttView
-              tasks={allProjectTasks ?? []}
-              isLoading={isTasksLoading}
-              isError={isTasksError}
-            />
-          ) : (
-            <TaskBoard tasks={allProjectTasks ?? []} projectId={projectId} />
-          )}
+          <div className="mt-4" data-tour="project-task.list">
+            {showSubmissions ? (
+              <SubmissionsTable
+                tasks={reviewerTasks ?? []}
+                isLoading={isReviewerTasksLoading}
+                isError={isReviewerTasksError}
+              />
+            ) : viewMode === "table" ? (
+              <TaskTable
+                tasks={allProjectTasks ?? []}
+                projectId={projectId}
+                isLoading={isTasksLoading}
+                isError={isTasksError}
+              />
+            ) : viewMode === "timeline" ? (
+              <TaskGanttView
+                tasks={allProjectTasks ?? []}
+                isLoading={isTasksLoading}
+                isError={isTasksError}
+              />
+            ) : (
+              <TaskBoard tasks={allProjectTasks ?? []} projectId={projectId} />
+            )}
+          </div>
 
           {deepLink && deepLinkTask && (
             <EditTaskDialog

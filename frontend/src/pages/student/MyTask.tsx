@@ -270,6 +270,7 @@ export default function MyTask() {
               <TabsList
                 className="h-auto max-w-full flex-wrap justify-start gap-1 bg-transparent p-0"
                 indicatorClassName="rounded-full bg-(--maroon) dark:bg-(--maroon) shadow-sm"
+                data-tour="my-tasks.filters"
               >
                 {[
                   { label: "All", status: "All" as const },
@@ -310,7 +311,10 @@ export default function MyTask() {
           </div>
 
           {/* Task cards grid */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            data-tour="my-tasks.list"
+          >
             {filteredProjects.length === 0 ? (
               <div className="col-span-full py-12 text-center text-muted-foreground">
                 No tasks in this stage yet.

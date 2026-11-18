@@ -378,6 +378,7 @@ export default function CapstoneRepository() {
               className="pl-9"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              data-tour="repository.search"
             />
           </div>
         </div>

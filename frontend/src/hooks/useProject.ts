@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import axios from "axios";
 import type {
   ProjectBase,
   ProjectWithSnapshot,
@@ -36,9 +35,6 @@ const api = {
       );
       return response.data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        return null;
-      }
       console.error("Failed to fetch current project", error);
       throw error;
     }

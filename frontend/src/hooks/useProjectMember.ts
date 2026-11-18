@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import type {
   MemberBase,
   CreateProjectMember,
@@ -121,13 +122,16 @@ const api = {
 
   getProjectMemberByUserId: async (
     user_id: string,
-  ): Promise<ProjectMemberResponse> => {
+  ): Promise<ProjectMemberResponse | null> => {
     try {
       const response = await apiClient.get<ProjectMemberResponse>(
         `${url}/by-user/${user_id}`,
       );
       return response.data;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
       console.error("Failed to get project member by user id", error);
       throw error;
     }

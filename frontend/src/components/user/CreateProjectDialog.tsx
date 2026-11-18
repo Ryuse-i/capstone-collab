@@ -55,6 +55,7 @@ import type { CreateInvite } from "@/types/project_invite";
 import type { ProjectResponse } from "@/types/project";
 import type { CreateProjectMember } from "@/types/project_member";
 import { projectKeys } from "@/hooks/useProject";
+import { memberKeys } from "@/hooks/useProjectMember";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface Data {
@@ -529,7 +530,19 @@ const STEPS = [
   },
 ];
 
-export default function CreateProjectDialog() {
+interface CreateProjectDialogProps {
+  triggerLabel?: string;
+  triggerTourTarget?: string;
+  triggerClassName?: string;
+  primary?: boolean;
+}
+
+export default function CreateProjectDialog({
+  triggerLabel = "Create +",
+  triggerTourTarget,
+  triggerClassName,
+  primary = false,
+}: CreateProjectDialogProps) {
   const [currentStep, setCurrentStep] = useState(1);
   // Which way the user is moving, so step content slides in from the
   // matching side (right when going forward, left when going back).
@@ -554,6 +567,16 @@ export default function CreateProjectDialog() {
   const { mutate: memberMutate, isPending: isMemberPending } =
     useCreateMember();
   const queryClient = useQueryClient();
+
+  function refreshDashboard() {
+    if (!user?.id) return;
+    void queryClient.invalidateQueries({
+      queryKey: projectKeys.detailSnapshot(user.id),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: memberKeys.byUser(user.id),
+    });
+  }
 
   function goToStep(next: number) {
     setDirection(next > currentStep ? "forward" : "backward");
@@ -616,6 +639,7 @@ export default function CreateProjectDialog() {
             if (invites.length === 0) {
               setOpen(false);
               resetForm();
+              refreshDashboard();
               return;
             }
 
@@ -626,6 +650,7 @@ export default function CreateProjectDialog() {
                 });
                 setOpen(false);
                 resetForm();
+                refreshDashboard();
               },
               onError: (error) => {
                 console.error("Failed to send invites", error);
@@ -634,6 +659,7 @@ export default function CreateProjectDialog() {
                 // user stuck on this step.
                 setOpen(false);
                 resetForm();
+                refreshDashboard();
               },
             });
           },
@@ -707,8 +733,17 @@ export default function CreateProjectDialog() {
     <div className="flex justify-center items-center w-full">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" className="dark:hover:bg-muted">
-            Create +
+          <Button
+            variant={primary ? "default" : "outline"}
+            className={cn(
+              primary
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "dark:hover:bg-muted",
+              triggerClassName,
+            )}
+            data-tour={triggerTourTarget}
+          >
+            {triggerLabel}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-175 h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
@@ -767,6 +802,14 @@ export default function CreateProjectDialog() {
                       )}
                     >
                       {renderStep(index + 1)}
+                      <p className="mt-4 text-sm text-muted-foreground">
+                        {index === 0 &&
+                          "Add a project name and description. Both are required."}
+                        {index === 1 &&
+                          "Add an instructor or student by email, or invite them later."}
+                        {index === 2 &&
+                          "Review the project details and invitees before submitting."}
+                      </p>
                     </div>
                   </StepperContent>
                 ))}
