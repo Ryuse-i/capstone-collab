@@ -1,5 +1,6 @@
 import { FolderPlus } from "lucide-react";
 import CreateProjectDialog from "@/components/user/CreateProjectDialog";
+import { JoinProjectDialog } from "@/components/user/JoinProjectDialog";
 import { Button } from "@/components/ui/button";
 import { useOnboardingTour } from "@/hooks/useOnboardingTour";
 import { useCurrentUser } from "@/hooks/useAuth";
@@ -27,6 +28,10 @@ export default function GetStarted() {
             triggerTourTarget="setup.create-project"
             primary
             triggerClassName="sm:min-w-40"
+          />
+          <JoinProjectDialog
+            triggerLabel="Join with invite link"
+            triggerTourTarget="setup.join-project"
           />
           {user?.role?.toLowerCase() === ROLES.STUDENT && (
             <Button

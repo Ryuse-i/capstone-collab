@@ -32,13 +32,20 @@ const welcome = (description: string): TourStep => ({
 
 const tourSteps: Record<OnboardingTourId, TourStep[]> = {
   "student-no-project": [
-    welcome("Let's create a project space for your capstone work."),
+    welcome("Create a project for your capstone or join one with an invite link."),
     {
       path: "/dashboard",
       element: '[data-tour="setup.create-project"]',
       title: "Create your project",
       description:
-        "Start a workspace here; the setup dialog guides you through its details and team.",
+        "Create your own project here; the setup dialog guides you through its details and team.",
+    },
+    {
+      path: "/dashboard",
+      element: '[data-tour="setup.join-project"]',
+      title: "Join an existing project",
+      description:
+        "Already have an invitation? Join a project with its invite link here.",
     },
   ],
   "student-leader": [

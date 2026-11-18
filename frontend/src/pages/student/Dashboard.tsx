@@ -31,7 +31,6 @@ import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useProjectHealth } from "@/hooks/useProjectHealth"; // adjust path
 import type { MemberStatus } from "@/types/member_snapshot";
 import type { HealthStatus, ProjectHealth } from "@/types/projectHealth"; // adjust path
-import { InviteLinkPopover } from "@/components/user/InviteLinkPopover";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -892,10 +891,6 @@ export default function Dashboard() {
     .sort((a, b) => b.pts - a.pts)
     .slice(0, 3);
 
-  // UI gate only; the backend still has to enforce it
-  const myRole = members.find((m) => m.user_id === user?.id)?.project_role;
-  const canInvite = myRole === "leader" || myRole === "admin";
-
   // Project task status distribution
   const taskStatusDistribution: TaskStatusDistribution = {
     not_started: 0,
@@ -963,12 +958,6 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-(--text-h) dark:text-card-foreground">
               Overview of project health and team performance
             </h1>
-            {currentProject && canInvite && (
-              <InviteLinkPopover
-                projectId={currentProject.id ?? ""}
-                triggerTourTarget="leader.invite-link"
-              />
-            )}
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* ── Project Health Banner ─────────────────────────────── */}

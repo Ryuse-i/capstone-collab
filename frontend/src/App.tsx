@@ -1,5 +1,5 @@
 import "./App.css";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import PrivateRoute from "@/components/PrivateRoute";
 import RoleBasedDashboard from "@/components/RoleBasedDashboard";
@@ -24,16 +24,22 @@ import { OnboardingTourProvider } from "@/components/onboarding/OnboardingTourPr
 
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const handler = () => {
       queryClient.clear();
-      navigate("/login");
+      const loginPath = location.pathname.startsWith("/invite/")
+        ? `/login?next=${encodeURIComponent(
+            `${location.pathname}${location.search}`,
+          )}`
+        : "/login";
+      navigate(loginPath);
     };
     window.addEventListener("auth:expired", handler);
     return () => window.removeEventListener("auth:expired", handler);
-  }, [navigate, queryClient]);
+  }, [location.pathname, location.search, navigate, queryClient]);
 
   return (
     <OnboardingTourProvider>

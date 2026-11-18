@@ -481,7 +481,7 @@ export default function Chat() {
                           </div>
                         )}
 
-                        <div className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">
+                        <div className="whitespace-pre-wrap text-sm wrap-anywhere">
                           {msg.content}
                         </div>
 

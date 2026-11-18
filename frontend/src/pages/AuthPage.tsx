@@ -106,7 +106,7 @@ export default function LoginPage() {
               <LoginForm />
             </div>
             <div className="auth-form-layer auth-form-layer--signup">
-              <SignupForm />
+              <SignupForm onRegistrationSuccess={() => setActiveMode("signin")} />
             </div>
           </div>
         </div>

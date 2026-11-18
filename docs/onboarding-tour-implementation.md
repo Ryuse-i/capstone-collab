@@ -10,7 +10,7 @@ The backend platform roles are student, instructor, and admin; advisor is a proj
 
 | Variant | Pages and topics |
 |---|---|
-| `student-no-project` | Dashboard welcome and Create project action; stops before entering the project dialog. |
+| `student-no-project` | Dashboard welcome, Create project, and Join with invite link actions; stops before opening either dialog. |
 | `student-leader` | Dashboard health and invitation link; Project Task views and task list; My Tasks filters and cards; Workload summary and recommendations; Team; Chat; Resources; Capstone Repository. |
 | `student-member` | Dashboard summary; My Tasks filters and cards; Team; Chat; Resources; Capstone Repository. Members are not guided through Project Task or Workload because those areas are not in the member sidebar. |
 | `instructor` | Dashboard summary; Projects; Chat project context and composer; Capstone Repository. |
@@ -31,17 +31,24 @@ Each tour begins with a centered welcome popover. Other steps use stable `data-t
 
 Tour targets are placed in the relevant dashboard, task, workload, team, chat, resources, repository, and instructor project pages. [`nav-user.tsx`](../frontend/src/components/nav-user.tsx) provides replay. The visual overrides are centralized in [`onboarding-tour.css`](../frontend/src/styles/onboarding-tour.css), using the app's theme tokens, responsive popover sizing, focus styling, and reduced-motion handling.
 
-The setup screen in [`GetStartedPage.tsx`](../frontend/src/components/user/GetStartedPage.tsx) uses a welcome card with Create project and Take a quick tour actions. The project dialog remains outside the tour because it traps focus; it supplies its own short step helper text in [`CreateProjectDialog.tsx`](../frontend/src/components/user/CreateProjectDialog.tsx). Membership loading, confirmed no-membership, and request errors are handled separately in [`RoleBasedDashboard.tsx`](../frontend/src/components/RoleBasedDashboard.tsx), and project/membership refresh behavior is implemented in the existing frontend hooks and dialog.
+The setup screen in [`GetStartedPage.tsx`](../frontend/src/components/user/GetStartedPage.tsx) uses a welcome card with Create project, Join with invite link, and Take a quick tour actions. The student no-project tour explains both choices and highlights each action without opening either dialog. The project dialog remains outside the tour because it traps focus; it supplies its own short step helper text in [`CreateProjectDialog.tsx`](../frontend/src/components/user/CreateProjectDialog.tsx). Membership loading, confirmed no-membership, and request errors are handled separately in [`RoleBasedDashboard.tsx`](../frontend/src/components/RoleBasedDashboard.tsx), and project/membership refresh behavior is implemented in the existing frontend hooks and dialog.
+
+## Invite links
+
+The app header beside notifications switches between two actions: project leaders/admins with a project get a link for inviting others, while users without a project can join with an invite link. Other project members do not see the invite action, preserving the previous dashboard role gate. The setup card also offers the join action. Pasting a link accepts it and returns the user to the dashboard; opening a shared `/invite/:token` link auto-accepts for an authenticated user and then redirects to the dashboard. Logged-out recipients return to the same invite after signing in; new recipients can register first and then sign in to continue. Link acceptance remains separate from project creation.
 
 ## Appearance and accessibility
 
-The tour uses a dim overlay, padded rounded spotlight, themed popover, progress text, Back/Next/Done controls, and a quiet close control labeled for skipping. Keyboard controls and reduced-motion-aware animation are enabled in the Driver.js configuration. Focus is returned to the previously focused page element when the tour ends, when that element is still mounted. Actual screen-reader announcements and device-specific behavior still require manual verification.
+The tour uses a dim overlay, padded rounded spotlight, themed popover and arrow, progress text, Back/Next/Done controls, and a quiet close control labeled for skipping. Popover hover and focus states use theme tokens in both color modes. Keyboard controls and reduced-motion-aware animation are enabled in the Driver.js configuration. Focus is returned to the previously focused page element when the tour ends, when that element is still mounted. Actual screen-reader announcements and device-specific behavior still require manual verification.
 
 ## Validation and manual checks
 
 - Targeted ESLint passed for the onboarding provider, user menu, student/instructor dashboards, task filters, team, workload, repository, and resources changes.
+- Targeted ESLint also passed for the invite-link UI, auth-return flow, app layout, and invite acceptance hook.
+- Targeted ESLint passed for onboarding and project-creation dark-mode changes.
 - `npm run build` was attempted from `frontend`; it is blocked by four existing `Skill[]` type errors in `src/components/data-table.tsx` (lines 403, 731, 759, and 785). No onboarding-file type errors were reported.
-- Full `npm run lint` was attempted; it reports pre-existing violations in unchanged files. The changed Chat and Project Task files also have existing `react-hooks/set-state-in-effect` findings unrelated to the added tour targets.
+- `npx vite build` passed after the invite-link and dark-mode changes, with the existing large-chunk warning.
+- Full `npm run lint` was attempted; it exits with pre-existing violations in unchanged files, including `chart-area-interactive.tsx`, `NotificationCenter.tsx`, and `reui/stepper.tsx`. The changed Chat and Project Task files also have existing `react-hooks/set-state-in-effect` findings unrelated to the added tour targets.
 - `git diff --check` passed.
 
-Manual verification remains useful for signup eligibility, creating a project and receiving the next variant, existing-account replay, instructor replay, skip/replay behavior, route transitions, dark mode, keyboard and screen-reader behavior, and narrow screens.
+Manual verification remains useful for signup eligibility, creating a project and receiving the next variant, existing-account replay, instructor replay, skip/replay behavior, route transitions, dark mode, keyboard and screen-reader behavior, and narrow screens. Invite-link checks should cover the header action with and without a project, pasted-link acceptance, direct-link auto-accept, and a logged-out recipient returning through sign-in or registration to the dashboard.

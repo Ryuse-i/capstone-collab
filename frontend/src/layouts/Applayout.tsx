@@ -57,6 +57,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import NotificationCenter from "@/components/notifications/NotificationCenter";
 import { PageTransition } from "@/components/page-transition";
 import { RealtimeClock } from "@/components/user/Realtime-clock";
+import { InviteLinkPopover } from "@/components/user/InviteLinkPopover";
+import { JoinProjectDialog } from "@/components/user/JoinProjectDialog";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { useGetCurrentProject } from "@/hooks/useProject";
+import { useGetMembersWithUserSnapshot } from "@/hooks/useProjectMember";
 import { useSidebarReady } from "@/hooks/useSidebarReady";
 
 interface BreadcrumbItemType {
@@ -94,6 +99,16 @@ export default function AppLayout({
   tightSides = false,
 }: AppLayoutProps) {
   const [open, setOpen] = React.useState(false);
+  const { data: user } = useCurrentUser();
+  const currentProjectQuery = useGetCurrentProject(user?.id ?? "");
+  const projectId = currentProjectQuery.data?.id ?? "";
+  const { data: projectMembers = [] } = useGetMembersWithUserSnapshot(projectId);
+  const currentMember = projectMembers.find(
+    (member) => member.user_id === user?.id,
+  );
+  const canInvite =
+    currentMember?.project_role === "leader" ||
+    currentMember?.project_role === "admin";
 
   // Same readiness check the sidebar uses, so the header and page content
   // leave their skeleton on the same render as the sidebar.
@@ -256,6 +271,21 @@ export default function AppLayout({
                 </div>
 
                 <NotificationCenter />
+                {user && currentProjectQuery.isSuccess && (
+                  currentProjectQuery.data?.id ? (
+                    canInvite && (
+                      <InviteLinkPopover
+                        projectId={currentProjectQuery.data.id}
+                        triggerTourTarget="leader.invite-link"
+                      />
+                    )
+                  ) : (
+                    <JoinProjectDialog
+                      triggerLabel="Join project"
+                      iconOnly
+                    />
+                  )
+                )}
               </>
             ) : (
               <>

@@ -137,10 +137,9 @@ export function useAcceptInviteLink() {
   return useMutation({
     mutationFn: api.acceptInviteLink,
     onSuccess: () => {
-      // the user just joined a project, so refresh anything that lists
-      // projects or members. adjust these keys to match your own hooks
+      // Joining changes the current project and membership queries.
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["project_members"] });
+      queryClient.invalidateQueries({ queryKey: ["members"] });
     },
   });
 }

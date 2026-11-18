@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { markNewUserForOnboarding } from "@/lib/onboarding";
 import { ROLES } from "@/constants/roles";
+import { getPostAuthPath } from "@/lib/authRedirect";
 
 /** Maps FastAPI Users error codes to readable messages. */
 function getRegisterErrorMessage(error: unknown): string {
@@ -33,9 +34,11 @@ function getRegisterErrorMessage(error: unknown): string {
 
 export function SignupForm({
   className,
+  onRegistrationSuccess,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { onRegistrationSuccess?: () => void }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -70,6 +73,12 @@ export function SignupForm({
         onSuccess: (newUser) => {
           if (newUser.id && newUser.role?.toLowerCase() !== ROLES.ADMIN) {
             markNewUserForOnboarding(newUser.id);
+          }
+          const nextPath = getPostAuthPath(location.search);
+          if (nextPath !== "/dashboard") {
+            toast.success("Account created. Sign in to join the project.");
+            onRegistrationSuccess?.();
+            return;
           }
           navigate("/dashboard");
         },

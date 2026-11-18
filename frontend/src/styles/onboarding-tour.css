@@ -55,11 +55,25 @@
   color: var(--popover-foreground);
 }
 
+.psu-onboarding-popover .driver-popover-prev-btn:hover,
+.psu-onboarding-popover .driver-popover-prev-btn:focus-visible {
+  background: var(--muted);
+  color: var(--popover-foreground);
+}
+
 .psu-onboarding-popover .driver-popover-next-btn {
   border-color: var(--primary);
   background: var(--primary);
   color: var(--primary-foreground);
   text-shadow: none;
+}
+
+.psu-onboarding-popover .driver-popover-next-btn:hover,
+.psu-onboarding-popover .driver-popover-next-btn:focus-visible {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  filter: brightness(1.12);
 }
 
 .psu-onboarding-popover .driver-popover-close-btn {
@@ -72,6 +86,27 @@
   border-radius: 0.5rem;
   color: var(--muted-foreground);
   font-size: 1.25rem;
+}
+
+.psu-onboarding-popover .driver-popover-close-btn:hover,
+.psu-onboarding-popover .driver-popover-close-btn:focus-visible {
+  color: var(--popover-foreground);
+}
+
+.psu-onboarding-popover .driver-popover-arrow-side-left {
+  border-left-color: var(--popover);
+}
+
+.psu-onboarding-popover .driver-popover-arrow-side-right {
+  border-right-color: var(--popover);
+}
+
+.psu-onboarding-popover .driver-popover-arrow-side-top {
+  border-top-color: var(--popover);
+}
+
+.psu-onboarding-popover .driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--popover);
 }
 
 .psu-onboarding-popover button:focus-visible {

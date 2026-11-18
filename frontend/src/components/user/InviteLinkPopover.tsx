@@ -125,7 +125,8 @@ export function InviteLinkPopover({ projectId, triggerTourTarget }: Props) {
         <Button
           variant="outline"
           size="icon"
-          aria-label="Invite link"
+          aria-label="Invite people to this project"
+          title="Invite people to this project"
           data-tour={triggerTourTarget}
         >
           <Paperclip className="size-4" />
@@ -206,7 +207,7 @@ export function InviteLinkPopover({ projectId, triggerTourTarget }: Props) {
                 className="shrink-0"
               >
                 {copied ? (
-                  <Check className="size-4 text-[#7A0C2E]" />
+                  <Check className="size-4 text-success" />
                 ) : (
                   <Copy className="size-4" />
                 )}
@@ -238,7 +239,7 @@ export function InviteLinkPopover({ projectId, triggerTourTarget }: Props) {
               Loading links...
             </div>
           ) : linksError ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <span>Couldn't load links.</span>
               <Button
                 type="button"
@@ -258,7 +259,7 @@ export function InviteLinkPopover({ projectId, triggerTourTarget }: Props) {
                   key={l.id}
                   className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/10 px-3 py-2"
                 >
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#FBF3E7] text-[#7A0C2E]">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#FBF3E7] text-[#7A0C2E] dark:bg-muted/30 dark:text-foreground">
                     <Link2 className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">

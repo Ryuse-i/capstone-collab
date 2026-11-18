@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import { getPostAuthPath } from "@/lib/authRedirect";
 
 /** Maps FastAPI Users error codes to readable messages. */
 function getLoginErrorMessage(error: unknown): string {
@@ -34,6 +35,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,7 +50,7 @@ export function LoginForm({
       { email, password },
       {
         onSuccess: () => {
-          navigate("/dashboard", { replace: true });
+          navigate(getPostAuthPath(location.search), { replace: true });
         },
         onError: (error) => {
           toast.error(getLoginErrorMessage(error), {
