@@ -13,6 +13,8 @@ from typing import List
 from app.modules.users.services import current_active_user
 from app.modules.users.model import User
 from app.modules.admin.activity_service import ActivityLogService
+from app.modules.project_members.model import ProjectRole
+from app.modules.project_members.services import ProjectMemberService
 
 project_router = APIRouter()
 project_member_router = APIRouter()
@@ -108,6 +110,18 @@ async def delete_project(
     if not db_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+        )
+    member = await ProjectMemberService.get_member_by_user_and_project(
+        db, current_user.id, project_id
+    )
+    if (
+        db_item.created_by != current_user.id
+        or member is None
+        or member.project_role != ProjectRole.LEADER
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project leader can delete this project",
         )
     project_name = db_item.name
     await ProjectService.delete_project(db, db_item)

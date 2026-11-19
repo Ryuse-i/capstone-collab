@@ -7,6 +7,7 @@ import type {
   UpdateProject,
 } from "@/types/project";
 import apiClient from "@/services/apiClient";
+import { memberKeys } from "@/hooks/useProjectMember";
 
 // Create apihelper for 404 and other error handler that would be reusable
 
@@ -229,9 +230,12 @@ export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.delete,
-    onSuccess: (_, id) => {
+    onSuccess: async (_, id) => {
       queryClient.removeQueries({ queryKey: projectKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectKeys.list() }),
+        queryClient.invalidateQueries({ queryKey: memberKeys.all }),
+      ]);
     },
   });
 }

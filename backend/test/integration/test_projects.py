@@ -92,11 +92,80 @@ class TestProjectEndpoints:
         create_res = await ac.post(f"{self.base_url}/", json=payload)
         project_id = create_res.json()["id"]
 
+        member_res = await ac.post(
+            "/project_members/",
+            json={
+                "user_id": user_id,
+                "project_id": project_id,
+                "project_role": "leader",
+            },
+        )
+        assert member_res.status_code == 201
+
         delete_res = await ac.delete(f"{self.base_url}/{project_id}")
         assert delete_res.status_code == 204
 
         verify_res = await ac.get(f"{self.base_url}/{project_id}")
         assert verify_res.status_code == 404
+
+    async def test_delete_project_requires_leader_role(
+        self, ac: AsyncClient, test_user: dict
+    ):
+        user_id = test_user["id"]
+        create_res = await ac.post(
+            f"{self.base_url}/",
+            json={
+                "name": "Member Cannot Delete",
+                "description": "A member should not be able to delete this project",
+                "created_by": user_id,
+            },
+        )
+        project_id = create_res.json()["id"]
+
+        member_res = await ac.post(
+            "/project_members/",
+            json={
+                "user_id": user_id,
+                "project_id": project_id,
+                "project_role": "member",
+            },
+        )
+        assert member_res.status_code == 201
+
+        delete_res = await ac.delete(f"{self.base_url}/{project_id}")
+        assert delete_res.status_code == 403
+
+        verify_res = await ac.get(f"{self.base_url}/{project_id}")
+        assert verify_res.status_code == 200
+
+    async def test_delete_project_requires_project_ownership(
+        self, ac: AsyncClient, test_user: dict, test_another_user: dict
+    ):
+        create_res = await ac.post(
+            f"{self.base_url}/",
+            json={
+                "name": "Leader Cannot Delete Another Project",
+                "description": "A leader member must also own the project",
+                "created_by": test_another_user["id"],
+            },
+        )
+        project_id = create_res.json()["id"]
+
+        member_res = await ac.post(
+            "/project_members/",
+            json={
+                "user_id": test_user["id"],
+                "project_id": project_id,
+                "project_role": "leader",
+            },
+        )
+        assert member_res.status_code == 201
+
+        delete_res = await ac.delete(f"{self.base_url}/{project_id}")
+        assert delete_res.status_code == 403
+
+        verify_res = await ac.get(f"{self.base_url}/{project_id}")
+        assert verify_res.status_code == 200
 
     async def test_get_projects_for_current_user_by_role(
         self, ac: AsyncClient, test_user: dict

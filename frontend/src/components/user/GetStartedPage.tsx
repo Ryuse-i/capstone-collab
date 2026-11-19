@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { FolderPlus } from "lucide-react";
 import CreateProjectDialog from "@/components/user/CreateProjectDialog";
 import { JoinProjectDialog } from "@/components/user/JoinProjectDialog";
@@ -5,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useOnboardingTour } from "@/hooks/useOnboardingTour";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
+import { GuidesDialog } from "@/components/user/GuidesDialog";
 
 export default function GetStarted() {
   const { data: user } = useCurrentUser();
   const { startTour } = useOnboardingTour();
+  const [guidesOpen, setGuidesOpen] = useState(false);
 
   return (
     <div className="mx-auto w-full max-w-4xl p-6">
@@ -37,16 +40,21 @@ export default function GetStarted() {
             <Button
               type="button"
               variant="outline"
-              title="Replay onboarding guide"
-              onClick={() => {
-                if (user.id) startTour(user.id, "student-no-project");
-              }}
+              title="Open guides and tutorials"
+              onClick={() => setGuidesOpen(true)}
             >
-              Take a quick tour
+              Guides &amp; tutorials
             </Button>
           )}
         </div>
       </section>
+      <GuidesDialog
+        open={guidesOpen}
+        onOpenChange={setGuidesOpen}
+        onReplayOnboarding={() => {
+          if (user?.id) startTour(user.id, "student-no-project");
+        }}
+      />
     </div>
   );
 }

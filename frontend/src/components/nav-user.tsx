@@ -14,9 +14,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ChevronsUpDownIcon, LogOutIcon, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { useLogout } from "@/hooks/useAuth";
 import { useGetProjectMemberByUserId } from "@/hooks/useProjectMember";
 import { useOnboardingTour } from "@/hooks/useOnboardingTour";
+import { GuidesDialog } from "@/components/user/GuidesDialog";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ROLES } from "@/constants/roles";
@@ -63,6 +65,7 @@ export function NavUser({
   const { requestTour } = useOnboardingTour();
   const location = useLocation();
   const navigate = useNavigate();
+  const [guidesOpen, setGuidesOpen] = useState(false);
   const initials = getInitials(user.name, user.email);
 
   async function replayOnboardingGuide() {
@@ -137,11 +140,11 @@ export function NavUser({
             {(isStudent || isInstructor) && (
               <>
                 <DropdownMenuItem
-                  onSelect={() => void replayOnboardingGuide()}
+                  onSelect={() => setGuidesOpen(true)}
                   className="cursor-pointer"
                 >
                   <Sparkles />
-                  Replay onboarding guide
+                  Guides &amp; tutorials
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
@@ -157,6 +160,11 @@ export function NavUser({
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <GuidesDialog
+        open={guidesOpen}
+        onOpenChange={setGuidesOpen}
+        onReplayOnboarding={() => void replayOnboardingGuide()}
+      />
     </SidebarMenu>
   );
 }
