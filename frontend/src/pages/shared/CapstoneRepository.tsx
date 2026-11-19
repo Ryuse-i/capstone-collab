@@ -16,6 +16,7 @@ import {
   LucideCalendarDays,
   Plus,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import {
   useLatestPapersPage,
@@ -239,6 +240,7 @@ export default function CapstoneRepository() {
   const debouncedInput = useDebouncedValue(input);
   const trimmedQuery = debouncedInput.trim();
   const isSearching = trimmedQuery !== "";
+  const isSearchInputPending = input.trim() !== trimmedQuery;
 
   const [uploadOpen, setUploadOpen] = useState(false);
 
@@ -278,7 +280,7 @@ export default function CapstoneRepository() {
 
   const {
     data: searchResults = [],
-    isLoading: searchLoading,
+    isFetching: searchFetching,
     error: searchError,
   } = useSearchPapers({ query: trimmedQuery, limit: 20 });
 
@@ -337,7 +339,9 @@ export default function CapstoneRepository() {
         authors: p.authors ?? [],
       }));
 
-  const isLoading = isSearching ? searchLoading : latestLoading;
+  const isSearchPending =
+    isSearchInputPending || (isSearching && searchFetching);
+  const isLoading = isSearchPending || (!isSearching && latestLoading);
   const error = isSearching ? searchError : latestError;
 
   return (
@@ -375,13 +379,29 @@ export default function CapstoneRepository() {
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by meaning, e.g. 'machine learning for disease prediction'"
-              className="pl-9"
+              className={cn("pl-9", isSearchPending && "pr-10")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               data-tour="repository.search"
             />
+            {isSearchPending && (
+              <Loader2
+                className="absolute right-3 top-2.5 size-4 animate-spin text-muted-foreground"
+                aria-hidden="true"
+              />
+            )}
           </div>
         </div>
+
+        {isSearchPending && (
+          <p
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+          >
+            <span className="sr-only">Loading:</span>
+            {isSearchInputPending ? "Updating search..." : "Searching papers..."}
+          </p>
+        )}
 
         {/* Section label */}
         {!isLoading && (
