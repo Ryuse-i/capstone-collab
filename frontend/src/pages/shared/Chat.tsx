@@ -72,6 +72,19 @@ function formatTime(iso: string) {
   });
 }
 
+function formatMeetingCountdown(endTime: number, now: number) {
+  const minutesRemaining = Math.max(
+    1,
+    Math.ceil((endTime - now) / (60 * 1000)),
+  );
+  const hours = Math.floor(minutesRemaining / 60);
+  const minutes = minutesRemaining % 60;
+
+  return hours > 0
+    ? `Ends in ${hours}h ${minutes}m`
+    : `Ends in ${minutesRemaining} min`;
+}
+
 function ProjectItem({
   project,
   active,
@@ -296,7 +309,39 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [meetingProvider] = useState<MeetingProvider>("google_meet");
+  const [meetingNow, setMeetingNow] = useState(Date.now);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const clockSync = window.setTimeout(() => setMeetingNow(Date.now()), 0);
+    const hasUpcomingMeetings = meetings.some(
+      (meeting) =>
+        meeting.status === "scheduled" &&
+        meeting.end_time !== null &&
+        Date.parse(meeting.end_time) > Date.now(),
+    );
+    if (!hasUpcomingMeetings) {
+      return () => window.clearTimeout(clockSync);
+    }
+
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setMeetingNow(now);
+
+      const hasRemainingMeetings = meetings.some(
+        (meeting) =>
+          meeting.status === "scheduled" &&
+          meeting.end_time !== null &&
+          Date.parse(meeting.end_time) > now,
+      );
+      if (!hasRemainingMeetings) window.clearInterval(timer);
+    }, 15_000);
+
+    return () => {
+      window.clearTimeout(clockSync);
+      window.clearInterval(timer);
+    };
+  }, [meetings]);
 
   const isLoading =
     userLoading ||
@@ -305,6 +350,7 @@ export default function Chat() {
     (isInstructor && instructorProjectsLoading);
 
   const isError = !isInstructor && projectError;
+  const meetingClock = meetingNow;
 
   useEffect(() => {
     if (scrollRef.current && !isLoading && !isError) {
@@ -391,61 +437,113 @@ export default function Chat() {
 
                 {meetings
                   .filter((meeting) => meeting.status === "scheduled")
-                  .map((meeting) => (
-                    <div
-                      key={`meeting-${meeting.id}`}
-                      className={`flex shrink-0 ${
-                        meeting.created_by === user?.id
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      <div className="flex max-w-[85%] items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50">
-                        <CalendarClock className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                  .map((meeting) => {
+                    const endTimestamp = meeting.end_time
+                      ? Date.parse(meeting.end_time)
+                      : Number.NaN;
+                    const startTimestamp = meeting.start_time
+                      ? Date.parse(meeting.start_time)
+                      : Number.NaN;
+                    const hasEnded =
+                      Number.isFinite(endTimestamp) &&
+                      endTimestamp <= meetingClock;
+                    const isInProgress =
+                      Number.isFinite(startTimestamp) &&
+                      startTimestamp <= meetingClock;
 
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                            Meeting available
-                          </p>
-
-                          <p className="truncate font-semibold">
-                            {meeting.topic}
-                          </p>
-
-                          <p className="text-xs text-emerald-800/80 dark:text-emerald-200/80">
-                            {meeting.provider === "google_meet"
-                              ? "Google Meet"
-                              : "Zoom"}
-
-                            {meeting.start_time
-                              ? ` · ${new Date(
-                                  meeting.start_time,
-                                ).toLocaleString([], {
-                                  dateStyle: "medium",
-                                  timeStyle: "short",
-                                })}`
-                              : ""}
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="shrink-0 bg-emerald-700 text-white hover:bg-emerald-800"
-                          onClick={() =>
-                            window.open(
-                              meeting.join_url,
-                              "_blank",
-                              "noopener,noreferrer",
-                            )
-                          }
+                    return (
+                      <div
+                        key={`meeting-${meeting.id}`}
+                        className={`flex shrink-0 ${
+                          meeting.created_by === user?.id
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={cn(
+                            "flex max-w-[85%] items-center gap-3 rounded-xl border px-4 py-3 shadow-sm",
+                            hasEnded
+                              ? "border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300"
+                              : "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50",
+                          )}
                         >
-                          <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                          Join
-                        </Button>
+                          <CalendarClock
+                            className={cn(
+                              "h-5 w-5 shrink-0",
+                              hasEnded
+                                ? "text-slate-500 dark:text-slate-400"
+                                : "text-emerald-700 dark:text-emerald-300",
+                            )}
+                          />
+
+                          <div className="min-w-0">
+                            <p
+                              className={cn(
+                                "text-xs font-semibold uppercase tracking-wide",
+                                hasEnded
+                                  ? "text-slate-500 dark:text-slate-400"
+                                  : "text-emerald-700 dark:text-emerald-300",
+                              )}
+                            >
+                              {hasEnded ? "Meeting ended" : "Meeting"}
+                            </p>
+
+                            <p className="truncate font-semibold">
+                              {meeting.topic}
+                            </p>
+
+                            <p className="text-xs opacity-80">
+                              {meeting.provider === "google_meet"
+                                ? "Google Meet"
+                                : "Zoom"}
+                              {meeting.start_time
+                                ? ` · ${new Date(
+                                    meeting.start_time,
+                                  ).toLocaleString([], {
+                                    dateStyle: "medium",
+                                    timeStyle: "short",
+                                  })}`
+                                : ""}
+                            </p>
+
+                            {!hasEnded && (
+                              <p className="mt-1 text-xs font-medium">
+                                {isInProgress && Number.isFinite(endTimestamp)
+                                  ? formatMeetingCountdown(
+                                      endTimestamp,
+                                      meetingClock,
+                                    )
+                                  : "Scheduled"}
+                              </p>
+                            )}
+                          </div>
+
+                          {hasEnded ? (
+                            <span className="shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium">
+                              Ended
+                            </span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="shrink-0 bg-emerald-700 text-white hover:bg-emerald-800"
+                              onClick={() =>
+                                window.open(
+                                  meeting.join_url,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                )
+                              }
+                            >
+                              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                              Join
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                 {messages?.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
