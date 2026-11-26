@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PSU-Collab - Level 1 Data Flow Diagram</title>
+  <style>
+    :root { --peach: #f8c79e; --ink: #171717; --grey: #d9d9d9; --paper: #ffffff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f4f2; color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+    header { padding: 18px 28px 10px; }
+    h1 { margin: 0 0 4px; font-size: 24px; }
+    h2 { margin: 24px 0 10px; }
+    .diagram-wrap { width: 100%; overflow: auto; background: white; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; }
+    svg { display: block; min-width: 2600px; }
+    .summary { max-width: 1800px; margin: 0 auto 50px; padding: 0 28px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 18px; background: white; }
+    th, td { border: 1px solid #aaa; padding: 8px 10px; vertical-align: top; text-align: left; }
+    th { background: #ece7e0; }
+    code { font-family: Consolas, monospace; font-size: 13px; }
+    .assumptions { background: #fff8ee; border: 1px solid #d7bd9d; padding: 12px 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PSU-Collab - Level 1 Data Flow Diagram</h1>
+    <div>Gane-Sarson notation</div>
+  </header>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 2600 1650" width="2600" height="1650" role="img" aria-label="Level 1 DFD for the PSU-Collab system">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L9,3 z" fill="#171717"/>
+        </marker>
+        <style>
+          .entity { fill: #f8c79e; stroke: #171717; stroke-width: 2; }
+          .process { fill: #f8c79e; stroke: #171717; stroke-width: 2; }
+          .store { fill: #fff; stroke: #171717; stroke-width: 2; }
+          .dbox { fill: #d9d9d9; stroke: #171717; stroke-width: 1.5; }
+          .flow { fill: none; stroke: #171717; stroke-width: 2; marker-end: url(#arrow); }
+          .thin { fill: none; stroke: #171717; stroke-width: 1.5; }
+          .label { fill: #171717; font-size: 14px; }
+          .name { fill: #171717; font-size: 17px; font-weight: 600; }
+          .small { fill: #171717; font-size: 13px; }
+          .number { fill: #171717; font-size: 14px; }
+        </style>
+      </defs>
+
+      <!-- Legend -->
+      <g transform="translate(40,35)">
+        <text x="0" y="0" class="name">Legend</text>
+        <rect x="0" y="18" width="150" height="44" class="entity"/>
+        <text x="75" y="46" text-anchor="middle" class="small">External Entity</text>
+        <rect x="170" y="18" width="150" height="44" rx="20" class="process"/>
+        <line x1="170" y1="40" x2="320" y2="40" class="thin"/>
+        <text x="180" y="34" class="number">N</text>
+        <text x="245" y="54" text-anchor="middle" class="small">Process</text>
+        <rect x="340" y="18" width="150" height="44" class="store"/>
+        <rect x="340" y="18" width="30" height="44" class="dbox"/>
+        <text x="355" y="46" text-anchor="middle" class="small">D</text>
+        <text x="420" y="46" text-anchor="middle" class="small">Data Store</text>
+        <line x1="510" y1="40" x2="590" y2="40" class="flow"/>
+        <text x="550" y="31" text-anchor="middle" class="small">Labeled</text>
+        <text x="550" y="58" text-anchor="middle" class="small">Data Flow</text>
+      </g>
+
+      <!-- External entities -->
+      <g>
+        <rect x="40" y="230" width="170" height="64" class="entity"/>
+        <text x="125" y="268" text-anchor="middle" class="name">STUDENT</text>
+        <rect x="40" y="470" width="170" height="64" class="entity"/>
+        <text x="125" y="508" text-anchor="middle" class="name">INSTRUCTOR</text>
+        <text x="125" y="525" text-anchor="middle" class="small">/ ADVISOR</text>
+        <rect x="40" y="710" width="170" height="64" class="entity"/>
+        <text x="125" y="748" text-anchor="middle" class="name">ADMIN</text>
+
+        <rect x="2310" y="135" width="170" height="64" class="entity"/>
+        <text x="2395" y="173" text-anchor="middle" class="name">AI PROVIDERS</text>
+        <text x="2395" y="190" text-anchor="middle" class="small">Gemini / OpenRouter</text>
+        <rect x="2310" y="610" width="170" height="64" class="entity"/>
+        <text x="2395" y="648" text-anchor="middle" class="name">ZOOM</text>
+        <rect x="2310" y="850" width="170" height="64" class="entity"/>
+        <text x="2395" y="888" text-anchor="middle" class="name">SUPABASE</text>
+        <text x="2395" y="905" text-anchor="middle" class="small">upload bucket</text>
+      </g>
+
+      <!-- Processes -->
+      <g>
+        <g transform="translate(300,170)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">1</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Authenticate &amp; Manage Accounts</text>
+        </g>
+        <g transform="translate(300,330)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">2</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Manage Projects</text>
+        </g>
+        <g transform="translate(300,490)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">3</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Manage Membership &amp; Invitations</text>
+        </g>
+        <g transform="translate(300,650)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">4</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Manage Tasks &amp; Assignments</text>
+        </g>
+        <g transform="translate(300,810)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">5</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Collaborate on Tasks</text>
+        </g>
+
+        <g transform="translate(780,170)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">6</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Analyze &amp; Balance Workload</text>
+        </g>
+        <g transform="translate(780,330)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">7</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Manage Resources &amp; Papers</text>
+        </g>
+        <g transform="translate(780,490)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">8</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Manage Meetings &amp; Messages</text>
+        </g>
+        <g transform="translate(780,650)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">9</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Maintain Notifications &amp; Snapshots</text>
+        </g>
+        <g transform="translate(780,810)">
+          <rect width="220" height="78" rx="22" class="process"/>
+          <rect x="0" y="0" width="220" height="28" rx="22" class="process"/>
+          <rect x="0" y="14" width="220" height="14" fill="#f8c79e"/>
+          <text x="12" y="20" class="number">10</text>
+          <text x="110" y="58" text-anchor="middle" class="name">Administer System</text>
+        </g>
+      </g>
+
+      <!-- Data stores: exact SQLAlchemy tables -->
+      <g>
+        <text x="1260" y="125" class="name">Data Stores</text>
+        <!-- users/accounts -->
+        <g transform="translate(1260,170)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">users</text></g>
+        <g transform="translate(1260,210)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">refresh_tokens</text></g>
+        <g transform="translate(1260,250)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">activity_logs</text></g>
+        <!-- projects/members -->
+        <g transform="translate(1260,330)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">projects</text></g>
+        <g transform="translate(1260,370)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">project_members</text></g>
+        <g transform="translate(1260,410)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">project_invitations</text></g>
+        <g transform="translate(1260,450)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">project_invite_links</text></g>
+
+        <g transform="translate(1470,170)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">tasks</text></g>
+        <g transform="translate(1470,210)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">supertasks</text></g>
+        <g transform="translate(1470,250)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">assigned_members</text></g>
+        <g transform="translate(1470,290)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">assigned_reviewer</text></g>
+        <g transform="translate(1470,330)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">task_relations</text></g>
+        <g transform="translate(1470,370)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">tags</text></g>
+        <g transform="translate(1470,410)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">task_tag</text></g>
+        <g transform="translate(1470,450)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">task_comments</text></g>
+        <g transform="translate(1470,490)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">task_submissions</text></g>
+        <g transform="translate(1470,530)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">task_attachments</text></g>
+        <g transform="translate(1470,570)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">task_links</text></g>
+        <g transform="translate(1470,610)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">revision_notes</text></g>
+        <g transform="translate(1470,650)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">peer_evaluations</text></g>
+
+        <g transform="translate(1680,170)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">member_snapshots</text></g>
+        <g transform="translate(1680,210)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">member_activities</text></g>
+        <g transform="translate(1680,250)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">project_snapshots</text></g>
+        <g transform="translate(1680,290)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">redistribution_recommendations</text></g>
+
+        <g transform="translate(1680,370)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">resources</text></g>
+        <g transform="translate(1680,410)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">resource_links</text></g>
+        <g transform="translate(1680,450)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">files</text></g>
+        <g transform="translate(1680,490)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">papers</text></g>
+        <g transform="translate(1680,530)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">paper_chunks</text></g>
+
+        <g transform="translate(1680,610)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">meetings</text></g>
+        <g transform="translate(1680,650)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">messages</text></g>
+        <g transform="translate(1680,690)"><rect width="190" height="30" class="store"/><rect width="30" height="30" class="dbox"/><text x="15" y="20" text-anchor="middle" class="small">D</text><text x="40" y="20" class="small">notifications</text></g>
+      </g>
+
+      <!-- Entity/process flows -->
+      <g>
+        <path d="M210 262 H255 V209 H300" class="flow"/><text x="220" y="252" class="label">login / profile</text>
+        <path d="M210 502 H255 V369 H300" class="flow"/><text x="220" y="492" class="label">project &amp; team data</text>
+        <path d="M210 742 H255 V209 H300" class="flow"/><text x="220" y="732" class="label">user administration</text>
+        <path d="M210 262 H255 V369 H300" class="flow"/><text x="250" y="322" class="label">project requests</text>
+        <path d="M210 502 H255 V689 H300" class="flow"/><text x="220" y="650" class="label">task / team requests</text>
+        <path d="M210 262 H255 V849 H300" class="flow"/><text x="220" y="805" class="label">comments / submissions</text>
+        <path d="M520 209 H650 V209 H780" class="flow"/><text x="575" y="199" class="label">workload data</text>
+        <path d="M520 369 H650 V369 H780" class="flow"/><text x="575" y="359" class="label">resource requests</text>
+        <path d="M520 529 H650 V529 H780" class="flow"/><text x="575" y="519" class="label">collaboration data</text>
+        <path d="M520 689 H650 V689 H780" class="flow"/><text x="575" y="679" class="label">task records</text>
+        <path d="M520 849 H650 V849 H780" class="flow"/><text x="575" y="839" class="label">snapshots / notifications</text>
+      </g>
+
+      <!-- Process/store flows -->
+      <g>
+        <path d="M520 209 H1260" class="flow"/><text x="590" y="199" class="label">account / refresh data</text>
+        <path d="M520 369 H1260 V185 H1260" class="flow"/><text x="590" y="359" class="label">project records</text>
+        <path d="M520 529 H1260 V400 H1260" class="flow"/><text x="590" y="519" class="label">member / invitation records</text>
+        <path d="M520 689 H1470" class="flow"/><text x="590" y="679" class="label">task / assignment records</text>
+        <path d="M520 849 H1470 V465 H1470" class="flow"/><text x="590" y="839" class="label">comments / submissions / notes</text>
+        <path d="M1000 209 H1680 V185 H1680" class="flow"/><text x="1050" y="199" class="label">workload / recommendation records</text>
+        <path d="M1000 369 H1680 V385 H1680" class="flow"/><text x="1050" y="359" class="label">resource / paper records</text>
+        <path d="M1000 529 H1680 V625 H1680" class="flow"/><text x="1050" y="519" class="label">meeting / message records</text>
+        <path d="M1000 689 H1680 V185 H1680" class="flow"/><text x="1050" y="679" class="label">snapshot / activity records</text>
+        <path d="M1000 849 H1260 V235 H1260" class="flow"/><text x="1050" y="839" class="label">admin metrics / activity records</text>
+      </g>
+
+      <!-- External service flows -->
+      <g>
+        <path d="M2310 167 H2170 V209 H1000" class="flow"/><text x="2140" y="157" class="label">AI prompts</text>
+        <path d="M1000 209 H2170 V167 H2310" class="flow"/><text x="2140" y="198" class="label">AI analysis results</text>
+        <path d="M2310 642 H2150 V529 H1000" class="flow"/><text x="2110" y="632" class="label">meeting request</text>
+        <path d="M1000 529 H2150 V642 H2310" class="flow"/><text x="2110" y="584" class="label">meeting result</text>
+        <path d="M2310 882 H2150 V369 H1000" class="flow"/><text x="2110" y="872" class="label">file upload / signed URL</text>
+        <path d="M1000 369 H2150 V882 H2310" class="flow"/><text x="2110" y="770" class="label">file metadata response</text>
+      </g>
+
+      <!-- Read-back and response flows -->
+      <g>
+        <path d="M300 209 H210" class="flow"/><text x="225" y="225" class="label">authenticated session</text>
+        <path d="M300 369 H210" class="flow"/><text x="225" y="385" class="label">project list / details</text>
+        <path d="M300 689 H210" class="flow"/><text x="225" y="705" class="label">task data</text>
+        <path d="M780 529 H210" class="flow"/><text x="225" y="545" class="label">collaboration updates</text>
+      </g>
+    </svg>
+  </div>
+
+  <main class="summary">
+    <h2>External Entities</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td>STUDENT</td><td>Global <code>student</code> role; manages projects, tasks, submissions, team interactions, resources, meetings, and messages within authorized project scopes.</td></tr>
+        <tr><td>INSTRUCTOR / ADVISOR</td><td>Global <code>instructor</code> role and project-level <code>advisor</code> role; creates or views project work and supervises project tasks and members.</td></tr>
+        <tr><td>ADMIN</td><td>Global <code>admin</code> role; administers users, system metrics, activity logs, and repository papers.</td></tr>
+        <tr><td>AI PROVIDERS</td><td>Gemini and OpenRouter services used for task complexity analysis and paper metadata extraction.</td></tr>
+        <tr><td>ZOOM</td><td>External meeting provider used through Zoom credentials to create and retrieve meeting details.</td></tr>
+        <tr><td>SUPABASE</td><td>External object storage for uploaded files and PDFs in the <code>upload</code> bucket.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Processes</h2>
+    <table>
+      <thead><tr><th>No.</th><th>Name</th><th>Inputs</th><th>Outputs</th><th>Implementing files / functions</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Authenticate &amp; Manage Accounts</td><td>Login credentials, refresh/logout requests, profile data, admin user records</td><td>JWT session, refreshed session, profile/user responses</td><td><code>backend/app/modules/users/routes.py</code>; <code>users/auth.py</code>; <code>users/manager.py</code>; <code>users/model.py</code>; <code>backend/app/modules/admin/routes.py</code>; <code>admin/services.py</code></td></tr>
+        <tr><td>2</td><td>Manage Projects</td><td>Project name, description, owners/advisors/instructors, project IDs</td><td>Project records and project responses</td><td><code>backend/app/modules/projects/routes.py</code>; <code>projects/services.py</code>; <code>projects/model.py</code></td></tr>
+        <tr><td>3</td><td>Manage Membership &amp; Invitations</td><td>Member IDs, project roles, skills, invitation email/token/link data</td><td>Membership records, invitation status, join results</td><td><code>backend/app/modules/project_members/routes.py</code>; <code>invitations/service.py</code>; <code>invite_links/routes.py</code>; <code>invite_links/services.py</code></td></tr>
+        <tr><td>4</td><td>Manage Tasks &amp; Assignments</td><td>Task/supertask fields, assignee/reviewer data, relations, tags, dates</td><td>Task records, assignment records, tags and relations</td><td><code>backend/app/modules/tasks/routes.py</code>; <code>tasks/services.py</code>; <code>supertasks/routes.py</code>; <code>assigned_members/routes.py</code>; <code>assigned_reviewer/routes.py</code>; <code>task_relations/routes.py</code>; <code>task_tags/routes.py</code></td></tr>
+        <tr><td>5</td><td>Collaborate on Tasks</td><td>Comments, submissions, attachments, links, revision notes, peer evaluations</td><td>Submission/comment records, file metadata, evaluation and revision results</td><td><code>backend/app/modules/task_comments/routes.py</code>; <code>task_submissions/routes.py</code>; <code>task_attachments/routes.py</code>; <code>task_links/routes.py</code>; <code>revision_notes/routes.py</code>; <code>peer_evaluations/routes.py</code></td></tr>
+        <tr><td>6</td><td>Analyze &amp; Balance Workload</td><td>Task name/description/skill, task/member/project workload records</td><td>Complexity/category analysis, workload summaries, redistribution recommendations</td><td><code>backend/app/modules/ai/service.py</code>; <code>tasks/routes.py</code> (<code>analyze_task_route</code>); <code>workload/routes.py</code>; <code>redistribution_recommendations/services.py</code>; <code>redistribution_logic.py</code>; <code>project_health/routes.py</code></td></tr>
+        <tr><td>7</td><td>Manage Resources &amp; Papers</td><td>Resource metadata/link data, PDF uploads, paper metadata/search criteria</td><td>Stored resource/paper records, signed file URLs, search results</td><td><code>backend/app/modules/resources/routes.py</code>; <code>resource_links/routes.py</code>; <code>papers/routes.py</code>; <code>papers/admin_router.py</code>; <code>papers/services.py</code>; <code>ai/extractor.py</code>; <code>core/storage.py</code></td></tr>
+        <tr><td>8</td><td>Manage Meetings &amp; Messages</td><td>Meeting provider/topic/time data, join URL, chat sender/content</td><td>Meeting records/provider results, message records</td><td><code>backend/app/modules/meetings/routes.py</code>; <code>meetings/services.py</code>; <code>meetings/providers/zoom.py</code>; <code>meetings/providers/google_meet.py</code>; <code>messages/routes.py</code></td></tr>
+        <tr><td>9</td><td>Maintain Notifications &amp; Snapshots</td><td>Read/unread status changes, project/member snapshot calculation requests</td><td>Notifications, snapshot records, activity records</td><td><code>backend/app/modules/notifications/routes.py</code>; <code>member_snapshots/routes.py</code>; <code>project_snapshots/routes.py</code>; <code>member_activities/routes.py</code></td></tr>
+        <tr><td>10</td><td>Administer System</td><td>Admin dashboard filters, metrics, activity searches, repository status</td><td>Admin metrics, dashboards, activity logs, repository statistics</td><td><code>backend/app/modules/admin/routes.py</code>; <code>admin/metrics_service.py</code>; <code>admin/activity_model.py</code>; <code>dashboard/routes.py</code>; <code>frontend/src/pages/admin/Overview.tsx</code>; <code>frontend/src/pages/admin/User.tsx</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Data Stores</h2>
+    <table>
+      <thead><tr><th>Data Store Name</th><th>Code mapping</th></tr></thead>
+      <tbody>
+        <tr><td><code>users</code></td><td>PostgreSQL table from <code>backend/app/modules/users/model.py</code>, <code>User.__tablename__</code></td></tr>
+        <tr><td><code>refresh_tokens</code></td><td>PostgreSQL table from <code>backend/app/modules/users/model.py</code>, <code>RefreshToken.__tablename__</code></td></tr>
+        <tr><td><code>activity_logs</code></td><td>PostgreSQL table from <code>backend/app/modules/admin/activity_model.py</code></td></tr>
+        <tr><td><code>projects</code></td><td>PostgreSQL table from <code>backend/app/modules/projects/model.py</code></td></tr>
+        <tr><td><code>project_members</code></td><td>PostgreSQL table from <code>backend/app/modules/project_members/model.py</code></td></tr>
+        <tr><td><code>project_invitations</code></td><td>PostgreSQL table from <code>backend/app/modules/invitations/model.py</code></td></tr>
+        <tr><td><code>project_invite_links</code></td><td>PostgreSQL table from <code>backend/app/modules/invite_links/model.py</code></td></tr>
+        <tr><td><code>tasks</code></td><td>PostgreSQL table from <code>backend/app/modules/tasks/model.py</code></td></tr>
+        <tr><td><code>supertasks</code></td><td>PostgreSQL table from <code>backend/app/modules/supertasks/model.py</code></td></tr>
+        <tr><td><code>assigned_members</code></td><td>PostgreSQL table from <code>backend/app/modules/assigned_members/model.py</code></td></tr>
+        <tr><td><code>assigned_reviewer</code></td><td>PostgreSQL table from <code>backend/app/modules/assigned_reviewer/model.py</code></td></tr>
+        <tr><td><code>task_relations</code></td><td>PostgreSQL table from <code>backend/app/modules/task_relations/model.py</code></td></tr>
+        <tr><td><code>tags</code></td><td>PostgreSQL table from <code>backend/app/modules/task_tags/model.py</code></td></tr>
+        <tr><td><code>task_tag</code></td><td>PostgreSQL association table from <code>backend/app/modules/task_tags/model.py</code></td></tr>
+        <tr><td><code>task_comments</code></td><td>PostgreSQL table from <code>backend/app/modules/task_comments/model.py</code></td></tr>
+        <tr><td><code>task_submissions</code></td><td>PostgreSQL table from <code>backend/app/modules/task_submissions/model.py</code></td></tr>
+        <tr><td><code>task_attachments</code></td><td>PostgreSQL table from <code>backend/app/modules/task_attachments/model.py</code></td></tr>
+        <tr><td><code>task_links</code></td><td>PostgreSQL table from <code>backend/app/modules/task_links/model.py</code></td></tr>
+        <tr><td><code>revision_notes</code></td><td>PostgreSQL table from <code>backend/app/modules/revision_notes/model.py</code></td></tr>
+        <tr><td><code>peer_evaluations</code></td><td>PostgreSQL table from <code>backend/app/modules/peer_evaluations/model.py</code></td></tr>
+        <tr><td><code>member_snapshots</code></td><td>PostgreSQL table from <code>backend/app/modules/member_snapshots/model.py</code></td></tr>
+        <tr><td><code>member_activities</code></td><td>PostgreSQL table from <code>backend/app/modules/member_activities/model.py</code></td></tr>
+        <tr><td><code>project_snapshots</code></td><td>PostgreSQL table from <code>backend/app/modules/project_snapshots/model.py</code></td></tr>
+        <tr><td><code>redistribution_recommendations</code></td><td>PostgreSQL table from <code>backend/app/modules/redistribution_recommendations/model.py</code></td></tr>
+        <tr><td><code>resources</code></td><td>PostgreSQL table from <code>backend/app/modules/resources/model.py</code></td></tr>
+        <tr><td><code>resource_links</code></td><td>PostgreSQL table from <code>backend/app/modules/resource_links/model.py</code></td></tr>
+        <tr><td><code>files</code></td><td>PostgreSQL table from <code>backend/app/modules/files/model.py</code>; stores metadata for object keys in Supabase</td></tr>
+        <tr><td><code>papers</code></td><td>PostgreSQL table from <code>backend/app/modules/papers/model.py</code>, including pgvector embeddings</td></tr>
+        <tr><td><code>paper_chunks</code></td><td>PostgreSQL table from <code>backend/app/modules/papers/model.py</code>, including pgvector chunk embeddings</td></tr>
+        <tr><td><code>meetings</code></td><td>PostgreSQL table from <code>backend/app/modules/meetings/model.py</code></td></tr>
+        <tr><td><code>messages</code></td><td>PostgreSQL table from <code>backend/app/modules/messages/model.py</code></td></tr>
+        <tr><td><code>notifications</code></td><td>PostgreSQL table from <code>backend/app/modules/notifications/model.py</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Assumptions</h2>
+    <div class="assumptions">
+      <ul>
+        <li>The external user roles are based on <code>UserRole.ADMIN</code>, <code>UserRole.STUDENT</code>, and <code>UserRole.INSTRUCTOR</code>; project-level <code>advisor</code> is shown with <code>INSTRUCTOR / ADVISOR</code> because the frontend routes also permit that project role.</li>
+        <li>Google Meet is not drawn as a separate external API entity because the code accepts an externally created Google Meet URL and performs no Google API call. It is included under the meeting-provider implementation.</li>
+        <li>Supabase object storage is shown as external storage; the exact bucket is <code>upload</code>, while paper metadata and file metadata are stored in PostgreSQL tables.</li>
+        <li>The 32 named PostgreSQL stores are represented as exact table names. No migration-only table without a corresponding model was inferred.</li>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>
